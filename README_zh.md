@@ -13,6 +13,7 @@
 ```text
 cangjie_compiler/
 ├── build.py                    # 编译器源码构建脚本
+├── cangjie_build               # 仓颉SDK集成构建脚本
 ├── cmake                       # cmake文件夹，用于保存构建辅助脚本
 ├── include                     # 头文件文件夹
 ├── schema                      # 用于保存 FlatBuffers Schema 序列化数据结构文件

@@ -13,6 +13,7 @@ This repository provides the source code of the Cangjie compiler and the cjdb de
 ```text
 cangjie_compiler/
 ├── build.py                    # Compiler source build script
+├── cangjie_build               # Cangjie SDK Integration Build Script
 ├── cmake                       # CMake folder for build helper scripts
 ├── include                     # Header files
 ├── schema                      # FlatBuffers Schema serialization data structure files
@@ -41,7 +42,7 @@ cangjie_compiler/
 │   ├── cmake                   # Third-party CMake helper scripts
 │   ├── llvmPatch.diff          # LLVM backend patch file, includes LLVM and cjdb source
 │   └── flatbufferPatch.diff    # FlatBuffers source patch file
-├── unittests                   # 单元测试用例
+├── unittests                   # Unit Test Cases
 └── utils                       # Compiler-related utilities
 ```
 
