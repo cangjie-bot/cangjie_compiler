@@ -15,6 +15,7 @@ cangjie_compiler/
 ├── build.py                    # Compiler source build script
 ├── cmake                       # CMake folder for build helper scripts
 ├── include                     # Header files
+├── integration_build           # Cangjie SDK Integration Build Script
 ├── schema                      # FlatBuffers Schema serialization data structure files
 ├── src                         # Compiler source code
 │   ├── AST                     # Abstract Syntax Tree components
@@ -41,7 +42,7 @@ cangjie_compiler/
 │   ├── cmake                   # Third-party CMake helper scripts
 │   ├── llvmPatch.diff          # LLVM backend patch file, includes LLVM and cjdb source
 │   └── flatbufferPatch.diff    # FlatBuffers source patch file
-├── unittests                   # 单元测试用例
+├── unittests                   # Unit Test Cases
 └── utils                       # Compiler-related utilities
 ```
 
@@ -141,15 +142,16 @@ This repository contains the Cangjie compiler source code. The complete compiler
 
 ## Open Source Software Statement
 
-| Software Name   | License                              | Usage Description                                                                 | Main Component         | Usage Method                                  |
-| --------------- | ------------------------------------ | --------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------- |
-| mingw-w64       | Zope Public License V2.1             | The Cangjie Windows SDK includes some static libraries from Mingw, which are linked with Cangjie-generated object files to produce final executables that can call Windows APIs. | Compiler              | Integrated into the Cangjie binary release    |
-| LLVM            | Apache 2.0 with LLVM Exception        | The Cangjie compiler backend is developed based on LLVM.                          | Compiler              | Integrated into the Cangjie binary release    |
-| libxml2         | MIT License                          | The Cangjie debugger is based on lldb, and this software is a dependency of lldb. | Debugger              | Integrated into the Cangjie binary release    |
-| libedit         | BSD 3-Clause License                 | The Cangjie debugger is based on lldb, and this software is a dependency of lldb. | Debugger              | Integrated into the Cangjie binary release    |
-| ncurses         | MIT License                          | The Cangjie debugger is based on lldb; lldb depends on libedit, and libedit depends on this software. | Debugger              | Integrated into the Cangjie binary release    |
-| flatbuffers     | Apache License V2.0                  | Cangjie's cjo files and macro implementations rely on this software for serialization and deserialization. | Compiler & StdLib (std.ast) | Integrated into the Cangjie binary release    |
-| PCRE2           | BSD 3-Clause License                 | The regex library in the standard library is implemented based on this software.  | StdLib (std.regex)    | Integrated into the Cangjie binary release    |
-| zlib            | zlib/libpng License                  | The compression library in the extension library is implemented based on this software. | Extension (compress.zlib) | Integrated into the Cangjie binary release    |
-| libboundscheck  | Mulan Permissive Software License V2 | Related code in the compiler, standard library, and extension library is implemented based on this software. | Compiler, StdLib, Extension | Integrated into the Cangjie binary release    |
-| OpenSSL         | Apache License V2.0                  | The HTTP and TLS modules in the extension library wrap the interfaces of this software. | Extension (net.http, net.tls) | Used as a build tool, not integrated into the Cangjie binary release |
+| Software Name       | License                              | Usage Description                                                                                                                                                                | Main Component                | Usage Method                                                         |
+|---------------------|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|----------------------------------------------------------------------|
+| mingw-w64           | Zope Public License V2.1             | The Cangjie Windows SDK includes some static libraries from Mingw, which are linked with Cangjie-generated object files to produce final executables that can call Windows APIs. | Compiler                      | Integrated into the Cangjie binary release                           |
+| LLVM                | Apache 2.0 with LLVM Exception       | The Cangjie compiler backend is developed based on LLVM.                                                                                                                         | Compiler                      | Integrated into the Cangjie binary release                           |
+| libxml2             | MIT License                          | The Cangjie debugger is based on lldb, and this software is a dependency of lldb.                                                                                                | Debugger                      | Integrated into the Cangjie binary release                           |
+| libedit             | BSD 3-Clause License                 | The Cangjie debugger is based on lldb, and this software is a dependency of lldb.                                                                                                | Debugger                      | Integrated into the Cangjie binary release                           |
+| ncurses             | MIT License                          | The Cangjie debugger is based on lldb; lldb depends on libedit, and libedit depends on this software.                                                                            | Debugger                      | Integrated into the Cangjie binary release                           |
+| flatbuffers         | Apache License V2.0                  | Cangjie's cjo files and macro implementations rely on this software for serialization and deserialization.                                                                       | Compiler & StdLib (std.ast)   | Integrated into the Cangjie binary release                           |
+| PCRE2               | BSD 3-Clause License                 | The regex library in the standard library is implemented based on this software.                                                                                                 | StdLib (std.regex)            | Integrated into the Cangjie binary release                           |
+| zlib                | zlib/libpng License                  | The compression library in the extension library is implemented based on this software.                                                                                          | Extension (compress.zlib)     | Integrated into the Cangjie binary release                           |
+| libboundscheck      | Mulan Permissive Software License V2 | Related code in the compiler, standard library, and extension library is implemented based on this software.                                                                     | Compiler, StdLib, Extension   | Integrated into the Cangjie binary release                           |
+| JSON for Modern C++ | MIT License                          | Used for language service message parsing and encapsulation.                                                                                                                     | Language Service              | Integrated into the Cangjie binary release                           |
+| OpenSSL             | Apache License V2.0                  | The HTTP and TLS modules in the extension library wrap the interfaces of this software.                                                                                          | Extension (net.http, net.tls) | Used as a build tool, not integrated into the Cangjie binary release |
