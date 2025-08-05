@@ -166,6 +166,7 @@ if(WIN32)
         ${CMAKE_BINARY_DIR}/third_party/llvm/bin/libclang-cpp.dll
         ${CMAKE_BINARY_DIR}/third_party/llvm/bin/libLTO.dll
         ${CMAKE_BINARY_DIR}/third_party/llvm/bin/libLLVM-15.dll
+        ${CMAKE_BINARY_DIR}/third_party/llvm/bin/libLLVM-Foundation-15.dll
         ${CMAKE_BINARY_DIR}/third_party/lldb/bin/liblldb.dll
         DESTINATION tools/bin/)
 else()

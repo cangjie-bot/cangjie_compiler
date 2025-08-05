@@ -29,7 +29,7 @@ set(CXX_OTHER_FLAGS "")
 set(OTHER_FLAGS
     "-fno-omit-frame-pointer -pipe -fno-common -fno-strict-aliasing -m64 -Wa,-mbig-obj -fstack-protector-all -Wl,--stack,16777216"
 )
-set(WARNINGS_SETTINGS "-w -Wdate-time")
+set(WARNINGS_SETTINGS "-w -Wdate-time -Wno-int-conversion")
 
 # The ld in MinGW toolchain is very slow, especially when linking the debug version. lld is preferred for linking cjc.exe.
 # However, the gcc cross compiler doesn't search for the name "lld", but "read-ld", "ld.lld" or "<target>-ld.lld", etc.
@@ -59,13 +59,13 @@ set(C_FLAGS "${WARNINGS_SETTINGS} ${C_OTHER_FLAGS} ${OTHER_FLAGS}")
 set(CPP_FLAGS "${WARNINGS_SETTINGS} ${CXX_OTHER_FLAGS} ${OTHER_FLAGS}")
 
 set(CMAKE_C_FLAGS "${C_FLAGS}")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -fdebug-types-section")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g")
 set(CMAKE_C_FLAGS_RELEASE "-D_FORTIFY_SOURCE=2 -O2")
-set(CMAKE_C_FLAGS_DEBUG "-O0 -g -fdebug-types-section")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS "${CPP_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -fdebug-types-section")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-D_FORTIFY_SOURCE=2 -O2")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fdebug-types-section")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_ASM_FLAGS "${CPP_FLAGS} -x assembler-with-cpp")
 set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-insert-timestamp")
 set(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-insert-timestamp")
