@@ -115,7 +115,7 @@ set(LLVM_BIN_INSTALL_PATTERN
         # For Windows
         REGEX "bin/(libclang\\.dll|libclang-cpp\\.dll)"
         REGEX "bin/(libgcc_s_seh-1\\.dll|libssp-0\\.dll|libstdc\\+\\+-6\\.dll|libwinpthread-1\\.dll)"
-        REGEX "bin/(libLTO\\.dll|libLLVM-15\\.dll)"
+        REGEX "bin/(libLTO\\.dll|libLLVM-15\\.dll|libLLVM-Foundation-15\\.dll)"
 )
 set(LIB_PROFILE profile)
 set(LIB_FUZZER_NOMAIN fuzzer_no_main)
@@ -144,7 +144,7 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
         set(LLVM_TAG master)
     else()
         set(REPOSITORY_PATH "https://gitcode.com/Cangjie/llvm-project.git")
-        set(LLVM_TAG main)
+        set(LLVM_TAG dev)
     endif()
     # llvm
     message(STATUS "Set cjnative REPOSITORY_PATH: ${REPOSITORY_PATH}")
@@ -164,6 +164,10 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
         endif()
         set(LLVM_CMAKE_C_FLAGS ${GCC_TOOLCHAIN_FLAG})
         set(LLVM_CMAKE_CXX_FLAGS ${GCC_TOOLCHAIN_FLAG})
+        if(MINGW)
+            set(LLVM_CMAKE_C_FLAGS "${LLVM_CMAKE_C_FLAGS} --unwindlib=libunwind")
+            set(LLVM_CMAKE_CXX_FLAGS "${LLVM_CMAKE_CXX_FLAGS} --unwindlib=libunwind")
+        endif()
         set(LLVM_CMAKE_EXE_LINKER_FLAGS)
         set(LLVM_CMAKE_SHARED_LINKER_FLAGS)
         string(REPLACE ";" "|" CMAKE_PREFIX_PATH_ALT_SEP "${CMAKE_PREFIX_PATH}")
@@ -228,12 +232,16 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
         list(APPEND LLVM_CMAKE_ARGS -DLLVM_BUILD_LLVM_DYLIB=ON)
         list(APPEND LLVM_CMAKE_ARGS -DLLVM_LINK_LLVM_DYLIB=ON)
         if(MINGW)
+            list(APPEND LLVM_CMAKE_ARGS -DLLVM_SPLIT_LLVM_DYLIB=ON)
+            list(APPEND LLVM_CMAKE_ARGS -DCOMPILER_RT_USE_BUILTINS_LIBRARY=TRUE)
+            list(APPEND LLVM_CMAKE_ARGS -DCOMPILER_RT_USE_LLVM_UNWINDER=TRUE)
+            list(APPEND LLVM_CMAKE_ARGS -DSANITIZER_CXX_ABI=libc++)
             list(APPEND LLVM_CMAKE_ARGS -DCMAKE_SYSTEM_NAME=Windows)
             list(APPEND LLVM_CMAKE_ARGS -DLLVM_HOST_TRIPLE=x86_64-w64-mingw32)
             set(NATIVE_LLVM_CMAKE_ARGS -Wno-dev|-Wno-deprecated)
             list(APPEND LLVM_CMAKE_ARGS -DCROSS_TOOLCHAIN_FLAGS_LLVM_NATIVE=${NATIVE_LLVM_CMAKE_ARGS})
-            set(LLVM_CMAKE_EXE_LINKER_FLAGS "${LLVM_CMAKE_EXE_LINKER_FLAGS} -Wl,--no-insert-timestamp")
-            set(LLVM_CMAKE_SHARED_LINKER_FLAGS "${LLVM_CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-insert-timestamp")
+            set(LLVM_CMAKE_EXE_LINKER_FLAGS "${LLVM_CMAKE_EXE_LINKER_FLAGS} -Wl,--no-insert-timestamp -lunwind")
+            set(LLVM_CMAKE_SHARED_LINKER_FLAGS "${LLVM_CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-insert-timestamp -lunwind")
         endif()
         list(APPEND LLVM_CMAKE_ARGS -DCMAKE_EXE_LINKER_FLAGS=${LLVM_CMAKE_EXE_LINKER_FLAGS})
         list(APPEND LLVM_CMAKE_ARGS -DCMAKE_SHARED_LINKER_FLAGS=${LLVM_CMAKE_SHARED_LINKER_FLAGS})
@@ -260,7 +268,7 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                 SOURCE_SUBDIR llvm
                 PATCH_COMMAND ${APPLY_LLVM_PATCH_COMMAND}
                     COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/demangle
-                    COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/boundschecZk/include
+                    COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/boundscheck/include
                     COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cangjie-demangler/include/CangjieDemangle.h
                             <SOURCE_DIR>/utils/demangle

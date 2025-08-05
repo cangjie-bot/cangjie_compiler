@@ -130,7 +130,7 @@ function(compile_rtlib target_name)
             set(LLVM_TAG master)
         else()
             set(REPOSITORY_PATH "https://gitcode.com/Cangjie/llvm-project.git")
-            set(LLVM_TAG main)
+            set(LLVM_TAG dev)
         endif()
         set(LLVM_REPO_DOWNLOAD_ARGS
             DOWNLOAD_COMMAND git clone -b ${LLVM_TAG} --depth=1 ${REPOSITORY_PATH} <SOURCE_DIR>)

@@ -82,18 +82,18 @@ constexpr std::string_view IF_AVAILABLE = "IfAvailable";
 
 // Standard library package name
 inline const std::string DEFAULT_PACKAGE_NAME = "default";
-inline const std::string CORE_PACKAGE_NAME = "std.core";
-inline const std::string SYNC_PACKAGE_NAME = "std.sync";
-inline const std::string MATH_PACKAGE_NAME = "std.math";
-inline const std::string OVERFLOW_PACKAGE_NAME = "std.overflow";
-inline const std::string RUNTIME_PACKAGE_NAME = "std.runtime";
-inline const std::string UNICODE_PACKAGE_NAME = "std.unicode";
-inline const std::string UNITTEST_MOCK_PACKAGE_NAME = "std.unittest.mock";
-inline const std::string UNITTEST_MOCK_INTERNAL_PACKAGE_NAME = "std.unittest.mock.internal";
-inline const std::string AST_PACKAGE_NAME = "std.ast";
-inline const std::string NET_PACKAGE_NAME = "std.net";
-inline const std::string REFLECT_PACKAGE_NAME = "std.reflect";
-inline const std::string REF_PACKAGE_NAME = "std.ref";
+inline constexpr const char CORE_PACKAGE_NAME[] = "std.core";
+inline constexpr const char SYNC_PACKAGE_NAME[] = "std.sync";
+inline constexpr const char MATH_PACKAGE_NAME[] = "std.math";
+inline constexpr const char OVERFLOW_PACKAGE_NAME[] = "std.overflow";
+inline constexpr const char RUNTIME_PACKAGE_NAME[] = "std.runtime";
+inline constexpr const char UNICODE_PACKAGE_NAME[] = "std.unicode";
+inline constexpr const char UNITTEST_MOCK_PACKAGE_NAME[] = "std.unittest.mock";
+inline constexpr const char UNITTEST_MOCK_INTERNAL_PACKAGE_NAME[] = "std.unittest.mock.internal";
+inline constexpr const char AST_PACKAGE_NAME[] = "std.ast";
+inline constexpr const char NET_PACKAGE_NAME[] = "std.net";
+inline constexpr const char REFLECT_PACKAGE_NAME[] = "std.reflect";
+inline constexpr const char REF_PACKAGE_NAME[] = "std.ref";
 
 // Standard library class name
 inline const std::string STD_LIB_ARRAY = "Array";

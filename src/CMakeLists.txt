@@ -125,6 +125,20 @@ target_include_directories(cjc PRIVATE ${BOUNDSCHECK}/include)
 
 target_link_libraries(cjc ${ffi})
 
+if(MINGW)
+    execute_process(
+        COMMAND ${CMAKE_C_COMPILER} -print-file-name=CRT_glob.o
+        OUTPUT_VARIABLE GET_CRT_GLOB_OUTPUT
+        ERROR_VARIABLE GET_CRT_GLOB_ERROR
+        RESULT_VARIABLE GET_CRT_GLOB_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT GET_CRT_GLOB_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot get filepath of CRT_glob.o! Error message is: ${GET_CRT_GLOB_ERROR}")
+    endif()
+    target_link_libraries(cjc ${GET_CRT_GLOB_OUTPUT})
+endif()
+
 if(CMAKE_BUILD_TYPE MATCHES Release AND MINGW)
     # Add static link option for cjc when building MinGW release. This use
     # case is defined in GCC Runtime Libraries Exception and has no GPL issue.
@@ -262,6 +276,9 @@ if(NOT WIN_DEBUG_USE_STATIC_LIB)
     add_library(cangjie-lsp-share SHARED ${FRONTEND_SRC_OBJECTS})
     set_target_properties(cangjie-lsp-share PROPERTIES OUTPUT_NAME "cangjie-lsp")
     target_link_libraries(cangjie-lsp-share ${ffi} boundscheck-static)
+    if(MINGW)
+        target_link_options(cangjie-lsp-share PRIVATE -pthread)
+    endif()
 endif()
 
     #  we should remove this once the LSPCompilerInstance is out of compiler
@@ -324,9 +341,14 @@ endif()
 if (CANGJIE_CODEGEN_CJNATIVE_BACKEND)
     if(NOT WIN_DEBUG_USE_STATIC_LIB)
         target_link_libraries(cangjie-frontend cangjie-lsp-share)
+        if(MINGW)
+            target_link_libraries(cangjie-frontend -pthread)
+        endif() 
     endif()
     if(DARWIN)
         target_link_libraries(cangjie-frontend -lLLVM)
+    elseif(MINGW)
+	    target_link_libraries(cangjie-frontend -lLLVM-15 -lLLVM-Foundation-15)
     else()
         target_link_libraries(cangjie-frontend -lLLVM-15)
     endif()

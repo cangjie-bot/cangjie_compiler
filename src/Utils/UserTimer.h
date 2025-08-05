@@ -50,7 +50,7 @@ private:
         explicit Info(std::string title, std::string subtitle, std::string desc)
             : title(std::move(title)), subtitle(std::move(subtitle)), desc(std::move(desc))
         {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__MINGW64__)
             this->start = std::chrono::system_clock::now();
 #else
             this->start = std::chrono::high_resolution_clock::now();

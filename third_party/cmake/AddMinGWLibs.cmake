@@ -58,20 +58,15 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E make_directory ${MINGW_PATH}
     COMMAND tar -C ${MINGW_PATH} -xf windows-x86_64-mingw.tar.gz
     COMMAND ${CMAKE_COMMAND} -E make_directory ${NATIVE_CANGJIE_BUILD_PATH}/third_party/mingw/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${BINUTILS_DIR} ${NATIVE_CANGJIE_BUILD_PATH}/third_party/mingw/bin/
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${MINGW_PATH}/lib/ ${NATIVE_CANGJIE_BUILD_PATH}/third_party/mingw/lib/
     ${COPY_DLL_COMMAND}
     WORKING_DIRECTORY ${BINARY_DEPS_MINGW_DIR}
     COMMENT "Uncompressing MinGW...")
 
-install(DIRECTORY ${BINUTILS_DIR} DESTINATION third_party/mingw/bin/ USE_SOURCE_PERMISSIONS)
 install(DIRECTORY ${MINGW_PATH}/lib/ DESTINATION third_party/mingw/lib/)
 # LLVM binaries and dependent dlls are only needed when we are building a cjc for Windows platform.
 if(CANGJIE_BUILD_CJC)
     install(DIRECTORY ${MINGW_PATH}/dll/ DESTINATION third_party/llvm/bin/)
-    if(MINGW)
-        install(FILES ${MINGW_PATH}/dll/libssp-0.dll DESTINATION third_party/mingw/bin/)
-    endif()
 endif()
 
 if(CANGJIE_BUILD_CJDB)
