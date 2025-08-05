@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <vector>
 #include <windows.h>
+#include <sstream>
 
 namespace {
 

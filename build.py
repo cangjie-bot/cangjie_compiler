@@ -409,20 +409,14 @@ def package_mingw_dependencies(args):
     search_path = args.target_toolchain if args.target_toolchain else None
     mingw_path = str(os.path.dirname(os.path.dirname(os.path.abspath(shutil.which("x86_64-w64-mingw32-gcc", path=search_path)))))
     mingw_package_path = str(os.path.join(HOME_DIR, "third_party/binary/mingw"))
-    bin_dependencies = ["x86_64-w64-mingw32-ar", "x86_64-w64-mingw32-ld"]
-    copy_files_to(os.path.join(mingw_path, "bin"), bin_dependencies, os.path.join(mingw_package_path, "bin/Linux/" + CJ_ARCH_NAME))
-    dll_dependencies = ["lib/libgcc_s_seh-1.dll", "lib/libssp-0.dll", "lib/libstdc++-6.dll", "bin/libwinpthread-1.dll"]
+    dll_dependencies = ["bin/libc++.dll", "bin/libunwind.dll", "bin/libwinpthread-1.dll"]
     copy_files_to(os.path.join(mingw_path, "x86_64-w64-mingw32"), dll_dependencies, os.path.join(mingw_package_path, "dll"))
     lib_dependencies = ["crt2.o", "dllcrt2.o", "libadvapi32.a", "libkernel32.a", "libm.a", "libmingw32.a",
                             "libmingwex.a", "libmoldname.a", "libmsvcrt.a", "libpthread.a", "libshell32.a", "libuser32.a",
-                            "libws2_32.a", "libssp.a", "libssp_nonshared.a", "libgcc_s.a", "libcrypt32.a"]
+                            "libws2_32.a", "libcrypt32.a", "crtbegin.o", "crtend.o"]
     copy_files_to(os.path.join(mingw_path, "x86_64-w64-mingw32/lib"), lib_dependencies, os.path.join(mingw_package_path, "lib"))
-    gcc_lib_dependencies = ["crtbegin.o", "crtend.o", "libgcc.a", "libgcc_eh.a"]
-    copy_files_to(os.path.join(mingw_path, "lib/gcc/x86_64-w64-mingw32/10.3.0"), gcc_lib_dependencies, os.path.join(mingw_package_path, "lib"))
-    exe_bin_dependencies = ["ar.exe", "ld.exe"]
-    copy_files_to(os.path.join(mingw_path, "x86_64-w64-mingw32/bin"), exe_bin_dependencies, os.path.join(mingw_package_path, "bin/Windows/x86_64"))
 
-    subprocess.run(["tar", "-C", "mingw", "-zcf", "windows-x86_64-mingw.tar.gz", "bin", "dll", "lib"],
+    subprocess.run(["tar", "-C", "mingw", "-zcf", "windows-x86_64-mingw.tar.gz", "dll", "lib"],
         cwd=os.path.join(HOME_DIR, "third_party/binary"))
     
 def init_log(name):

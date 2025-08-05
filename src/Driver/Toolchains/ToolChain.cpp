@@ -137,9 +137,9 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForDyLink(Tool& tool) const
     // libraries, which means that an indirect dependency may be an direct dependency. Thus we must link
     // indirect dependencies here. Indirect dependencies are passed after `--as-needed` options
     // so unnecessary dependencies will be discarded by the linker.
-    tool.AppendArg("--as-needed");
+    tool.AppendArgIf(!driverOptions.target.IsMinGW(), "--as-needed");
     ForEachBuiltinDependencies(driverOptions.indirectBuiltinDependencies, appendDyLibsToTool);
-    tool.AppendArg("--no-as-needed");
+    tool.AppendArgIf(!driverOptions.target.IsMinGW(), "--no-as-needed");
 }
 
 void ToolChain::CheckOtherDependeniesOfStaticLib(

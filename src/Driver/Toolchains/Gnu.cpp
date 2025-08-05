@@ -302,8 +302,12 @@ void Gnu::HandleLLVMLinkOptions(
         tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "discard_eh_frame.lds"));
     }
     // 2. cjld.lds, cjstart.o
-    tool.AppendArg("-T");
-    tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, cjldScript));
+    if (driverOptions.target.os == Triple::OSType::WINDOWS) {
+        tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "section.o"));
+    } else {
+        tool.AppendArg("-T");
+        tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, cjldScript));
+    }
     tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "cjstart.o"));
 
     // 3. frontend output or input files
@@ -340,7 +344,7 @@ void Gnu::HandleLibrarySearchPaths(Tool& tool, const std::string& cangjieLibPath
     tool.AppendArg("-L" + cangjieRuntimeLibPath);
     // Append LIBRARY_PATH as search paths
     tool.AppendArg(PrependToPaths("-L", GetLibraryPaths()));
-    if (driverOptions.IsCrossCompiling()) {
+    if (driverOptions.IsCrossCompiling() && !driverOptions.target.IsMinGW()) {
         tool.AppendArg("-rpath-link");
         tool.AppendArg(cangjieRuntimeLibPath);
     }
