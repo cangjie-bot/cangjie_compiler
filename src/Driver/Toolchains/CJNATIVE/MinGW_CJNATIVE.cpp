@@ -142,6 +142,10 @@ void MinGW_CJNATIVE::GenerateLinkingTool(const std::vector<TempFileInfo>& objFil
 
     std::string cjldScript = GetCjldScript(tool);
     tool->AppendArg("-Bdynamic");
+    if (driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB) {
+        tool->AppendArg("-e", "DllMainCRTStartup");
+        tool->AppendArg("--export-all-symbols");
+    }
     // Link order: crt2 -> crtbegin -> other input files -> crtend.
     if (driverOptions.outputMode == GlobalOptions::OutputMode::EXECUTABLE ||
         driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB) {
@@ -174,7 +178,6 @@ void MinGW_CJNATIVE::GenerateLinkOptions(Tool& tool)
 {
     tool.AppendArg("-l:libcangjie-runtime.dll");
     tool.AppendArg("-lclang_rt-builtins");
-    tool.AppendArg("--exclude-libs", "libssp.a");
     tool.AppendArg(MINGW_CJNATIVE_LINK_OPTIONS);
 }
 
@@ -183,8 +186,7 @@ bool MinGW_CJNATIVE::PrepareDependencyPath()
     if ((arPath = FindCangjieLLVMToolPath(g_toolList.at(ToolID::LLVM_AR).name)).empty()) {
         return false;
     }
-    std::string mingwPrefix = driverOptions.IsCrossCompiling() ? "x86_64-w64-mingw32-" : "";
-    if ((ldPath = FindCangjieMinGWToolPath(mingwPrefix + g_toolList.at(ToolID::LD).name)).empty()) {
+    if ((ldPath = FindCangjieLLVMToolPath(g_toolList.at(ToolID::LLD).name)).empty()) {
         return false;
     }
     return true;
