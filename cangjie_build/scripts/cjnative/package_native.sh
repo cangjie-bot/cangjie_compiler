@@ -7,7 +7,6 @@
 # See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 # This script needs to be placed in the output directory of Cangjie compiler.
-# ** NOTE: Please use `source' command to execute this script. **
 
 set -e;
 
