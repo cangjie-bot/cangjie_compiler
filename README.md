@@ -13,9 +13,9 @@ This repository provides the source code of the Cangjie compiler and the cjdb de
 ```text
 cangjie_compiler/
 ├── build.py                    # Compiler source build script
-├── cangjie_build               # Cangjie SDK Integration Build Script
 ├── cmake                       # CMake folder for build helper scripts
 ├── include                     # Header files
+├── integration_build           # Cangjie SDK Integration Build Script
 ├── schema                      # FlatBuffers Schema serialization data structure files
 ├── src                         # Compiler source code
 │   ├── AST                     # Abstract Syntax Tree components
