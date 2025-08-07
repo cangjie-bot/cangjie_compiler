@@ -137,7 +137,7 @@ This repository contains the Cangjie compiler source code. The complete compiler
 
 - [Cangjie Language Developer Guide](https://gitcode.com/Cangjie/cangjie_docs/tree/main/docs/dev-guide): Usage guide for Cangjie language development.
 - [Cangjie Standard Library](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/std): Source code for the Cangjie standard library.
-- [Cangjie Runtime](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime): Essential standard library code for the Cangjie language.
+- [Cangjie Runtime](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime): Source code of runtime dependency libraries for Cangjie-compiled binary files.
 - [Cangjie Tools](https://gitcode.com/Cangjie/cangjie_tools/tree/main): Tool suite for Cangjie, including code formatting, package management, and more.
 
 ## Open Source Software Statement
