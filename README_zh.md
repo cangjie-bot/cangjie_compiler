@@ -152,4 +152,5 @@ python3 build.py --help
 | PCRE2 | BSD 3-Clause License | 标准库中的正则库基于该软件封装实现 | 标准库(std.regex) | 集成到仓颉二进制发布包中 | 
 | zlib | zlib/libpng License | 扩展库中的压缩库基于该软件封装实现 | 扩展库(compress.zlib) | 集成到仓颉二进制发布包中 |
 | libboundscheck | Mulan Permissive Software License Version 2 | 编译器等相关代码基于该软件实现 | 编译器、标准库、扩展库 | 集成到仓颉二进制发布包中 |
+| JSON for Modern C++ | MIT License | 语言服务用于报文解析和封装 | 语言服务 | 集成到仓颉二进制发布包中 |
 | OpenSSL | Apache License V2.0 | 扩展库中的 HTTP 和 TLS 封装该软件的接口 | 扩展库(net.http、net.tls) | 作为构建工具使用，不会集成到仓颉二进制包 |
