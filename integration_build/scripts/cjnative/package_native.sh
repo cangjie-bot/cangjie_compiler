@@ -15,6 +15,8 @@ rm -rf $WORKSPACE/software/*;
 # 打包Cangjie Frontend
 cd $WORKSPACE/software;
 mkdir -p cangjie/lib/${kernel}_${cmake_arch}_cjnative;
+cp $WORKSPACE/cangjie_compiler/LICENSE cangjie;
+cp $WORKSPACE/cangjie_compiler/Open_Source_Software_Notice.docx cangjie;
 chmod -R 750 cangjie;
 mv $WORKSPACE/cangjie_compiler/output/lib/${kernel}_${cmake_arch}_cjnative/libcangjie-ast-support.a cangjie/lib/${kernel}_${cmake_arch}_cjnative;
 $tar \
@@ -36,6 +38,8 @@ cp $WORKSPACE/cangjie_tools/hyperlangExtension/target/bin/main cangjie/tools/bin
 cp -r $WORKSPACE/cangjie_tools/hyperlangExtension/src/dtsparser cangjie/tools;
 rm -rf cangjie/tools/dtsparser/*.cj;
 cp $WORKSPACE/cangjie_tools/cangjie-language-server/output/bin/LSPServer cangjie/tools/bin;
+cp $WORKSPACE/cangjie_compiler/LICENSE cangjie;
+cp $WORKSPACE/cangjie_compiler/Open_Source_Software_Notice.docx cangjie;
 chmod -R 750 cangjie;
 $tar \
   --sort=name --mtime="@${SOURCE_DATE_EPOCH}" \
@@ -47,11 +51,15 @@ $tar \
   - cangjie | gzip -n > cangjie-sdk-${os}-${arch_name}-${cangjie_version}.tar.gz;
 
 # 打包Cangjie STDX
+mkdir stdx && cd stdx;
 cp -R $WORKSPACE/cangjie_stdx/target/${kernel}_${cmake_arch}_cjnative ./;
-chmod -R 750 ${kernel}_${cmake_arch}_cjnative;
-find ${kernel}_${cmake_arch}_cjnative -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
-find ${kernel}_${cmake_arch}_cjnative -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-${os}-${arch_name}-${cangjie_version}.${stdx_version}.zip;
+cp $WORKSPACE/cangjie_stdx/LICENSE ./;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx ./;
+chmod -R 750 ./*;
+find ./* -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
+find ./* -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-${os}-${arch_name}-${cangjie_version}.${stdx_version}.zip;
 
+cd $WORKSPACE/software;
 chmod 550 *.tar.gz *.zip;
 
 ls -lh $WORKSPACE/software
