@@ -137,7 +137,7 @@ python3 build.py --help
 
 - [仓颉语言开发指南](https://gitcode.com/Cangjie/cangjie_docs/tree/main/docs/dev-guide)：提供仓颉语言开发使用指南；
 - [仓颉语言标准库](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/std)：提供仓颉标准库源码；
-- [仓颉运行时](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime)：提供仓颉语言所必需的标准库代码；
+- [仓颉运行时](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime)：提供仓颉编译的二进制文件运行时依赖库源码；
 - [仓颉工具](https://gitcode.com/Cangjie/cangjie_tools/tree/main)：提供仓颉工具套，包含代码格式化、包管理等工具。
 
 ## 使用的开源软件声明
