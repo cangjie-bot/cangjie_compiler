@@ -136,7 +136,7 @@ This repository contains the Cangjie compiler source code. The complete compiler
 
 - [Cangjie Language Developer Guide](https://gitcode.com/Cangjie/cangjie_docs/tree/main/docs/dev-guide): Usage guide for Cangjie language development.
 - [Cangjie Standard Library](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/std): Source code for the Cangjie standard library.
-- [Cangjie Runtime](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime): Essential standard library code for the Cangjie language.
+- [Cangjie Runtime](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime): Source code of runtime dependency libraries for Cangjie-compiled binary files.
 - [Cangjie Tools](https://gitcode.com/Cangjie/cangjie_tools/tree/main): Tool suite for Cangjie, including code formatting, package management, and more.
 
 ## Open Source Software Statement
@@ -152,4 +152,5 @@ This repository contains the Cangjie compiler source code. The complete compiler
 | PCRE2           | BSD 3-Clause License                 | The regex library in the standard library is implemented based on this software.  | StdLib (std.regex)    | Integrated into the Cangjie binary release    |
 | zlib            | zlib/libpng License                  | The compression library in the extension library is implemented based on this software. | Extension (compress.zlib) | Integrated into the Cangjie binary release    |
 | libboundscheck  | Mulan Permissive Software License V2 | Related code in the compiler, standard library, and extension library is implemented based on this software. | Compiler, StdLib, Extension | Integrated into the Cangjie binary release    |
+| JSON for Modern C++ | MIT License | The language services are used for message parsing and encapsulation | The language services | Integrated into the Cangjie binary release package |
 | OpenSSL         | Apache License V2.0                  | The HTTP and TLS modules in the extension library wrap the interfaces of this software. | Extension (net.http, net.tls) | Used as a build tool, not integrated into the Cangjie binary release |
