@@ -24,6 +24,8 @@ python3 build.py install;
 
 # 打包Cangjie STDX
 cp -R $WORKSPACE/cangjie_stdx/target/linux_ohos_aarch64_cjnative ./;
+cp $WORKSPACE/cangjie_stdx/LICENSE linux_ohos_aarch64_cjnative;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx linux_ohos_aarch64_cjnative;
 chmod -R 750 linux_ohos_aarch64_cjnative;
 zip -qr $WORKSPACE/software/cangjie-stdx-ohos-aarch64-${cangjie_version}.${stdx_version}.zip linux_ohos_aarch64_cjnative;
 
@@ -38,5 +40,7 @@ python3 build.py install;
 
 # # 打包Cangjie STDX
 cp -R $WORKSPACE/cangjie_stdx/target/linux_ohos_x86_64_cjnative ./;
+cp $WORKSPACE/cangjie_stdx/LICENSE linux_ohos_x86_64_cjnative;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx linux_ohos_x86_64_cjnative;
 chmod -R 750 linux_ohos_x86_64_cjnative;
 zip -qr $WORKSPACE/software/cangjie-stdx-ohos-x86_64-${cangjie_version}.${stdx_version}.zip linux_ohos_x86_64_cjnative;

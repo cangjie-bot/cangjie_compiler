@@ -51,15 +51,13 @@ $tar \
   - cangjie | gzip -n > cangjie-sdk-${os}-${arch_name}-${cangjie_version}.tar.gz;
 
 # 打包Cangjie STDX
-mkdir stdx && cd stdx;
 cp -R $WORKSPACE/cangjie_stdx/target/${kernel}_${cmake_arch}_cjnative ./;
-cp $WORKSPACE/cangjie_stdx/LICENSE ./;
-cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx ./;
-chmod -R 750 ./*;
-find ./* -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
-find ./* -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-${os}-${arch_name}-${cangjie_version}.${stdx_version}.zip;
+cp $WORKSPACE/cangjie_stdx/LICENSE ${kernel}_${cmake_arch}_cjnative;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx ${kernel}_${cmake_arch}_cjnative;
+chmod -R 750 ${kernel}_${cmake_arch}_cjnative;
+find ${kernel}_${cmake_arch}_cjnative -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
+find ${kernel}_${cmake_arch}_cjnative -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-${os}-${arch_name}-${cangjie_version}.${stdx_version}.zip;
 
-cd $WORKSPACE/software;
 chmod 550 *.tar.gz *.zip;
 
 ls -lh $WORKSPACE/software

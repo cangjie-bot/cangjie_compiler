@@ -126,15 +126,13 @@ find cangjie -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
 find cangjie -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-sdk-windows-x64-${cangjie_version}.zip;
 
 # 打包Cangjie STDX
-mkdir stdx && cd stdx;
 cp -R $WORKSPACE/cangjie_stdx/target/windows_x86_64_cjnative ./;
-cp $WORKSPACE/cangjie_stdx/LICENSE ./;
-cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx ./;
-chmod -R 750 ./*;
-find ./* -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
-find ./* -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-windows-x64-${cangjie_version}.${stdx_version}.zip;
+cp $WORKSPACE/cangjie_stdx/LICENSE windows_x86_64_cjnative;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx windows_x86_64_cjnative;
+chmod -R 750 windows_x86_64_cjnative;
+find windows_x86_64_cjnative -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
+find windows_x86_64_cjnative -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-windows-x64-${cangjie_version}.${stdx_version}.zip;
 
-cd $WORKSPACE/software;
 chmod 550 *.zip;
 
 ls -lh $WORKSPACE/software
