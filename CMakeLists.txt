@@ -79,15 +79,17 @@ endif()
 if(NOT DEFINED CANGJIE_CJNATIVE_SOURCE_DIR)
     set(CANGJIE_CJNATIVE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/llvm-project)
 endif()
-set(BOUNDSCHECK ${CMAKE_SOURCE_DIR}/third_party/boundscheck-v1.1.16)
+
 if(NOT DEFINED CANGJIE_XML2_SOURCE_DIR)
     set(CANGJIE_XML2_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/libxml2-2.14.0)
 endif()
+
+set(BOUNDSCHECK ${CMAKE_SOURCE_DIR}/third_party/boundscheck)
 if(NOT EXISTS ${BOUNDSCHECK})
-    set(REPOSITORY_PATH https://gitee.com/openeuler/libboundscheck.git)
+    set(REPOSITORY_PATH https://gitee.com/openharmony/third_party_bounds_checking_function.git)
     message(STATUS "Set boundscheck REPOSITORY_PATH: ${REPOSITORY_PATH}")
     execute_process(
-        COMMAND git clone --branch v1.1.16 ${REPOSITORY_PATH} ${BOUNDSCHECK}
+        COMMAND git clone --branch OpenHarmony-v6.0-Beta1 ${REPOSITORY_PATH} ${BOUNDSCHECK}
     )
 endif()
 file(COPY ${CMAKE_SOURCE_DIR}/third_party/cmake/CMakeLists.txt DESTINATION ${BOUNDSCHECK}/)
