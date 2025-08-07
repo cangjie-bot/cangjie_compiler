@@ -102,6 +102,8 @@ rm -rf $WORKSPACE/software/*;
 # 打包Cangjie Frontend
 cd $WORKSPACE/software;
 mkdir -p cangjie/lib/windows_x86_64_cjnative;
+cp $WORKSPACE/cangjie_compiler/LICENSE cangjie;
+cp $WORKSPACE/cangjie_compiler/Open_Source_Software_Notice.docx cangjie;
 chmod -R 750 cangjie;
 mv $WORKSPACE/cangjie_compiler/output-x86_64-w64-mingw32/lib/windows_x86_64_cjnative/libcangjie-ast-support.a cangjie/lib/windows_x86_64_cjnative;
 find cangjie -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
@@ -117,16 +119,22 @@ cp $WORKSPACE/cangjie_tools/hyperlangExtension/target/bin/main.exe cangjie/tools
 cp -r $WORKSPACE/cangjie_tools/hyperlangExtension/src/dtsparser cangjie/tools;
 rm -rf cangjie/tools/dtsparser/*.cj;
 cp $WORKSPACE/cangjie_tools/cangjie-language-server/output/bin/LSPServer.exe cangjie/tools/bin;
+cp $WORKSPACE/cangjie_compiler/LICENSE cangjie;
+cp $WORKSPACE/cangjie_compiler/Open_Source_Software_Notice.docx cangjie;
 chmod -R 750 cangjie;
 find cangjie -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
 find cangjie -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-sdk-windows-x64-${cangjie_version}.zip;
 
 # 打包Cangjie STDX
+mkdir stdx && cd stdx;
 cp -R $WORKSPACE/cangjie_stdx/target/windows_x86_64_cjnative ./;
-chmod -R 750 windows_x86_64_cjnative;
-find windows_x86_64_cjnative -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
-find windows_x86_64_cjnative -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-windows-x64-${cangjie_version}.${stdx_version}.zip;
+cp $WORKSPACE/cangjie_stdx/LICENSE ./;
+cp $WORKSPACE/cangjie_stdx/Open_Source_Software_Notice.docx ./;
+chmod -R 750 ./*;
+find ./* -print0 | xargs -0r touch -t "$BEP_BUILD_TIME";
+find ./* -print0 | LC_ALL=C sort -z | xargs -0 zip -o -X $WORKSPACE/software/cangjie-stdx-windows-x64-${cangjie_version}.${stdx_version}.zip;
 
+cd $WORKSPACE/software;
 chmod 550 *.zip;
 
 ls -lh $WORKSPACE/software
