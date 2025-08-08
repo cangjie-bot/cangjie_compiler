@@ -48,7 +48,7 @@ struct CommentGroup {
 };
 
 ///
-/// Comments are classified into leadComments, innerComments and trailComments based on the location relationship between
+/// Comments are classified into leadingComments, innerComments and trailingComments based on the location relationship between
 /// nodes and comments, For details, see the description in AttachComment.cpp.
 /// e.g.
 /// /** c0 lead classDecl of class A */
@@ -68,9 +68,9 @@ struct CommentGroup {
 /// }
 ///
 struct CommentGroups {
-    std::vector<CommentGroup> leadComments;
+    std::vector<CommentGroup> leadingComments;
     std::vector<CommentGroup> innerComments;
-    std::vector<CommentGroup> trailComments;
+    std::vector<CommentGroup> trailingComments;
 };
 
 /**
