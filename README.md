@@ -66,6 +66,26 @@ Download the source code:
 git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
 ```
 
+#### Preparation for Windows Build
+
+(1) Please download basic tools such as ninja and cmake. Note that the version of cmake must be at least 3.16.5.
+
+(2) Please download the Windows-specific zip package llvm-mingw-20220906-msvcrt-x86_64.zip from https://github.com/mstorsjo/llvm-mingw/releases/tag/20220906.
+
+(3) Extract the package to an appropriate folder (it does not need to be in the same directory as the Cangjie project). Open the target directory in cmd and run the following commands to complete the configuration:
+
+```cmd
+set "BUILD_ROOT=%CD%"
+set "MINGW_PATH=%CD%\llvm-mingw-native"
+set "PATH=%MINGW_PATH\bin%;%PATH%"
+set "PYTHON_PATH=%CD%\llvm-mingw-native\python\bin"
+set "PATH=%PYTHON_PATH%;%PATH%"
+set "C_LIB=%CD%\llvm-mingw-native\x86_64-w64-mingw32"
+set "PATH=%C_LIB%\bin;%PATH%"
+```
+
+You can use the ```echo %PATH%``` command to verify whether the configuration is successful.
+
 ### Build Steps
 
 ```shell
@@ -95,10 +115,13 @@ The `output` directory structure is as follows:
 └── tools                   # Cangjie tools folder
 ```
 
-On Linux, you can apply the cjc environment with `source ./output/envsetup.sh`, and check the current compiler version and platform info with `cjc -v`:
+On Linux, you can apply the cjc environment with `source ./output/envsetup.sh`; on Windows (CMD), run `output\envsetup.bat` for the same purposeand check the current compiler version and platform info with `cjc -v`:
 
 ```shell
+# Linux
 source ./output/envsetup.sh
+# Windows(CMD)
+output\envsetup.bat
 cjc -v
 ```
 

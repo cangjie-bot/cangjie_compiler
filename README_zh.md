@@ -66,6 +66,25 @@ cangjie_compiler/
 git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
 ```
 
+#### Windows构建准备
+（1）请下载`ninja`、`cmake`等基本工具，注意`cmake`版本至少为3.16.5
+
+（2）请从<https://github.com/mstorsjo/llvm-mingw/releases/tag/20220906>中下载Windows所需llvm-mingw-20220906-msvcrt-x86_64.zip压缩包。 
+
+（3）将其解压缩到相应的文件夹中，不必与仓颉项目为同一路径。在`cmd`中打开所在的位置，完成以下配置命令：
+
+```cmd
+set "BUILD_ROOT=%CD%"
+set "MINGW_PATH=%CD%\llvm-mingw-native"
+set "PATH=%MINGW_PATH\bin%;%PATH%"
+set "PYTHON_PATH=%CD%\llvm-mingw-native\python\bin"
+set "PATH=%PYTHON_PATH%;%PATH%"
+set "C_LIB=%CD%\llvm-mingw-native\x86_64-w64-mingw32"
+set "PATH=%C_LIB%\bin;%PATH%"
+```
+
+可以通过 ```echo %PATH%``` 查看是否成功配置。
+
 ### 构建步骤
 
 ```shell
@@ -95,10 +114,20 @@ python3 build.py install
 └── tools                   # 仓颉工具文件夹
 ```
 
-Linux 环境下可通过 `source ./output/envsetup.sh` 命令应用 cjc 环境，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
+Linux 环境下可通过 `source ./output/envsetup.sh` 命令应用 cjc 环境；Windows（CMD） 中可以通过 `output\envsetup.bat` 命令完成相同配置，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
 
 ```shell
+# Linux
 source ./output/envsetup.sh
+# Windows (CMD)
+output\envsetup.bat
+cjc -v
+```
+
+Windows 环境中则可以通过 `output\envsetup.bat` 命令应用 cjc 环境，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
+
+```shell
+output\envsetup.bat
 cjc -v
 ```
 
