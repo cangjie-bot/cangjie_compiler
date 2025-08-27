@@ -67,11 +67,11 @@ git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
 ```
 
 #### Windows构建准备
-（1）请下载`ninja`、`cmake`等基本工具，注意`cmake`版本至少为3.16.5
+（1）请下载 `ninja`、`cmake` ，注意 `cmake` 版本至少为3.16.5。
 
-（2）请从<https://github.com/mstorsjo/llvm-mingw/releases/tag/20220906>中下载Windows所需llvm-mingw-20220906-msvcrt-x86_64.zip压缩包。 
+（2）请从<https://github.com/mstorsjo/llvm-mingw/releases/tag/20220906>中下载Windows所需的llvm-mingw-20220906-msvcrt-x86_64.zip压缩包。 
 
-（3）将其解压缩到相应的文件夹中，不必与仓颉项目为同一路径。在`cmd`中打开所在的位置，完成以下配置命令：
+（3）将其解压缩到相应的文件夹中，不必与仓颉项目为同一路径。在 `cmd` 中打开所在的位置，完成以下配置命令：
 
 ```cmd
 set "BUILD_ROOT=%CD%"
@@ -95,7 +95,7 @@ python3 build.py install
 ```
 
 1. `clean` 命令用于清空工作区临时文件；
-2. `build` 命令开始执行编译，选项 `-t` 即 `--build-type`，指定编译产物类型，可以是 `release`、 `debug` 或 `relwithdebinfo`；
+2. `build` 命令开始执行编译，选项 `-t` 即 `--buil                d-type`，指定编译产物类型，可以是 `release`、 `debug` 或 `relwithdebinfo`；
 3. `install` 命令将编译产物安装到 `output` 目录下。
 
 `output` 目录结构如下：
@@ -114,17 +114,14 @@ python3 build.py install
 └── tools                   # 仓颉工具文件夹
 ```
 
-Linux 环境下可通过 `source ./output/envsetup.sh` 命令应用 cjc 环境；Windows（CMD） 中可以通过 `output\envsetup.bat` 命令完成相同配置，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
+Linux 环境下可通过 `source ./output/envsetup.sh` 命令应用 cjc 环境，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
 
 ```shell
-# Linux
 source ./output/envsetup.sh
-# Windows (CMD)
-output\envsetup.bat
 cjc -v
 ```
 
-Windows 环境中则可以通过 `output\envsetup.bat` 命令应用 cjc 环境，执行 `cjc -v` 查看当前编译器版本信息及 cjc 的平台信息：
+Windows（CMD） 中可以通过 `output\envsetup.bat` 命令完成相同配置，执行 `cjc -v` 即可查看相关信息：
 
 ```shell
 output\envsetup.bat

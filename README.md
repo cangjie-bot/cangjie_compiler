@@ -115,12 +115,16 @@ The `output` directory structure is as follows:
 └── tools                   # Cangjie tools folder
 ```
 
-On Linux, you can apply the cjc environment with `source ./output/envsetup.sh`; on Windows (CMD), run `output\envsetup.bat` for the same purposeand check the current compiler version and platform info with `cjc -v`:
+On Linux, you can apply the cjc environment with `source ./output/envsetup.sh`, check the current compiler version and platform info with `cjc -v`:
 
 ```shell
-# Linux
 source ./output/envsetup.sh
-# Windows(CMD)
+cjc -v
+```
+
+On Windows (CMD), run `output\envsetup.bat` for the same purpose and verify the related information with `cjc -v`.
+
+```shell
 output\envsetup.bat
 cjc -v
 ```
