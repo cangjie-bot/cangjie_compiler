@@ -155,3 +155,7 @@ This repository contains the Cangjie compiler source code. The complete compiler
 | libboundscheck      | Mulan Permissive Software License V2 | Related code in the compiler, standard library, and extension library is implemented based on this software.                                                                     | Compiler, StdLib, Extension   | Integrated into the Cangjie binary release                           |
 | JSON for Modern C++ | MIT License                          | Used for language service message parsing and encapsulation.                                                                                                                     | Language Service              | Integrated into the Cangjie binary release                           |
 | OpenSSL             | Apache License V2.0                  | The HTTP and TLS modules in the extension library wrap the interfaces of this software.                                                                                          | Extension (net.http, net.tls) | Used as a build tool, not integrated into the Cangjie binary release |
+
+## Contribution
+
+We welcome contributions from developers in any form, including but not limited to code, documentation, issues, and more.
