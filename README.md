@@ -43,13 +43,13 @@ cangjie_compiler/
 ├── include                     # Header files
 ├── integration_build           # Cangjie SDK Integration Build Script
 ├── schema                      # FlatBuffers Schema serialization data structure files
+├── demangler                   # Symbol demangling
 ├── src                         # Compiler source code
 │   ├── AST                     # Abstract Syntax Tree components
 │   ├── Basic                   # Basic compiler components
 │   ├── CHIR                    # Compiler intermediate representation, optimization and analysis
 │   ├── CodeGen                 # Code generation, translates CHIR to LLVMIR
 │   ├── ConditionalCompilation  # Conditional compilation
-│   ├── Demangle                # Symbol demangling
 │   ├── Driver                  # Compiler driver, launches frontend and invokes backend commands
 │   ├── Frontend                # Compiler instance class, organizes compilation process
 │   ├── FrontendTool            # Compiler instance class for external tools
