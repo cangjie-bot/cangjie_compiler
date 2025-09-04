@@ -60,5 +60,12 @@ void CGClosureType::GenContainedCGTypes()
     containedCGTypes = {CGType::GetOrCreate(cgMod, CGType::GetRefTypeOfCHIRInt8(cgCtx.GetCHIRBuilder())),
         CGType::GetOrCreate(cgMod, closureType.GetEnvType())};
 }
+
+void CGClosureType::CalculateSizeAndAlign()
+{
+    llvm::DataLayout layOut = cgMod.GetLLVMModule()->getDataLayout();
+    size = layOut.getTypeAllocSize(llvmType);
+    align = layOut.getABITypeAlignment(llvmType);
+}
 } // namespace CodeGen
 } // namespace Cangjie

@@ -34,11 +34,7 @@ private:
     llvm::Constant* GenTypeArgsNumOfTypeInfo() override;
     llvm::Constant* GenTypeArgsOfTypeInfo() override;
 
-    void CalculateSizeAndAlign() override
-    {
-        size = 8U;
-        align = 8U;
-    };
+    void CalculateSizeAndAlign() override;
 };
 } // namespace CodeGen
 } // namespace Cangjie
