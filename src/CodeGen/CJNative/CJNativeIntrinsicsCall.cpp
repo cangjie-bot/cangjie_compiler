@@ -1174,6 +1174,7 @@ llvm::Instruction* IRBuilder2::CallIntrinsicGCWriteGeneric(const std::vector<llv
 {
     CJC_ASSERT(parameters.size() == 4U);
     llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic, {GetSizetType()});
+    parameters[3] = CreateBitCast(parameters[3], GetSizetType());
     auto fixedParams = {parameters[0], CreateBitCast(parameters[1], getInt8PtrTy(1U)), parameters[2], parameters[3]};
     return CreateCall(func, fixedParams);
 }
@@ -1183,6 +1184,7 @@ llvm::Instruction* IRBuilder2::CallGCWriteGenericPayload(const std::vector<llvm:
     CJC_ASSERT(parameters.size() == 3U);
     llvm::Function* func =
         llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic_payload, {GetSizetType()});
+    parameters[2] = CreateBitCast(parameters[2], GetSizetType());
     return CreateCall(func, parameters);
 }
 
@@ -1190,6 +1192,7 @@ llvm::Instruction* IRBuilder2::CallGCReadGeneric(const std::vector<llvm::Value*>
 {
     CJC_ASSERT(parameters.size() == 4U);
     llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_generic, {GetSizetType()});
+    parameters[3] = CreateBitCast(parameters[3], GetSizetType());
     auto fixedParams = {parameters[0], parameters[1], CreateBitCast(parameters[2], getInt8PtrTy(1U)), parameters[3]};
     return CreateCall(func, fixedParams);
 }
