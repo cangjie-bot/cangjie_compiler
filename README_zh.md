@@ -4,17 +4,46 @@
 
 仓颉编程语言是一种面向全场景应用开发的通用编程语言，可以兼顾开发效率和运行性能，并提供良好的编程体验。仓颉语言具有语法简明高效、多范式编程、类型安全等特点，了解更多仓颉语言的介绍，请参阅 [仓颉语言开发指南](https://cangjie-lang.cn/docs?url=%2F1.0.0%2Fuser_manual%2Fsource_zh_cn%2Ffirst_understanding%2Fbasic.html) 以及 [仓颉编程语言白皮书](https://cangjie-lang.cn/docs?url=%2F0.53.18%2Fwhite_paper%2Fsource_zh_cn%2Fcj-wp-abstract.html)。
 
-本仓提供了仓颉编译器源码及 cjdb 调试工具源码，仓颉编译器的整体框架及编译流程如下图展示：
+本仓提供了仓颉编译器源码，仓颉编译器的整体框架及编译流程如下图展示：
 
 ![架构图](figures/Compiler_Architecture_Diagram_zh.png)
+
+**架构图说明**
+
+- **编译器前端**：负责将仓颉源码从文本转换为中间表示，涵盖词法、语法、宏、语义等分析，确保代码结构和语义正确，为后端生成目标代码做好准备。
+
+    - **词法分析**将仓颉源码分解为有意义的记号，为后续语法分析做准备。
+
+    - **语法分析**根据仓颉语法规则，将记号序列构建为抽象语法树（AST），反映程序结构。
+
+    - **包管理**负责管理和加载代码模块，处理依赖关系与命名空间隔离，支持多模块协同开发。
+
+    - **宏展开**处理代码中的宏定义和宏调用，实现代码生成和复用。
+
+    - **语义分析**对 AST 进行类型检查、作用域分析等，确保程序语义正确。
+
+    - **AST2CHIR**将 AST 转换为编译器中间层表示，便于优化和后端处理。
+
+    - **代码生成**将中间表示（CHIR）翻译为 LLVM IR，准备生成目标机器码（LLVM BitCode）。
+
+- **编译器后端**：基于 LLVM 开发实现，接收前端生成的中间表示，经过优化、生成目标平台机器码，并通过链接器整合为可执行文件。
+
+    - **Opt（优化器）**：对 LLVM IR 进行多种优化处理，如常量折叠、循环优化等，提高生成代码的执行效率和质量。
+
+    - **LLC（LLVM 静态编译器）**：将优化后的 LLVM IR 转换为目标平台的机器码，适配不同硬件架构。
+
+    - **LD（链接器）**：将多个目标文件和依赖库链接为最终的可执行文件，解决符号引用，生成可部署的程序产物。
 
 ## 目录结构
 
 ```text
-cangjie_compiler/
-├── build.py                    # 编译器源码构建脚本
+/cangjie_compiler
 ├── cmake                       # cmake文件夹，用于保存构建辅助脚本
+├── demangler                   # 符号还原
+├── doc                         # 文档
+├── figures                     # 文档相关图片
 ├── include                     # 头文件文件夹
+├── integration_build           # 仓颉SDK集成构建脚本
 ├── schema                      # 用于保存 FlatBuffers Schema 序列化数据结构文件
 ├── src                         # 编译器源码文件夹
 │   ├── AST                     # 抽象语法树相关内容
@@ -22,7 +51,6 @@ cangjie_compiler/
 │   ├── CHIR                    # 编译器中间层，该阶段对代码进行优化分析
 │   ├── CodeGen                 # 代码生成，将 CHIR 翻译为 LLVMIR
 │   ├── ConditionalCompilation  # 条件编译
-│   ├── Demangle                # 符号还原
 │   ├── Driver                  # 编译器流程驱动，用于启动前端以及调用后端命令
 │   ├── Frontend                # 编译器实例类，组织编译器流程
 │   ├── FrontendTool            # 提供给周边工具的编译器实例类
@@ -137,19 +165,24 @@ python3 build.py --help
 - [仓颉语言开发指南](https://gitcode.com/Cangjie/cangjie_docs/tree/main/docs/dev-guide)：提供仓颉语言开发使用指南；
 - [仓颉语言标准库](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/std)：提供仓颉标准库源码；
 - [仓颉运行时](https://gitcode.com/Cangjie/cangjie_runtime/tree/main/runtime)：提供仓颉语言所必需的标准库代码；
-- [仓颉工具](https://gitcode.com/Cangjie/cangjie_tools/tree/main)：提供仓颉工具套，包含代码格式化、包管理等工具。
+- [仓颉工具](https://gitcode.com/Cangjie/cangjie_tools/tree/main)：提供仓颉工具套件，包含代码格式化、包管理等工具。
 
 ## 使用的开源软件声明
 
-| 开源软件名称 | 开源许可协议 | 使用说明 | 使用主体 | 使用方式 |
-| ---------- | ---------- | ------ | ------- | ------- |
-| mingw-w64 | Zope Public License V2.1 | 仓颉 Windows 版本 SDK 携带 Mingw 中的部分静态库文件，与仓颉代码生成的目标文件链接在一起，为用户生成最终的可以调用 Windows API 的可执行二进制文件 | 编译器 | 集成到仓颉二进制发布包中 |
-| LLVM | Apache 2.0 with LLVM Exception | 仓颉编译器后端基于 llvm 开发实现 | 编译器 | 集成到仓颉二进制发布包中 |
-| libxml2 | MIT License | 仓颉调试器基于 lldb 实现，本软件是 lldb 的依赖软件 | 调试器 | 集成到仓颉二进制发布包中 |
-| libedit | BSD 3-Clause License | 仓颉调试器基于 lldb 实现，本软件是 lldb 的依赖软件 | 调试器 | 集成到仓颉二进制发布包中 |
-| ncurses | MIT License | 仓颉调试器基于 lldb 实现，lldb 依赖 libedit，libedit 依赖本软件 | 调试器 | 集成到仓颉二进制发布包中 |
-| flatbuffers | Apache License V2.0 | 仓颉的 cjo 文件和宏实现依赖该软件进行序列化和反序列化 | 编译器和标准库(std.ast) | 集成到仓颉二进制发布包中 |
-| PCRE2 | BSD 3-Clause License | 标准库中的正则库基于该软件封装实现 | 标准库(std.regex) | 集成到仓颉二进制发布包中 | 
-| zlib | zlib/libpng License | 扩展库中的压缩库基于该软件封装实现 | 扩展库(compress.zlib) | 集成到仓颉二进制发布包中 |
-| libboundscheck | Mulan Permissive Software License Version 2 | 编译器等相关代码基于该软件实现 | 编译器、标准库、扩展库 | 集成到仓颉二进制发布包中 |
-| OpenSSL | Apache License V2.0 | 扩展库中的 HTTP 和 TLS 封装该软件的接口 | 扩展库(net.http、net.tls) | 作为构建工具使用，不会集成到仓颉二进制包 |
+| 开源软件名称              | 开源许可协议                                      | 使用说明                                                                                      | 使用主体                  | 使用方式                 |
+|---------------------|---------------------------------------------|-------------------------------------------------------------------------------------------|-----------------------|----------------------|
+| mingw-w64           | Zope Public License V2.1                    | 仓颉 Windows 版本 SDK 携带 Mingw 中的部分静态库文件，与仓颉代码生成的目标文件链接在一起，为用户生成最终的可以调用 Windows API 的可执行二进制文件 | 编译器                   | 集成到仓颉二进制发布包中         |
+| LLVM                | Apache 2.0 with LLVM Exception              | 仓颉编译器后端基于 llvm 开发实现                                                                       | 编译器                   | 集成到仓颉二进制发布包中         |
+| libxml2             | MIT License                                 | 仓颉调试器基于 lldb 实现，本软件是 lldb 的依赖软件                                                           | 调试器                   | 集成到仓颉二进制发布包中         |
+| libedit             | BSD 3-Clause License                        | 仓颉调试器基于 lldb 实现，本软件是 lldb 的依赖软件                                                           | 调试器                   | 集成到仓颉二进制发布包中         |
+| ncurses             | MIT License                                 | 仓颉调试器基于 lldb 实现，lldb 依赖 libedit，libedit 依赖本软件                                             | 调试器                   | 集成到仓颉二进制发布包中         |
+| flatbuffers         | Apache License V2.0                         | 仓颉的 cjo 文件和宏实现依赖该软件进行序列化和反序列化                                                             | 编译器和标准库(std.ast)      | 集成到仓颉二进制发布包中         |
+| PCRE2               | BSD 3-Clause License                        | 标准库中的正则库基于该软件封装实现                                                                         | 标准库(std.regex)        | 集成到仓颉二进制发布包中         | 
+| zlib                | zlib/libpng License                         | 扩展库中的压缩库基于该软件封装实现                                                                         | 扩展库(compress.zlib)    | 集成到仓颉二进制发布包中         |
+| libboundscheck      | Mulan Permissive Software License Version 2 | 编译器等相关代码基于该软件实现                                                                           | 编译器、标准库、扩展库           | 集成到仓颉二进制发布包中         |
+| JSON for Modern C++ | MIT License                                 | 语言服务中用于报文解析和封装                                                                            | 语言服务                  | 集成到仓颉二进制发布包中         |
+| OpenSSL             | Apache License V2.0                         | 扩展库中的 HTTP 和 TLS 封装该软件的接口                                                                 | 扩展库(net.http、net.tls) | 作为构建工具使用，不会集成到仓颉二进制包 |
+
+## 参与贡献
+
+欢迎开发者们提供任何形式的贡献，包括但不限于代码、文档、issue 等。

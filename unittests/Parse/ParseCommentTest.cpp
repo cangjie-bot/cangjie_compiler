@@ -71,7 +71,7 @@ TEST_F(ParseCommentTest, ParseMacroNodes)
     size_t cmgNum{0};
     auto collectNodes = [&ptrs, &cmgNum](Ptr<Node> curNode) -> VisitAction {
         const auto& nodeCms = curNode->comments;
-        cmgNum += nodeCms.leadComents.size() + nodeCms.trailComments.size() + nodeCms.innerComments.size();
+        cmgNum += nodeCms.leadingComments.size() + nodeCms.trailingComments.size() + nodeCms.innerComments.size();
         if (curNode->astKind == ASTKind::ANNOTATION || curNode->astKind == ASTKind::MODIFIER) {
             return VisitAction::SKIP_CHILDREN;
         }
@@ -98,7 +98,6 @@ class A {
 // c2 rule 1
 
 main() {
-
 }
     )";
     Parser parser(code, diag, sm, {0, 1, 1}, true);
@@ -111,13 +110,13 @@ main() {
         if (node->astKind == ASTKind::CLASS_DECL || node->astKind == ASTKind::VAR_DECL) {
             testNodes.emplace_back(node);
         }
-        attchNum += nodeCms.leadComents.size() + nodeCms.trailComments.size() + nodeCms.innerComments.size();
+        attchNum += nodeCms.leadingComments.size() + nodeCms.trailingComments.size() + nodeCms.innerComments.size();
         return VisitAction::WALK_CHILDREN;
     });
     walker.Walk();
     EXPECT_EQ(testNodes.size(), 2);
     for (auto node : testNodes) {
-        const auto& nodeTrailCms = node->comments.trailComments;
+        const auto& nodeTrailCms = node->comments.trailingComments;
         if (node->astKind == ASTKind::CLASS_DECL) {
             ASSERT_EQ(nodeTrailCms.size(), trlCgNumOfClassA);
             EXPECT_TRUE(nodeTrailCms[0].cms.front().info.Value().find("c1") != std::string::npos);
@@ -130,7 +129,7 @@ main() {
     EXPECT_EQ(attchNum, 3);
 }
 
-TEST_F(ParseCommentTest, LeadComents)
+TEST_F(ParseCommentTest, leadingComments)
 {
     code = R"(
 class A {
@@ -153,13 +152,13 @@ main() {
         if (node->astKind == ASTKind::VAR_DECL || node->astKind == ASTKind::MAIN_DECL) {
             testNodes.emplace_back(node);
         }
-        attchNum += nodeCms.leadComents.size() + nodeCms.trailComments.size() + nodeCms.innerComments.size();
+        attchNum += nodeCms.leadingComments.size() + nodeCms.trailingComments.size() + nodeCms.innerComments.size();
         return VisitAction::WALK_CHILDREN;
     });
     walker.Walk();
     EXPECT_EQ(testNodes.size(), 2);
     for (auto node : testNodes) {
-        const auto& nodeLeadCms = node->comments.leadComents;
+        const auto& nodeLeadCms = node->comments.leadingComments;
         if (node->astKind == ASTKind::VAR_DECL) {
             ASSERT_EQ(nodeLeadCms.size(), trlCgNumOfVarDecl);
             EXPECT_TRUE(nodeLeadCms[0].cms.front().info.Value().find("c0") != std::string::npos);
@@ -188,7 +187,7 @@ TEST_F(ParseCommentTest, InnerComents)
         if (node->astKind == ASTKind::FUNC_PARAM_LIST || node->astKind == ASTKind::BLOCK) {
             testNodes.emplace_back(node);
         }
-        attchNum += nodeCms.leadComents.size() + nodeCms.trailComments.size() + nodeCms.innerComments.size();
+        attchNum += nodeCms.leadingComments.size() + nodeCms.trailingComments.size() + nodeCms.innerComments.size();
         return VisitAction::WALK_CHILDREN;
     });
     walker.Walk();
@@ -227,7 +226,7 @@ TEST_F(ParseCommentTest, MultStyComents)
     public func foo(){/* c8 inner funcBlock*/}
 
     // c9 lead funcDecl of bar
-    foreign func bar(){}
+    foreign func bar(){ }
 
     main () {
         1 + 2
@@ -243,7 +242,7 @@ TEST_F(ParseCommentTest, MultStyComents)
         ASTKind::FUNC_DECL, ASTKind::BLOCK, ASTKind::MAIN_DECL};
     Walker walker(file.get(), [&](Ptr<Node> node) -> VisitAction {
         const auto& nodeCms = node->comments;
-        attchNum += nodeCms.leadComents.size() + nodeCms.trailComments.size() + nodeCms.innerComments.size();
+        attchNum += nodeCms.leadingComments.size() + nodeCms.trailingComments.size() + nodeCms.innerComments.size();
         if (collectKinds.find(node->astKind) == collectKinds.end()) {
             return VisitAction::WALK_CHILDREN;
         }
@@ -259,17 +258,19 @@ TEST_F(ParseCommentTest, MultStyComents)
     walker.Walk();
     EXPECT_EQ(testNodes.size(), 7);
     for (auto node : testNodes) {
-        const auto& nodeLeadCms = node->comments.leadComents;
+        const auto& nodeLeadCms = node->comments.leadingComments;
         const auto& nodeInnerCms = node->comments.innerComments;
-        const auto& nodeTrailCms = node->comments.trailComments;
+        const auto& nodeTrailCms = node->comments.trailingComments;
         if (node->astKind == ASTKind::PACKAGE_SPEC) {
             ASSERT_EQ(nodeLeadCms.size(), 1);
             EXPECT_TRUE(nodeLeadCms[0].cms.front().info.Value().find("c0") != std::string::npos);
         } else if (node->astKind == ASTKind::MACRO_EXPAND_DECL) {
-            ASSERT_EQ(nodeLeadCms.size(), 1);
-            EXPECT_TRUE(nodeLeadCms[0].cms.front().info.Value().find("c1") != std::string::npos);
-            ASSERT_EQ(nodeTrailCms.size(), 1);
-            EXPECT_TRUE(nodeTrailCms[0].cms.front().info.Value().find("c6") != std::string::npos);
+            auto d = StaticAs<ASTKind::MACRO_EXPAND_DECL>(node)->invocation.decl.get();
+            ASSERT_TRUE(d);
+            ASSERT_EQ(d->comments.leadingComments.size(), 1);
+            EXPECT_TRUE(d->comments.leadingComments[0].cms.front().info.Value().find("c1") != std::string::npos);
+            ASSERT_EQ(d->comments.trailingComments.size(), 1);
+            EXPECT_TRUE(d->comments.trailingComments[0].cms.front().info.Value().find("c6") != std::string::npos);
         } else if (node->astKind == ASTKind::VAR_DECL) {
             ASSERT_EQ(nodeLeadCms.size(), 2);
             EXPECT_TRUE(nodeLeadCms[0].cms.front().info.Value().find("c2") != std::string::npos);

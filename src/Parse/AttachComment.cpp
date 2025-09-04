@@ -40,7 +40,13 @@ std::vector<Ptr<Node>> CollectPtrsOfASTNodes(Ptr<File> node)
         if (curNode->astKind == ASTKind::ANNOTATION || curNode->astKind == ASTKind::MODIFIER) {
             return VisitAction::SKIP_CHILDREN;
         }
+        bool ignoreFlag = false;
         if (curNode->astKind == ASTKind::FILE) {
+            ignoreFlag = true;
+        } else if (auto inv = curNode->GetConstInvocation(); inv && inv->decl) {
+            ignoreFlag = true;
+        }
+        if (ignoreFlag) {
             return VisitAction::WALK_CHILDREN;
         }
         ptrs.push_back(curNode);
@@ -87,7 +93,7 @@ void UpdateFollowInfoAndAppendCommentGroup(const std::optional<size_t>& preTkIdx
     AppendCommentGroup(comment, commentGroups);
 }
 
-inline CommentKind GetCommentKind(const Token& token)
+CommentKind GetCommentKind(const Token& token)
 {
     CJC_ASSERT(token.kind == TokenKind::COMMENT);
     if (token.Value().rfind("/*", 0) == std::string::npos) {
@@ -182,14 +188,14 @@ std::pair<bool, Position> WhetherExistNextNodeBeforeOuterNodeEnd(
 size_t AttchCommentToAheadNode(
     Ptr<Node> node, const Position& searchEnd, std::vector<CommentGroup>& commentGroups, size_t cgIdx)
 {
-    node->comments.trailComments.push_back(commentGroups[cgIdx]);
+    node->comments.trailingComments.push_back(commentGroups[cgIdx]);
     while (cgIdx + 1 < commentGroups.size()) {
         CJC_ASSERT(!commentGroups[cgIdx + 1].cms.empty());
         if (commentGroups[cgIdx + 1].cms[0].info.Begin() >= searchEnd) {
             break;
         }
         ++cgIdx;
-        node->comments.trailComments.push_back(commentGroups[cgIdx]);
+        node->comments.trailingComments.push_back(commentGroups[cgIdx]);
     }
     return cgIdx;
 }
@@ -216,7 +222,7 @@ size_t AttchCommentToOuterNode(const std::vector<Ptr<Node>>& nodes, size_t nodeO
             cgInfo.commentGroups[cgIdx], cgIdx, outerNode, cgInfo.cgFollowInfo, cgInfo.tkStream)) {
             break;
         }
-        outerNode->comments.trailComments.push_back(cgInfo.commentGroups[cgIdx]);
+        outerNode->comments.trailingComments.push_back(cgInfo.commentGroups[cgIdx]);
     }
     if (cgIdx >= cgInfo.commentGroups.size()) {
         return cgIdx;
@@ -255,7 +261,7 @@ size_t AttachCommentToNode(const std::vector<Ptr<Node>>& nodes, size_t curNodeId
         CJC_ASSERT(!curCg.cms.empty());
         CJC_ASSERT(curCgBegin != curNodeBegin);
         if (curCgBegin < curNodeBegin) {
-            nodes[curNodeIdx]->comments.leadComents.push_back(curCg); // rule2
+            nodes[curNodeIdx]->comments.leadingComments.push_back(curCg); // rule2
         } else if (curCgBegin < curNodeEnd) {
             if (curNodeIdx + 1 < nodes.size() && nodes[curNodeIdx + 1]->GetBegin() < curNodeEnd) {
                 nodeStack.push(curNodeIdx);
@@ -274,7 +280,7 @@ size_t AttachCommentToNode(const std::vector<Ptr<Node>>& nodes, size_t curNodeId
                 break;
             }
             if (IsTrailCommentsInRuleOne(curCg, cgIdx, nodes[curNodeIdx], cgInfo.cgFollowInfo, cgInfo.tkStream)) {
-                nodes[curNodeIdx]->comments.trailComments.push_back(curCg);
+                nodes[curNodeIdx]->comments.trailingComments.push_back(curCg);
                 continue;
             }
             // check to see if there is a next node before the end of top node in stack

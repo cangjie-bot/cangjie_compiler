@@ -41,6 +41,7 @@
             <filteritem type="filename" name="pkg1.jar" desc="cjpm测试需要, 完成检查"/>
             <filteritem type="filename" name="*.png" desc="PNG图片文件, 完成检查"/>
             <filteritem type="filename" name="*.jpg" desc="PNG图片文件, 完成检查"/>
+            <filteritem type="filename" name="*.docx" desc="docx文件, 完成检查"/>
 		</filefilter>	
         </filefilterlist>
 		<licensematcherlist>
