@@ -6,6 +6,7 @@
 
 #include "UserMemoryUsage.h"
 
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
@@ -31,7 +32,6 @@ static const int KILOBYTE = 1024;
 
 namespace Cangjie {
 
-#ifdef CANGJIE_WRITE_PROFILE
 std::string UserMemoryUsage::GetJson() const
 {
     std::ostringstream out;
@@ -55,29 +55,6 @@ std::string UserMemoryUsage::GetJson() const
         out.seekp(-1, std::ios_base::cur);
     }
     out << "\n}\n";
-    return out.str();
-}
-#endif
-
-std::string UserMemoryUsage::GetFlat() const
-{
-    std::ostringstream out;
-    out.precision(DISPLAY_PRECISION);
-    out << std::fixed;
-    if (packageName.empty()) {
-        out << "================ Memory Usage ================\n";
-    } else {
-        out << "================ Memory Usage of [ " << packageName << " ] ================\n";
-    }
-    for (const auto& key : titleOrder) {
-        out << ("================ " + key + " ================\n");
-        for (auto& sec : titleInfoMap.at(key)) {
-            // 31, red; 32, green. This doesn't work on Windows.
-            out << "[ " << ANSI_COLOR_BRIGHT << ANSI_COLOR_GREEN << sec.subtitle << ANSI_COLOR_RESET << " ] "
-                << sec.start << " => " << sec.end << " MB        ";
-            out << std::showpos << sec.end - sec.start << std::noshowpos << " MB\n";
-        }
-    }
     return out.str();
 }
 
@@ -141,7 +118,7 @@ float UserMemoryUsage::Sampling()
     task_basic_info_data_t info;
     mach_msg_type_number_t count = TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS) {
-        return float(info.resident_size) / KILOBYTE / KILOBYTE;
+        return info.resident_size / KILOBYTE / KILOBYTE;
     } else {
         CJC_ASSERT(false && "Get process memory info failed.");
     }
