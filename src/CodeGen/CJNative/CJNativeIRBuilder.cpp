@@ -322,6 +322,15 @@ void ConvertArgsType(llvm::IRBuilder<>& irBuilder, const llvm::Function* func, s
 }
 } // namespace
 
+llvm::Type* IRBuilder2::GetSizetType()
+{
+    if (GetCGContext().GetCompileOptions().target.arch == Triple::ArchType::ARM32) {
+        return llvm::Type::getInt32Ty(GetLLVMContext());
+    } else {
+        return llvm::Type::getInt64Ty(GetLLVMContext());
+    }
+}
+
 bool IRBuilder2::IsGlobalVariableBasePtr(llvm::Value* val) const
 {
     return llvm::isa<llvm::GlobalVariable>(val->stripInBoundsOffsets());
@@ -346,7 +355,7 @@ llvm::Instruction* IRBuilder2::CallGCReadWeakRef(std::vector<llvm::Value*> args)
 llvm::Instruction* IRBuilder2::CallGCReadAgg(std::vector<llvm::Value*> args)
 {
     // Func: void @llvm.cj.gcread.struct(i8 addr1* baseObj, i8 addr1* dst, i8 addr1*/ i8* src, i64 length)
-    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_struct);
+    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_struct, {GetSizetType()});
     ConvertArgsType(*this, func, args);
     return CreateCall(func, args);
 }
@@ -364,7 +373,7 @@ llvm::Instruction* IRBuilder2::CallGCReadStaticAgg(llvm::StructType* type, std::
     // 3 arguments.
     CJC_ASSERT(args.size() == 3);
     llvm::LLVMContext& ctx = getContext();
-    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_static_struct);
+    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_static_struct, {GetSizetType()});
     auto typeName = GetCodeGenTypeName(type);
     auto meta = llvm::MDTuple::get(ctx, {llvm::MDString::get(ctx, typeName)});
     ConvertArgsType(*this, func, args);
@@ -393,7 +402,7 @@ llvm::Instruction* IRBuilder2::CallGCWriteAgg(std::vector<llvm::Value*> args)
     // real type of third parameter: args[2]->getType()
     llvm::Type* type = llvm::Type::getInt8PtrTy(GetLLVMContext(), args[2]->getType()->getPointerAddressSpace());
     // Func: void @llvm.cj.gcwrite.struct(i8 addr1* baseObj, i8 addr1* dst, i8 addr1*/ i8* src, i64 length)
-    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_struct, {type});
+    auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_struct, {type, GetSizetType()});
     ConvertArgsType(*this, func, args);
     return CreateCall(func, args);
 }
@@ -416,7 +425,7 @@ llvm::Instruction* IRBuilder2::CallGCWriteStaticAgg(llvm::StructType* type, std:
     }
     llvm::LLVMContext& ctx = getContext();
     auto func = llvm::Intrinsic::getDeclaration(
-        cgMod.GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_gcwrite_static_struct));
+        cgMod.GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_gcwrite_static_struct), {GetSizetType()});
     auto typeName = GetCodeGenTypeName(type);
     auto meta = llvm::MDTuple::get(ctx, {llvm::MDString::get(ctx, typeName)});
     ConvertArgsType(*this, func, args);
@@ -977,7 +986,7 @@ void IRBuilder2::CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo)
 
     if (!elemCGType->GetSize()) {
         auto func = llvm::Intrinsic::getDeclaration(
-            GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_array_copy_generic));
+            GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_array_copy_generic), {GetSizetType()});
         CreateCall(func->getFunctionType(), func,
             {arrayCopyToInfo.dstBP, dstArrI8Ptr, arrayCopyToInfo.srcBP, srcArrI8Ptr, arrayCopyToInfo.dataSize});
         return;
@@ -987,7 +996,7 @@ void IRBuilder2::CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo)
         bool isRefType = arrayCopyToInfo.elemType->GetLLVMType() == CGType::GetRefType(GetLLVMContext());
         auto copyToInstrinsic = isRefType ? llvm::Intrinsic::cj_array_copy_ref : llvm::Intrinsic::cj_array_copy_struct;
         auto func =
-            llvm::Intrinsic::getDeclaration(GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(copyToInstrinsic));
+            llvm::Intrinsic::getDeclaration(GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(copyToInstrinsic), {GetSizetType()});
         // llvm.cj.array.copyto(i8 addrspace(1)* destBP, i8 addrspace(1)* <dest>,
         //    i8 addrspace(1)* srcBP, i8
         // addrspace(1)* <src>,  i64 <len>)

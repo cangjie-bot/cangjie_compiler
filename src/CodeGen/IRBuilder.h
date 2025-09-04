@@ -193,6 +193,7 @@ public:
     }
 
     /** GC Write Barrier Intrinsics */
+    llvm::Type* GetSizetType() const;
     bool IsGlobalVariableBasePtr(llvm::Value* val) const;
     llvm::Instruction* CallGCRead(std::vector<llvm::Value*> args);
     llvm::Instruction* CallGCReadWeakRef(std::vector<llvm::Value*> args);
