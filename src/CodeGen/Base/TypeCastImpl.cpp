@@ -27,12 +27,18 @@ using namespace CodeGen;
 namespace {
 std::string StringIntX(Triple::ArchType archType, const CHIR::IntType& intTy)
 {
-    if (archType == Triple::ArchType::X86_64 || archType == Triple::ArchType::AARCH64 ||
-        archType == Triple::ArchType::ARM32) {
+    if (archType == Triple::ArchType::X86_64 || archType == Triple::ArchType::AARCH64) {
         if (intTy.IsIntNative()) {
             return "Int64";
         } else if (intTy.IsUIntNative()) {
             return "UInt64";
+        }
+        return intTy.ToString();
+    } else if (archType == Triple::ArchType::ARM32) {
+        if (intTy.IsIntNative()) {
+            return "Int32";
+        } else if (intTy.IsUIntNative()) {
+            return "UInt32";
         }
         return intTy.ToString();
     }
