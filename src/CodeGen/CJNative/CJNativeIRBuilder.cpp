@@ -991,7 +991,7 @@ void IRBuilder2::CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo)
     if (!elemCGType->GetSize()) {
         auto func = llvm::Intrinsic::getDeclaration(
             GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_array_copy_generic), {GetSizetType()});
-        arrayCopyToInfo.dataSize = CreateBitCast(arrayCopyToInfo.datasize, GetSizetType());
+        arrayCopyToInfo.dataSize = CreateBitCast(arrayCopyToInfo.dataSize, GetSizetType());
         CreateCall(func->getFunctionType(), func,
             {arrayCopyToInfo.dstBP, dstArrI8Ptr, arrayCopyToInfo.srcBP, srcArrI8Ptr, arrayCopyToInfo.dataSize});
         return;
@@ -1002,7 +1002,7 @@ void IRBuilder2::CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo)
         auto copyToInstrinsic = isRefType ? llvm::Intrinsic::cj_array_copy_ref : llvm::Intrinsic::cj_array_copy_struct;
         auto func =
             llvm::Intrinsic::getDeclaration(GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(copyToInstrinsic), {GetSizetType()});
-        arrayCopyToInfo.dataSize = CreateBitCast(arrayCopyToInfo.datasize, GetSizetType());
+        arrayCopyToInfo.dataSize = CreateBitCast(arrayCopyToInfo.dataSize, GetSizetType());
         // llvm.cj.array.copyto(i8 addrspace(1)* destBP, i8 addrspace(1)* <dest>,
         //    i8 addrspace(1)* srcBP, i8
         // addrspace(1)* <src>,  i64 <len>)
