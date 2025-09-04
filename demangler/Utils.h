@@ -113,7 +113,6 @@ const std::unordered_map<const char*, const char*, StdPkgHash, StdPkgCompare> MA
     {"bm", "std.deriving.resolve"},
     {"bn", "std.database.sql"},
     {"bo", "std.net.native"},
-    {"bp", "std.net.native.cjvm"},
     {"bq", "std.convert.native"},
     {"br", "std.ffi.java"},
     {"bs", "std.objectpool.native"},

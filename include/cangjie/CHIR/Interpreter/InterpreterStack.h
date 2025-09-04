@@ -14,7 +14,7 @@
 #define CANGJIE_CHIR_INTERRETER_INTERPRETERSTACK_H
 
 #include "cangjie/CHIR/Interpreter/BCHIR.h"
-#include "cangjie/CHIR/Interpreter/InterpreterValue.h"
+#include "cangjie/CHIR/Interpreter/InterpreterValueUtils.h"
 
 namespace Cangjie::CHIR::Interpreter {
 
@@ -326,13 +326,6 @@ struct InterpreterStack {
         std::swap(argStack[(argStack.size() - offsetFromEnd) + i], argStack[(argStack.size() - offsetFromEnd) + j]);
     }
 
-    void ArgsClean()
-    {
-        while (!argStack.empty()) {
-            ArgsPopBack();
-        }
-    }
-
     const ControlState& CtrlTop() const
     {
         return controlStack.back();
@@ -358,11 +351,6 @@ struct InterpreterStack {
     bool CtrlIsEmpty() const
     {
         return controlStack.empty();
-    }
-
-    void CtrlClean()
-    {
-        controlStack.clear();
     }
 
     const std::vector<ControlState>& GetCtrlStack() const
