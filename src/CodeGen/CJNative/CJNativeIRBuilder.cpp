@@ -325,7 +325,7 @@ void ConvertArgsType(llvm::IRBuilder<>& irBuilder, const llvm::Function* func, s
 }
 } // namespace
 
-llvm::Type* IRBuilder2::GetSizetType()
+llvm::Type* IRBuilder2::GetSizetType() const
 {
     if (GetCGContext().GetCompileOptions().target.arch == Triple::ArchType::ARM32) {
         return llvm::Type::getInt32Ty(GetLLVMContext());
