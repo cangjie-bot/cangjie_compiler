@@ -1173,8 +1173,8 @@ llvm::Instruction* IRBuilder2::CallIntrinsicAllocaGeneric(const std::vector<llvm
 llvm::Instruction* IRBuilder2::CallIntrinsicGCWriteGeneric(const std::vector<llvm::Value*>& parameters)
 {
     CJC_ASSERT(parameters.size() == 4U);
-    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic);
-    auto fixedParams = {parameters[0], CreateBitCast(parameters[1], getInt8PtrTy(1U)), parameters[2], parameters[3]};
+    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic, {GetSizetType()});
+    auto fixedParams = {parameters[0], CreateBitCast(parameters[1], getInt8PtrTy(1U)), parameters[2], CreateZExtOrTrunc(parameters[3], GetSizetType())};
     return CreateCall(func, fixedParams);
 }
 
@@ -1182,15 +1182,16 @@ llvm::Instruction* IRBuilder2::CallGCWriteGenericPayload(const std::vector<llvm:
 {
     CJC_ASSERT(parameters.size() == 3U);
     llvm::Function* func =
-        llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic_payload);
-    return CreateCall(func, parameters);
+        llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic_payload, {GetSizetType()});
+    auto fixedParams = {parameters[0], parameters[1], CreateZExtOrTrunc(parameters[2], GetSizetType())};
+    return CreateCall(func, fixedParams);
 }
 
 llvm::Instruction* IRBuilder2::CallGCReadGeneric(const std::vector<llvm::Value*>& parameters)
 {
     CJC_ASSERT(parameters.size() == 4U);
-    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_generic);
-    auto fixedParams = {parameters[0], parameters[1], CreateBitCast(parameters[2], getInt8PtrTy(1U)), parameters[3]};
+    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcread_generic, {GetSizetType()});
+    auto fixedParams = {parameters[0], parameters[1], CreateBitCast(parameters[2], getInt8PtrTy(1U)), CreateZExtOrTrunc(parameters[3], GetSizetType())};
     return CreateCall(func, fixedParams);
 }
 
