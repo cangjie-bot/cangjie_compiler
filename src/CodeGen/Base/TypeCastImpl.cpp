@@ -36,9 +36,9 @@ std::string StringIntX(Triple::ArchType archType, const CHIR::IntType& intTy)
         return intTy.ToString();
     } else if (archType == Triple::ArchType::ARM32) {
         if (intTy.IsIntNative()) {
-            return "Int32";
+            return "Int64";
         } else if (intTy.IsUIntNative()) {
-            return "UInt32";
+            return "UInt64";
         }
         return intTy.ToString();
     }
