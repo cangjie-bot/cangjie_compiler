@@ -164,7 +164,7 @@ std::string Triple::Info::GetEffectiveTripleString() const
         return "aarch64-linux-gnu";
     }
     if (tripleString == "arm-linux-ohos") {
-        return "arm-linux-gnu";
+        return "armv7a-linux-gnu";
     }
     if (tripleString == "x86_64-windows-gnu") {
         return "x86_64-w64-mingw32";
