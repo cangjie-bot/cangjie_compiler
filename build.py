@@ -540,7 +540,7 @@ def main():
         help="build cjc with cjdb"
     )
     parser_build.add_argument(
-        "--use-oh-llvm-repo", action="store_true", default=True
+        "--use-oh-llvm-repo", action="store_true", default=True,
         help="use OpenHarmony llvm repo with Cangjie llvm patch instead of cangjie llvm repo for building"
     )
     parser_build.set_defaults(func=build)
