@@ -17,8 +17,8 @@ set(OHOS ON)
 
 # We add --target option for clang only since gcc does not support --target option.
 # In case of gcc, cross compilation requires a target-specific gcc (a cross compiler).
-add_compile_options(--target=${TRIPLE})
-add_link_options(--target=${TRIPLE})
+add_compile_options(--target=${TRIPLE} -march=armv7a)
+add_link_options(--target=${TRIPLE} -march=armv7a)
 
 add_compile_definitions(__ohos__)
 add_compile_definitions(OPENSSL_ARM64_PLATFORM)
