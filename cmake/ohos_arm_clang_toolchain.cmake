@@ -23,6 +23,8 @@ add_link_options(--target=${TRIPLE})
 add_compile_definitions(__ohos__)
 add_compile_definitions(OPENSSL_ARM64_PLATFORM)
 
+string(REPLACE "-Werror" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+string(REPLACE "-Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-fno-emulated-tls ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-fno-emulated-tls ${CMAKE_CXX_FLAGS}")
 set(CMAKE_RANLIB "${CANGJIE_TARGET_TOOLCHAIN}/llvm-ranlib")
