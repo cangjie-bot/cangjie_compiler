@@ -995,9 +995,9 @@ void IRBuilder2::CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo)
 
     if (!elemCGType->GetSize()) {
         auto func = llvm::Intrinsic::getDeclaration(
-            GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_array_copy_generic));
+            GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_array_copy_generic), {GetSizetType()});
         CreateCall(func->getFunctionType(), func,
-            {arrayCopyToInfo.dstBP, dstArrI8Ptr, arrayCopyToInfo.srcBP, srcArrI8Ptr, arrayCopyToInfo.dataSize});
+            {arrayCopyToInfo.dstBP, dstArrI8Ptr, arrayCopyToInfo.srcBP, srcArrI8Ptr, CreateZExtOrTrunc(arrayCopyToInfo.dataSize, GetSizetType())});
         return;
     }
 
