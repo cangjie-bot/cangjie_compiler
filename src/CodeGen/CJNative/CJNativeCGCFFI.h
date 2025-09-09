@@ -249,6 +249,28 @@ private:
     ABIArgInfo GetMappingArgInfo(CHIR::StructType& chirTy, bool isArg);
 };
 
+class LinuxOhosArm32CJNativeCGCFFI : public LinuxCJNativeCGCFFI {
+public:
+    explicit LinuxOhosArm32CJNativeCGCFFI(CGModule& cgMod) : LinuxCJNativeCGCFFI(cgMod)
+    {
+    }
+
+    llvm::FunctionType* GetCFuncType(const CHIR::FuncType& chirFuncTy) override;
+    void AddFunctionAttr(const CHIR::FuncType& chirFuncTy, llvm::Function& llvmFunc) override;
+    void ProcessParam(CHIR::Type& chirParamTy, LLVMFuncArgIt& arg, llvm::Value* place, IRBuilder2& builder) override;
+    llvm::Value* ProcessRetValue(const llvm::Type& retType, llvm::Value& val, IRBuilder2& builder) override;
+
+protected:
+    void ProcessInvocationArg(CHIR::StructType& chirParamTy, ProcessKind kind, size_t& argIdx,
+        std::vector<CGValue*>& args, IRBuilder2& builder) override;
+    llvm::Type* GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params) override;
+    bool IsHomogeneousAggregate(llvm::Type& type, llvm::Type*& base, size_t& members);
+
+private:
+    ProcessKind GetParamType(CHIR::Type& chirTy, std::vector<llvm::Type*>& params);
+    ABIArgInfo GetMappingArgInfo(CHIR::StructType& chirTy, bool isArg);
+};
+
 } // namespace CodeGen
 } // namespace Cangjie
 #endif
