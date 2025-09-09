@@ -58,7 +58,9 @@ llvm::Value* IRBuilder2::CallSetLocation()
     // Func: anyregcc void @llvm.cj.set.location()
     auto setLocation = llvm::Intrinsic::getDeclaration(GetLLVMModule(), llvm::Intrinsic::cj_set_location);
     auto callInst = CreateCall(setLocation);
-    callInst->setCallingConv(llvm::CallingConv::AnyReg);
+    if (GetCGContext().GetCompileOptions().target.arch != Triple::ArchType::ARM32) {
+        callInst->setCallingConv(llvm::CallingConv::AnyReg);
+    }
     return callInst;
 }
 
