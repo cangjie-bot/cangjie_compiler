@@ -243,7 +243,7 @@ llvm::Value* IRBuilder2::AcquireRawData(const CHIRIntrinsicWrapper& intrinsic)
     CJC_NULLPTR_CHECK(int1ty);
     auto tmp = CreateEntryAlloca(int1ty);
     (void)CreateStore(getFalse(), tmp);
-    auto isCopyPtr = irBuilder.CreateBitCast(tmp, llvm::Type::getInt8PtrTy(GetLLVMContext()));
+    auto isCopyPtr = CreateBitCast(tmp, llvm::Type::getInt8PtrTy(llvmCtx));
     // i8* @cj_acquire_rawdata(i8 addrspace(1)*, i8*)
     auto func = llvm::Intrinsic::getDeclaration(
         cgMod.GetLLVMModule(), static_cast<llvm::Intrinsic::ID>(llvm::Intrinsic::cj_acquire_rawdata));
