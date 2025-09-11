@@ -48,7 +48,7 @@ llvm::Value* IRBuilder2::CallIntrinsic(
 {
     if (auto iter = INTRINSIC_KIND_TO_ID_MAP.find(intrinsic.GetIntrinsicKind());
         iter != INTRINSIC_KIND_TO_ID_MAP.end()) {
-        std::vector<llvm::Types*> newTys = {GetSizetType()};
+        std::vector<llvm::Type*> newTys = {GetSizetType()};
         auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), iter->second, IsPlatformDependent(intrinsic.GetIntrinsicKind()) ? newTys : tys);
         return CreateCall(func, args);
     }
