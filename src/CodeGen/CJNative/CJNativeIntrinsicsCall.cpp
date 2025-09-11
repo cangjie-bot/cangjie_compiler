@@ -32,12 +32,24 @@ llvm::Value* IRBuilder2::CallIntrinsic(
     return CallIntrinsic(intrinsic, args);
 }
 
+namespace {
+bool IsPlatformDependent(CHIR::IntrinsicKind intrinsicKind)
+{
+    if ((intrinsicKind >= CHIR::IntrinsicKind::GET_MAX_HEAP_SIZE && intrinsicKind <= CHIR::IntrinsicKind::GET_NATIVE_THREAD_NUMBER) ||
+        intrinsicKind == CHIR::IntrinsicKind::GET_GC_COUNT || intrinsicKind==CHIR::IntrinsicKind::GET_GC_FREED_SIZE) {
+        return true;
+    } else {
+        return false;
+    }
+}
+}
 llvm::Value* IRBuilder2::CallIntrinsic(
     const CHIRIntrinsicWrapper& intrinsic, const std::vector<llvm::Value*>& args, const std::vector<llvm::Type*>& tys)
 {
     if (auto iter = INTRINSIC_KIND_TO_ID_MAP.find(intrinsic.GetIntrinsicKind());
         iter != INTRINSIC_KIND_TO_ID_MAP.end()) {
-        auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), iter->second, tys);
+        std::vector<llvm::Types*> newTys = {GetSizetType()};
+        auto func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), iter->second, IsPlatformDependent(intrinsic.GetIntrinsicKind()) ? newTys : tys);
         return CreateCall(func, args);
     }
     CJC_ASSERT(false && "Unsupported intrinsic.");
