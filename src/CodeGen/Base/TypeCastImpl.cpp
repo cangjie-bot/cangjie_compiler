@@ -36,9 +36,9 @@ std::string StringIntX(Triple::ArchType archType, const CHIR::IntType& intTy)
         return intTy.ToString();
     } else if (archType == Triple::ArchType::ARM32) {
         if (intTy.IsIntNative()) {
-            return "Int64";
+            return "Int32";
         } else if (intTy.IsUIntNative()) {
-            return "UInt64";
+            return "UInt32";
         }
         return intTy.ToString();
     }
@@ -77,23 +77,9 @@ const std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> G_FLOAT2INT
     {"Float64UInt64", {0xBFF0000000000000, 0x43F0000000000000}},
 };
 
-CHIR::Type::TypeKind GetTypeKindFromType(const CHIR::NumericType& ty)
+bool NeedsIntToUIntConversion(IRBuilder2& irBuilder, const CHIR::IntType& srcTy, const CHIR::Type::TypeKind typeKind)
 {
-    auto typeKind = ty.GetTypeKind();
-    constexpr uint64_t INT64_BITNESS = 64;
-    if (typeKind == CHIR::Type::TypeKind::TYPE_UINT_NATIVE) {
-        typeKind =
-            ty.GetBitness() == INT64_BITNESS ? CHIR::Type::TypeKind::TYPE_UINT64 : CHIR::Type::TypeKind::TYPE_UINT32;
-    } else if (typeKind == CHIR::Type::TypeKind::TYPE_INT_NATIVE) {
-        typeKind =
-            ty.GetBitness() == INT64_BITNESS ? CHIR::Type::TypeKind::TYPE_INT64 : CHIR::Type::TypeKind::TYPE_INT32;
-    }
-    return typeKind;
-}
-
-bool NeedsIntToUIntConversion(const CHIR::IntType& srcTy, const CHIR::Type::TypeKind typeKind)
-{
-    auto srcTypeKind = GetTypeKindFromType(srcTy);
+    auto srcTypeKind = irBuilder.GetTypeKindFromType(srcTy);
     switch (srcTypeKind) {
         case CHIR::Type::TypeKind::TYPE_INT16:
             return typeKind >= CHIR::Type::TypeKind::TYPE_UINT16;
@@ -106,9 +92,10 @@ bool NeedsIntToUIntConversion(const CHIR::IntType& srcTy, const CHIR::Type::Type
     }
 }
 
-bool NeedsUIntToIntConversion(const CHIR::Type& srcTy, const CHIR::Type::TypeKind typeKind)
+bool NeedsUIntToIntConversion(IRBuilder2& irBuilder, const CHIR::Type& srcTy, const CHIR::Type::TypeKind typeKind)
 {
-    switch (srcTy.GetTypeKind()) {
+    auto srcTypeKind = irBuilder.GetTypeKindFromType(srcTy);
+    switch (srcTypeKind) {
         case CHIR::Type::TypeKind::TYPE_UINT8:
             return typeKind > CHIR::Type::TypeKind::TYPE_INT8;
         case CHIR::Type::TypeKind::TYPE_UINT16:
@@ -211,9 +198,10 @@ llvm::Value* GenerateCondCheckInfiniteOrNaN(
         {TypeKind::TYPE_FLOAT32, {32, 0x7F800000, llvm::Type::getInt32Ty(llvmCtx)}},
         {TypeKind::TYPE_FLOAT64, {64, 0x7FF0000000000000, llvm::Type::getInt64Ty(llvmCtx)}},
     };
-    unsigned bitwith = std::get<0>(floatInIEEE754.at(srcTy.GetTypeKind()));
-    uint64_t magicVal = std::get<1>(floatInIEEE754.at(srcTy.GetTypeKind()));
-    llvm::IntegerType* integerType = std::get<2>(floatInIEEE754.at(srcTy.GetTypeKind()));
+    auto srcTyKind = irBuilder.GetTypeKindFromType(srcTy);
+    unsigned bitwith = std::get<0>(floatInIEEE754.at(srcTyKind));
+    uint64_t magicVal = std::get<1>(floatInIEEE754.at(srcTyKind));
+    llvm::IntegerType* integerType = std::get<2>(floatInIEEE754.at(srcTyKind));
     auto integerVal = irBuilder.CreateBitCast(&srcValue, integerType);
     auto exponentVal = llvm::ConstantInt::get(llvmCtx, llvm::APInt(bitwith, magicVal));
     auto andVal = irBuilder.CreateAnd(integerVal, exponentVal);
@@ -233,12 +221,11 @@ llvm::Value* GenerateCondCheckLowerBound(
             auto minVal = llvm::ConstantInt::get(srcValue.getType(), 0);
             return irBuilder.CreateICmpSLE(minVal, &srcValue, "i2ui.lower");
         } else if (IsInt2Int(srcTy, targetTy)) {
-            if (targetTy.GetTypeKind() > srcTy.GetTypeKind()) {
+            if (irBuilder.GetTypeKindFromType(targetTy) > irBuilder.GetTypeKindFromType(srcTy)) {
                 return irBuilder.getTrue();
             }
-            auto typeKind = GetTypeKindFromType(targetTy);
             auto minVal =
-                llvm::ConstantInt::get(srcValue.getType(), static_cast<uint64_t>(G_SIGNED_INT_MAP.at(typeKind).first));
+                llvm::ConstantInt::get(srcValue.getType(), static_cast<uint64_t>(GetIntMaxOrMin(irBuilder.GetCGModule(), targetTy, false)));
             return irBuilder.CreateICmpSLE(minVal, &srcValue, "i2i.lower");
         } else {
             CJC_ASSERT(IsUInt2UInt(srcTy, targetTy));
@@ -264,36 +251,38 @@ template <typename SrcT>
 llvm::Value* GenerateCondCheckUpperBound(
     IRBuilder2& irBuilder, const CGType& targetType, llvm::Value& srcValue, const SrcT& srcTy)
 {
+    auto& cgMod = irBuilder.GetCGModule();
     auto& targetTy = StaticCast<const CHIR::IntType&>(targetType.GetOriginal());
     if constexpr (std::is_same_v<SrcT, CHIR::IntType>) {
-        auto typeKind = GetTypeKindFromType(targetTy);
+        auto targetTyKind = irBuilder.GetTypeKindFromType(targetTy);
+        auto srcTyKind = irBuilder.GetTypeKindFromType(srcTy);
         if (IsUInt2Int(srcTy, targetTy)) {
-            auto maxType = NeedsUIntToIntConversion(srcTy, typeKind) ? targetType.GetLLVMType() : srcValue.getType();
-            auto maxVal = llvm::ConstantInt::getSigned(maxType, G_SIGNED_INT_MAP.at(typeKind).second);
-            auto tempSrcValue = NeedsUIntToIntConversion(srcTy, typeKind)
+            auto maxType = NeedsUIntToIntConversion(irBuilder, srcTy, targetTyKind) ? targetType.GetLLVMType() : srcValue.getType();
+            auto maxVal = llvm::ConstantInt::getSigned(maxType, GetIntMaxOrMin(cgMod, targetTy, true));
+            auto tempSrcValue = NeedsUIntToIntConversion(irBuilder, srcTy, targetTyKind)
                 ? irBuilder.CreateZExtOrTrunc(&srcValue, targetType.GetLLVMType())
                 : &srcValue;
             return irBuilder.CreateICmpULE(tempSrcValue, maxVal, "ui2i.upper");
         } else if (IsInt2UInt(srcTy, targetTy)) {
-            auto maxType = NeedsIntToUIntConversion(srcTy, typeKind) ? targetType.GetLLVMType() : srcValue.getType();
-            auto maxVal = llvm::ConstantInt::get(maxType, G_UNSIGNED_INT_MAP.at(typeKind));
-            auto tempSrcValue = NeedsIntToUIntConversion(srcTy, typeKind)
+            auto maxType = NeedsIntToUIntConversion(irBuilder, srcTy, targetTyKind) ? targetType.GetLLVMType() : srcValue.getType();
+            auto maxVal = llvm::ConstantInt::get(maxType, GetUIntMax(cgMod, targetTy));
+            auto tempSrcValue = NeedsIntToUIntConversion(irBuilder, srcTy, targetTyKind)
                 ? irBuilder.CreateZExtOrTrunc(&srcValue, targetType.GetLLVMType())
                 : &srcValue;
             return irBuilder.CreateICmpULE(tempSrcValue, maxVal, "i2ui.upper");
         } else if (IsInt2Int(srcTy, targetTy)) {
-            if (targetTy.GetTypeKind() > srcTy.GetTypeKind()) {
+            if (targetTyKind > srcTyKind) {
                 return irBuilder.getTrue();
             }
-            auto maxVal = llvm::ConstantInt::getSigned(srcValue.getType(), G_SIGNED_INT_MAP.at(typeKind).second);
+            auto maxVal = llvm::ConstantInt::getSigned(srcValue.getType(), GetIntMaxOrMin(cgMod, targetTy, true));
             return irBuilder.CreateICmpSLE(&srcValue, maxVal, "i2i.upper");
         } else {
             CJC_ASSERT(IsUInt2UInt(srcTy, targetTy));
-            if (targetTy.GetTypeKind() > srcTy.GetTypeKind()) {
+            if (targetTyKind > srcTyKind) {
                 return irBuilder.getTrue();
             }
             auto maxVal =
-                llvm::ConstantInt::getSigned(srcValue.getType(), static_cast<int64_t>(G_UNSIGNED_INT_MAP.at(typeKind)));
+                llvm::ConstantInt::getSigned(srcValue.getType(), static_cast<int64_t>(GetUIntMax(cgMod, targetTy)));
             return irBuilder.CreateICmpULE(&srcValue, maxVal, "ui2ui.upper");
         }
     } else {
@@ -346,6 +335,7 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     const std::function<llvm::Value*()>& checkLowerBound, const std::function<llvm::Value*()>& checkUpperBound,
     const std::function<llvm::Value*(IRBuilder2&)>& typecast)
 {
+    auto& cgMod = irBuilder.GetCGModule();
     auto& targetTy = StaticCast<const CHIR::IntType&>(targetType.GetOriginal());
     auto [lowerBoundOKBB, upperBoundOKBB, upperBoundOverflowBB, lowerBoundOverflow, satEndBB] = Vec2Tuple<5>(
         irBuilder.CreateAndInsertBasicBlocks({GenNameForBB("lower.bound.ok"), GenNameForBB("upper.bound.ok"),
@@ -354,7 +344,7 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     // Emit lower.bound.overflow body.
     irBuilder.SetInsertPoint(lowerBoundOverflow);
     llvm::Value* retMin = targetTy.IsSigned()
-        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(), G_SIGNED_INT_MAP.at(targetTy.GetTypeKind()).first)
+        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(), GetIntMaxOrMin(cgMod, targetTy, false))
         : llvm::ConstantInt::get(targetType.GetLLVMType(), 0);
     irBuilder.CreateBr(satEndBB);
     // Emit lower.bound.ok body.
@@ -363,8 +353,8 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     /// Emit upper.bound.overflow body.
     irBuilder.SetInsertPoint(upperBoundOverflowBB);
     llvm::Value* retMax = targetTy.IsSigned()
-        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(), G_SIGNED_INT_MAP.at(targetTy.GetTypeKind()).second)
-        : llvm::ConstantInt::get(targetType.GetLLVMType(), G_UNSIGNED_INT_MAP.at(targetTy.GetTypeKind()));
+        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(),GetIntMaxOrMin(cgMod, targetTy, true))
+        : llvm::ConstantInt::get(targetType.GetLLVMType(), GetUIntMax(cgMod, targetTy));
     irBuilder.CreateBr(satEndBB);
     /// Emit upper.bound.ok body.
     irBuilder.SetInsertPoint(upperBoundOKBB);
@@ -407,7 +397,8 @@ llvm::Value* GenerateIntegerConversionExpr(IRBuilder2& irBuilder, const Overflow
 
 void GenerateUnicodeScalarValueCheck(IRBuilder2& irBuilder, llvm::Value* srcValue, const CHIR::Type& srcTy)
 {
-    if (srcTy.GetTypeKind() == CHIR::Type::TypeKind::TYPE_UINT8) {
+    auto srcTyKind = irBuilder.GetTypeKindFromType(srcTy);
+    if (srcTyKind == CHIR::Type::TypeKind::TYPE_UINT8) {
         return;
     }
     auto type = CGType::GetOrCreate(irBuilder.GetCGModule(), &srcTy)->GetLLVMType();
@@ -419,8 +410,8 @@ void GenerateUnicodeScalarValueCheck(IRBuilder2& irBuilder, llvm::Value* srcValu
     llvm::Value* compareResult;
     if (srcTy.IsInteger() && StaticCast<const CHIR::IntType&>(srcTy).IsSigned()) {
         auto cond1 = irBuilder.CreateICmpSLT(srcValue, bound1); // i < 0
-        if (srcTy.GetTypeKind() == CHIR::Type::TypeKind::TYPE_INT8 ||
-            srcTy.GetTypeKind() == CHIR::Type::TypeKind::TYPE_INT16) {
+        if (srcTyKind == CHIR::Type::TypeKind::TYPE_INT8 ||
+            srcTyKind == CHIR::Type::TypeKind::TYPE_INT16) {
             compareResult = cond1; // i < 0
         } else {
             auto cond2 = irBuilder.CreateICmpSGT(srcValue, bound2); // i > 0xD7FF
@@ -434,7 +425,7 @@ void GenerateUnicodeScalarValueCheck(IRBuilder2& irBuilder, llvm::Value* srcValu
         auto cond1 = irBuilder.CreateICmpUGT(srcValue, bound2); // i > 0xD7FF
         auto cond2 = irBuilder.CreateICmpULT(srcValue, bound3); // i < 0XE000
         auto combo1 = irBuilder.CreateAnd(cond1, cond2);        // i > 0xD7FF && i < 0XE000
-        if (srcTy.GetTypeKind() == CHIR::Type::TypeKind::TYPE_UINT16) {
+        if (srcTyKind == CHIR::Type::TypeKind::TYPE_UINT16) {
             compareResult = combo1;                                 // i > 0xD7FF && i < 0XE000
         } else {                                                    // UInt32 & UInt64
             auto cond3 = irBuilder.CreateICmpUGT(srcValue, bound4); // i > 0x10FFFF
@@ -458,7 +449,7 @@ llvm::Value* GenerateIntegerToRuneTypeCast(IRBuilder2& irBuilder, llvm::Value* s
 {
     GenerateUnicodeScalarValueCheck(irBuilder, srcValue, srcTy);
     auto type = CGType::GetUInt32CGType(irBuilder.GetCGModule());
-    if (srcTy.GetTypeKind() == CHIR::Type::TypeKind::TYPE_UINT32) {
+    if (irBuilder.GetTypeKindFromType(srcTy) == CHIR::Type::TypeKind::TYPE_UINT32) {
         return srcValue;
     } else {
         // Since we've checked the range of unicode scalar value, it's safe to use zext here.
@@ -647,7 +638,7 @@ llvm::Value* GenerateTypeCast(IRBuilder2& irBuilder, const CHIRTypeCastWrapper& 
     } else if (targetTy->IsInteger() && srcTy->IsFloat()) {
         return GenerateFloatToIntegerConvExpr(
             irBuilder, typeCast.GetOverflowStrategy(), *srcValue, *targetType, *StaticCast<CHIR::FloatType*>(srcTy));
-    } else if (targetTy->GetTypeKind() == CHIR::Type::TypeKind::TYPE_UINT32 && srcTy->IsRune()) {
+    } else if (irBuilder.GetTypeKindFromType(*targetTy) == CHIR::Type::TypeKind::TYPE_UINT32 && srcTy->IsRune()) {
         return srcValue;
     } else if (targetTy->IsRune() && srcTy->IsInteger()) {
         return GenerateIntegerToRuneTypeCast(irBuilder, srcValue, *srcTy);

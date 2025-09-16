@@ -189,7 +189,7 @@ void IRBuilder2::CallArrayIntrinsicSet(
     auto rawArrayCGType = CGType::GetOrCreate(cgMod, &arrTy);
     if (!rawArrayCGType->GetSize()) {
         llvm::Value* offset = CreateMul(GetSize_64(*arrTy.GetElementType()), index);
-        offset = CreateAdd(offset, getInt64(sizeof(void*) + 8U)); // 8U: size of rawArray's len field
+        offset = CreateAdd(offset, getInt64(GetVoidPtrSize() + 8U)); // 8U: size of rawArray's len field
         auto fieldAddr = CreateInBoundsGEP(getInt8Ty(), array, offset);
         fieldAddr = CreateBitCast(fieldAddr, elemType->getPointerTo(array->getType()->getPointerAddressSpace()));
         GetCGContext().SetBasePtr(fieldAddr, array);
@@ -233,7 +233,7 @@ llvm::Value* IRBuilder2::CallArrayIntrinsicGet(
     auto rawArrayCGType = CGType::GetOrCreate(cgMod, &arrTy);
     if (!rawArrayCGType->GetSize()) {
         llvm::Value* offset = CreateMul(GetSize_64(*arrTy.GetElementType()), index);
-        offset = CreateAdd(offset, getInt64(sizeof(void*) + 8U)); // 8U: size of rawArray's len field
+        offset = CreateAdd(offset, getInt64(GetVoidPtrSize() + 8U)); // 8U: size of rawArray's len field
         elePtr = CreateInBoundsGEP(getInt8Ty(), array, offset);
         elePtr = CreateBitCast(elePtr, elemType->getPointerTo(array->getType()->getPointerAddressSpace()));
         GetCGContext().SetBasePtr(elePtr, array);
@@ -675,7 +675,7 @@ llvm::Value* IRBuilder2::GenerateOverflowWrappingFunc(
     CHIR::ExprKind opKind, const CHIR::Type& ty, [[maybe_unused]] std::vector<llvm::Value*>& argGenValues)
 {
     llvm::Type* type = CGType::GetOrCreate(cgMod, &ty)->GetLLVMType();
-    auto minVal = CodeGen::GetIntMaxOrMin(StaticCast<const CHIR::IntType&>(ty), false);
+    auto minVal = CodeGen::GetIntMaxOrMin(GetCGModule(), StaticCast<const CHIR::IntType&>(ty), false);
     return llvm::ConstantInt::getSigned(type, opKind == CHIR::ExprKind::MOD ? 0 : minVal);
 }
 
