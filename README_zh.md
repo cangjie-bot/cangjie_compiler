@@ -158,6 +158,9 @@ python3 build.py --help
 
 集成构建请参阅 [仓颉 SDK 集成构建指导书](https://gitcode.com/Cangjie/cangjie_build/blob/dev/README_zh.md)。
 
+## 支持运行平台
+- **操作系统与架构**： Windows(x86) / Linux(x86/arm) / macOS(x86/arm)
+
 ## 相关仓
 
 本仓为仓颉编译器源码，完整的编译器组件还包含：
