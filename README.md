@@ -90,7 +90,7 @@ For environment requirements and software dependencies on each platform, please 
 Download the source code:
 
 ```shell
-git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
+git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b dev;
 ```
 
 ### Build Steps
