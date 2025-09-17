@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <cstdint>
 
 namespace Cangjie {
 enum class OverflowStrategy : int8_t { NA, CHECKED, WRAPPING, THROWING, SATURATING, OVERFLOW_STRATEGY_END };

@@ -15,6 +15,7 @@
 
 #include <string>
 #include <functional>
+#include <cstdint>
 
 namespace Cangjie::Utils {
 

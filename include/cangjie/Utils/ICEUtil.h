@@ -18,6 +18,7 @@
 
 #include <string>
 #include <unistd.h>
+#include <cstdint>
 
 namespace Cangjie {
 enum class CompileStage;

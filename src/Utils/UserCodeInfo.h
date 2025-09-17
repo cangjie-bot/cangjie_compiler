@@ -9,6 +9,7 @@
 
 #include <list>
 #include <string>
+#include <cstdint>
 
 #include "UserBase.h"
 
