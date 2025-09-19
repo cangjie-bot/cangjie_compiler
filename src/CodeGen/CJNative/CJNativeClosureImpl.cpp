@@ -30,9 +30,8 @@ llvm::Value* CodeGen::GenerateClosure(IRBuilder2& irBuilder, const CHIR::Tuple& 
     auto& cgMod = irBuilder.GetCGModule();
     auto args = tuple.GetOperands();
     auto lambdaObj = **(cgMod | args[1]);
-    auto castedObj = irBuilder.CreateBitCast(lambdaObj, i8PtrTy->getPointerTo(1U));
     if (auto funcItem = args[0]; !funcItem->GetUsers()[0]->IsConstantNull()) {
-        auto funcField = irBuilder.CreateConstGEP1_32(i8PtrTy, castedObj, 1U);
+        auto funcField = irBuilder.GetPayloadFromObject(lambdaObj);
         auto functionPtr = **(cgMod | funcItem);
         (void)irBuilder.CreateStore(irBuilder.CreateBitCast(functionPtr, i8PtrTy), funcField);
     }

@@ -105,8 +105,7 @@ llvm::Value* HandleFieldExpr(IRBuilder2& irBuilder, const CHIR::Expression& chir
             return baseVal;
         }
         auto fieldTy = irBuilder.getInt8PtrTy();
-        auto tmp =
-            irBuilder.CreateConstGEP1_32(fieldTy, irBuilder.CreateBitCast(baseVal, fieldTy->getPointerTo(1U)), 1U);
+        auto tmp = irBuilder.GetPayloadFromObject(baseVal);
         return irBuilder.CreateLoad(fieldTy, tmp);
     }
     if (base->GetCGType()->IsPointerType()) {
