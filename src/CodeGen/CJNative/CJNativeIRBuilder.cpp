@@ -939,7 +939,7 @@ CGValue IRBuilder2::CreateGEP(
             ret = CreateInBoundsGEP(getInt8Ty(), ret, offset);
         } else if (auto classCGType = dynamic_cast<const CGClassType*>(eleType)) {
             auto baseType = classCGType;
-            ret = CreateConstGEP1_32(getInt8Ty(), ret, GetVoidPtrSize());
+            ret = GetPayloadFromObject(ret);
             auto layoutType = static_cast<const CGClassType*>(baseType)->GetLayoutType();
             ret = CreateBitCast(ret, layoutType->getPointerTo(1));
             ret = LLVMIRBuilder2::CreateStructGEP(layoutType, ret, idx + offsetForAutoEnv);
@@ -1858,8 +1858,9 @@ llvm::Value* IRBuilder2::GetTypeInfoFromObject(llvm::Value* obj)
 llvm::Value* IRBuilder2::GetPayloadFromObject(llvm::Value* obj)
 {
     auto p0i8 = getInt8PtrTy();
+    auto payloadIdx = GetCGContext().GetCompileOptions().target.arch == Triple::ArchType::ARM32 ? 2U : 1U;
     auto payloadPtr =
-        CreateConstGEP1_32(p0i8, LLVMIRBuilder2::CreateBitCast(obj, p0i8->getPointerTo(1U)), 1U, "ti.payload");
+        CreateConstGEP1_32(p0i8, LLVMIRBuilder2::CreateBitCast(obj, p0i8->getPointerTo(1U)), payloadIdx, "ti.payload");
     GetCGContext().SetBasePtr(payloadPtr, obj);
     return payloadPtr;
 }
