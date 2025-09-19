@@ -158,6 +158,14 @@ For more platform-specific build information, see the [Standalone Build Guide](d
 
 For integration builds, please refer to the [Cangjie SDK Integration Build Guide](https://gitcode.com/Cangjie/cangjie_build/blob/dev/README_zh.md).
 
+## Supported Runtime Environments
+
+| Operating Systems | Architectures |
+|-----|----|
+| Windows | x86_64 |
+| Linux | x86_64/aarch64 |
+| macOS | x86_64/aarch64 |
+
 ## Related Repositories
 
 This repository contains the Cangjie compiler source code. The complete compiler ecosystem also includes:
