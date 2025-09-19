@@ -1,4 +1,4 @@
-# 仓颉编程语言
+# 仓颉编程器
 
 ## 简介
 
@@ -157,6 +157,14 @@ python3 build.py --help
 ### 集成构建指导
 
 集成构建请参阅 [仓颉 SDK 集成构建指导书](https://gitcode.com/Cangjie/cangjie_build/blob/dev/README_zh.md)。
+
+## 产物支持在以下平台运行
+
+| 操作系统 | 芯片架构 |
+|-----|----|
+| Windows | x86_64 |
+| Linux | x86_64/aarch64 |
+| macOS | x86_64/aarch64 |
 
 ## 相关仓
 
