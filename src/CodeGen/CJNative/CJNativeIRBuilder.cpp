@@ -345,9 +345,10 @@ CHIR::Type::TypeKind IRBuilder2::GetTypeKindFromType(const CHIR::Type& ty) const
 
 size_t IRBuilder2::GetVoidPtrSize() const
 {
-    auto i8PtrTy = llvm::Type::getInt8PtrTy(GetLLVMContext());
-    llvm::DataLayout layOut = GetLLVMModule()->getDataLayout();
-    return layOut.getTypeAllocSize(i8PtrTy);
+    // auto i8PtrTy = llvm::Type::getInt8PtrTy(GetLLVMContext());
+    // llvm::DataLayout layOut = GetLLVMModule()->getDataLayout();
+    // return layOut.getTypeAllocSize(i8PtrTy);
+    return sizeof(void*);
 }
 
 bool IRBuilder2::IsGlobalVariableBasePtr(llvm::Value* val) const
