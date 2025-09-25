@@ -109,6 +109,25 @@ llvm 其他工具链以及更详细的后端工具说明，可以参考[llvm 命
 git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
 ```
 
+#### Windows构建准备
+（1）请下载 `ninja`、`cmake` ，注意 `cmake` 版本至少为3.16.5。
+
+（2）请从<https://github.com/mstorsjo/llvm-mingw/releases/tag/20220906>中下载Windows所需的llvm-mingw-20220906-msvcrt-x86_64.zip压缩包。 
+
+（3）将其解压缩到相应的文件夹中，不必与仓颉项目为同一路径。在 `cmd` 中打开所在的位置，完成以下配置命令：
+
+```cmd
+set "BUILD_ROOT=%CD%"
+set "MINGW_PATH=%CD%\llvm-mingw-native"
+set "PATH=%MINGW_PATH%\bin;%PATH%"
+set "PYTHON_PATH=%CD%\llvm-mingw-native\python\bin"
+set "PATH=%PYTHON_PATH%;%PATH%"
+set "C_LIB=%CD%\llvm-mingw-native\x86_64-w64-mingw32"
+set "PATH=%C_LIB%\bin;%PATH%"
+```
+
+可以通过 ```echo %PATH%``` 查看是否成功配置。
+
 ### 构建步骤
 
 ```shell
@@ -142,6 +161,13 @@ Linux 环境下可通过 `source ./output/envsetup.sh` 命令应用 cjc 环境�
 
 ```shell
 source ./output/envsetup.sh
+cjc -v
+```
+
+Windows（CMD） 中可以通过 `output\envsetup.bat` 命令完成相同配置，执行 `cjc -v` 即可查看相关信息：
+
+```shell
+output\envsetup.bat
 cjc -v
 ```
 
