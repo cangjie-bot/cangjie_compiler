@@ -1759,7 +1759,11 @@ llvm::Value* IRBuilder2::GetSize_32(const CHIR::Type& type)
         CreateBr(exitBB);
         SetInsertPoint(exitBB);
         auto sizePHI = CreatePHI(getInt32Ty(), 2U);
-        sizePHI->addIncoming(getInt32(GetVoidPtrSize()), refSizeBB);
+        if (GetCGContext().GetCompileOptions().target.arch == Triple::ArchType::ARM32) {
+            sizePHI->addIncoming(getInt32(4U), refSizeBB);
+        } else {
+            sizePHI->addIncoming(getInt32(GetVoidPtrSize()), refSizeBB);
+        }
         sizePHI->addIncoming(nonRefSize, nonRefSizeBB);
         return sizePHI;
     } else if (auto cgType = CGType::GetOrCreate(cgMod, &type); cgType->IsReference()) {
