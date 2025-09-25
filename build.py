@@ -396,6 +396,13 @@ def package_mingw_dependencies(args):
     if os.path.exists(os.path.join(HOME_DIR, "third_party/binary/windows-x86_64-mingw.tar.gz")):
         return
     LOG.info("Packaging mingw dependencies...")
+    search_path = args.target_toolchain if args.target_toolchain else None
+    prepare_mingw_tool(search_path)
+   
+def prepare_mingw_tool(search_path):
+    if os.path.exists(os.path.join(HOME_DIR, "third_party/binary/windows-x86_64-mingw.tar.gz")):
+        return
+    LOG.info("Packaging mingw dependencies...")
     def copy_files_to(from_path, filename_list, to_directory):
         if not os.path.exists(to_directory):
             os.makedirs(to_directory, exist_ok=True)
@@ -406,7 +413,6 @@ def package_mingw_dependencies(args):
             else:
                 LOG.info("%s not found, skipped packaging the file...", filepath)
 
-    search_path = args.target_toolchain if args.target_toolchain else None
     mingw_path = str(os.path.dirname(os.path.dirname(os.path.abspath(shutil.which("x86_64-w64-mingw32-gcc", path=search_path)))))
     mingw_package_path = str(os.path.join(HOME_DIR, "third_party/binary/mingw"))
     dll_dependencies = ["bin/libc++.dll", "bin/libunwind.dll", "bin/libwinpthread-1.dll"]
@@ -418,7 +424,7 @@ def package_mingw_dependencies(args):
 
     subprocess.run(["tar", "-C", "mingw", "-zcf", "windows-x86_64-mingw.tar.gz", "dll", "lib"],
         cwd=os.path.join(HOME_DIR, "third_party/binary"))
-    
+
 def init_log(name):
     """init log config"""
     if not os.path.exists(LOG_DIR):
@@ -572,6 +578,8 @@ def check_compiler(args):
     if IS_WINDOWS and args.target is None:
         c_compiler = shutil.which("x86_64-w64-mingw32-gcc.exe", path=toolchain_path)
         cxx_compiler = shutil.which("x86_64-w64-mingw32-g++.exe", path=toolchain_path)
+        mingw_root = os.path.abspath(os.path.join(os.path.dirname(c_compiler)))
+        prepare_mingw_tool(mingw_root)
     else: # On other platform, clang is always the first choice.
         c_compiler = shutil.which("clang", path=toolchain_path)
         cxx_compiler = shutil.which("clang++", path=toolchain_path)
