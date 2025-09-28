@@ -93,6 +93,8 @@ CGModule::CGModule(SubCHIRPackage& subCHIRPackage, CGPkgContext& cgPkgCtx)
     } else if (options.target.arch == Triple::ArchType::AARCH64 && options.target.os == Triple::OSType::DARWIN) {
         cffi = std::make_unique<MacAArch64CJNativeCGCFFI>(*this);
 #endif
+    } else if (options.target.arch == Triple::ArchType::ARM32) {
+        cffi = std::make_unique<LinuxOhosArm32CJNativeCGCFFI>(*this);
     } else {
         // Rollback to linux x86_64 abi.
         cffi = std::make_unique<LinuxAmd64CJNativeCGCFFI>(*this);
