@@ -79,15 +79,15 @@ endif()
 if(NOT DEFINED CANGJIE_CJNATIVE_SOURCE_DIR)
     set(CANGJIE_CJNATIVE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/llvm-project)
 endif()
-set(BOUNDSCHECK ${CMAKE_SOURCE_DIR}/third_party/boundscheck-v1.1.16)
+set(BOUNDSCHECK ${CMAKE_SOURCE_DIR}/third_party/boundscheck)
 if(NOT DEFINED CANGJIE_XML2_SOURCE_DIR)
     set(CANGJIE_XML2_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/libxml2-2.14.0)
 endif()
 if(NOT EXISTS ${BOUNDSCHECK})
-    set(REPOSITORY_PATH https://gitee.com/openeuler/libboundscheck.git)
+    set(REPOSITORY_PATH https://gitcode.com/openharmony/third_party_bounds_checking_function.git)
     message(STATUS "Set boundscheck REPOSITORY_PATH: ${REPOSITORY_PATH}")
     execute_process(
-        COMMAND git clone --branch v1.1.16 ${REPOSITORY_PATH} ${BOUNDSCHECK}
+        COMMAND git clone --branch OpenHarmony-v6.0-Release ${REPOSITORY_PATH} ${BOUNDSCHECK}
     )
 endif()
 file(COPY ${CMAKE_SOURCE_DIR}/third_party/cmake/CMakeLists.txt DESTINATION ${BOUNDSCHECK}/)
@@ -108,7 +108,7 @@ set(CANGJIE_SANITIZER_SUPPORT_ENABLED OFF)
 
 if(CANGJIE_SANITIZER_SUPPORT_ENABLED)
     if(NOT CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-        message(FATAL_ERROR "Cangjie with sanitizer support is supposed to be built in llvmgc backend")
+        message(FATAL_ERROR "Cangjie with sanitizer support is supposed to be built in cjnative backend")
     endif()
     if(CANGJIE_ENABLE_ASAN OR CANGJIE_ENABLE_ASAN_COV)
         message(FATAL_ERROR "Cangjie with sanitizer support is not compatible with asan build version")
@@ -119,6 +119,10 @@ if(CANGJIE_SANITIZER_SUPPORT_ENABLED)
     if(NOT CANGJIE_BUILD_STD_SUPPORT)
         message(FATAL_ERROR "Please build sanitizer support version with CANGJIE_BUILD_STD_SUPPORT")
     endif()
+endif()
+
+if(CANGJIE_ENABLE_HWASAN)
+    add_compile_options(-mllvm -hwasan-globals=0)
 endif()
 
 if(CANGJIE_ASAN_SUPPORT)
@@ -311,24 +315,21 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND AND CANGJIE_BUILD_CJC)
 endif()
 
 if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-    add_subdirectory(third_party/boundscheck-v1.1.16)
-
-    if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-        install(
-            TARGETS boundscheck
-            RUNTIME
-                DESTINATION
-                    runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # RUNTIME includes DLLs. This takes effect on Windows.
-            LIBRARY
-                DESTINATION
-                    runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # LIBRARY includes shared libraries except DLLs.
-        )
-        install(TARGETS boundscheck-static DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
-        if(WIN32 AND CANGJIE_BUILD_CJDB)
-            install(TARGETS boundscheck RUNTIME DESTINATION third_party/llvm/bin)
-        endif()
-        install(FILES include/cangjie/MetaTransformation/MetaTransform.h DESTINATION include/)
+    add_subdirectory(third_party/boundscheck)
+    install(
+        TARGETS boundscheck
+        RUNTIME
+            DESTINATION
+                runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # RUNTIME includes DLLs. This takes effect on Windows.
+        LIBRARY
+            DESTINATION
+                runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # LIBRARY includes shared libraries except DLLs.
+    )
+    install(TARGETS boundscheck-static DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
+    if(WIN32 AND CANGJIE_BUILD_CJDB)
+        install(TARGETS boundscheck RUNTIME DESTINATION third_party/llvm/bin)
     endif()
+    install(FILES include/cangjie/MetaTransformation/MetaTransform.h DESTINATION include/)
 endif()
 
 add_subdirectory(third_party)

@@ -137,7 +137,13 @@ def generate_cmake_defs(args):
         "-DCANGJIE_LINK_JOB_POOL=" + (str(args.link_jobs) if args.link_jobs != 0 else ""),
         "-DCANGJIE_DISABLE_STACK_GROW_FEATURE=" + bool_to_opt(args.disable_stack_grow_feature),
         "-DCANGJIE_USE_OH_LLVM_REPO=" + bool_to_opt(args.use_oh_llvm_repo)]
-
+    
+    if args.target:
+        assert(args.target_toolchain, "when cross compiling , target toolchain should not be empty")
+        cross_c_compiler = shutil.which(args.target + "-gcc", path=args.target_toolchain)
+        cross_cxx_compiler = shutil.which(args.target + "-g++", path=args.tareget_toolchain)
+        result.append("-DCMAKE_C_COMPILER="+cross_c_compiler)
+        result.append("-DCMAKE_CXX_COMPILER="+cross_cxx_compiler)
     return result
 
 def build(args):

@@ -19,8 +19,6 @@ if(CANGJIE_SANITIZER_SUPPORT_ENABLED)
 endif()
 
 if (MINGW)
-    set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-    set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
     set(WARNING_FLAGS "-w")
     set(SECURE_CFLAG_FOR_SHARED_LIBRARY "-static ${SECURE_CFLAG_FOR_SHARED_LIBRARY} -Wl,--exclude-libs,libssp.a")
 else()

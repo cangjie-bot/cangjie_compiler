@@ -78,12 +78,16 @@ endif()
 # Besides gcc and g++, there are also copies of them with the triple prefix
 # in a native MinGW toolchain, like x86_64-w64-mingw32-gcc.
 # Use those with the prefix here in order to be compatible with cross-compilation.
-set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+if (NOT CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)    
+endif()
+if (NOT CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+endif()
 find_program(CMAKE_AR llvm-ar)
 find_program(CMAKE_RANLIB llvm-ranlib)
-set(LLVM_BUILD_C_COMPILER x86_64-w64-mingw32-gcc)
-set(LLVM_BUILD_CXX_COMPILER x86_64-w64-mingw32-g++)
+set(LLVM_BUILD_C_COMPILER ${CMAKE_C_COMPILER})
+set(LLVM_BUILD_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 
 set(LINKER_OPTION_PREFIX "-Wl,")
 set(MAKE_SO_STACK_PROTECTOR_OPTION -fstack-protector)
