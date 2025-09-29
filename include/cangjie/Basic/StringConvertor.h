@@ -14,10 +14,11 @@
 #ifndef CANGJIE_BASIC_STRINGCONVERTOR_H
 #define CANGJIE_BASIC_STRINGCONVERTOR_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <cstdint>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace Cangjie {
 

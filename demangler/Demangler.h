@@ -10,12 +10,12 @@
 
 #include <array>
 #ifndef BUILD_LIB_CANGJIE_DEMANGLE
-#include <vector>
 #include "Base/CString.h"
+#include <vector>
 #endif
-#include <functional>
 #include <cassert>
-
+#include <cstdint>
+#include <functional>
 
 namespace Cangjie {
 

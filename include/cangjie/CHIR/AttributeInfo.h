@@ -7,6 +7,7 @@
 #ifndef CANGJIE_CHIR_ATTRIBUTEINFO_H
 #define CANGJIE_CHIR_ATTRIBUTEINFO_H
 
+#include <cstdint>
 #include <bitset>
 #include <unordered_map>
 
