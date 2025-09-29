@@ -8,8 +8,9 @@
 #ifndef CANGJIE_DEMANGLER_UTILS_H
 #define CANGJIE_DEMANGLER_UTILS_H
 
-#include <unordered_map>
+#include <cstdint>
 #include <cstring>
+#include <unordered_map>
 
 namespace Cangjie {
 const char MANGLE_CANGJIE_PREFIX[] = "_C";

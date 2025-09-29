@@ -33,9 +33,10 @@
 #ifndef CANGJIE_BASIC_DISPLAY_H
 #define CANGJIE_BASIC_DISPLAY_H
 
-#include <vector>
 #include <bitset>
+#include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 namespace Cangjie {
 static const size_t NORMAL_CODEPOINT_LEN = 4;
