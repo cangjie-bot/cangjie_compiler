@@ -318,11 +318,12 @@ void CompileStrategy::ParseAndMacroExpandCjd() const
             continue;
         }
         std::string failedReason;
-        auto sourceCode = FileUtil::ReadFileContent(cjdInfo.second, failedReason);
+        auto cjdPath = cjdInfo.second;
+        auto sourceCode = FileUtil::ReadFileContent(cjdPath, failedReason);
         if (!failedReason.empty() || !sourceCode.has_value()) {
             // In the LSP scenario, the cjd file path cannot be obtained based on the dependency package information
             // configured in the cache. The cjd file path is searched in searchPath.
-            auto cjdPath = FileUtil::FindSerializationFile(cjdInfo.first, CJ_D_FILE_EXTENSION, searchPath);
+            cjdPath = FileUtil::FindSerializationFile(cjdInfo.first, CJ_D_FILE_EXTENSION, searchPath);
             if (cjdPath.empty()) {
                 continue;
             }
@@ -335,7 +336,7 @@ void CompileStrategy::ParseAndMacroExpandCjd() const
         ci->invocation.globalOptions.compileCjd = true;
         // Parse
         SourceManager& sm = ci->diag.GetSourceManager();
-        auto fileId = sm.AddSource(cjdInfo.second, sourceCode.value(), cjdInfo.first);
+        auto fileId = sm.AddSource(cjdPath, sourceCode.value(), cjdInfo.first);
         auto fileAst =
             Parser(fileId, sourceCode.value(), ci->diag, ci->diag.GetSourceManager(), false, true).ParseTopLevel();
         auto pkg = MakeOwned<Package>(cjdInfo.first);
