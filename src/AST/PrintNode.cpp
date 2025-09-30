@@ -51,9 +51,9 @@ void PrintModifiers(const Decl& decl, unsigned indent)
 void PrintTarget(unsigned indent, const Decl& target, std::string addition = "target")
 {
     if (target.mangledName.empty()) {
-        PrintIndent(indent, addition + ": ptr:", &target);
+        PrintIndent(indent, addition + " ptr:", &target);
     } else {
-        PrintIndent(indent, addition + ": mangledName:", "\"" + target.mangledName + "\"");
+        PrintIndent(indent, addition + " mangledName:", "\"" + target.mangledName + "\"");
     }
 }
 
@@ -80,7 +80,10 @@ void PrintBasic(unsigned indent, const Node& node)
         PrintIndent(indent, "linkage:", static_cast<int>(d->linkage), ", isConst:", static_cast<int>(d->IsConst()));
         if (!d->mangledName.empty()) {
             PrintIndent(indent, "mangledName:", "\"" + d->mangledName + "\"");
+        } else {
+            PrintIndent(indent, "ptr:", &node);
         }
+
         if (d->annotationsArray) {
             PrintNode(d->annotationsArray.get(), indent, "annotationsArray");
         }
