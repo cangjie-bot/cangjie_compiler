@@ -27,7 +27,6 @@
 #if (defined RELEASE)
 #include "cangjie/Utils/Signal.h"
 #endif
-#include "cangjie/Utils/Utils.h"
 #include "cangjie/Utils/ProfileRecorder.h"
 
 using namespace Cangjie;
@@ -84,6 +83,51 @@ public:
     {
     }
 
+    void MergePackage(const Ptr<Package> target, const Ptr<Package> source)
+    {
+        if (target->accessible != source->accessible) {
+            s.ci->diag.DiagnoseRefactor(DiagKindRefactor::packages_visibility_inconsistent, DEFAULT_POSITION,
+                AST::GetAccessLevelStr(*target), AST::GetAccessLevelStr(*source));
+        }
+        if (target->isMacroPackage != source->isMacroPackage) {
+            s.ci->diag.DiagnoseRefactor(DiagKindRefactor::packages_macro_inconsistent, DEFAULT_POSITION);
+        }
+
+        for (auto& file : source->files) {
+            file->curPackage = target;
+            if (target->files.size() > 0) {
+                file->indexOfPackage = target->files.at(0)->indexOfPackage;
+            }
+            target->files.push_back(std::move(file));
+        }
+    }
+
+    bool NeedToAddPackage(const Ptr<Package> package)
+    {
+        bool packageAlreadyExist = false;
+        for (auto& srcPackage : s.ci->srcPkgs) {
+            if (package->fullPackageName == srcPackage->fullPackageName) {
+                MergePackage(srcPackage, package);
+                packageAlreadyExist = true;
+            }
+        }
+        if (!packageAlreadyExist) {
+            bool isCJLint = s.ci->isCJLint;
+
+            if (s.ci->srcPkgs.size() > 0 && !isCJLint) {
+                // We can't validate it before because we can have multi-folder packages.
+                s.ci->diag.DiagnoseRefactor(DiagKindRefactor::driver_require_one_package_directory, DEFAULT_POSITION);
+                return false;
+            }
+
+            if (package->fullPackageName != "default" || package->files.size() != 0 || isCJLint) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void ParseModule(bool& success)
     {
         std::string moduleSrcPath = s.ci->invocation.globalOptions.moduleSrcPath;
@@ -115,8 +159,42 @@ public:
             if (srcDir == moduleSrcPath) {
                 package->needExported = false;
             }
-            s.ci->srcPkgs.emplace_back(std::move(package));
+            if (NeedToAddPackage(package)) {
+                s.ci->srcPkgs.emplace_back(std::move(package));
+            }
         }
+
+        for (auto& package : s.ci->srcPkgs) {
+            std::sort(package->files.begin(), package->files.end(),
+                [](const OwnedPtr<File>& fileOne, const OwnedPtr<File>& fileTwo) {
+                    return fileOne->fileName < fileTwo->fileName;
+                });
+        }
+
+        if (s.ci->srcPkgs.empty()) {
+            s.ci->srcPkgs.emplace_back(MakeOwned<Package>());
+        }
+
+        bool compilePackage = s.ci->invocation.globalOptions.compilePackage;
+        // cjlint support multipackage compile
+        if (compilePackage && s.ci->srcPkgs.size() > 1 && !s.ci->isCJLint) {
+            s.ci->diag.DiagnoseRefactor(DiagKindRefactor::driver_require_one_package_directory, DEFAULT_POSITION);
+        }
+    }
+
+    bool PreReadCommonPartCjo() const
+    {
+        bool hasInputCHIR = s.ci->invocation.globalOptions.inputChirFiles.size() > 0;
+        if (hasInputCHIR) {
+            auto mbFilesFromCommonPart = s.ci->importManager.GetCjoManager()->PreReadCommonPartCjoFiles();
+            if (!mbFilesFromCommonPart) {
+                return false;
+            }
+            std::vector<std::string> filesFromCommonPart = *mbFilesFromCommonPart;
+            s.ci->GetSourceManager().ReserveCommonPartSources(filesFromCommonPart);
+        }
+
+        return true;
     }
 
     OwnedPtr<AST::Package> GetMultiThreadParseOnePackage(
@@ -141,9 +219,7 @@ public:
         if (!package->files.empty()) {
             // Only update name of package node for first parsed file.
             if (auto packageSpec = package->files[0]->package.get()) {
-                auto names = packageSpec->prefixPaths;
-                names.emplace_back(packageSpec->packageName);
-                package->fullPackageName = Utils::JoinStrings(names, ".");
+                package->fullPackageName = packageSpec->GetPackageName();
                 package->accessible = !packageSpec->modifier                  ? AccessLevel::PUBLIC
                     : packageSpec->modifier->modifier == TokenKind::PROTECTED ? AccessLevel::PROTECTED
                     : packageSpec->modifier->modifier == TokenKind::INTERNAL  ? AccessLevel::INTERNAL
@@ -280,6 +356,9 @@ FullCompileStrategy::~FullCompileStrategy()
 
 bool FullCompileStrategy::Parse()
 {
+    if (!impl->PreReadCommonPartCjo()) {
+        return false;
+    }
     bool ret = true;
     if (ci->loadSrcFilesFromCache || ci->compileOnePackageFromSrcFiles) {
         auto package = impl->ParseOnePackage(ci->srcFilePaths, ret, DEFAULT_PACKAGE_NAME);

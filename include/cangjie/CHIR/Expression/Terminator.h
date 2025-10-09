@@ -342,6 +342,7 @@ protected:
  */
 class ApplyWithException : public FuncCallWithException {
     friend class ExprTypeConverter;
+    friend class TypeConverterForCC;
     friend class CHIRSerializer;
     friend class CHIRContext;
     friend class CHIRBuilder;
@@ -411,12 +412,13 @@ public:
      */
     FuncType* GetMethodType() const;
 
+    const std::vector<GenericType*>& GetGenericTypeParams() const;
     /**
      * @brief Retrieves the method's offset in vtable.
      *
      * @return The offset, greater than or equal to zero.
      */
-    size_t GetVirtualMethodOffset() const;
+    size_t GetVirtualMethodOffset(CHIRBuilder* builder = nullptr) const;
 
     // ===--------------------------------------------------------------------===//
     // Instantiated Types
@@ -453,6 +455,7 @@ private:
  */
 class InvokeWithException : public DynamicDispatchWithException {
     friend class ExprTypeConverter;
+    friend class TypeConverterForCC;
     friend class PrivateTypeConverterNoInvokeOriginal;
     friend class CHIRSerializer;
     friend class CHIRContext;
@@ -494,6 +497,7 @@ private:
  */
 class InvokeStaticWithException : public DynamicDispatchWithException {
     friend class ExprTypeConverter;
+    friend class TypeConverterForCC;
     friend class PrivateTypeConverterNoInvokeOriginal;
     friend class CHIRSerializer;
     friend class CHIRContext;
@@ -547,6 +551,13 @@ public:
      * @return The operation kind.
      */
     ExprKind GetOpKind() const;
+
+    /**
+     * @brief Retrieves the operation kind name.
+     *
+     * @return The operation kind name.
+     */
+    std::string GetOpKindName() const;
 
     /**
      * @brief Retrieves the left-hand side operand.
@@ -641,6 +652,7 @@ private:
  */
 class IntrinsicWithException : public ExpressionWithException {
     friend class ExprTypeConverter;
+    friend class TypeConverterForCC;
     friend class CHIRContext;
     friend class CHIRBuilder;
 public:

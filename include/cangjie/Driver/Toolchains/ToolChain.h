@@ -97,7 +97,9 @@ protected:
     // if all user-given paths are shown in the final command.
     void AddLibraryPath(const std::string& path)
     {
-        libraryPaths.emplace_back(path);
+        if (!path.empty()) {
+            libraryPaths.emplace_back(path);
+        }
     }
 
     void AddLibraryPaths(const std::vector<std::string>& paths)
@@ -122,6 +124,9 @@ protected:
                 }
                 if (tripleInfo.env == Triple::Environment::OHOS && tripleInfo.arch == Triple::ArchType::X86_64) {
                     return "/lib/ld-musl-x86_64.so.1";
+                }
+                if (tripleInfo.env == Triple::Environment::ANDROID) {
+                    return "/system/bin/linker64";
                 }
                 if (tripleInfo.arch == Triple::ArchType::X86_64) {
                     return "/lib64/ld-linux-x86-64.so.2";
@@ -196,8 +201,8 @@ protected:
         return FindToolPath(toolName, morePaths...);
     };
 
-    std::string FindCangjieLLVMToolPath(const std::string toolName) const;
-    std::string FindUserToolPath(const std::string toolName) const;
+    std::string FindCangjieLLVMToolPath(const std::string& toolName) const;
+    std::string FindUserToolPath(const std::string& toolName) const;
 
     virtual std::string GetClangRTProfileLibraryName() const
     {
