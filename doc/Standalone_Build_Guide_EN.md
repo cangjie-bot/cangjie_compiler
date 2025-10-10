@@ -3,10 +3,13 @@
 ## Specifications
 
 The current frontend compiler build supports:
-
+  
 1. [Building a Linux platform compiler on Linux](#building-a-linux-platform-compiler-on-linux)
 2. [Building a macOS platform compiler on macOS](#building-a-macos-platform-compiler-on-macos)
 3. [Building a Windows platform compiler on Linux (cross-compilation)](#building-a-windows-platform-compiler-on-linux-cross-compilation)
+4. [Building base libraries of the Android platform on Linux (cross-compilation)](#building-base-libraries-of-the-android-platform-on-linux-cross-compilation)
+5. [Building base libraries of the Android platform on macOS (cross-compilation)](#building-base-libraries-of-the-android-platform-on-macos-cross-compilation)
+6. [Building base libraries of the iOS platform on macOS (cross-compilation)](#building-base-libraries-of-the-ios-platform-on-macos-cross-compilation)
 
 ## Building a Linux Platform Compiler on Linux
 
@@ -19,7 +22,9 @@ For googletest dependency installation, refer to [General Build Guide](https://g
 
 Download the source code:
 
-Note: Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
+> **Note:**
+>
+> Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
 
 ```shell
 export WORKSPACE=$HOME/cangjie_build;
@@ -67,7 +72,9 @@ For googletest dependency installation, refer to [General Build Guide](https://g
 
 Download the source code:
 
-Note: Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
+> **Note:**
+>
+> Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
 
 ```shell
 export WORKSPACE=$HOME/cangjie_build;
@@ -110,7 +117,9 @@ Target: xxxx-xxxx-xxxx
 The standalone compiler build environment is largely consistent with the integrated build environment, except for the additional dependency on googletest for executing UTs. For detailed information, please refer to [Cangjie Build Guide (Ubuntu 22.04) - Environment Preparation].  
 For googletest dependency installation, refer to [General Build Guide](https://github.com/google/googletest/blob/main/googletest/README.md). Alternatively, you can temporarily disable UT builds during compilation using the [`--no-test`](#build-options) option.
 
-Note: Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
+> **Note:**
+>
+> Ensure the compilation platform has normal network connectivity and can access code hosting platforms like Gitcode or Gitee.
 
 ### Build Commands
 
@@ -139,13 +148,13 @@ python3 build.py install --host windows-x86_64;
 2. The `build.py clean` command clears temporary files in the workspace.
 3. The `build.py build` command initiates compilation:
    - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
-   - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, or `ohos-x86_64`.
+   - The secondary option `--product` specifies the build target products, which can be `all`, `cjc`, or `libs`.
+   - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
    - The secondary option `--target-sysroot` passes the subsequent parameter to the C/C++ compiler as its `--sysroot` parameter.
    - The secondary option `--target-toolchain` specifies the path to the target platform toolchain, using the compiler in this path for cross-compilation.
    - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
 4. The `build.py install` command installs the build products to the `output` directory:
-   - The secondary option `--host` specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, or `ohos-x86_64`.
-
+   - The secondary option `--host` specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
 Verify the products:
 
 Since the build products are Windows platform executables, copy them to a Windows machine and use the `./output/envsetup.bat` script to set up the cjc environment.
@@ -156,6 +165,159 @@ cjc.exe -v
 ```
 
 This step only generates the target platform cjc executable. For building peripheral dependencies, refer to [Cangjie Build Guide (Ubuntu 22.04) - Source Code Build].
+
+## Building base libraries of the Android platform on Linux (cross-compilation)
+
+### Environment Preparation
+
+Except for the additional dependency on googletest for executing unit tests (UT), the standalone build environment for the compiler is basically consistent with the integrated build environment. For detailed information, please refer to the Cangjie Build Guide (Ubuntu 22.04) - Environment Preparation.  
+For googletest dependency installation, refer to [General Build Guide](https://github.com/google/googletest/blob/main/googletest/README.md). Alternatively, you can temporarily disable UT builds during compilation using the [`--no-test`](#build-options) option.
+
+> **Note:**
+>
+> Ensure the build platform has normal network connectivity and can access code hosting platforms such as Gitcode or Gitee properly.
+
+### Build Commands
+
+Download the source code:
+
+```shell
+export WORKSPACE=$HOME/cangjie_build;
+git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
+```
+
+Compile the source code:
+
+```shell
+cd $WORKSPACE/cangjie_compiler;
+export ANDROID_NDK_ROOT=/opt/Android-NDK-r25c/AndroidNDK9519653.app/Contents/NDK;
+python3 build.py build -t release --build-cjdb --no-tests;
+python3 build.py build -t release \
+	--target android-aarch64 \
+	--android-ndk ${ANDROID_NDK_ROOT} \
+    --no-tests;
+python3 build.py install --host android-aarch64;
+```
+
+1. `ANDROID_NDK_ROOT` environment variable is used to set the path to the Android NDK.
+2. `build.py clean` command is used to clear temporary files in the workspace.
+3. `build.py build` command starts the compilation process:
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `--product` specifies the build target products, which can be `all`, `cjc`, or `libs`.
+   - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
+   - The secondary option `--android-ndk` specifies the path to the Android NDK.
+   - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
+4. `build.py install` command installs the compiled output to the output directory:
+   - The secondary option `--host` specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
+
+## Building base libraries of the Android platform on macOS (cross-compilation)
+
+### Environment Preparation
+
+Except for the additional dependency on googletest for executing unit tests (UT), the standalone build environment for the compiler is basically consistent with the integrated build environment. For detailed information, please refer to the Cangjie Build Guide (macOS 14 Sonoma) - Environment Preparation.  
+For googletest dependency installation, refer to [General Build Guide](https://github.com/google/googletest/blob/main/googletest/README.md). Alternatively, you can temporarily disable UT builds during compilation using the [`--no-test`](#build-options) option.
+
+> **Note:**
+>
+> Ensure the build platform has normal network connectivity and can access code hosting platforms such as Gitcode or Gitee properly.
+
+### Build Commands
+
+Download the source code:
+
+```shell
+export WORKSPACE=$HOME/cangjie_build;
+git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
+```
+
+Compile the source code:
+
+```shell
+cd $WORKSPACE/cangjie_compiler;
+export ANDROID_NDK_ROOT=/opt/Android-NDK-r25c/AndroidNDK9519653.app/Contents/NDK
+python3 build.py build -t release --build-cjdb --no-tests;
+python3 build.py build  -t release \
+    --target android-aarch64 \
+    --android-ndk ${ANDROID_NDK_ROOT} \
+    --no-tests;
+python3 build.py install --host android-aarch64
+```
+
+1. `ANDROID_NDK_ROOT` environment variable is used to set the path to the Android NDK.
+2. `build.py clean` command is used to clear temporary files in the workspace.
+3. `build.py build` command starts the compilation process:
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `--product` specifies the build target products, which can be `all`, `cjc`, or `libs`.
+   - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
+   - The secondary option `--android-ndk` specifies the path to the Android NDK.
+   - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
+4. `build.py install` command installs the compiled output to the output directory:
+   - The secondary option `--host` specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
+
+## Building base libraries of the iOS platform on macOS (cross-compilation)
+
+### Environment Preparation
+
+Except for the additional dependency on googletest for executing unit tests (UT), the standalone build environment for the compiler is basically consistent with the integrated build environment. For detailed information, please refer to the Cangjie Build Guide (macOS 14 Sonoma) - Environment Preparation.  
+For googletest dependency installation, refer to [General Build Guide](https://github.com/google/googletest/blob/main/googletest/README.md). Alternatively, you can temporarily disable UT builds during compilation using the [`--no-test`](#build-options) option.
+
+> **Note:**
+>
+> Ensure the build platform has normal network connectivity and can access code hosting platforms such as Gitcode or Gitee properly.
+
+### Build Commands
+
+Download the source code:
+
+```shell
+export WORKSPACE=$HOME/cangjie_build;
+git clone https://gitcode.com/Cangjie/cangjie_compiler.git -b main;
+```
+
+Compile the source code:
+
+```shell
+# 编译 mac aarch64 host
+cd ${WORKSPACE}/cangjie_compiler;
+python3 build.py clean;
+python3 build.py build -t release --no-tests --build-cjdb;
+python3 build.py install;
+
+# 编译 mac ios libs
+export XCODE_DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+export IOS_SDKROOT=${XCODE_DEVELOPER_DIR}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS17.5.sdk
+export IOS_SIMULATOR_SDKROOT=${XCODE_DEVELOPER_DIR}/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator17.5.sdk
+export TOOLCHAIN_BIN=${XCODE_DEVELOPER_DIR}/Toolchains/XcodeDefault.xctoolchain/usr/bin
+python3 build.py build -t release \
+    --product libs \
+    --target ios-aarch64 \
+    --target-sysroot ${IOS_SDKROOT} \
+    --target-toolchain ${TOOLCHAIN_BIN};
+python3 build.py install;
+
+# 编译 mac ios simulator libs
+​python3 build.py build -t release \
+    --product libs \
+    --target ios-simulator-aarch64 \
+    --target-sysroot ${IOS_SIMULATOR_SDKROOT} \
+    --target-toolchain ${TOOLCHAIN_BIN};
+python3 build.py install;
+```
+
+1. `XCODE_DEVELOPER_DIR` environment variable is used to set the Xcode developer directory.
+2. `IOS_SDKROOT` environment variable is used to set the path to the iPhoneOS SDK.
+3. `IOS_SIMULATOR_SDKROOT` environment variable is used to set the path to the iOS Simulator SDK.
+4. `TOOLCHAIN_BIN` environment variable is used to set the path to the binaries of the Xcode toolchain.
+5. `build.py clean` command is used to clear temporary files in the workspace.
+6. `build.py build` command starts the compilation process:
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `--product` specifies the build target products, which can be `all`, `cjc`, or `libs`.
+   - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
+   - The secondary option `--target-sysroot` passes the following parameter to the C/C++ compiler as its `--sysroot` parameter.
+   - The secondary option `--target-toolchain` specifies the path to the target platform toolchain, and the compiler under this path is used for cross-compilation.
+   - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
+7. `build.py install` command installs the build products to the `output` directory:
+   - The secondary option `--host` specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
 
 ## build.py Option Help
 
@@ -177,7 +339,7 @@ The `build` option builds the project files. It provides the following secondary
 - `--disable-stack-grow-feature`: Disables stack growth functionality.
 - `--hwasan`: Enables hardware asan functionality for compiler source code. Currently, this is only supported on the ohos platform due to dependency on hwasan tools.
 - `--gcc-toolchain`: Specifies the gcc toolchain for cross-compilation.
-- `--target`: Specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, or `ohos-x86_64`.
+- `--target`: Specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
 - `-L, --target-lib`: Specifies the path to the target platform's required linked libraries.
 - `--target-toolchain`: Specifies the path to the compilation tools.
 - `-I, --include`: Specifies the target platform's header file search path.
@@ -190,7 +352,7 @@ The `build` option builds the project files. It provides the following secondary
 The `install` option organizes the build products into the specified directory. It provides the following secondary options:
 
 - `-h, --help`: Displays help information for secondary options.
-- `--host`: Specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, or `ohos-x86_64`.
+- `--host`: Specifies the target platform installation strategy, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, `ohos-x86_64`, `ios-simulator-aarch64`, `ios-aarch64`, `android-aarch64`, `android-x86_64`.
 - `--prefix`: Specifies the installation folder path for the products. If neither this option nor `--host` is specified, the products are installed in the `output` folder under the project directory. If both are specified, the products are installed in the path specified by `--prefix`.
 
 ### `test` Option
