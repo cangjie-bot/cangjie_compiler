@@ -1177,3 +1177,33 @@ ABIArgInfo WindowsAmd64CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirT
     llvm::Type* resTy = llvm::IntegerType::get(ctx.GetLLVMContext(), static_cast<unsigned>(AsBits(size)));
     return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
 }
+
+ABIArgInfo LinuxOhosArm32CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirTy, [[maybe_unused]] bool isArg)
+{
+    auto found = typeMap.find(&chirTy);
+    if (found != typeMap.end()) {
+        return found->second;
+    }
+    auto type = GetLLVMType(chirTy);
+    size_t size = GetTypeSize(cgMod, *type);
+    llvm::Type* base = nullptr;
+    if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
+        return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(llvm::ArrayType::get(base, members))).first->second;
+    }
+
+    const size_t limitSizeOfSmallStruct = 4;
+    if (size > limitSizeOfSmallStruct) {
+        return typeMap.emplace(&chirTy, ABIArgInfo::GetIndirect()).first->second;
+    }
+
+    size_t alignment = GetTypeAlignment(cgMod, *type);
+    size = llvm::alignTo(size, BYTES_PER_WORD);
+    auto& llvmCtx = ctx.GetLLVMContext();
+    if (alignment < limitSizeOfSmallStruct && size == limitSizeOfSmallStruct) {
+        llvm::Type* baseTy = llvm::Type::getInt64Ty(llvmCtx);
+        llvm::Type* resTy = llvm::ArrayType::get(baseTy, static_cast<uint64_t>(size) / BYTES_PER_WORD);
+        return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
+    }
+    llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+    return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
+}
