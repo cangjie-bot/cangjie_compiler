@@ -103,6 +103,7 @@ enum class BackendType : uint8_t {
 enum class ArchType : uint8_t {
     X86_64 = 0,
     AARCH64,
+    ARM32,
     UNKNOWN,
 };
 
