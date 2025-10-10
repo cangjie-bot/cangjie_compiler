@@ -511,3 +511,6 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
         list(APPEND BINARY_TARGET_DEPENDS cjnative)
     endif()
 endif()
+
+# 将列表缓存为字符串（CMake 会自动用 ; 连接）
+set(DEP_LIBS "${LLVM_LIBS}" CACHE STRING "List of llvm libraries")

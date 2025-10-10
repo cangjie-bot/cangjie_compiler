@@ -11,7 +11,8 @@
 # See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 # Generate cangjie code for libast using flatc with cangjie backend.
-set(FLATC_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/flatc")
+set(FLATBUFFER_PATH $ENV{REGISTRYBASE}/cpp/flatbuffers)
+set(FLATC_EXECUTABLE "${FLATBUFFER_PATH}/bin/flatc")
 
 set(FLATBUFFERS_SOURCE
     ModuleFormat.fbs
@@ -29,12 +30,13 @@ foreach(FILE ${FLATBUFFERS_SOURCE})
     add_custom_command(
         OUTPUT ${FLATC_OUTPUT}
         COMMAND ${FLATC_EXECUTABLE} ARGS --no-warnings -c -o "${CMAKE_CURRENT_BINARY_DIR}/flatbuffers" ${FILE}
-        DEPENDS ${FILE} flatbuffers # flatc defined in flatbuffers project: add_executable(flatc..)
+        # DEPENDS ${FILE} flatbuffers # flatc defined in flatbuffers project: add_executable(flatc..)
+        DEPENDS ${FILE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     list(APPEND FLATC_OUTPUTS ${FLATC_OUTPUT})
 endforeach()
 
 set(FLATBUFFERS_INCLUDE_DIR
-    ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR} ${FLATBUFFER_PATH}/include
     PARENT_SCOPE)
 add_custom_target(CangjieFlatbuffersHeaders DEPENDS ${FLATC_OUTPUTS} ${FLATC_LIBAST_OUTPUTS})

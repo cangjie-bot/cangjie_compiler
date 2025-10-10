@@ -311,27 +311,117 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND AND CANGJIE_BUILD_CJC)
 endif()
 
 if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-    add_subdirectory(third_party/boundscheck-v1.1.16)
+    # add_subdirectory(third_party/boundscheck-v1.1.16)
 
-    if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-        install(
-            TARGETS boundscheck
-            RUNTIME
-                DESTINATION
-                    runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # RUNTIME includes DLLs. This takes effect on Windows.
-            LIBRARY
-                DESTINATION
-                    runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # LIBRARY includes shared libraries except DLLs.
-        )
-        install(TARGETS boundscheck-static DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
-        if(WIN32 AND CANGJIE_BUILD_CJDB)
-            install(TARGETS boundscheck RUNTIME DESTINATION third_party/llvm/bin)
-        endif()
-        install(FILES include/cangjie/MetaTransformation/MetaTransform.h DESTINATION include/)
-    endif()
+    # if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
+    #     install(
+    #         TARGETS boundscheck
+    #         RUNTIME
+    #             DESTINATION
+    #                 runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # RUNTIME includes DLLs. This takes effect on Windows.
+    #         LIBRARY
+    #             DESTINATION
+    #                 runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # LIBRARY includes shared libraries except DLLs.
+    #     )
+    #     install(TARGETS boundscheck-static DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
+    #     if(WIN32 AND CANGJIE_BUILD_CJDB)
+    #         install(TARGETS boundscheck RUNTIME DESTINATION third_party/llvm/bin)
+    #     endif()
+    # endif()
+   
+    set(LIBBOUNDSCHECK_PATH $ENV{REGISTRYBASE}/cpp/libboundscheck)
+    install(FILES ${LIBBOUNDSCHECK_PATH}/libboundscheck.so DESTINATION runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
+    install(FILES ${LIBBOUNDSCHECK_PATH}/libboundscheck-static.a DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
+    install(FILES include/cangjie/MetaTransformation/MetaTransform.h DESTINATION include/)
 endif()
 
-add_subdirectory(third_party)
+
+set(LLVM15_PATH $ENV{REGISTRYBASE}/cpp/llvm1504)
+set(LLVM_LIBS)
+set(LLVM_LIBNAMES
+    libLLVMLinker.a
+    libLLVMIRReader.a
+    libLLVMAsmParser.a
+    libLLVMTransformUtils.a
+    libLLVMBitWriter.a
+    libLLVMAnalysis.a
+    libLLVMProfileData.a
+    libLLVMDebugInfoDWARF.a
+    libLLVMDebugInfoMSF.a
+    libLLVMObject.a
+    libLLVMTextAPI.a
+    libLLVMMCParser.a
+    libLLVMMC.a
+    libLLVMDebugInfoCodeView.a
+    libLLVMBitReader.a
+    libLLVMCore.a
+    libLLVMRemarks.a
+    libLLVMBitstreamReader.a
+    libLLVMBinaryFormat.a
+    libLLVMSupport.a
+    libLLVMDemangle.a
+)
+
+foreach(lib ${LLVM_LIBNAMES})
+    list(APPEND LLVM_LIBS "${LLVM15_PATH}/llvm/lib/${lib}")
+endforeach()
+list(APPEND LLVM_LIBS -lpthread -lm -lncurses -ltinfo)
+
+set(LLVM_INCLUDE_DIRS ${LLVM15_PATH}/llvm/include)
+add_custom_target(cjnative DEPENDS ${LLVM15_PATH})
+
+
+set(LLVM_INSTALL_PATTERN
+        PATTERN "include" EXCLUDE
+        PATTERN "libexec" EXCLUDE
+        PATTERN "share" EXCLUDE
+        PATTERN "cmake" EXCLUDE
+        PATTERN "VERSION.txt" EXCLUDE
+        PATTERN "llvm-config" EXCLUDE
+        PATTERN "lib/lib*.a" EXCLUDE
+        PATTERN "lib/liblldbIntelFeatures*" EXCLUDE
+        PATTERN "lib/linux" EXCLUDE
+        PATTERN "bin" EXCLUDE
+)
+# Only the following binaries are needed. The other unused llvm binaries will not be installed.
+set(LLVM_BIN_INSTALL_PATTERN
+        # For cjc general compilation
+        REGEX "bin/(opt|llc)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For cjc general compilation (e.g. OHOS) and LTO and lldb related binaries
+        REGEX "bin/(lld|ld64.lld|ld.lld|lld-link)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For cjc general compilation (e.g. OHOS)
+        REGEX "bin/(llvm-ar)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For LTO
+        REGEX "bin/(llvm-link|llvm-lto|llvm-lto2)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For cjc --coverage feature
+        REGEX "bin/(llvm-cov)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For PGO
+        REGEX "bin/(llvm-profdata|llvm-profgen)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For compiler developer debugging
+        REGEX "bin/(llvm-as|llvm-dis)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(lli)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-addr2line|llvm-symbolizer)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-otool|llvm-objdump)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-objcopy)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        # For Windows
+        REGEX "bin/(libclang\\.dll|libclang-cpp\\.dll)"
+        REGEX "bin/(libgcc_s_seh-1\\.dll|libssp-0\\.dll|libstdc\\+\\+-6\\.dll|libwinpthread-1\\.dll)"
+        REGEX "bin/(libLTO\\.dll|libLLVM-15\\.dll)"
+)
+
+set(THIRD_PARTY_LLVM "third_party/llvm")
+install(
+    DIRECTORY ${LLVM15_PATH}/llvm/
+    DESTINATION ${THIRD_PARTY_LLVM}
+    ${LLVM_INSTALL_PATTERN})
+install(
+    DIRECTORY ${LLVM15_PATH}/llvm/bin
+    DESTINATION ${THIRD_PARTY_LLVM}
+    FILES_MATCHING
+    ${LLVM_BIN_INSTALL_PATTERN}
+)
+
+# add_subdirectory(third_party)
 if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
 add_subdirectory(schema)
 add_subdirectory(src)

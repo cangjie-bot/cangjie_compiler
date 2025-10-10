@@ -120,7 +120,7 @@ target_link_libraries(
     # Required by CangjieBasic
     ${CMAKE_DL_LIBS})
 
-target_link_libraries(cjc boundscheck-static) # depended by LLVMCore in ${LINK_LIBS} and interrupt signal handler
+target_link_libraries(cjc ${LIBBOUNDSCHECK_PATH}/libboundscheck-static.a) # depended by LLVMCore in ${LINK_LIBS} and interrupt signal handler
 target_include_directories(cjc PRIVATE ${BOUNDSCHECK}/include)
 
 target_link_libraries(cjc ${ffi})
@@ -261,7 +261,7 @@ endif()
 if(NOT WIN_DEBUG_USE_STATIC_LIB)
     add_library(cangjie-lsp-share SHARED ${FRONTEND_SRC_OBJECTS})
     set_target_properties(cangjie-lsp-share PROPERTIES OUTPUT_NAME "cangjie-lsp")
-    target_link_libraries(cangjie-lsp-share ${ffi} boundscheck-static)
+    target_link_libraries(cangjie-lsp-share ${ffi} ${LIBBOUNDSCHECK_PATH}/libboundscheck-static.a)
 endif()
 
     #  we should remove this once the LSPCompilerInstance is out of compiler
@@ -291,7 +291,7 @@ target_link_libraries(
     # Required by CangjieBasic
     ${CMAKE_DL_LIBS})
 
-target_link_libraries(LSPMacroServer boundscheck-static) # depended by LLVMCore in ${LINK_LIBS} and interrupt signal handler
+target_link_libraries(LSPMacroServer ${LIBBOUNDSCHECK_PATH}/libboundscheck-static.a) # depended by LLVMCore in ${LINK_LIBS} and interrupt signal handler
 target_include_directories(LSPMacroServer PRIVATE ${BOUNDSCHECK}/include)
 
 add_dependencies(LSPMacroServer CangjieFlatbuffersHeaders)
@@ -330,16 +330,16 @@ if (CANGJIE_CODEGEN_CJNATIVE_BACKEND)
     else()
         target_link_libraries(cangjie-frontend -lLLVM-15)
     endif()
-    target_link_directories(cangjie-frontend PUBLIC ${CMAKE_BINARY_DIR}/third_party/llvm/lib)
+    target_link_directories(cangjie-frontend PUBLIC ${LLVM15_PATH}/llvm/lib)
     install(
         TARGETS cangjie-frontend
         RUNTIME DESTINATION tools/bin
         ARCHIVE DESTINATION tools/lib
         LIBRARY DESTINATION tools/lib)
 endif()
-if(CANGJIE_BUILD_CJDB)
-    add_dependencies(lldb cangjie-frontend)
-endif()
+# if(CANGJIE_BUILD_CJDB)
+#     add_dependencies(lldb cangjie-frontend)
+# endif()
 
 add_subdirectory(AST)
 add_subdirectory(Driver)
