@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "cangjie/Utils/CheckUtils.h"
-#include "llvm/Support/ConvertUTF.h"
-#include "llvm/Support/SwapByteOrder.h"
+#include "ConvertUTF.h"
+#include "SwapByteOrder.h"
 
 namespace Cangjie::Unicode {
 namespace {
