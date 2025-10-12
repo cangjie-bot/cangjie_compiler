@@ -202,7 +202,7 @@ static void UpdateEffectMapToString(OptEffectCHIRMap& oldMap, OptEffectStrMap& n
 
 void ToCHIR::DumpCHIRDebug(const std::string& suffix, bool checkFlag)
 {
-    if (!opts.chirDumpDebugMode && checkFlag) {
+    if ((!opts.dumpCHIR && !opts.dumpAll) && checkFlag) {
         return;
     }
     CJC_NULLPTR_CHECK(chirPkg);
@@ -1176,7 +1176,7 @@ bool ToCHIR::Run()
     }
 #endif
     if (opts.emitCHIRPhase == GlobalOptions::CandidateEmitCHIRPhase::RAW) {
-        EmitCHIR(outputPath, *chirPkg, Phase::RAW, opts.chirDumpDebugMode);
+        EmitCHIR(outputPath, *chirPkg, Phase::RAW, (opts.dumpCHIR || opts.dumpAll));
         return true;
     }
     RecordCHIRExprNum("trans");
@@ -1220,7 +1220,7 @@ bool ToCHIR::Run()
         return false;
     }
     if (opts.emitCHIRPhase == GlobalOptions::CandidateEmitCHIRPhase::OPT) {
-        EmitCHIR(outputPath, *chirPkg, Phase::OPT, opts.chirDumpDebugMode);
+        EmitCHIR(outputPath, *chirPkg, Phase::OPT, (opts.dumpCHIR || opts.dumpAll));
     } else if (opts.saveTemps) {
         auto tempFileInfo =
             TempFileManager::Instance().CreateNewFileInfo({.fileName = chirPkg->GetName()}, TempFileKind::O_CHIR);

@@ -39,7 +39,6 @@ public:
     void DumpDepPackage();
 
     void DumpIR() const;
-    void DumpBC() const;
 
 protected:
     bool SaveCjoAndBchir(AST::Package& pkg) const;

@@ -42,9 +42,9 @@ public:
     bool PerformCodeGen();
     bool PerformCjoAndBchirSaving();
     void DumpDepPackage();
-
+    void DumpAST(const std::vector<Ptr<AST::Package>>& srcPkgs, const std::string& outputOfProduct = "",
+        const std::string& prefix = "", bool dumpToScreen = false) const;
     void DumpIR();
-    void DumpBC();
     bool SaveCjoAndBchir(AST::Package& pkg);
     bool SaveCjo(const AST::Package& pkg);
     void RearrangeImportedPackageDependence();
@@ -305,6 +305,9 @@ bool DefaultCIImpl::PerformCodeGen()
     for (auto& srcPkg : ci.GetSourcePackages()) {
         ret = ret && CodegenOnePackage(*srcPkg, false);
     }
+    if (ci.invocation.globalOptions.dumpIR || ci.invocation.globalOptions.dumpAll) {
+        DumpIR();
+    }
     return ret;
 }
 
@@ -329,54 +332,6 @@ void DefaultCIImpl::DumpIR()
             break;
         case Triple::BackendType::UNKNOWN:
             Errorln("unknown backend");
-            break;
-        default:
-            break;
-    }
-}
-
-void DefaultCIImpl::DumpBC()
-{
-    auto backend = ci.invocation.globalOptions.backend;
-    auto output = ci.invocation.globalOptions.output;
-
-    if (output.empty() || output == "-") {
-        Errorln("Output path must be specified with -o for bitcode dump");
-        return;
-    }
-
-    auto dumpBitcode = [&output](llvm::Module const& mod) {
-        auto ec = std::error_code();
-#ifdef _WIN32
-
-        std::optional<std::string> tempPath = StringConvertor::NormalizeStringToUTF8(output);
-        if (!tempPath.has_value()) {
-            Errorln("Incorrect file name encoding.");
-        }
-        auto os = llvm::raw_fd_ostream(tempPath.value(), ec);
-#else
-        auto os = llvm::raw_fd_ostream(output, ec);
-#endif
-
-        if (ec) {
-            Errorln(ec.message());
-        } else {
-            WriteBitcodeToFile(mod, os);
-        }
-    };
-
-    switch (backend) {
-        case Triple::BackendType::CJNATIVE:
-            for (auto& llvmModule : llvmModules) {
-                if (!llvmModule) {
-                    Errorln("No valid codegen module!");
-                    return;
-                }
-                dumpBitcode(*llvmModule);
-            }
-            break;
-        case Triple::BackendType::UNKNOWN:
-            Errorln("bitcode dumping is only supported on CJNATIVE backend");
             break;
         default:
             break;
@@ -412,10 +367,6 @@ bool DefaultCompilerInstance::PerformCjoAndBchirSaving()
 void DefaultCompilerInstance::DumpIR() const
 {
     impl->DumpIR();
-}
-void DefaultCompilerInstance::DumpBC() const
-{
-    impl->DumpBC();
 }
 bool DefaultCompilerInstance::SaveCjoAndBchir(AST::Package& pkg) const
 {

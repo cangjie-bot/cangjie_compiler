@@ -121,7 +121,68 @@ bool CompilerInstance::InitCompilerInstance()
     performMap.insert_or_assign(CompileStage::CHIR, &CompilerInstance::PerformCHIRCompilation);
     performMap.insert_or_assign(CompileStage::CODEGEN, &CompilerInstance::PerformCodeGen);
     performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformCjoAndBchirSaving);
-    return true;
+    return true; 
+}
+
+namespace {
+void DumpASTToScreen(const std::vector<Ptr<Package>>& srcPkgs)
+{
+    if (srcPkgs.empty()) {
+        return;
+    }
+    CJC_ASSERT(srcPkgs.size() == 1);
+    static bool dumped = false;
+    if (dumped) {
+        return;
+    }
+    dumped = true;
+    for (auto& srcPkg : srcPkgs) {
+        PrintNode(srcPkg.get());
+    }
+}
+void DumpAST(const std::vector<Ptr<Package>>& srcPkgs, const std::string& outputOfProduct = "",
+    const std::string& prefix = "", bool dumpToScreen = false)
+{
+    if (srcPkgs.empty()) {
+        return;
+    }
+    CJC_ASSERT(srcPkgs.size() == 1);
+    const std::string& pkgName = srcPkgs[0]->fullPackageName;
+    if (dumpToScreen) {
+        DumpASTToScreen(srcPkgs);
+        return;
+    }
+    std::string dumpPath, debugDir;
+    if (FileUtil::IsDir(outputOfProduct)) {
+        debugDir = FileUtil::JoinPath(outputOfProduct, pkgName + "_AST");
+    } else {
+        debugDir = FileUtil::GetFileBase(outputOfProduct) + "_AST";
+    }
+    static bool checkDebugDir = false;
+    static size_t fileNum = 0;
+    if (!checkDebugDir) {
+        if (FileUtil::FileExist(debugDir)) {
+            for (auto file : FileUtil::GetAllFilesUnderCurrentPath(debugDir, ".txt")) {
+                std::string fullPath = FileUtil::JoinPath(debugDir, file);
+                FileUtil::Remove(fullPath);
+            }
+        }
+        checkDebugDir = true;
+    }
+    dumpPath = FileUtil::JoinPath(debugDir, std::to_string(fileNum) + "_" + prefix + "_ast" + ".txt");
+    if (!FileUtil::FileExist(dumpPath)) {
+        FileUtil::CreateDirs(dumpPath);
+    }
+    std::ofstream ofs(dumpPath);
+    if (!ofs) {
+        Errorln("Cannot open file to dump AST: " + dumpPath);
+        return;
+    }
+    for (auto& srcPkg : srcPkgs) {
+        PrintNode(srcPkg.get(), 0, "", ofs);
+    }
+    ofs.close();
+}
 }
 
 bool CompilerInstance::Compile(CompileStage stage)
@@ -130,16 +191,23 @@ bool CompilerInstance::Compile(CompileStage stage)
         diag.ReportErrorAndWarningCount();
         return false;
     }
+    auto ret = true;
     for (int i = 0; i <= static_cast<int>(stage); i++) {
         Cangjie::ICE::TriggerPointSetter iceSetter(static_cast<CompileStage>(i));
         if (!performMap[static_cast<CompileStage>(i)](this)) {
-            diag.ReportErrorAndWarningCount();
-            return false;
+            ret = false;
+            break;
         }
+    }
+    auto opts = invocation.globalOptions;
+    if (opts.dumpToScreen && !GetPackages().empty() && (opts.dumpAll || opts.dumpAST)) {
+        // By default, print the AST to the screen during the mangle phase.
+        // If the process exits early, print the final AST instead.
+        DumpASTToScreen(GetPackages());
     }
     Cangjie::ICE::TriggerPointSetter iceSetter(stage);
     diag.ReportErrorAndWarningCount();
-    return true;
+    return ret;
 }
 
 static bool IsNeedSaveIncrCompilationLogFile(const GlobalOptions& globalOpts, const FrontendOptions& frontOpts)
@@ -259,13 +327,20 @@ bool CompilerInstance::PerformParse()
             IncrementalCompilationLogger::GetInstance().InitLogFile(incrLogPath);
             IncrementalCompilationLogger::GetInstance().WriteBuffToFile();
         }
+        if (!globalOpts.dumpToScreen) {
+            DumpAST(GetPackages(), globalOpts.output, "parse");
+        }
     }
     return ret;
 }
 
 bool CompilerInstance::PerformConditionCompile()
 {
-    return compileStrategy->ConditionCompile();
+    auto ret = compileStrategy->ConditionCompile();
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "condcomp");
+    }
+    return ret;
 }
 
 bool CompilerInstance::PerformMacroExpand()
@@ -287,7 +362,9 @@ bool CompilerInstance::PerformMacroExpand()
         }
         Println("}");
     }
-
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "macroexp");
+    }
     return ret;
 }
 
@@ -465,12 +542,20 @@ bool CompilerInstance::PerformIncrementalScopeAnalysis()
 
 bool CompilerInstance::PerformImportPackage()
 {
-    return compileStrategy->ImportPackages();
+    auto ret = compileStrategy->ImportPackages();
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "import");
+    }
+    return ret;
 }
 
 bool CompilerInstance::PerformSema()
 {
-    return compileStrategy->Sema();
+    auto ret = compileStrategy->Sema();
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "sema");
+    }
+    return ret;
 }
 
 bool CompilerInstance::PerformOverflowStrategy()
@@ -479,6 +564,9 @@ bool CompilerInstance::PerformOverflowStrategy()
         return true;
     }
     compileStrategy->OverflowStrategy();
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "overflow");
+    }
     return true;
 }
 
@@ -486,6 +574,9 @@ bool CompilerInstance::PerformDesugarAfterSema()
 {
     testManager->MarkDeclsForTestIfNeeded(GetSourcePackages());
     compileStrategy->DesugarAfterSema();
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "desugar");
+    }
     return true;
 }
 
@@ -523,6 +614,9 @@ bool CompilerInstance::PerformGenericInstantiation()
         auto astCtx = GetASTContextByPackage(srcPkg.get());
         CJC_ASSERT(astCtx);
         typeChecker->PerformDesugarAfterInstantiation(*astCtx, *srcPkg);
+    }
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "genericinst");
     }
     return true;
 }
@@ -742,6 +836,9 @@ bool CompilerInstance::PerformMangling()
         }
     }
 #endif
+    if (!srcPkgs.empty() && !invocation.globalOptions.dumpToScreen) {
+        DumpAST(GetPackages(), invocation.globalOptions.output, "mangle");
+    }
     return true;
 }
 
