@@ -254,7 +254,8 @@ public:
     explicit LinuxOhosArm32CJNativeCGCFFI(CGModule& cgMod) : LinuxAarch64CJNativeCGCFFI(cgMod)
     {
     }
-
+    llvm::FunctionType* GetCFuncType(const CHIR::FuncType& chirFuncTy) override;
+    
 protected:
     llvm::Type* GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params) override;
 

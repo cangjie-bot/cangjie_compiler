@@ -1178,6 +1178,40 @@ ABIArgInfo WindowsAmd64CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirT
     return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
 }
 
+llvm::FunctionType* LinuxOhosArm32CJNativeCGCFFI::GetCFuncType(const CHIR::FuncType& chirFuncTy)
+{
+    auto found = cfuncMap.find(&chirFuncTy);
+    if (found != cfuncMap.end()) {
+        return found->second.first;
+    }
+    CJC_ASSERT(chirFuncTy.IsCFunc());
+
+    std::vector<llvm::Type*> paramTys;
+    auto chirParamTys = chirFuncTy.GetParamTypes();
+    paramTys.reserve(chirParamTys.size());
+    std::vector<ProcessKind> kinds;
+    kinds.reserve(chirParamTys.size());
+    auto retType = GetReturnType(*chirFuncTy.GetReturnType(), paramTys);
+    if (retType == nullptr) {
+        return nullptr;
+    }
+    for (auto ty : chirParamTys) {
+        CJC_ASSERT(IsMetCType(*ty));
+        if (IsUnsizedStructTy(*ty)) {
+            return nullptr;
+        }
+        auto typeSize = GetTypeSize(cgMod, *ty);
+        if (IsUnitOrNothing(*ty) || typeSize == 0) {
+            kinds.emplace_back(ProcessKind::SKIP);
+            continue;
+        }
+        kinds.emplace_back(GetParamType(*ty, paramTys));
+    }
+    auto resTy = llvm::FunctionType::get(retType, paramTys, chirFuncTy.HasVarArg());
+    cfuncMap.emplace(&chirFuncTy, std::make_pair(resTy, kinds));
+    return resTy;
+}
+
 llvm::Type* LinuxOhosArm32CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params)
 {
     auto& llvmCtx = ctx.GetLLVMContext();
