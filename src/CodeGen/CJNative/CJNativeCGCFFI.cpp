@@ -1186,6 +1186,26 @@ ABIArgInfo LinuxOhosArm32CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chi
     }
     auto type = GetLLVMType(chirTy);
     size_t size = GetTypeSize(cgMod, *type);
+    
+    // TODO: Handle structure nesting
+    if (isArg && type->isStructTy()) {
+        auto st = llvm::dyn_cast<llvm::StructType>(type);
+        size_t maxSize = 1;
+        for (auto fdTy: st->elements()) {
+            size_t fdSize = GetTypeSize(cgMod, *fdTy);
+            maxSize = fdSize > maxSize ? fdSize : maxSize;
+        }
+        if (maxSize <= 4) {
+            llvm::Type* baseTy = llvm::Type::getInt32Ty(llvmCtx);
+            llvm::Type* resTy = llvm::ArrayType::get(baseTy, static_cast<uint64_t>(size + 3)/4);
+            return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
+        } else {
+            llvm::Type* baseTy = llvm::Type::getInt64Ty(llvmCtx);
+            llvm::Type* resTy = llvm::ArrayType::get(baseTy, static_cast<uint64_t>(size + 7)/8);
+            return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
+        }
+    }
+    
     llvm::Type* base = nullptr;
     if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
         return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(llvm::ArrayType::get(base, members))).first->second;
