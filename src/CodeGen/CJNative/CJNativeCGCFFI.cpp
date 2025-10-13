@@ -1178,6 +1178,47 @@ ABIArgInfo WindowsAmd64CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirT
     return typeMap.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
 }
 
+llvm::Type* LinuxOhosArm32CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params)
+{
+    auto& llvmCtx = ctx.GetLLVMContext();
+    if (GetTypeSize(cgMod, chirTy) == 0) {
+        return llvm::Type::getVoidTy(llvmCtx);
+    }
+    auto argInfo = GetMappingArgInfo(chirTy, false);
+    if (argInfo.IsIndirect()) {
+        auto structType = GetLLVMType(chirTy);
+        CJC_ASSERT(structType->isStructTy());
+        params.emplace_back(structType->getPointerTo());
+        return llvm::Type::getVoidTy(llvmCtx);
+    }
+    CJC_ASSERT(argInfo.IsDirect() && "ArgInfo in aarch64 cannot be Expand.");
+    return argInfo[0];
+}
+
+ProcessKind LinuxOhosArm32CJNativeCGCFFI::GetParamType(CHIR::Type& chirTy, std::vector<llvm::Type*>& params)
+{
+    if (chirTy.IsStruct()) {
+        auto info = GetMappingArgInfo(StaticCast<CHIR::StructType&>(chirTy), true);
+        auto structType = GetLLVMType(chirTy);
+        CJC_ASSERT(structType->isStructTy());
+        if (info.IsIndirect()) {
+            params.emplace_back(structType->getPointerTo());
+            return ProcessKind::INDIRECT;
+        } else {
+            CJC_ASSERT(info.IsDirect() && "ArgInfo in aarch64 cannot be Expand.");
+            params.emplace_back(info[0]);
+            return ProcessKind::DIRECT;
+        }
+    }
+    llvm::Type* paramType = GetLLVMType(chirTy);
+    // VArray as CFunc parament pass by a i8*.
+    if (chirTy.IsVArray()) {
+        paramType = llvm::Type::getInt8PtrTy(ctx.GetLLVMContext());
+    }
+    params.emplace_back(paramType);
+    return ProcessKind::NO_PROCESS;
+}
+
 ABIArgInfo LinuxOhosArm32CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirTy, [[maybe_unused]] bool isArg)
 {
     auto found = typeMap.find(&chirTy);
@@ -1186,7 +1227,7 @@ ABIArgInfo LinuxOhosArm32CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chi
     }
     auto type = GetLLVMType(chirTy);
     size_t size = GetTypeSize(cgMod, *type);
-    
+    auto& llvmCtx = ctx.GetLLVMContext();
     // TODO: Handle structure nesting
     if (isArg && type->isStructTy()) {
         auto st = llvm::dyn_cast<llvm::StructType>(type);
@@ -1218,7 +1259,7 @@ ABIArgInfo LinuxOhosArm32CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chi
 
     size_t alignment = GetTypeAlignment(cgMod, *type);
     size = llvm::alignTo(size, BYTES_PER_WORD);
-    auto& llvmCtx = ctx.GetLLVMContext();
+
     if (alignment < limitSizeOfSmallStruct && size == limitSizeOfSmallStruct) {
         llvm::Type* baseTy = llvm::Type::getInt64Ty(llvmCtx);
         llvm::Type* resTy = llvm::ArrayType::get(baseTy, static_cast<uint64_t>(size) / BYTES_PER_WORD);

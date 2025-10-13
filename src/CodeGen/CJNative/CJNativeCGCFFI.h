@@ -255,7 +255,11 @@ public:
     {
     }
 
+protected:
+    llvm::Type* GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params) override;
+
 private:
+    ProcessKind GetParamType(CHIR::Type& chirTy, std::vector<llvm::Type*>& params);
     ABIArgInfo GetMappingArgInfo(CHIR::StructType& chirTy, bool isArg);
 };
 
