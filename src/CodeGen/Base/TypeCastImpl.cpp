@@ -227,7 +227,7 @@ llvm::Value* GenerateCondCheckLowerBound(
                 return irBuilder.getTrue();
             }
             auto minVal = llvm::ConstantInt::getSigned(
-                srcValue.getType(), GetIntMaxOrMin(irBuilder.GetCGModule(), targetTy, false));
+                srcValue.getType(), GetIntMaxOrMin(irBuilder, targetTy, false));
             return irBuilder.CreateICmpSLE(minVal, &srcValue, "i2i.lower");
         } else {
             CJC_ASSERT(IsUInt2UInt(srcTy, targetTy));
@@ -260,14 +260,14 @@ llvm::Value* GenerateCondCheckUpperBound(
         auto srcTyKind = irBuilder.GetTypeKindFromType(srcTy);
         if (IsUInt2Int(srcTy, targetTy)) {
             auto maxType = NeedsUIntToIntConversion(irBuilder, srcTy, targetTyKind) ? targetType.GetLLVMType() : srcValue.getType();
-            auto maxVal = llvm::ConstantInt::getSigned(maxType, GetIntMaxOrMin(cgMod, targetTy, true));
+            auto maxVal = llvm::ConstantInt::getSigned(maxType, GetIntMaxOrMin(irBuilder, targetTy, true));
             auto tempSrcValue = NeedsUIntToIntConversion(irBuilder, srcTy, targetTyKind)
                 ? irBuilder.CreateZExtOrTrunc(&srcValue, targetType.GetLLVMType())
                 : &srcValue;
             return irBuilder.CreateICmpULE(tempSrcValue, maxVal, "ui2i.upper");
         } else if (IsInt2UInt(srcTy, targetTy)) {
             auto maxType = NeedsIntToUIntConversion(irBuilder, srcTy, targetTyKind) ? targetType.GetLLVMType() : srcValue.getType();
-            auto maxVal = llvm::ConstantInt::get(maxType, GetUIntMax(cgMod, targetTy));
+            auto maxVal = llvm::ConstantInt::get(maxType, GetUIntMax(irBuilder, targetTy));
             auto tempSrcValue = NeedsIntToUIntConversion(irBuilder, srcTy, targetTyKind)
                 ? irBuilder.CreateZExtOrTrunc(&srcValue, targetType.GetLLVMType())
                 : &srcValue;
@@ -276,7 +276,7 @@ llvm::Value* GenerateCondCheckUpperBound(
             if (targetTyKind > srcTyKind) {
                 return irBuilder.getTrue();
             }
-            auto maxVal = llvm::ConstantInt::getSigned(srcValue.getType(), GetIntMaxOrMin(cgMod, targetTy, true));
+            auto maxVal = llvm::ConstantInt::getSigned(srcValue.getType(), GetIntMaxOrMin(irBuilder, targetTy, true));
             return irBuilder.CreateICmpSLE(&srcValue, maxVal, "i2i.upper");
         } else {
             CJC_ASSERT(IsUInt2UInt(srcTy, targetTy));
@@ -284,7 +284,7 @@ llvm::Value* GenerateCondCheckUpperBound(
                 return irBuilder.getTrue();
             }
             auto maxVal =
-                llvm::ConstantInt::getSigned(srcValue.getType(), static_cast<int64_t>(GetUIntMax(cgMod, targetTy)));
+                llvm::ConstantInt::getSigned(srcValue.getType(), static_cast<int64_t>(GetUIntMax(irBuilder, targetTy)));
             return irBuilder.CreateICmpULE(&srcValue, maxVal, "ui2ui.upper");
         }
     } else {
@@ -346,7 +346,7 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     // Emit lower.bound.overflow body.
     irBuilder.SetInsertPoint(lowerBoundOverflow);
     llvm::Value* retMin = targetTy.IsSigned()
-        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(), GetIntMaxOrMin(cgMod, targetTy, false))
+        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(), GetIntMaxOrMin(irBuilder, targetTy, false))
         : llvm::ConstantInt::get(targetType.GetLLVMType(), 0);
     irBuilder.CreateBr(satEndBB);
     // Emit lower.bound.ok body.
@@ -355,8 +355,8 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     /// Emit upper.bound.overflow body.
     irBuilder.SetInsertPoint(upperBoundOverflowBB);
     llvm::Value* retMax = targetTy.IsSigned()
-        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(),GetIntMaxOrMin(cgMod, targetTy, true))
-        : llvm::ConstantInt::get(targetType.GetLLVMType(), GetUIntMax(cgMod, targetTy));
+        ? llvm::ConstantInt::getSigned(targetType.GetLLVMType(),GetIntMaxOrMin(irBuilder, targetTy, true))
+        : llvm::ConstantInt::get(targetType.GetLLVMType(), GetUIntMax(irBuilder, targetTy));
     irBuilder.CreateBr(satEndBB);
     /// Emit upper.bound.ok body.
     irBuilder.SetInsertPoint(upperBoundOKBB);

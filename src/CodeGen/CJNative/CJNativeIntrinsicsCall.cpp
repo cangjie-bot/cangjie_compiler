@@ -697,7 +697,7 @@ llvm::Value* IRBuilder2::GenerateOverflowWrappingFunc(
     CHIR::ExprKind opKind, const CHIR::Type& ty, [[maybe_unused]] std::vector<llvm::Value*>& argGenValues)
 {
     llvm::Type* type = CGType::GetOrCreate(cgMod, &ty)->GetLLVMType();
-    auto minVal = CodeGen::GetIntMaxOrMin(GetCGModule(), StaticCast<const CHIR::IntType&>(ty), false);
+    auto minVal = CodeGen::GetIntMaxOrMin(*this, StaticCast<const CHIR::IntType&>(ty), false);
     return llvm::ConstantInt::getSigned(type, opKind == CHIR::ExprKind::MOD ? 0 : minVal);
 }
 
@@ -1197,8 +1197,7 @@ llvm::Instruction* IRBuilder2::CallGCWriteGenericPayload(const std::vector<llvm:
     CJC_ASSERT(parameters.size() == 3U);
     llvm::Function* func =
         llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_gcwrite_generic_payload);
-    auto fixedParams = {parameters[0], parameters[1], parameters[2]};
-    return CreateCall(func, fixedParams);
+    return CreateCall(func, parameters);
 }
 
 llvm::Instruction* IRBuilder2::CallGCReadGeneric(const std::vector<llvm::Value*>& parameters)
