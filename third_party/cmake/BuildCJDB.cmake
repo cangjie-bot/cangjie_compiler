@@ -106,6 +106,10 @@ if(CMAKE_HOST_WIN32)
     list(APPEND LLDB_CMAKE_ARGS -DLLVM_PARALLEL_LINK_JOBS=1)
 endif()
 
+if(MACOS)
+    list(APPEND LLDB_CMAKE_ARGS -DLIBCLANG_BUILD_STATIC=ON)
+endif()
+
 externalproject_get_property(cjnative SOURCE_DIR)
 ExternalProject_Add(
     lldb
