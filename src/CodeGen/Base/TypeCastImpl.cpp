@@ -253,7 +253,6 @@ template <typename SrcT>
 llvm::Value* GenerateCondCheckUpperBound(
     IRBuilder2& irBuilder, const CGType& targetType, llvm::Value& srcValue, const SrcT& srcTy)
 {
-    auto& cgMod = irBuilder.GetCGModule();
     auto& targetTy = StaticCast<const CHIR::IntType&>(targetType.GetOriginal());
     if constexpr (std::is_same_v<SrcT, CHIR::IntType>) {
         auto targetTyKind = irBuilder.GetTypeKindFromType(targetTy);
@@ -337,7 +336,6 @@ llvm::Value* GenerateOverflowSaturatingBasicBlock(IRBuilder2& irBuilder, const C
     const std::function<llvm::Value*()>& checkLowerBound, const std::function<llvm::Value*()>& checkUpperBound,
     const std::function<llvm::Value*(IRBuilder2&)>& typecast)
 {
-    auto& cgMod = irBuilder.GetCGModule();
     auto& targetTy = StaticCast<const CHIR::IntType&>(targetType.GetOriginal());
     auto [lowerBoundOKBB, upperBoundOKBB, upperBoundOverflowBB, lowerBoundOverflow, satEndBB] = Vec2Tuple<5>(
         irBuilder.CreateAndInsertBasicBlocks({GenNameForBB("lower.bound.ok"), GenNameForBB("upper.bound.ok"),
