@@ -156,7 +156,7 @@ private:
     static std::string RemoveCustomTypePrefix(const std::string& typeName)
     {
         std::string prefix = "::";
-        auto prefixPos = typeName.find(prefix);
+        auto prefixPos = typeName.rfind(prefix);
         return typeName.substr(prefixPos + prefix.length());
     }
 
