@@ -347,9 +347,13 @@ void GenSubCHIRPackage(CGModule& cgMod)
     cgMod.GenTypeTemplate();
     cgMod.GenTypeInfo();
     auto& globalOptions = cgPkgCtx.GetGlobalOptions();
-    DumpIR(*cgMod.GetLLVMModule(),
-        cgPkgCtx.GetCurrentPkgName() + "/00_subModules/" + cgMod.GetLLVMModule()->getSourceFileName(),
-        globalOptions.codegenDebugMode);
+    size_t subDirNum = 0;
+    if (NeedDumpIRToFile(globalOptions)) {
+        const auto& dp = GenDumpPath(globalOptions.output, cgPkgCtx.GetCurrentPkgName(),
+            std::to_string(subDirNum) + "_subModules", cgMod.GetLLVMModule()->getSourceFileName());
+        DumpIR(*cgMod.GetLLVMModule(), dp);
+        subDirNum++;
+    }
     ReplaceFunction(cgMod);
     cgMod.Opt();
     InlineFunction(cgMod);
@@ -360,39 +364,45 @@ void GenSubCHIRPackage(CGModule& cgMod)
     InitializeCjStringLiteral(cgMod);
     GenerateBinarySectionInfo(cgMod);
     KeepSomeTypesManually(cgMod);
-
-    DumpIR(*cgMod.GetLLVMModule(),
-        cgPkgCtx.GetCurrentPkgName() + "/01_subModules/" + cgMod.GetLLVMModule()->getSourceFileName(),
-        globalOptions.codegenDebugMode);
+    if (NeedDumpIRToFile(globalOptions)) {
+        const auto& dp = GenDumpPath(globalOptions.output, cgPkgCtx.GetCurrentPkgName(),
+            std::to_string(subDirNum) + "_subModules", cgMod.GetLLVMModule()->getSourceFileName());
+        DumpIR(*cgMod.GetLLVMModule(), dp);
+        subDirNum++;
+    }
     cgMod.EraseUselessInstsAndDeclarations();
     RecordCodeInfoInCodeGen("CodeGen EmitIR", cgMod);
     cgMod.GenIncremental();
     SetSymbolLinkageType(cgMod);
-    DumpIR(*cgMod.GetLLVMModule(),
-        cgPkgCtx.GetCurrentPkgName() + "/02_subModules/" + cgMod.GetLLVMModule()->getSourceFileName(),
-        globalOptions.codegenDebugMode);
-
+    if (NeedDumpIRToFile(globalOptions)) {
+        const auto& dp = GenDumpPath(globalOptions.output, cgPkgCtx.GetCurrentPkgName(),
+            std::to_string(subDirNum) + "_subModules", cgMod.GetLLVMModule()->getSourceFileName());
+        DumpIR(*cgMod.GetLLVMModule(), dp);
+        subDirNum++;
+    }
     cgMod.EraseUselessGVAndFunctions();
     GenerateStaticGIs(cgMod);
     CreateLLVMUsedGVs(cgMod);
-
-    // Incremental compilation generates invalid IRs, which need to be deleted by EraseUselessGVAndFunctions. Therefore,
-    // the verification is performed after incremental compilation.
-    if (!cgMod.Verify()) {
+    // Incremental compilation generates invalid IRs, which need to be deleted by EraseUselessGVAndFunctions.
+    // Therefore, the verification is performed after incremental compilation.
+    auto success = cgMod.Verify();
 #ifndef NDEBUG
+    if (!success) {
         std::string path = cgPkgCtx.GetCurrentPkgName() + "/brokenIR/" + cgMod.GetLLVMModule()->getSourceFileName();
-        DumpIR(*cgMod.GetLLVMModule(), path, true);
+        DumpIR(*cgMod.GetLLVMModule(), path);
         InternalError("Broken llvm ir! The result is saved in " + path);
-#else
-        InternalError("Broken llvm ir!");
-#endif
     }
-    DumpIR(*cgMod.GetLLVMModule(),
-        cgPkgCtx.GetCurrentPkgName() + "/03_subModules/" + cgMod.GetLLVMModule()->getSourceFileName(),
-        globalOptions.codegenDebugMode);
-
+#endif
+    if (NeedDumpIRToFile(globalOptions)) {
+        const auto& dp = GenDumpPath(globalOptions.output, cgPkgCtx.GetCurrentPkgName(),
+            std::to_string(subDirNum) + "_subModules", cgMod.GetLLVMModule()->getSourceFileName());
+        DumpIR(*cgMod.GetLLVMModule(), dp);
+    }
+    if (!success) {
+        InternalError("Broken llvm ir!");
+    }
     RecordCodeInfoInCodeGen("CodeGen stage", cgMod);
-}
+    }
 #endif
 } // namespace
 
@@ -447,6 +457,10 @@ private:
     {
         Utils::ProfileRecorder::Start("EmitIR", "GenSubCHIRPackages");
         auto& cgMods = cgPkgCtx.GetCGModules();
+        auto& globalOptions = cgPkgCtx.GetGlobalOptions();
+        if (NeedDumpIRToFile(globalOptions)) {
+            ClearOldIRDumpFiles(globalOptions.output, cgPkgCtx.GetCurrentPkgName());
+        }
         size_t threadNum = cgPkgCtx.GetGlobalOptions().codegenDebugMode ? 1 : cgMods.size();
         if (threadNum == 1) {
             for (auto& cgMod : cgMods) {
@@ -458,6 +472,11 @@ private:
                 taskQueueCHIRIR2LLVMIR.AddTask<void>([&cgMod]() { GenSubCHIRPackage(*cgMod); });
             }
             taskQueueCHIRIR2LLVMIR.RunAndWaitForAllTasksCompleted();
+        }
+        if (NeedDumpIRToScreen(cgPkgCtx.GetGlobalOptions())) {
+            for (auto& cgMod : cgPkgCtx.GetCGModules()) {
+                DumpIR(*cgMod->GetLLVMModule());
+            }
         }
         Utils::ProfileRecorder::Stop("EmitIR", "GenSubCHIRPackages");
     }
