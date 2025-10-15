@@ -462,12 +462,37 @@ CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, ll
     return cgType;
 }
 
-void DumpIR(const llvm::Module& llvmModule, const std::string& filePath, bool debugMode)
+bool NeedDumpIR(const GlobalOptions& options)
 {
-#ifndef NDEBUG
-    if (!debugMode) {
-        return;
+    return options.dumpAll || options.dumpIR;
+}
+
+bool NeedDumpIRToFile(const GlobalOptions& options)
+{
+    return (NeedDumpIR(options) && !options.dumpToScreen) || options.codegenDebugMode;
+}
+
+bool NeedDumpIRToScreen(const GlobalOptions& options)
+{
+    return NeedDumpIR(options) && options.dumpToScreen;
+}
+
+std::string GenDumpPath(const std::string& output, const std::string& pkgName, const std::string& subName,
+    const std::string& srcFileName, const std::string& suffix)
+{
+    std::string dumpPath, dumpDir, subDir;
+    if (FileUtil::IsDir(output)) {
+        dumpDir = FileUtil::JoinPath(output, pkgName + "_IR");
+    } else {
+        dumpDir = FileUtil::GetFileBase(output) + "_IR";
     }
+    subDir = FileUtil::JoinPath(dumpDir, subName);
+    dumpPath = FileUtil::JoinPath(subDir, srcFileName + suffix);
+    return dumpPath;
+}
+
+void DumpIR(const llvm::Module& llvmModule, const std::string& filePath)
+{
     if (filePath.empty()) {
         llvmModule.print(llvm::outs(), nullptr);
         return;
@@ -485,11 +510,6 @@ void DumpIR(const llvm::Module& llvmModule, const std::string& filePath, bool de
     std::error_code errorCode;
     llvm::raw_fd_ostream fileOS(normalizedPath, errorCode);
     llvmModule.print(fileOS, nullptr);
-#else
-    (void)llvmModule;
-    (void)filePath;
-    (void)debugMode;
-#endif
 }
 
 llvm::StructType* GetLLVMStructType(
