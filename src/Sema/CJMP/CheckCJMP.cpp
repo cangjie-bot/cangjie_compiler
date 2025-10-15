@@ -12,6 +12,7 @@
 
 #include "MPTypeCheckerImpl.h"
 
+#include "Collector.h"
 #include "TypeCheckUtil.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/AST/Clone.h"
@@ -28,13 +29,25 @@ MPTypeCheckerImpl::MPTypeCheckerImpl(const CompilerInstance& ci)
 }
 
 namespace {
-std::string GetExtendedTypeName(const ExtendDecl& ed)
+std::string GetTypeNameFromTy(const Ptr<Ty>& ty)
 {
-    auto& extendedType = ed.extendedType;
-    if (Ty::IsTyCorrect(extendedType->ty.get())) {
-        return extendedType->ty->IsPrimitive() ? extendedType->ty->String() : extendedType->ty->name;
+    CJC_ASSERT(Ty::IsTyCorrect(ty.get()));
+    if (ty->IsPrimitive()) {
+        return ty->String();
     } else {
-        return extendedType->ToString();
+        std::string str;
+        for (auto it = ty->typeArgs.begin(); it != ty->typeArgs.end(); ++it) {
+            if (it == ty->typeArgs.begin()) {
+                str += GetTypeNameFromTy(*it);
+            } else {
+                str += "," + GetTypeNameFromTy(*it);
+            }
+        }
+        if (str.empty()) {
+            return ty->name;
+        } else {
+            return ty->name + "<" + str + ">";
+        }
     }
 }
 
@@ -53,7 +66,7 @@ void DiagNotMatchedDecl(DiagnosticEngine &diag, const AST::Decl& decl, const std
         if (decl.astKind == ASTKind::VAR_WITH_PATTERN_DECL) {
             info = "variable with pattern";
         } else if (decl.astKind == ASTKind::EXTEND_DECL) {
-            info = "extend '" + GetExtendedTypeName(StaticCast<const ExtendDecl&>(decl)) + "'";
+            info = "extend '" + GetTypeNameFromTy(StaticCast<const ExtendDecl&>(decl).extendedType->ty.get()) + "'";
         } else {
             info = DeclKindToString(decl) + " '" + decl.identifier.GetRawText() + "'";
         }
@@ -209,10 +222,10 @@ void MPTypeCheckerImpl::PrepareTypeCheck4CJMP(Package& pkg)
         return;
     }
     // platform package part
-    MergeCJMPNominals(pkg);
+    MergeCJMPNominalsExceptExtension(pkg);
 }
 
-void MPTypeCheckerImpl::MergeCJMPNominals(Package& pkg)
+void MPTypeCheckerImpl::MergeCJMPNominalsExceptExtension(Package& pkg)
 {
     std::unordered_map<std::string, Ptr<Decl>> matchedDecls;
     Walker walkerPackage(&pkg, [this, &matchedDecls](const Ptr<Node>& node) -> VisitAction {
@@ -220,20 +233,8 @@ void MPTypeCheckerImpl::MergeCJMPNominals(Package& pkg)
             return VisitAction::WALK_CHILDREN;
         }
         auto decl = StaticCast<Decl>(node);
-        if (decl->IsNominalDecl()) {
-            auto key = DeclKindToString(*decl);
-            if (decl->astKind == ASTKind::EXTEND_DECL) {
-                key += GetExtendedTypeName(*StaticCast<ExtendDecl>(decl));
-                std::set<std::string> inheritedTypesName;
-                for (auto& inheritedType : StaticCast<ExtendDecl>(decl)->inheritedTypes) {
-                    inheritedTypesName.insert(inheritedType->ToString());
-                }
-                std::for_each(inheritedTypesName.begin(), inheritedTypesName.end(),
-                    [&key](const std::string& name) { key += name; });
-            } else {
-                key += decl->identifier;
-            }
-            if (auto it = matchedDecls.find(key); it != matchedDecls.end()) {
+        if (decl->IsNominalDecl() && decl->astKind != ASTKind::EXTEND_DECL) {
+            if (auto it = matchedDecls.find(decl->identifier); it != matchedDecls.end()) {
                 auto matchedDecl = it->second;
                 if (decl->TestAttr(Attribute::PLATFORM) && matchedDecl->TestAttr(Attribute::COMMON)) {
                     MergeCommonIntoPlatform(diag, *matchedDecl, *decl);
@@ -241,13 +242,95 @@ void MPTypeCheckerImpl::MergeCJMPNominals(Package& pkg)
                     MergeCommonIntoPlatform(diag, *decl, *matchedDecl);
                 }
             } else if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
-                matchedDecls.emplace(key, decl);
+                matchedDecls.emplace(decl->identifier, decl);
             }
         }
 
         return VisitAction::SKIP_CHILDREN;
     });
     walkerPackage.Walk();
+}
+
+void MPTypeCheckerImpl::PrepareTypeCheck4CJMPExtension(CompilerInstance& ci, ScopeManager& scopeManager,
+    ASTContext& ctx, const std::unordered_set<Ptr<AST::ExtendDecl>>& extends)
+{
+    if (!compilePlatform) {
+        return;
+    }
+    MergeCJMPExtensions(ci, scopeManager, ctx, extends);
+}
+
+namespace {
+void UpdateDeclMap(ASTContext& ctx, const Ptr<ExtendDecl>& ed)
+{
+    std::vector<Symbol*> syms;
+    std::function<VisitAction(Ptr<Node>)> collector = [&syms](auto node) {
+        static std::vector<ASTKind> ignoredKinds = {ASTKind::PRIMARY_CTOR_DECL, ASTKind::VAR_WITH_PATTERN_DECL};
+        CJC_ASSERT(!Utils::In(node->astKind, ignoredKinds));
+        if (auto decl = DynamicCast<Decl*>(node);
+            decl && !decl->TestAttr(Attribute::IS_BROKEN) && decl->symbol && decl->identifier != WILDCARD_CHAR) {
+            syms.emplace_back(decl->symbol);
+        }
+        return VisitAction::WALK_CHILDREN;
+    };
+    Walker(ed, collector).Walk();
+
+    for (auto sym : syms) {
+        // macro expended decls are not added into declMap.
+        // macro invoke func can NOT be seen by developer so should not be added.
+        if (sym->node->astKind == ASTKind::MACRO_EXPAND_DECL || sym->node->TestAttr(Attribute::MACRO_INVOKE_FUNC)) {
+            continue;
+        }
+
+        std::string scopeName = ScopeManagerApi::GetScopeNameWithoutTail(sym->scopeName);
+        auto names = std::make_pair(sym->name, scopeName);
+        ctx.AddDeclName(names, StaticCast<Decl>(*sym->node));
+    }
+}
+}
+
+void MPTypeCheckerImpl::MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& scopeManager,
+    ASTContext& ctx, const std::unordered_set<Ptr<AST::ExtendDecl>>& extends)
+{
+    std::unordered_map<std::string, Ptr<ExtendDecl>> matchedExtendDecls;
+    for (auto& ed : extends) {
+        if (!ed->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
+            continue;
+        }
+
+        std::string key;
+        if (ed->extendedType->ty->IsPrimitive()) {
+            key = ed->extendedType->ty->String();
+        } else {
+            auto extendedTypeDecl = Ty::GetDeclOfTy(ed->extendedType->ty);
+            CJC_NULLPTR_CHECK(extendedTypeDecl);
+            key = extendedTypeDecl->fullPackageName + extendedTypeDecl->identifier;
+        }
+        std::set<std::string> inheritedTys;
+        for (auto& inheritedType : ed->inheritedTypes) {
+            auto decl = Ty::GetDeclOfTy(inheritedType->ty);
+            CJC_NULLPTR_CHECK(decl);
+            inheritedTys.emplace(decl->fullPackageName + decl->identifier);
+        }
+        std::for_each(inheritedTys.begin(), inheritedTys.end(), [&key](const std::string& tmp) { key += tmp; });
+
+        if (auto it = matchedExtendDecls.find(key); it != matchedExtendDecls.end()) {
+            auto matchedExtendDecl = it->second;
+            if (ed->TestAttr(Attribute::PLATFORM) && matchedExtendDecl->TestAttr(Attribute::COMMON)) {
+                MergeCommonIntoPlatform(diag, *matchedExtendDecl, *ed);
+                Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
+                collector.BuildSymbolTable(ctx, ed, ci.IsBuildTrie());
+                UpdateDeclMap(ctx, ed);
+            } else if (ed->TestAttr(Attribute::COMMON) && matchedExtendDecl->TestAttr(Attribute::PLATFORM)) {
+                MergeCommonIntoPlatform(diag, *ed, *matchedExtendDecl);
+                Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
+                collector.BuildSymbolTable(ctx, matchedExtendDecl, ci.IsBuildTrie());
+                UpdateDeclMap(ctx, matchedExtendDecl);
+            }
+        } else {
+            matchedExtendDecls.emplace(key, ed);
+        }
+    }
 }
 
 namespace {

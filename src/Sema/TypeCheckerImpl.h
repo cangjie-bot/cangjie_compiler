@@ -470,6 +470,7 @@ private:
     void CheckSpecializationExtendDupImstantation(const AST::Ty& extendedDeclTy, const AST::ExtendDecl& compareExtend,
         const AST::InheritableDecl& beComparedDecl, const TypeSubst& instantMapping, const bool checkParent = false);
     void BuildImportedExtendMap();
+    void MergeCJMPExtensions(ASTContext& ctx, const std::unordered_set<Ptr<AST::ExtendDecl>>& extends);
     void BuildExtendMap(ASTContext& ctx);
     void CheckExtendRules(const ASTContext& ctx);
     /* Set integer overflow strategy before sema typechecking. */

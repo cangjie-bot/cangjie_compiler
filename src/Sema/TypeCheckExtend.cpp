@@ -402,6 +402,9 @@ void TypeChecker::TypeCheckerImpl::BuildExtendMap(ASTContext& ctx)
             PreCheckExtend(ctx, *ed);
         }
     }
+    // The matching of `common/platform extend` depends on the resolved symbol table.
+    // Here is the first step after resolving the symbol table, and also the first step in processing extendDecl.
+    mpImpl->PrepareTypeCheck4CJMPExtension(*ci, scopeManager, ctx, allExtends);
     UpdateExtendMap(typeManager, allExtends);
 }
 

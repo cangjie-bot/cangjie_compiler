@@ -11,6 +11,7 @@
 #ifndef CANGJIE_SEMA_MPTYPECHECKER_IMPL_H
 #define CANGJIE_SEMA_MPTYPECHECKER_IMPL_H
 
+#include "ScopeManager.h"
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/Frontend/CompilerInstance.h"
@@ -22,6 +23,8 @@ public:
     explicit MPTypeCheckerImpl(const CompilerInstance& ci);
     // PrepareTypeCheck for CJMP
     void PrepareTypeCheck4CJMP(AST::Package& pkg);
+    void PrepareTypeCheck4CJMPExtension(CompilerInstance& ci, ScopeManager& scopeManager, ASTContext& ctx,
+        const std::unordered_set<Ptr<AST::ExtendDecl>>& extends);
     // Precheck for CJMP
     void PreCheck4CJMP(const AST::Package& pkg);
     // TypeCheck for CJMP
@@ -32,7 +35,9 @@ public:
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
 private:
     // PrepareTypeCheck for CJMP
-    void MergeCJMPNominals(AST::Package& pkg);
+    void MergeCJMPNominalsExceptExtension(AST::Package& pkg);
+    void MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& scopeManager, ASTContext& ctx,
+        const std::unordered_set<Ptr<AST::ExtendDecl>>& extends);
     // Precheck for CJMP
     void PreCheckCJMPClass(const AST::ClassDecl& cls);
     // PostTypeCheck for CJMP

@@ -2178,7 +2178,7 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
     CheckPrimaryCtorBeforeMerge(pkg);
     // Merging common classes into platform if any
     mpImpl->PrepareTypeCheck4CJMP(pkg);
-    
+
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     Interop::Java::PrepareTypeCheck(pkg);
     Interop::ObjC::PrepareTypeCheck(pkg);
