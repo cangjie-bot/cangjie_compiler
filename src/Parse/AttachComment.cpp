@@ -37,13 +37,8 @@ std::vector<Ptr<Node>> CollectPtrsOfASTNodes(Ptr<File> node)
 {
     std::vector<Ptr<Node>> ptrs;
     auto collectNodes = [&ptrs](Ptr<Node> curNode) -> VisitAction {
-        if (curNode->astKind == ASTKind::ANNOTATION || curNode->astKind == ASTKind::MODIFIER) {
-            return VisitAction::SKIP_CHILDREN;
-        }
         bool ignoreFlag = false;
         if (curNode->astKind == ASTKind::FILE) {
-            ignoreFlag = true;
-        } else if (auto inv = curNode->GetConstInvocation(); inv && inv->decl) {
             ignoreFlag = true;
         }
         if (ignoreFlag) {
@@ -185,22 +180,37 @@ std::pair<bool, Position> WhetherExistNextNodeBeforeOuterNodeEnd(
     return {findFlag, searchEnd};
 }
 
+void AddTrailingComment(Node& node, CommentGroup& cg)
+{
+    node.comments.trailingComments.push_back(std::move(cg));
+}
+
+void AddLeadingComment(Node& node, CommentGroup& cg)
+{
+    node.comments.leadingComments.push_back(std::move(cg));
+}
+
+void AddInnerComment(Node& node, CommentGroup& cg)
+{
+    node.comments.innerComments.push_back(std::move(cg));
+}
+
 size_t AttchCommentToAheadNode(
     Ptr<Node> node, const Position& searchEnd, std::vector<CommentGroup>& commentGroups, size_t cgIdx)
 {
-    node->comments.trailingComments.push_back(commentGroups[cgIdx]);
+    AddTrailingComment(*node, commentGroups[cgIdx]);
     while (cgIdx + 1 < commentGroups.size()) {
         CJC_ASSERT(!commentGroups[cgIdx + 1].cms.empty());
         if (commentGroups[cgIdx + 1].cms[0].info.Begin() >= searchEnd) {
             break;
         }
         ++cgIdx;
-        node->comments.trailingComments.push_back(commentGroups[cgIdx]);
+        AddTrailingComment(*node, commentGroups[cgIdx]);
     }
     return cgIdx;
 }
 
-// return the index of the next comment group needs to be attched
+// return the index of the next comment group needs to be attached
 size_t AttchCommentToOuterNode(const std::vector<Ptr<Node>>& nodes, size_t nodeOffsetIdx,
     CommentGroupsLocInfo& cgInfo, size_t cgIdx, std::stack<size_t>& nodeStack)
 {
@@ -209,6 +219,7 @@ size_t AttchCommentToOuterNode(const std::vector<Ptr<Node>>& nodes, size_t nodeO
     auto outerNode = nodes[nodeStack.top()];
     nodeStack.pop();
     while (!nodeStack.empty() && outerNode->GetEnd() == nodes[nodeStack.top()]->GetEnd()) {
+        // rule 3, choose the largest outer node before this comment
         outerNode = nodes[nodeStack.top()];
         nodeStack.pop();
     }
@@ -222,7 +233,7 @@ size_t AttchCommentToOuterNode(const std::vector<Ptr<Node>>& nodes, size_t nodeO
             cgInfo.commentGroups[cgIdx], cgIdx, outerNode, cgInfo.cgFollowInfo, cgInfo.tkStream)) {
             break;
         }
-        outerNode->comments.trailingComments.push_back(cgInfo.commentGroups[cgIdx]);
+        AddTrailingComment(*outerNode, cgInfo.commentGroups[cgIdx]);
     }
     if (cgIdx >= cgInfo.commentGroups.size()) {
         return cgIdx;
@@ -261,13 +272,13 @@ size_t AttachCommentToNode(const std::vector<Ptr<Node>>& nodes, size_t curNodeId
         CJC_ASSERT(!curCg.cms.empty());
         CJC_ASSERT(curCgBegin != curNodeBegin);
         if (curCgBegin < curNodeBegin) {
-            nodes[curNodeIdx]->comments.leadingComments.push_back(curCg); // rule2
+            AddLeadingComment(*nodes[curNodeIdx], curCg); // rule2
         } else if (curCgBegin < curNodeEnd) {
             if (curNodeIdx + 1 < nodes.size() && nodes[curNodeIdx + 1]->GetBegin() < curNodeEnd) {
                 nodeStack.push(curNodeIdx);
                 break;
             }
-            nodes[curNodeIdx]->comments.innerComments.push_back(curCg); // rule2
+            AddInnerComment(*nodes[curNodeIdx], curCg); // rule2
         } else {
             if (!nodeStack.empty() && nodes[nodeStack.top()]->GetEnd() < curCgBegin) {
                 cgIdx = AttchCommentToOuterNode(nodes, curNodeIdx, cgInfo, cgIdx, nodeStack);
@@ -280,7 +291,7 @@ size_t AttachCommentToNode(const std::vector<Ptr<Node>>& nodes, size_t curNodeId
                 break;
             }
             if (IsTrailCommentsInRuleOne(curCg, cgIdx, nodes[curNodeIdx], cgInfo.cgFollowInfo, cgInfo.tkStream)) {
-                nodes[curNodeIdx]->comments.trailingComments.push_back(curCg);
+                AddTrailingComment(*nodes[curNodeIdx], curCg);
                 continue;
             }
             // check to see if there is a next node before the end of top node in stack
@@ -289,34 +300,36 @@ size_t AttachCommentToNode(const std::vector<Ptr<Node>>& nodes, size_t curNodeId
             if (findNextFlag) {
                 break;
             }
-            if (!findNextFlag) {
+            if (!nodeStack.empty()) {
+                // rule 5, no nodes after cg in current scope, attach to nearest smallest node as inner cg
+                AddInnerComment(*nodes[nodeStack.top()], cgInfo.commentGroups[cgIdx]);
+            } else {
                 cgIdx = AttchCommentToAheadNode(nodes[curNodeIdx], searchEnd, cgInfo.commentGroups, cgIdx); // rule2
             }
         }
     }
     return cgIdx;
 }
-
 } // namespace
 
 void ParserImpl::CollectCommentGroups(CommentGroupsLocInfo& cgInfo) const
 {
     Token preTokenIgnoreNL{TokenKind::SENTINEL, "", Position(0, 1, 1), Position{0, 1, 1}};
     bool needUpdateFollowInfo = false;
-    std::optional<size_t> preTkIdxIgnTrivialStuff{std::nullopt}; // ignore NL, Semi, Comment
+    std::optional<size_t> preTkIdxIgnTrivialStuff{std::nullopt}; // ignore NL, COMMENT, SEMI, COMMA
     for (size_t i = 0; i < cgInfo.tkStream.size(); ++i) {
         auto& tk = cgInfo.tkStream[i];
         if (tk.kind == TokenKind::NL || tk.commentForMacroDebug) {
             continue;
         }
         if (tk.kind != TokenKind::COMMENT) {
-            if (tk.kind != TokenKind::SEMI) {
+            if (tk.kind != TokenKind::SEMI && tk.kind != TokenKind::COMMA) {
                 preTkIdxIgnTrivialStuff = i;
             }
             preTokenIgnoreNL = tk;
             if (needUpdateFollowInfo && tk.kind != TokenKind::END) {
                 CJC_ASSERT(cgInfo.commentGroups.size() > 0);
-                // it won't run here if it followed by a cg or nothing
+                // it won't run here if followed by a cg or nothing
                 cgInfo.cgFollowInfo[cgInfo.commentGroups.size() - 1] = i;
                 needUpdateFollowInfo = false;
             }
@@ -330,14 +343,11 @@ void ParserImpl::CollectCommentGroups(CommentGroupsLocInfo& cgInfo) const
     }
 }
 
-void ParserImpl::AttachCommentToSortedNodes(std::vector<Ptr<Node>>& nodes)
+void ParserImpl::AttachCommentToSortedNodes(std::vector<Ptr<Node>>& nodes, CommentGroupsLocInfo& cgInfo, size_t cgIdx)
 {
-    CommentGroupsLocInfo cgInfo{{}, {}, {}, lexer->GetTokenStream()};
-    CollectCommentGroups(cgInfo);
     if (cgInfo.commentGroups.empty()) {
         return;
     }
-    size_t cgIdx{0};
     std::stack<size_t> nodeStack;
     for (size_t i = 0; i < nodes.size() && cgIdx < cgInfo.commentGroups.size(); ++i) {
         if (nodes[i]->GetBegin().line < 1 || nodes[i]->GetBegin().column < 1) { // bad node pos
@@ -355,7 +365,41 @@ void ParserImpl::AttachCommentToNodes(std::vector<OwnedPtr<Node>>& nodes)
         nps.emplace_back(n.get());
     }
     SortNodesByRange(nps);
-    AttachCommentToSortedNodes(nps);
+    CommentGroupsLocInfo cgInfo{{}, {}, {}, lexer->GetTokenStream()};
+    CollectCommentGroups(cgInfo);
+    AttachCommentToSortedNodes(nps, cgInfo, 0);
+}
+
+size_t ParserImpl::CollectFileCG(const std::vector<Ptr<AST::Node>>& nodes, CommentGroupsLocInfo& cgInfo, Ptr<File> node)
+{
+    size_t begin{0};
+    while (begin < cgInfo.commentGroups.size()) {
+        if (nodes.empty() || cgInfo.commentGroups[begin].cms.back().info.End().line + 1 < nodes.front()->begin.line) {
+            AddLeadingComment(*node, cgInfo.commentGroups[begin++]);
+        } else {
+            break;
+        }
+    }
+    if (cgInfo.commentGroups.empty()) {
+        return 0;
+    }
+    auto end = cgInfo.commentGroups.size() - 1;
+    auto endLine{0};
+    for (auto& n: nodes) {
+        endLine = std::max(endLine, n->end.line + 1);
+    }
+    while (true) {
+        if (cgInfo.commentGroups[end].cms.back().info.Begin().line > endLine) {
+            AddTrailingComment(*node, cgInfo.commentGroups[end]);
+            if (end-- == begin) {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    cgInfo.commentGroups.erase(cgInfo.commentGroups.begin() + end + 1, cgInfo.commentGroups.end());
+    return begin;
 }
 
 void ParserImpl::AttachCommentToFile(Ptr<File> node)
@@ -364,5 +408,8 @@ void ParserImpl::AttachCommentToFile(Ptr<File> node)
     if (nodes.empty()) {
         return;
     }
-    AttachCommentToSortedNodes(nodes);
+    CommentGroupsLocInfo cgInfo{{}, {}, {}, lexer->GetTokenStream()};
+    CollectCommentGroups(cgInfo);
+    auto cgIdx = CollectFileCG(nodes, cgInfo, node);
+    AttachCommentToSortedNodes(nodes, cgInfo, cgIdx);
 }

@@ -314,17 +314,20 @@ private:
     void AttachCommentToFile(Ptr<AST::File> node);
     /**
      * Attach comment group to the ast nodes(sorted by range)
+     * \param cgIdx: attach comment, start from index cgIdx
      */
-    void AttachCommentToSortedNodes(std::vector<Ptr<AST::Node>>& nodes);
+    void AttachCommentToSortedNodes(std::vector<Ptr<Node>>& nodes, CommentGroupsLocInfo& cgInfo, size_t cgIdx);
     /**
      * Attach comment group to the ast nodes
      * note : only run in ParseNodes in macro expansion
      */
-    void AttachCommentToNodes(std::vector<OwnedPtr<AST::Node>>& nodes);
+    void AttachCommentToNodes(std::vector<OwnedPtr<Node>>& nodes);
+    /// Return the index of the next comment group needs to be attached
+    size_t CollectFileCG(const std::vector<Ptr<Node>>& nodes, CommentGroupsLocInfo& cgInfo, Ptr<File> node);
     /**
      * Collect comment groups from token stream
      */
-    void CollectCommentGroups(AST::CommentGroupsLocInfo& cgInfo) const;
+    void CollectCommentGroups(CommentGroupsLocInfo& cgInfo) const;
     bool SeeingExprOperator();
     Token GetExprOperator();
     void SkipExprOperator();
