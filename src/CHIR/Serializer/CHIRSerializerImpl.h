@@ -37,6 +37,8 @@ public:
 
     // Utility
     void Save(const std::string& filename, ToCHIR::Phase phase);
+    /// WARNING: The returned pointer should be freed by the caller
+    std::pair<uint8_t*, size_t> SaveToMemory(ToCHIR::Phase phase);
     void Initialize();
     void Dispatch();
 
