@@ -35,12 +35,8 @@ llvm::Value* IRBuilder2::CallIntrinsic(
 namespace {
 bool IsPlatformDependent(CHIR::IntrinsicKind intrinsicKind)
 {
-    if ((intrinsicKind >= CHIR::IntrinsicKind::GET_MAX_HEAP_SIZE && intrinsicKind <= CHIR::IntrinsicKind::GET_NATIVE_THREAD_NUMBER) ||
-        intrinsicKind == CHIR::IntrinsicKind::GET_GC_COUNT || intrinsicKind==CHIR::IntrinsicKind::GET_GC_FREED_SIZE) {
-        return true;
-    } else {
-        return false;
-    }
+    return (intrinsicKind >= CHIR::IntrinsicKind::GET_MAX_HEAP_SIZE && intrinsicKind <= CHIR::IntrinsicKind::GET_NATIVE_THREAD_NUMBER) ||
+        intrinsicKind == CHIR::IntrinsicKind::GET_GC_COUNT || intrinsicKind==CHIR::IntrinsicKind::GET_GC_FREED_SIZE;
 }
 }
 llvm::Value* IRBuilder2::CallIntrinsic(
@@ -189,7 +185,7 @@ void IRBuilder2::CallArrayIntrinsicSet(
     auto rawArrayCGType = CGType::GetOrCreate(cgMod, &arrTy);
     if (!rawArrayCGType->GetSize()) {
         llvm::Value* offset = CreateMul(GetSize_64(*arrTy.GetElementType()), index);
-        offset = CreateAdd(offset, getInt64(GetVoidPtrSize() + 8U)); // 8U: size of rawArray's len field
+        offset = CreateAdd(offset, getInt64(GetPayloadOffset() + 8U)); // 8U: size of rawArray's len field
         auto fieldAddr = CreateInBoundsGEP(getInt8Ty(), array, offset);
         fieldAddr = CreateBitCast(fieldAddr, elemType->getPointerTo(array->getType()->getPointerAddressSpace()));
         GetCGContext().SetBasePtr(fieldAddr, array);
@@ -234,7 +230,7 @@ llvm::Value* IRBuilder2::CallArrayIntrinsicGet(
     auto rawArrayCGType = CGType::GetOrCreate(cgMod, &arrTy);
     if (!rawArrayCGType->GetSize()) {
         llvm::Value* offset = CreateMul(GetSize_64(*arrTy.GetElementType()), index);
-        offset = CreateAdd(offset, getInt64(GetVoidPtrSize() + 8U)); // 8U: size of rawArray's len field
+        offset = CreateAdd(offset, getInt64(GetPayloadOffset() + 8U)); // 8U: size of rawArray's len field
         elePtr = CreateInBoundsGEP(getInt8Ty(), array, offset);
         elePtr = CreateBitCast(elePtr, elemType->getPointerTo(array->getType()->getPointerAddressSpace()));
         GetCGContext().SetBasePtr(elePtr, array);
