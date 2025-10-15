@@ -138,6 +138,8 @@ def generate_cmake_defs(args):
         "-DCANGJIE_DISABLE_STACK_GROW_FEATURE=" + bool_to_opt(args.disable_stack_grow_feature),
         "-DCANGJIE_USE_OH_LLVM_REPO=" + bool_to_opt(args.use_oh_llvm_repo)]
 
+    if args.sanitizer_support:
+        result.append("-DCANGJIE_SANITIZER_SUPPORT=" + args.sanitizer_support)
     return result
 
 def build(args):
@@ -210,7 +212,12 @@ def build(args):
     if not os.path.exists(BUILD_DIR):
         os.makedirs(BUILD_DIR)
 
-    cmake_build_dir = os.path.join(BUILD_DIR, "build-{}-{}".format(args.product, args.target)) if args.target else CMAKE_BUILD_DIR
+    if args.sanitizer_support:
+        cmake_build_dir = os.path.join(BUILD_DIR, "build-libs-{}".format(args.sanitizer_support))
+        if args.target:
+            cmake_build_dir += "-{}".format(args.target)
+    else:
+        cmake_build_dir = os.path.join(BUILD_DIR, "build-{}-{}".format(args.product, args.target)) if args.target else CMAKE_BUILD_DIR
 
     if not os.path.exists(os.path.join(cmake_build_dir, "build.ninja")):
         os.makedirs(cmake_build_dir, exist_ok=True)
@@ -542,6 +549,13 @@ def main():
     parser_build.add_argument(
         "--use-oh-llvm-repo", action="store_true",
         help="use OpenHarmony llvm repo with Cangjie llvm patch instead of cangjie llvm repo for building"
+    )
+    parser_build.add_argument(
+        "--cjlib-sanitizer-support",
+        type=str,
+        choices=["asan", "tsan", "hwasan"],
+        dest="sanitizer_support",
+        help="Enable cangjie sanitizer support for cangjie libraries."
     )
     parser_build.set_defaults(func=build)
 

@@ -619,10 +619,10 @@ OPTION("--aggressive-parallel-compile", AGGRESSIVE_PARALLEL_COMPILE, FLAG_WITH_A
 
 // ---------- SANITIZER OPTIONS ----------
 OPTION("--sanitize", SANITIZE, SEPARATED, { BACKEND(CJNATIVE) },
-    { GROUP(GLOBAL) COMMA GROUP(STABLE) }, nullptr, sanitizer_type, SINGLE_OCCURRENCE,
+    { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, sanitizer_type, SINGLE_OCCURRENCE,
     "Enable sanitizer: ")
 OPTION("--sanitize-set-rpath", SANITIZE_SET_RPATH, FLAG, { BACKEND(CJNATIVE) },
-    { GROUP(DRIVER) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(DRIVER) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Add -rpath with cangjie runtime directory to linker flags for sanitizer-enabled product")
 
 // ---------- CODE OBFUSCATION OPTIONS ----------
