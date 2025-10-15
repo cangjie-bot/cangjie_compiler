@@ -321,16 +321,17 @@ private:
     /**
      * Attach comment group to the ast nodes(sorted by range)
      */
-    void AttachCommentToSortedNodes(std::vector<Ptr<AST::Node>>& nodes);
+    void AttachCommentToSortedNodes(std::vector<Ptr<Node>>& nodes, CommentGroupsLocInfo& cgInfo);
     /**
      * Attach comment group to the ast nodes
      * note : only run in ParseNodes in macro expansion
      */
-    void AttachCommentToNodes(std::vector<OwnedPtr<AST::Node>>& nodes);
+    void AttachCommentToNodes(std::vector<OwnedPtr<Node>>& nodes);
+    void CollectFileCG(const std::vector<Ptr<Node>>& nodes, CommentGroupsLocInfo& cgInfo, Ptr<File> node);
     /**
      * Collect comment groups from token stream
      */
-    void CollectCommentGroups(AST::CommentGroupsLocInfo& cgInfo) const;
+    void CollectCommentGroups(CommentGroupsLocInfo& cgInfo) const;
     bool SeeingExprOperator();
     Token GetExprOperator();
     void SkipExprOperator();
