@@ -797,6 +797,11 @@ bool IsCJMapping(const Decl& decl)
     return decl.TestAttr(Attribute::JAVA_CJ_MAPPING);
 }
 
+bool IsFwdClass(const Decl& decl)
+{
+    return decl.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);
+}
+
 /**
  * public func $getJavaRef(): Java_CFFI_JavaEntity {
  *     return Java_CFFI_JavaEntity()
