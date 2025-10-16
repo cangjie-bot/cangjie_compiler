@@ -13,6 +13,7 @@
 #include "MPTypeCheckerImpl.h"
 
 #include "Collector.h"
+#include "Diags.h"
 #include "TypeCheckUtil.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/AST/Clone.h"
@@ -66,7 +67,12 @@ void DiagNotMatchedDecl(DiagnosticEngine &diag, const AST::Decl& decl, const std
         if (decl.astKind == ASTKind::VAR_WITH_PATTERN_DECL) {
             info = "variable with pattern";
         } else if (decl.astKind == ASTKind::EXTEND_DECL) {
-            info = "extend '" + GetTypeNameFromTy(StaticCast<const ExtendDecl&>(decl).extendedType->ty.get()) + "'";
+            auto& ed = StaticCast<const ExtendDecl&>(decl);
+            if (Ty::IsTyCorrect(ed.ty.get())) {
+                info = "extend '" + GetTypeNameFromTy(ed.extendedType->ty.get()) + "'";
+            } else {
+                info = "extend '" + DynamicCast<AST::RefType>(ed.extendedType.get())->ref.identifier + "'";
+            }
         } else {
             info = DeclKindToString(decl) + " '" + decl.identifier.GetRawText() + "'";
         }
@@ -261,7 +267,7 @@ void MPTypeCheckerImpl::PrepareTypeCheck4CJMPExtension(CompilerInstance& ci, Sco
 }
 
 namespace {
-void UpdateDeclMap(ASTContext& ctx, const Ptr<ExtendDecl>& ed)
+void UpdateDeclMap(DiagnosticEngine& diag, ASTContext& ctx, const Ptr<ExtendDecl>& ed)
 {
     std::vector<Symbol*> syms;
     std::function<VisitAction(Ptr<Node>)> collector = [&syms](auto node) {
@@ -284,6 +290,16 @@ void UpdateDeclMap(ASTContext& ctx, const Ptr<ExtendDecl>& ed)
 
         std::string scopeName = ScopeManagerApi::GetScopeNameWithoutTail(sym->scopeName);
         auto names = std::make_pair(sym->name, scopeName);
+        if (sym->astKind == ASTKind::PROP_DECL) { // Function redefinition will not be checked in this phase.
+            if (auto found = ctx.GetDeclsByName(names); !found.empty()) {
+                bool multiPlat = 
+                    (sym->node->TestAttr(Attribute::COMMON) && found.front()->TestAttr(Attribute::PLATFORM)) ||
+                    (sym->node->TestAttr(Attribute::PLATFORM) && found.front()->TestAttr(Attribute::COMMON));
+                if (!multiPlat) {
+                    Sema::DiagRedefinitionWithFoundNode(diag, StaticCast<Decl>(*sym->node), *found.front());
+                }
+            }
+        }
         ctx.AddDeclName(names, StaticCast<Decl>(*sym->node));
     }
 }
@@ -294,7 +310,7 @@ void MPTypeCheckerImpl::MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& 
 {
     std::unordered_map<std::string, Ptr<ExtendDecl>> matchedExtendDecls;
     for (auto& ed : extends) {
-        if (!ed->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
+        if (!Ty::IsTyCorrect(ed->ty.get()) || !ed->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
             continue;
         }
 
@@ -320,12 +336,12 @@ void MPTypeCheckerImpl::MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& 
                 MergeCommonIntoPlatform(diag, *matchedExtendDecl, *ed);
                 Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
                 collector.BuildSymbolTable(ctx, ed, ci.IsBuildTrie());
-                UpdateDeclMap(ctx, ed);
+                UpdateDeclMap(diag, ctx, ed);
             } else if (ed->TestAttr(Attribute::COMMON) && matchedExtendDecl->TestAttr(Attribute::PLATFORM)) {
                 MergeCommonIntoPlatform(diag, *ed, *matchedExtendDecl);
                 Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
                 collector.BuildSymbolTable(ctx, matchedExtendDecl, ci.IsBuildTrie());
-                UpdateDeclMap(ctx, matchedExtendDecl);
+                UpdateDeclMap(diag, ctx, matchedExtendDecl);
             }
         } else {
             matchedExtendDecls.emplace(key, ed);
