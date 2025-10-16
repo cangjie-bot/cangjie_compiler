@@ -768,12 +768,19 @@ bool IsImpl(const Ty& ty)
 
 bool IsCJMapping(const Ty& ty)
 {
-    // currently only support struct type and enum type
+    // currently only support struct type, enum type, class type.
     if (auto structTy = DynamicCast<StructTy*>(&ty)) {
         return structTy->decl && IsCJMapping(*structTy->decl);
-    } else if (auto enumTy = DynamicCast<EnumTy*>(&ty)) {
+    } 
+    
+    if (auto enumTy = DynamicCast<EnumTy*>(&ty)) {
         return enumTy->decl && IsCJMapping(*enumTy->decl);
     }
+
+    if (auto classTy = DynamicCast<ClassTy*>(&ty)) {
+        return classTy && classTy->decl && IsCJMapping(*classTy->decl);
+    }
+    
     return false;
 }
 

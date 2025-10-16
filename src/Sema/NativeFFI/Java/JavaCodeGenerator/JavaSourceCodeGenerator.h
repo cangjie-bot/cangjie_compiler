@@ -83,6 +83,7 @@ private:
     void AddHeader();
     void AddPrivateCtorForCJMappring();
     void AddPrivateCtorForCJMappringEnum();
+    void AddEqualOrIdentityMethod(bool hasHashcodeMethod, bool hasEqualsMethod, bool hasToStringMethod);
 };
 } // namespace Cangjie::Interop::Java
 
