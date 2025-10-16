@@ -809,7 +809,8 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
 
 {
-    if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC)) {
+    if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC) &&
+        !decl.TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
         // currently only support struct decl and enum decl, enum decl, class decl.
         bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT) &&
             !decl.TestAttr(Attribute::JAVA_MIRROR) && !decl.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE);
@@ -1408,7 +1409,6 @@ OwnedPtr<InterfaceDecl> ParserImpl::ParseInterfaceDecl(
     for (auto& it : attrs) {
         ret->EnableAttr(it);
     }
-    CheckCJMappingAttr(*ret);
     ffiParser->CheckClassLikeSignature(*ret, annos);
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->body = ParseInterfaceBody(*ret);
@@ -1519,7 +1519,6 @@ OwnedPtr<EnumDecl> ParserImpl::ParseEnumDecl(
     for (auto& it : attrs) {
         ret->EnableAttr(it);
     }
-    CheckCJMappingAttr(*ret);
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->identifier = ExpectIdentifierWithPos(*ret);
     if (Skip(TokenKind::LT)) {
@@ -1546,6 +1545,9 @@ OwnedPtr<EnumDecl> ParserImpl::ParseEnumDecl(
     ParseEnumBody(*ret);
     ret->end = lastToken.End();
     ret->bodyScope->end = ret->end;
+
+    CheckCJMappingAttr(*ret);
+
     return ret;
 }
 
@@ -1600,7 +1602,6 @@ OwnedPtr<StructDecl> ParserImpl::ParseStructDecl(
     for (auto& attr : attrs) {
         ret->EnableAttr(attr);
     }
-    CheckCJMappingAttr(*ret);
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->identifier = ExpectIdentifierWithPos(*ret);
     if (Skip(TokenKind::LT)) {
@@ -1620,6 +1621,9 @@ OwnedPtr<StructDecl> ParserImpl::ParseStructDecl(
     RevertPrimaryDecl();
     ret->end = lastToken.End();
     ret->annotations = std::move(annos);
+
+    CheckCJMappingAttr(*ret);
+
     return ret;
 }
 
