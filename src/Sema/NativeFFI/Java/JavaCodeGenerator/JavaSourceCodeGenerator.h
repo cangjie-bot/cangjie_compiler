@@ -55,6 +55,7 @@ private:
         const std::vector<OwnedPtr<FuncParamList>>& paramLists, bool isNativeMethod = false);
     void ConstructResult() override;
     void AddClassDeclaration();
+    void AddInterfaceDeclaration();
     void AddLoadLibrary();
     void AddSelfIdField();
     void AddProperties();
@@ -77,6 +78,7 @@ private:
     void AddStaticMethod(const FuncDecl& funcDecl);
     void AddMethods();
     void AddEndClassParenthesis();
+    void AddInterfaceMethods();
     void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params);
     void AddNativeDeleteCJObject();
     void AddFinalize();

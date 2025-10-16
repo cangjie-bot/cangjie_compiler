@@ -89,6 +89,15 @@ void JavaSourceCodeGenerator::ConstructResult()
         return;
     }
 
+    auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(decl);
+    if (interfaceDecl) {
+        AddInterfaceDeclaration();
+        AddInterfaceMethods();
+        AddEndClassParenthesis();
+        AddHeader();
+        return;
+    }
+
     AddClassDeclaration();
     AddLoadLibrary();
     AddSelfIdField();
@@ -168,7 +177,7 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
         case TypeKind::TYPE_CLASS:
             if (IsJArray(*declTy)) {
                 return MapCJTypeToJavaType(ty->typeArgs[0], javaImports, curPackageName) + "[]";
-            } else if (isNativeMethod && declTy && IsCJMapping(*declTy)) {
+            } else if (isNativeMethod && declTy && IsCJMapping(*declTy) && !IsCJMappingInterface(*ty)) {
                 return "long";
             }
             javaType = AddImport(ty, javaImports, curPackageName);
@@ -203,6 +212,16 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(const OwnedPtr<FuncPara
 {
     CJC_ASSERT(param && param->type && param->type->ty);
     return MapCJTypeToJavaType(param->type->ty, javaImports, curPackageName, isNativeMethod);
+}
+
+void JavaSourceCodeGenerator::AddInterfaceDeclaration()
+{
+    std::string modifier;
+    modifier += GetModifier(decl);
+    res += modifier;
+    res += "interface " + decl->identifier.Val();
+
+    res += " {\n";
 }
 
 void JavaSourceCodeGenerator::AddClassDeclaration()
@@ -327,7 +346,7 @@ std::string JavaSourceCodeGenerator::GenerateFuncParamLists(
         CJC_ASSERT(cur && cur->type && cur->type->ty);
         std::string res = MapCJTypeToJavaType(cur, imp, curPackage, isNativeMethod) + " " + cur->identifier.Val();
         if (auto ty = Ty::GetDeclOfTy(cur->type->ty)) {
-            bool castToId = isNativeMethod && IsCJMapping(*ty);
+            bool castToId = isNativeMethod && IsCJMapping(*ty) && !IsCJMappingInterface(*(cur->type->ty));
             res += castToId ? "Id" : "";
         }
         return res;
@@ -619,7 +638,8 @@ void JavaSourceCodeGenerator::AddInstanceMethod(const FuncDecl& funcDecl)
         CJC_ASSERT(p && p->type && p->type->ty);
         std::string res = p->identifier.Val();
         if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
-            res += IsCJMapping(*ty) ? ".self" : "";
+            bool castToId = IsCJMapping(*ty) && !IsCJMappingInterface(*(p->type->ty));
+            res += castToId ? ".self" : "";
         }
         return res;
     };
@@ -691,6 +711,29 @@ void JavaSourceCodeGenerator::AddMethods()
                 } else {
                     AddInstanceMethod(funcDecl);
                 }
+            }
+        }
+    }
+}
+
+void JavaSourceCodeGenerator::AddInterfaceMethods()
+{
+    for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
+        if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
+            continue;
+        }
+        if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
+            const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+            if (funcDecl.funcBody && funcDecl.funcBody->retType) {
+                auto funcIdentifier = GetJavaMemberName(funcDecl);
+                const std::string retType = 
+                    MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
+                std::string methodSignature = "public " + retType + " ";
+                methodSignature += funcIdentifier + "(";
+                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
+                methodSignature += argsWithTypes;
+                methodSignature += ");";
+                AddWithIndent(TAB, methodSignature);
             }
         }
     }
