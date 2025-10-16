@@ -32,11 +32,16 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateCJMappingNativeDeleteCjObjectFunc(Dec
     return GenerateNativeFuncDeclBylambda(decl, wrappedNodesLambda, paramLists, *jniEnvPtrParam, unitTy, funcName);
 }
 
-void JavaDesugarManager::GenerateForCJStructMapping(AST::StructDecl* structDecl)
+// Current support struct, class type.
+void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(AST::Decl* decl)
 {
-    CJC_ASSERT(structDecl && IsCJMapping(*structDecl));
+    CJC_ASSERT(decl && IsCJMapping(*decl));
+    auto classDecl = DynamicCast<AST::ClassDecl*>(decl);
+    auto structDecl = DynamicCast<AST::StructDecl*>(decl);
+    CJC_ASSERT((classDecl || structDecl) && "Not a support ref type.");
+
     std::vector<FuncDecl*> generatedCtors;
-    for (auto& member : structDecl->GetMemberDecls()) {
+    for (auto& member : decl->GetMemberDecls()) {
         if (member->TestAnyAttr(Attribute::IS_BROKEN, Attribute::PRIVATE, Attribute::PROTECTED, Attribute::INTERNAL)) {
             continue;
         }
@@ -44,7 +49,7 @@ void JavaDesugarManager::GenerateForCJStructMapping(AST::StructDecl* structDecl)
             if (fd->TestAttr(Attribute::CONSTRUCTOR)) {
                 generatedCtors.push_back(fd);
             } else {
-                auto nativeMethod = GenerateNativeMethod(*fd, *structDecl);
+                auto nativeMethod = GenerateNativeMethod(*fd, *decl);
                 if (nativeMethod != nullptr) {
                     generatedDecls.push_back(std::move(nativeMethod));
                 }
@@ -52,7 +57,7 @@ void JavaDesugarManager::GenerateForCJStructMapping(AST::StructDecl* structDecl)
         }
     }
     if (!generatedCtors.empty()) {
-        generatedDecls.push_back(GenerateCJMappingNativeDeleteCjObjectFunc(*structDecl));
+        generatedDecls.push_back(GenerateCJMappingNativeDeleteCjObjectFunc(*decl));
         for (auto generatedCtor : generatedCtors) {
             generatedDecls.push_back(GenerateNativeInitCjObjectFunc(*generatedCtor, false));
         }
@@ -139,11 +144,18 @@ void JavaDesugarManager::GenerateInCJMapping(File& file)
         }
         auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get());
         if (structDecl && IsCJMapping(*structDecl)) {
-            GenerateForCJStructMapping(structDecl);
+            GenerateForCJStructOrClassTypeMapping(structDecl);
+            continue;
         }
         auto enumDecl = As<ASTKind::ENUM_DECL>(decl.get());
         if (enumDecl && IsCJMapping(*enumDecl)) {
             GenerateForCJEnumMapping(*enumDecl);
+            continue;
+        }
+        auto classDecl = As<ASTKind::CLASS_DECL>(decl.get());
+        if (classDecl && IsCJMapping(*classDecl)) {
+            GenerateForCJStructOrClassTypeMapping(classDecl);
+            continue;
         }
     }
 }

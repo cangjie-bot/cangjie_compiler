@@ -797,6 +797,11 @@ bool IsCJMapping(const Decl& decl)
     return decl.TestAttr(Attribute::JAVA_CJ_MAPPING);
 }
 
+bool IsObject(const Decl& decl)
+{
+    return decl.ty->IsObject();
+}
+
 /**
  * public func $getJavaRef(): Java_CFFI_JavaEntity {
  *     return Java_CFFI_JavaEntity()
