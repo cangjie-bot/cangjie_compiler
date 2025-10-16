@@ -37,7 +37,7 @@ enum class DesugarJavaMirrorImplStage : uint8_t {
     END
 };
 
-enum class DesugarCJImplStage : uint8_t { BEGIN, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
+enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
 
 class JavaDesugarManager {
 public:
@@ -103,13 +103,18 @@ public:
     void ProcessCJImplStage(DesugarCJImplStage stage, File& file);
 
     /**
-     * Stage 1: generate constructors and native init/deinit/method call functions (callable from java) for CJMapping
+     * Stage 1: generate forward class for CJMapping data structure 
+     */
+    void GenerateFwdClassInCJMapping(File& file);
+
+    /**
+     * Stage 2: generate constructors and native init/deinit/method call functions (callable from java) for CJMapping
      * data structure
      */
     void GenerateInCJMapping(File& file);
 
     /**
-     * Stage 2: desugar in CJMapping data structure
+     * Stage 3: desugar in CJMapping data structure
      */
     void DesugarInCJMapping(File& file);
 
@@ -477,6 +482,9 @@ private:
     void GenerateInJavaImpl(AST::ClassDecl* classDecl);
     void GenerateForCJStructMapping(AST::StructDecl* structDecl);
     void GenerateForCJEnumMapping(AST::EnumDecl& enumDecl);
+    void GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl);
+    void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl);
+    OwnedPtr<FuncDecl> GenerateInterfaceFwdclassMethod(AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl);
     OwnedPtr<PrimitiveType> CreateUnitType();
 
     ImportManager& importManager;

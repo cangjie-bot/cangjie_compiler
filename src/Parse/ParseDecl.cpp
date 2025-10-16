@@ -823,8 +823,11 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
 {
     if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC)) {
-        // currently only support struct decl and enum decl.
+        // currently only support struct decl, enum decl, interface decl.
         if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
+            decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
+        }
+        if (decl.astKind == ASTKind::INTERFACE_DECL) {
             decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
         }
     }
@@ -1416,6 +1419,8 @@ OwnedPtr<InterfaceDecl> ParserImpl::ParseInterfaceDecl(
     if (Interop::Java::IsDeclAppropriateForSyntheticClassGeneration(*ret)) {
         Interop::Java::InsertSyntheticClassDecl(*ret, *currentFile);
     }
+
+    CheckCJMappingAttr(*ret);
 
     return ret;
 }
