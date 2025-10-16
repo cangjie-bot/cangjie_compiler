@@ -266,6 +266,9 @@ struct JavaInteropTypeChecker {
         for (auto& paramList : fdecl.funcBody->paramLists) {
             for (auto& param : paramList->params) {
                 bool isOptionArg = (*param->ty).IsCoreOptionType();
+                if ((*param->ty).IsInterface()) {
+                    continue;
+                }
                 if (isOptionArg || !IsJavaCompatible(*param->ty)) {
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmapping_method_arg_not_supported, *param);
                     fdecl.EnableAttr(Attribute::IS_BROKEN);
@@ -426,6 +429,7 @@ void JavaInteropManager::CheckCJMappingDeclSupportRange(Decl& decl)
     switch (decl.astKind) {
         case ASTKind::STRUCT_DECL:
         case ASTKind::ENUM_DECL:
+        case ASTKind::INTERFACE_DECL:
             break;
         default:
             diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmapping_decl_not_supported, MakeRange(decl.identifier),

@@ -602,6 +602,14 @@ enum class Attribute {
      */
     DESUGARED_MIRROR_FIELD,
 
+    /**
+     * Mark whether a class decl is a forward class for cangjie interface.
+     * A forward class is used to forward the method call to Java side.
+     * W: Sema.
+     * R: Sema.
+     */
+    CJ_MIRROR_JAVA_INTERFACE_FWD,
+
     AST_ATTR_END,
 };
 
