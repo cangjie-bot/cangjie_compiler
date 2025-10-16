@@ -148,5 +148,15 @@ inline const std::string GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME = "getTypeForType
 inline const std::string IS_SUBTYPE_TYPES_FUNC_NAME = "isSubtypeTypes";
  
 constexpr std::string_view ORG_NAME_SEPARATOR{"@"};
+#ifdef _WIN32
+const std::string LIB_SUFFIX = ".dll";
+#elif defined(__APPLE__)
+const std::string LIB_SUFFIX = ".dylib";
+#else
+const std::string LIB_SUFFIX = ".so";
+#endif
+
+// Meta transform
+constexpr std::string_view TRANSFORM_CHIR_PACKAGE_FUNC{"transformCHIRPackage"};
 } // namespace Cangjie
 #endif // CANGJIE_CONSTANTSUTILS_H

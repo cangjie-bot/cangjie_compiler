@@ -168,6 +168,9 @@ public:
 
     bool IsValid() const
     {
+        if (cj) {
+            return !pluginPath.empty() && handle;
+        }
         return !pluginPath.empty() && metaTransformPluginInfo.cjcVersion == CANGJIE_VERSION &&
             metaTransformPluginInfo.registerTo;
     }
@@ -177,19 +180,27 @@ public:
         return handle;
     }
 
+    bool IsCangjie() const { return cj; }
+
 private:
-    MetaTransformPlugin() = default;
+    MetaTransformPlugin(const std::string& pluginPath, HANDLE handle);
     MetaTransformPlugin(const std::string& pluginPath, const MetaTransformPluginInfo& info, HANDLE handle);
 
 private:
     std::string pluginPath;
     MetaTransformPluginInfo metaTransformPluginInfo;
     HANDLE handle;
+    bool cj;
 };
 
 MetaTransformPlugin::MetaTransformPlugin(
+    const std::string& pluginPath, HANDLE handle)
+    : pluginPath(pluginPath), metaTransformPluginInfo{nullptr, nullptr}, handle(handle), cj{true}
+{
+}
+MetaTransformPlugin::MetaTransformPlugin(
     const std::string& pluginPath, const MetaTransformPluginInfo& info, HANDLE handle)
-    : pluginPath(pluginPath), metaTransformPluginInfo(info), handle(handle)
+    : pluginPath(pluginPath), metaTransformPluginInfo(info), handle(handle), cj{false}
 {
 }
 
@@ -210,6 +221,9 @@ MetaTransformPlugin MetaTransformPlugin::Get(const std::string& path)
     }
     void* fPtr = InvokeRuntime::GetMethod(handle, "getMetaTransformPluginInfo");
     if (!fPtr) {
+        if (auto ptr = InvokeRuntime::GetMethod(handle, "transformCHIRPackage")) {
+            return MetaTransformPlugin(path, ptr);
+        }
 #ifndef CANGJIE_ENABLE_GCOV
         throw NullPointerException();
 #else
@@ -235,6 +249,10 @@ bool CompilerInstance::PerformPluginLoad()
                 diag.DiagnoseRefactor(DiagKindRefactor::not_a_valid_plugin, DEFAULT_POSITION, pluginPath);
             }
             AddPluginHandle(metaTransformPlugin.GetHandle());
+            if (metaTransformPlugin.IsCangjie()) {
+                cangjieCHIRPlugins.emplace_back(pluginPath, metaTransformPlugin.GetHandle());
+                continue;
+            }
             metaTransformPlugin.RegisterCallbackTo(metaTransformPluginBuilder); // register MetaTransform into builder
         } catch (...) {
             diag.DiagnoseRefactor(DiagKindRefactor::not_a_valid_plugin, DEFAULT_POSITION, pluginPath);
@@ -794,10 +812,11 @@ bool CompilerInstance::PerformCHIRCompilation()
             ret = ret && GenerateCHIRForPkg(**pkg);
             sourcePackagesCHIR.erase(pkg);
         }
-    };
+    }
     for (auto& remainingSourcePackage : sourcePackagesCHIR) {
         ret = ret && GenerateCHIRForPkg(*remainingSourcePackage);
     }
+    ret = ret && ExecuteCHIRPlugins();
     diag.EmitCategoryDiagnostics(DiagCategory::CHIR);
     return ret;
 }
@@ -1104,6 +1123,11 @@ CHIR::CHIRContext& CHIRData::GetCHIRContext()
 void CHIRData::AppendNewPackage(CHIR::Package* package)
 {
     chirPkgs.emplace_back(package);
+}
+
+void CHIRData::SetPackage(CHIR::Package& package)
+{
+    chirPkgs = {&package};
 }
 
 std::vector<CHIR::Package*> CHIRData::GetAllCHIRPackages() const

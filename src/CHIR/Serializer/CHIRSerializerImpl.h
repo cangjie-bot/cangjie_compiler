@@ -33,10 +33,12 @@ namespace Cangjie::CHIR {
 
 class CHIRSerializer::CHIRSerializerImpl {
 public:
-    explicit CHIRSerializerImpl(const Package& package) : package(package){};
+    explicit CHIRSerializerImpl(const Package& package) : package(package){}
 
     // Utility
     void Save(const std::string& filename, ToCHIR::Phase phase);
+    /// WARNING: The returned pointer need to be freed by caller.
+    std::pair<void*, size_t> SaveToMemory(ToCHIR::Phase phase);
     void Initialize();
     void Dispatch();
 

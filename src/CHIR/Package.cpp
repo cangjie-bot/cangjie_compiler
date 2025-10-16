@@ -219,7 +219,9 @@ std::string Package::ToString() const
     std::stringstream ss;
     ss << "package: " << name << "\n";
     ss << "packageAccessLevel: " << PackageAccessLevelToString(pkgAccessLevel) << "\n";
-    ss << "packageInitFunc: " << GetPackageInitFunc()->GetIdentifier() << "\n";
+    if (GetPackageInitFunc()) {
+        ss << "packageInitFunc: " << GetPackageInitFunc()->GetIdentifier() << "\n";
+    }
     ss << "\n==========================imports===============================\n";
     for (auto& it : importedVarAndFuncs) {
         ss << GetImportedValueStr(*it) << "\n";

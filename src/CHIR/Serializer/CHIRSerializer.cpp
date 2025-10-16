@@ -36,6 +36,13 @@ void CHIRSerializer::Serialize(const Package& package, const std::string filenam
     serializer.Save(filename, phase);
 }
 
+std::pair<void*, size_t> CHIRSerializer::Serialize(const Package& package, ToCHIR::Phase phase)
+{
+    CHIRSerializerImpl serializer(package);
+    serializer.Initialize();
+    serializer.Dispatch();
+    return serializer.SaveToMemory(phase);
+}
 // ========================== ID Fetchers ==============================
 
 template <typename T, typename E> std::vector<uint32_t> CHIRSerializer::CHIRSerializerImpl::GetId(std::vector<E*> vec)
@@ -1760,6 +1767,15 @@ void CHIRSerializer::CHIRSerializerImpl::Dispatch()
 
 void CHIRSerializer::CHIRSerializerImpl::Save(const std::string& filename, ToCHIR::Phase phase)
 {
+    auto [buf, size] = SaveToMemory(phase);
+    std::ofstream output(filename, std::ios::out | std::ofstream::binary);
+    CJC_ASSERT(output.is_open());
+    output.write(reinterpret_cast<const char*>(buf), static_cast<long>(size));
+    output.close();
+}
+
+std::pair<void*, size_t> CHIRSerializer::CHIRSerializerImpl::SaveToMemory(ToCHIR::Phase phase)
+{
     auto accesslevel = package.GetPackageAccessLevel();
     auto packageName = package.GetName();
     auto serializedPackage = PackageFormat::CreateCHIRPackageDirect(builder, packageName.c_str(), "",
@@ -1769,12 +1785,8 @@ void CHIRSerializer::CHIRSerializerImpl::Save(const std::string& filename, ToCHI
         maxImportedExtendId);
 
     builder.Finish(serializedPackage);
-    const uint8_t* buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-    std::ofstream output(filename, std::ios::out | std::ofstream::binary);
-    CJC_ASSERT(output.is_open());
-    output.write(reinterpret_cast<const char*>(buf), static_cast<long>(size));
-    output.close();
+    auto buf = builder.Release();
+    return { buf.data(), buf.size() };
 }
 
 void CHIRSerializer::CHIRSerializerImpl::Initialize()

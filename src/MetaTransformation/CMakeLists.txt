@@ -5,7 +5,7 @@
 # See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 if (CANGJIE_CODEGEN_CJNATIVE_BACKEND)
-    set(META_TRANSFORMATION_SRC MetaTransformPluginManager.cpp MetaTransformPluginBuilder.cpp)
+    set(META_TRANSFORMATION_SRC CangjieMetaTransform.cpp MetaTransformPluginManager.cpp MetaTransformPluginBuilder.cpp)
 
     add_library(CangjieMetaTransformation OBJECT ${META_TRANSFORMATION_SRC})
     target_compile_options(CangjieMetaTransformation PRIVATE ${CJC_EXTRA_WARNINGS})

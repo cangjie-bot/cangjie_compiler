@@ -157,7 +157,6 @@ if(CANGJIE_VISIBLE_OPTIONS_ONLY)
     # `cjc-release` supports visible options only. Visible options are features that are ready to be
     # released to users.
     add_executable(cjc-release main.cpp ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption>)
-    add_dependencies(cjc-release cjc)
     # Since `cjc` is almost identical to `cjc-release`, they always have the same link flags, link
     # options, link libraries, etc. We get the properties of `cjc` and apply them on `cjc-release` here.
     include(ApplyProperties)
