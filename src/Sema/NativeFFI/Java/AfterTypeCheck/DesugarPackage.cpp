@@ -44,6 +44,9 @@ void JavaDesugarManager::ProcessJavaMirrorImplStage(DesugarJavaMirrorImplStage s
 void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file)
 {
     switch (stage) {
+        case DesugarCJImplStage::FWD_GENERATE:
+            GenerateFwdClassInCJMapping(file);
+            break;
         case DesugarCJImplStage::IMPL_GENERATE:
             GenerateInCJMapping(file);
             break;
