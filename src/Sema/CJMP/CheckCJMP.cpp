@@ -752,6 +752,10 @@ void MPTypeCheckerImpl::CheckCommonExtensions(std::vector<Ptr<Decl>>& commonDecl
                 diag.DiagnoseRefactor(DiagKindRefactor::sema_common_direct_extension_has_duplicate_private_members,
                     *memberDecl, extendDecl->extendedType->ToString(), memberDecl->IsFunc() ? "function" : "property",
                     memberDecl->identifier.GetRawText());
+            } else if (memberDecl->TestAttr(Attribute::COMMON)) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_common_direct_extension_has_common_private_members,
+                    *memberDecl, memberDecl->IsFunc() ? "function" : "property",
+                    memberDecl->identifier.GetRawText());
             } else {
                 privateFunctions.emplace(memberDecl->rawMangleName);
             }
