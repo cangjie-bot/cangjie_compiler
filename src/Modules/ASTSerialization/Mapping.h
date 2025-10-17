@@ -3,6 +3,10 @@
 // with Runtime Library Exception.
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
+
+#ifndef CANGJIE_MAPPING_H
+#define CANGJIE_MAPPING_H
+
 #ifdef ACCESS_LEVEL
 ACCESS_LEVEL(PUBLIC, Public)
 ACCESS_LEVEL(PROTECTED, Protected)
@@ -148,3 +152,5 @@ FOR_IN_KIND(FORIN_RANGE, Range)
 FOR_IN_KIND(FORIN_STRING, String)
 FOR_IN_KIND(FORIN_ITER, Iterator)
 #endif
+
+#endif // CANGJIE_MAPPING_H
