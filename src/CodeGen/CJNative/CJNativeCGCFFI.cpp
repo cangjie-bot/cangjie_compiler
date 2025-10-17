@@ -1212,6 +1212,30 @@ llvm::FunctionType* LinuxOhosArm32CJNativeCGCFFI::GetCFuncType(const CHIR::FuncT
     return resTy;
 }
 
+void LinuxOhosArm32CJNativeCGCFFI::ProcessParam(
+    CHIR::Type& chirParamTy, LLVMFuncArgIt& arg, llvm::Value* place, IRBuilder2& builder)
+{
+    if (!chirParamTy.IsStruct()) {
+        return;
+    }
+    auto found = paramTypeMap.find(&chirParamTy);
+    if (found == paramTypeMap.end()) {
+        return;
+    }
+    auto& argInfo = found->second;
+    if (argInfo.IsDirect()) {
+        auto argType = arg->getType();
+        llvm::Value* argVal = arg;
+
+        auto alloca = builder.CreateEntryAlloca(argType);
+        builder.CreateStore(argVal, alloca);
+
+        size_t actualSize = GetTypeSize(cgMod, chirParamTy);
+        builder.CreateMemCpy(place, GetAlign(cgMod, chirParamTy), alloca, GetAlign(cgMod, *argType), actualSize);
+    }
+    CJC_ASSERT(!argInfo.IsExpand() && "ArgInfo in aarch64 cannot be Expand.");
+}
+
 void LinuxOhosArm32CJNativeCGCFFI::ProcessInvocationArg(
     CHIR::StructType& chirParamTy, ProcessKind kind, size_t& argIdx, std::vector<CGValue*>& args, IRBuilder2& builder)
 {
