@@ -650,7 +650,7 @@ public:
         return ltoMod != LTOMode::NO_LTO;
     }
 
-     bool IsCompileAsExeEnabled() const 
+    bool IsCompileAsExeEnabled() const 
     {
         return enableCompileAsExe;
     }
