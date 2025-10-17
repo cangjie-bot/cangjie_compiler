@@ -38,7 +38,7 @@ python3 build.py install;
 
 1. The `build.py clean` command clears temporary files in the workspace.
 2. The `build.py build` command initiates compilation:
-   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebinfo`.
    - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
 3. The `build.py install` command installs the build products to the `output` directory.
 
@@ -85,7 +85,7 @@ python3 build.py install;
 
 1. The `build.py clean` command clears temporary files in the workspace.
 2. The `build.py build` command initiates compilation:
-   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebinfo`.
    - The secondary option `--build-cjdb` enables cjdb (lldb) compilation. For more details about cjdb, refer to [`cjdb` Tool Introduction](https://gitcode.com/Cangjie/cangjie_docs/blob/main/docs/tools/source_en/cmd-tools/cjdb_manual.md).
 3. The `build.py install` command installs the build products to the `output` directory.
 
@@ -138,7 +138,7 @@ python3 build.py install --host windows-x86_64;
 1. The `CMAKE_PREFIX_PATH` environment variable specifies the folder where cmake generates products for the target platform.
 2. The `build.py clean` command clears temporary files in the workspace.
 3. The `build.py build` command initiates compilation:
-   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+   - The secondary option `-t` (i.e., `--build-type`) specifies the build product type, which can be `release`, `debug`, or `relwithdebinfo`.
    - The secondary option `--target` specifies the target platform description, which can be `native` (current compilation platform), `windows-x86_64`, `ohos-aarch64`, or `ohos-x86_64`.
    - The secondary option `--target-sysroot` passes the subsequent parameter to the C/C++ compiler as its `--sysroot` parameter.
    - The secondary option `--target-toolchain` specifies the path to the target platform toolchain, using the compiler in this path for cross-compilation.
@@ -168,7 +168,7 @@ The `clean` option clears the build/output folders.
 The `build` option builds the project files. It provides the following secondary options:
 
 - `-h, --help`: Displays help information for secondary options.
-- `-t, --build-type`: Specifies the build product type, which can be `release`, `debug`, or `relwithdebuginfo`.
+- `-t, --build-type`: Specifies the build product type, which can be `release`, `debug`, or `relwithdebinfo`.
 - `--print-cmd`: Displays the complete cmake command configured by the build script.
 - `-j, --jobs JOBS`: Specifies the number of concurrent build tasks.
 - `--link-jobs LINK_JOBS`: Specifies the number of concurrent linking tasks.

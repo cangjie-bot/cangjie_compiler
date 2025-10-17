@@ -4,8 +4,8 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
-#include "cangjie/Modules/ImportManager.h"
 #include "cangjie/Basic/SourceManager.h"
+#include "cangjie/Modules/ImportManager.h"
 
 #include "cangjie/Macro/TestEntryConstructor.h"
 
@@ -89,8 +89,7 @@ std::vector<Ptr<FuncDecl>> GetTestSuiteRegisterFunctions(Node& pkg)
             if (auto rt = DynamicCast<RefType*>(ed->extendedType.get()); rt && rt->ref.identifier == "TestPackage") {
                 for (const auto& member : ed->members) {
                     if (auto memberFunc = As<ASTKind::FUNC_DECL>(member);
-                        memberFunc && IsValidTestSuiteRegisterFunction(member.get())
-                    ) {
+                        memberFunc && IsValidTestSuiteRegisterFunction(member.get())) {
                         results.emplace_back(memberFunc);
                     }
                 }
@@ -212,7 +211,7 @@ bool IsRightClassConstructor(const ClassDecl& cd)
     bool hasConstructorWithoutInput = false;
     const std::string primaryConstructor = cd.identifier;
     std::function<VisitAction(Ptr<Node>)> preVisit = [&hasConstructorWithInput, &hasConstructorWithoutInput,
-                                                     &primaryConstructor](Ptr<Node> node) -> VisitAction {
+                                                         &primaryConstructor](Ptr<Node> node) -> VisitAction {
         if (node->TestAttr(Attribute::IS_BROKEN)) {
             return VisitAction::SKIP_CHILDREN;
         }
@@ -375,9 +374,9 @@ void TestEntryConstructor::ConstructTestEntry(AST::Package& pkg, TestModule& mod
     auto entryFunc = MakeOwnedNode<FuncDecl>();
     entryFunc->identifier = TEST_ENTRY_NAME;
 
-    auto packageName = ImportManager::IsTestPackage(pkg.fullPackageName) ?
-        ImportManager::GetMainPartPkgNameForTestPkg(pkg.fullPackageName) :
-        pkg.fullPackageName;
+    auto packageName = ImportManager::IsTestPackage(pkg.fullPackageName)
+        ? ImportManager::GetMainPartPkgNameForTestPkg(pkg.fullPackageName)
+        : pkg.fullPackageName;
 
     entryFunc->fullPackageName = packageName;
     entryFunc->EnableAttr(Attribute::GLOBAL);
@@ -407,10 +406,6 @@ void TestEntryConstructor::ConstructTestEntry(AST::Package& pkg, TestModule& mod
     fa->expr = CreateRefExpr("testPkg");
     std::vector<OwnedPtr<FuncArg>> args;
     args.emplace_back(std::move(fa));
-    // If a test case fails, a non-zero value is returned. To avoid conflict with other return codes, 1 is returned.
-    // if(entryMain(cases) > 0){
-    //    return 1
-    // }
     auto entryMainCall = CreateCallExpr(CreateRefExpr("entryMain"), std::move(args));
     auto litExprZero = MakeOwnedNode<LitConstExpr>();
     litExprZero->kind = LitConstKind::INTEGER;
@@ -439,14 +434,13 @@ void TestEntryConstructor::ConstructTestEntry(AST::Package& pkg, TestModule& mod
     pkg.files[0]->decls.emplace_back(std::move(entryFunc));
 }
 
-void TestEntryConstructor::ConstructTestSuite(const std::string& moduleName,
-    std::vector<OwnedPtr<Package>>& srcPkgs, const std::vector<Ptr<PackageDecl>> importedPkgs,
-    bool compileTestsOnly)
+void TestEntryConstructor::ConstructTestSuite(const std::string& moduleName, std::vector<OwnedPtr<Package>>& srcPkgs,
+    const std::vector<Ptr<PackageDecl>> importedPkgs, bool compileTestsOnly)
 {
     auto currentPkg = srcPkgs.back().get();
-    auto importedMainPartPkgForTestPkg =
-        compileTestsOnly && ImportManager::IsTestPackage(currentPkg->fullPackageName) ?
-        FindMainPartPkgForTestPkg(currentPkg, importedPkgs) : nullptr;
+    auto importedMainPartPkgForTestPkg = compileTestsOnly && ImportManager::IsTestPackage(currentPkg->fullPackageName)
+        ? FindMainPartPkgForTestPkg(currentPkg, importedPkgs)
+        : nullptr;
     auto testMod = TestModule(moduleName);
     for (auto& pkg : srcPkgs) {
         auto testPkg = MakeOwned<TestPackage>(pkg->fullPackageName);

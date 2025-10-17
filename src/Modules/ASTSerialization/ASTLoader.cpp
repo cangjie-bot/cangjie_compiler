@@ -26,62 +26,62 @@ using namespace AST;
 namespace Cangjie {
 const std::unordered_map<PackageFormat::AccessLevel, AST::AccessLevel> ACCESS_LEVEL_RMAP = {
 #define ACCESS_LEVEL(AST_KIND, FBS_KIND) {PackageFormat::AccessLevel_##FBS_KIND, AST::AccessLevel::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef ACCESS_LEVEL
 };
 
 const std::unordered_map<PackageFormat::AccessModifier, std::pair<TokenKind, AST::Attribute>> ACCESS_MODIFIER_RMAP = {
 #define ACCESS_MODIFIER(AST_KIND, FBS_KIND)                                                                            \
     {PackageFormat::AccessModifier_##FBS_KIND, {TokenKind::AST_KIND, AST::Attribute::AST_KIND}},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef ACCESS_MODIFIER
 };
 
 const std::unordered_map<PackageFormat::BuiltInType, AST::BuiltInType> BUILTIN_TYPE_RMAP = {
 #define BUILTIN_TYPE(AST_KIND, FBS_KIND) {PackageFormat::BuiltInType_##FBS_KIND, AST::BuiltInType::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef BUILTIN_TYPE
 };
 
 const std::unordered_map<PackageFormat::OverflowPolicy, OverflowStrategy> STRATEGY_RMAP = {
 #define OVERFLOW_STRATEGY(AST_KIND, FBS_KIND) {PackageFormat::OverflowPolicy_##FBS_KIND, OverflowStrategy::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef OVERFLOW_STRATEGY
 };
 
 const std::unordered_map<PackageFormat::TypeKind, AST::TypeKind> TYPE_KIND_RMAP = {
 #define TYPE_KIND(AST_KIND, FBS_KIND) {PackageFormat::TypeKind_##FBS_KIND, AST::TypeKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef TYPE_KIND
 };
 
 const std::unordered_map<PackageFormat::OperatorKind, TokenKind> OP_KIND_RMAP = {
 #define OPERATOR_KIND(AST_KIND, FBS_KIND) {PackageFormat::OperatorKind_##FBS_KIND, TokenKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef OPERATOR_KIND
 };
 
 const std::unordered_map<PackageFormat::CallKind, AST::CallKind> CALL_KIND_RMAP = {
 #define CALL_KIND(AST_KIND, FBS_KIND) {PackageFormat::CallKind_##FBS_KIND, AST::CallKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef CALL_KIND
 };
 
 const std::unordered_map<PackageFormat::LitConstKind, AST::LitConstKind> LIT_CONST_KIND_RMAP = {
 #define LIT_CONST_KIND(AST_KIND, FBS_KIND) {PackageFormat::LitConstKind_##FBS_KIND, AST::LitConstKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef LIT_CONST_KIND
 };
 
 const std::unordered_map<PackageFormat::StringKind, AST::StringKind> STRING_KIND_RMAP = {
 #define STRING_KIND(AST_KIND, FBS_KIND) {PackageFormat::StringKind_##FBS_KIND, AST::StringKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef STRING_KIND
 };
 
 const std::unordered_map<PackageFormat::ForInKind, AST::ForInKind> FOR_IN_KIND_RMAP = {
 #define FOR_IN_KIND(AST_KIND, FBS_KIND) {PackageFormat::ForInKind_##FBS_KIND, AST::ForInKind::AST_KIND},
-#include "Mapping.h"
+#include "Mapping.inc"
 #undef FOR_IN_KIND
 };
 } // namespace Cangjie
