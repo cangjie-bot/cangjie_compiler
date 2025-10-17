@@ -283,6 +283,7 @@ WARNING(sema_deprecation_redef_warning, DEPRECATED, "redefined %s '%s' should be
 ERROR(sema_common_open_class_no_init, "please implement the constructor explicitly for common open class '%s'")
 ERROR(sema_multiple_common_implementations, "'common' %s has several platform implementations")
 ERROR(sema_common_direct_extension_has_duplicate_private_members, "declaration 'common' extend '%s' has a conflicting private %s '%s'")
+ERROR(sema_common_direct_extension_has_common_private_members, "'common' and 'private' modifier conflict on %s '%s' declaration")
 ERROR(sema_not_matched, "'%s' %s can not find '%s' match")
 ERROR(sema_platform_var_not_match_let, "'platform' '%s' can not match 'common' '%s'")
 ERROR(sema_platform_init_common_primary_constructor, "'platform' init can not be used to implement primary 'common' constructor")
