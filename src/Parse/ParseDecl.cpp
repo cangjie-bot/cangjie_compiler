@@ -1361,7 +1361,8 @@ std::vector<OwnedPtr<GenericConstraint>> ParserImpl::ParseGenericConstraints()
         SpreadAttrAndConsume(genericConstraint->type.get(), genericConstraint.get(), {TokenKind::UPPERBOUND});
         auto illegalConstraint = ParseGenericUpperBound(genericConstraint);
         if (!illegalConstraint) {
-            genericConstraint->begin = genericConstraint->type->begin;
+            genericConstraint->begin =
+                genericConstraint->wherePos.IsZero() ? genericConstraint->type->begin : genericConstraint->wherePos;
             genericConstraint->end = lastToken.End();
             ret.push_back(std::move(genericConstraint));
         }
