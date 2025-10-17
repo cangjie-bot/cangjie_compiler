@@ -16,6 +16,7 @@
 
 #include "Base/CGTypes/CGEnumType.h"
 #include "CGModule.h"
+#include "IRBuilder.h"
 #include "Utils/CGCommonDef.h"
 #include "cangjie/Basic/Linkage.h"
 #include "cangjie/Basic/StringConvertor.h"
@@ -99,7 +100,8 @@ std::vector<llvm::Metadata*> UnwindGenericRelateType(llvm::LLVMContext& llvmCtx,
     }
     return tyArgMeta;
 }
-int64_t GetIntMaxOrMin(const CGModule& cgMod, const CHIR::IntType& ty, bool isMax)
+
+int64_t GetIntMaxOrMin(IRBuilder2& irBuilder, const CHIR::IntType& ty, bool isMax)
 {
     auto tyKind = irBuilder.GetTypeKindFromType(ty);
     auto minMax = G_SIGNED_INT_MAP.at(tyKind);
