@@ -15,9 +15,10 @@
 
 #include <fstream>
 #include <string_view>
+#include "NativeFFI/ObjC/AfterTypeCheck/Interop/Context.h"
+#include "NativeFFI/ObjC/Utils/Handler.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Types.h"
-#include "NativeFFI/ObjC/AfterTypeCheck/Interop/Context.h"
 
 namespace Cangjie::Interop::ObjC {
 using namespace AST;
@@ -30,8 +31,8 @@ using ArgsList = std::vector<std::pair<std::string, std::string>>;
 
 class ObjCGenerator {
 public:
-    ObjCGenerator(InteropContext& ctx, Ptr<ClassDecl> decl, const std::string& outputFilePath,
-        const std::string& cjLibOutputPath);
+    ObjCGenerator(InteropContext& ctx, Ptr<Decl> declArg, const std::string& outputFilePath,
+        const std::string& cjLibOutputPath, InteropType interopType);
     void Generate();
 
 private:
@@ -40,8 +41,9 @@ private:
     const std::string& outputFilePath;
     const std::string& cjLibOutputPath;
     size_t currentBlockIndent = 0;
-    Ptr<AST::ClassDecl> classDecl;
+    Ptr<AST::Decl> decl;
     InteropContext& ctx;
+    InteropType interopType
 
     void OpenBlock();
     void CloseBlock(bool newLineBefore, bool newLineAfter);
@@ -76,6 +78,8 @@ private:
     std::vector<std::string> ConvertParamsListToCallableParamsString(
         std::vector<OwnedPtr<FuncParamList>>& paramLists, bool withSelf) const;
     std::string GenerateSetterParamLists(const std::string& type) const;
+    std::string WrapperCallByInitForCJMappingReturn(const Ty& retTy, const std::string& nativeCall) const;
+    bool SkipSetterForValueTypeDecl(Decl& declArg) const;
 
     void GenerateStaticFunctionsReferences();
     void GenerateFunctionSymbolsInitialization();

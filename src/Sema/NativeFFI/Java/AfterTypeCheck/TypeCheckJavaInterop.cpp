@@ -75,7 +75,7 @@ struct JavaInteropTypeChecker {
     auto GetJavaClassKind() const
     {
         if (isCJMappingTypeCheck) {
-            return "CJMapping";
+            return "cangjie mirror decl";
         }
         if (isImpl) {
             return "@JavaImpl";

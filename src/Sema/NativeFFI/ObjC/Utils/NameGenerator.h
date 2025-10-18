@@ -21,7 +21,7 @@ class NameGenerator {
 public:
     explicit NameGenerator(const BaseMangler& mangler);
     std::string GenerateInitCjObjectName(const AST::FuncDecl& target);
-    std::string GenerateDeleteCjObjectName(const AST::ClassDecl& target);
+    std::string GenerateDeleteCjObjectName(const AST::Decl& target);
     std::string GenerateMethodWrapperName(const AST::FuncDecl& target);
     std::string GeneratePropGetterWrapperName(const AST::PropDecl& target);
     std::string GetPropSetterWrapperName(const AST::PropDecl& target);

@@ -63,7 +63,7 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
 
 void JavaInteropManager::DesugarPackage(Package& pkg)
 {
-    if (!(hasMirrorOrImpl || enableInteropCJMapping)) {
+    if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
     JavaDesugarManager desugarer{importManager, typeManager, diag, mangler, javagenOutputPath, outputPath};
@@ -83,7 +83,7 @@ void JavaInteropManager::DesugarPackage(Package& pkg)
     }
 
     // Currently CJMapping is enable by compile config --enable-interop-cjmapping
-    if (enableInteropCJMapping) {
+    if (targetInteropLanguage == GlobalOptions::InteropLanguage::Java) {
         auto nbegin = static_cast<uint8_t>(DesugarCJImplStage::BEGIN);
         auto nend = static_cast<uint8_t>(DesugarCJImplStage::END);
         for (uint8_t nstage = nbegin; nstage != nend; nstage++) {
