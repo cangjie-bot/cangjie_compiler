@@ -40,6 +40,7 @@ struct InteropContext {
     AST::Package& pkg;
     std::vector<Ptr<AST::ClassLikeDecl>> mirrors;
     std::vector<Ptr<AST::ClassDecl>> impls;
+    std::vector<Ptr<AST::Decl>> cjMappings;
     std::vector<OwnedPtr<AST::Decl>> genDecls;
 
     DiagnosticEngine& diag;
