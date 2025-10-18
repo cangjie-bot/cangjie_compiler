@@ -68,8 +68,9 @@ public:
 
     OwnedPtr<AST::VarDecl> CreateNativeHandleField(AST::ClassDecl& target);
     OwnedPtr<AST::Expr> CreateNativeHandleInit(AST::FuncDecl& ctor);
-    OwnedPtr<AST::FuncDecl> CreateInitCjObject(const AST::ClassDecl& target, AST::FuncDecl& ctor);
-    OwnedPtr<AST::FuncDecl> CreateDeleteCjObject(AST::ClassDecl& target);
+    OwnedPtr<AST::FuncDecl> CreateInitCjObject(
+        const AST::Decl& target, AST::FuncDecl& ctor, bool generateForOneWayMapping = false);
+    OwnedPtr<AST::FuncDecl> CreateDeleteCjObject(AST::Decl& target, bool generateForOneWayMapping = false);
     /**
      * Returns generated top-level @C function (callable from obj-c) that calls @ObjCImpl `originMethod`.
      */
@@ -86,7 +87,7 @@ public:
     bool IsGeneratedNativeHandleField(const AST::Decl& decl);
     bool IsGeneratedCtor(const AST::Decl& decl);
     Ptr<AST::FuncDecl> GetGeneratedMirrorCtor(AST::Decl& decl);
-    Ptr<AST::FuncDecl> GetGeneratedImplCtor(const AST::ClassDecl& impl, const AST::FuncDecl& origin);
+    Ptr<AST::FuncDecl> GetGeneratedImplCtor(const AST::Decl& declArg, const AST::FuncDecl& origin);
     OwnedPtr<AST::CallExpr> CreateObjCRuntimeMsgSendCall(
         OwnedPtr<AST::Expr> nativeHandle,
         const std::string& selector,
@@ -118,7 +119,7 @@ public:
     /**
      * ObjCRuntime.alloc(decl)
      */
-    OwnedPtr<AST::CallExpr> CreateAllocCall(AST::ClassDecl& decl, Ptr<AST::File> curFile);
+    OwnedPtr<AST::CallExpr> CreateAllocCall(AST::Decl& decl, Ptr<AST::File> curFile);
 
     OwnedPtr<AST::Expr> CreateMethodCallViaMsgSend(
         AST::FuncDecl& fd,
