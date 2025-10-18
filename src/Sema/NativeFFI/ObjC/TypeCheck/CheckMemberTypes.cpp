@@ -47,7 +47,8 @@ void CheckMemberTypes::CheckPropTypes(PropDecl& pd, TypeCheckContext& ctx)
         return;
     }
 
-    ctx.diag.DiagnoseRefactor(DiagKindRefactor::sema_objc_mirror_prop_must_be_objc_compatible, *pd.type);
+    ctx.diag.DiagnoseRefactor(
+        DiagKindRefactor::sema_objc_interop_prop_must_be_objc_compatible, *pd.type, GetDeclInteropName());
     pd.EnableAttr(Attribute::IS_BROKEN);
 }
 
@@ -57,7 +58,8 @@ void CheckMemberTypes::CheckVarTypes(VarDecl& vd, TypeCheckContext& ctx)
         return;
     }
 
-    ctx.diag.DiagnoseRefactor(DiagKindRefactor::sema_objc_mirror_field_must_be_objc_compatible, *vd.type);
+    ctx.diag.DiagnoseRefactor(
+        DiagKindRefactor::sema_objc_interop_field_must_be_objc_compatible, *vd.type, GetDeclInteropName());
     vd.EnableAttr(Attribute::IS_BROKEN);
 }
 
@@ -77,8 +79,8 @@ void CheckMemberTypes::CheckFuncTypes(FuncDecl& fd, TypeCheckContext& ctx)
 void CheckMemberTypes::CheckFuncRetType(FuncDecl& fd, TypeCheckContext& ctx)
 {
     if (fd.funcBody->retType && !ctx.typeMapper.IsObjCCompatible(*fd.funcBody->retType->ty)) {
-        ctx.diag.DiagnoseRefactor(
-            DiagKindRefactor::sema_objc_mirror_method_ret_must_be_objc_compatible, *fd.funcBody->retType);
+        ctx.diag.DiagnoseRefactor(DiagKindRefactor::sema_objc_interop_method_ret_must_be_objc_compatible,
+                                  *fd.funcBody->retType, GetDeclInteropName());
 
         fd.EnableAttr(Attribute::IS_BROKEN);
     }
@@ -87,8 +89,8 @@ void CheckMemberTypes::CheckFuncRetType(FuncDecl& fd, TypeCheckContext& ctx)
 void CheckMemberTypes::CheckFuncParamTypes(FuncDecl& fd, TypeCheckContext& ctx)
 {
     auto errKind = fd.TestAttr(Attribute::CONSTRUCTOR)
-        ? DiagKindRefactor::sema_objc_mirror_ctor_param_must_be_objc_compatible
-        : DiagKindRefactor::sema_objc_mirror_method_param_must_be_objc_compatible;
+        ? DiagKindRefactor::sema_objc_interop_ctor_param_must_be_objc_compatible
+        : DiagKindRefactor::sema_objc_interop_method_param_must_be_objc_compatible;
 
     for (auto& paramList : fd.funcBody->paramLists) {
         for (auto& param : paramList->params) {
@@ -99,7 +101,19 @@ void CheckMemberTypes::CheckFuncParamTypes(FuncDecl& fd, TypeCheckContext& ctx)
             fd.EnableAttr(Attribute::IS_BROKEN);
             fd.outerDecl->EnableAttr(Attribute::HAS_BROKEN, Attribute::IS_BROKEN);
 
-            ctx.diag.DiagnoseRefactor(errKind, *param);
+            ctx.diag.DiagnoseRefactor(errKind, *param, GetDeclInteropName());
         }
+    }
+}
+
+std::string CheckMemberTypes::GetDeclInteropName()
+{
+    if (interopType == InteropType::ObjC_Mirror) {
+        return "Objective-C mirror";
+    } else if (interopType == InteropType::CJ_Mapping) {
+        return "cangjie mirror decl";
+    } else {
+        CJC_ABORT();
+        return "";
     }
 }
