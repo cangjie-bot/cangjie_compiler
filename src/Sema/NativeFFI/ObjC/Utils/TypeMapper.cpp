@@ -49,6 +49,9 @@ Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
         CJC_ASSERT(cjty->typeArgs.size() == 1);
         return typeManager.GetPointerTy(Cj2CType(cjty->typeArgs[0]));
     }
+    if (IsObjCCJMapping(*cjty)) {
+        return bridge.GetRegistryIdTy();
+    }
     CJC_ASSERT(cjty->IsBuiltin());
     return cjty;
 }
@@ -93,7 +96,7 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
             /* continue to next case */
         case TypeKind::TYPE_CLASS:
         case TypeKind::TYPE_INTERFACE:
-            if (IsValidObjCMirror(from) || IsObjCImpl(from)) {
+            if (IsValidObjCMirror(from) || IsObjCImpl(from) || IsObjCCJMapping(from)) {
                 return from.name + "*";
             }
             return UNSUPPORTED_TYPE;
@@ -107,6 +110,9 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
 
 bool TypeMapper::IsObjCCompatible(const Ty& ty)
 {
+    if (IsObjCCJMapping(ty)) {
+        return true;
+    }
     switch (ty.kind) {
         case TypeKind::TYPE_UNIT:
         case TypeKind::TYPE_INT8:
@@ -259,4 +265,15 @@ bool TypeMapper::IsObjCPointer(const Ty& ty)
         return IsObjCPointerImpl(*structTy->decl);
     }
     return false;
+}
+
+bool TypeMapper::IsObjCCJMapping(const Decl& decl)
+{
+    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING);
+}
+
+bool TypeMapper::IsObjCCJMapping(const Ty& ty)
+{
+    auto structTy = DynamicCast<StructTy*>(&ty);
+    return structTy && structTy->decl && IsObjCCJMapping(*structTy->decl);
 }

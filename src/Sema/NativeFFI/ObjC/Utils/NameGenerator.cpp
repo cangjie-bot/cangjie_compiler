@@ -41,7 +41,7 @@ std::string NameGenerator::GenerateInitCjObjectName(const FuncDecl& target)
     return WRAPPER_PREFIX + name;
 }
 
-std::string NameGenerator::GenerateDeleteCjObjectName(const ClassDecl& target)
+std::string NameGenerator::GenerateDeleteCjObjectName(const Decl& target)
 {
     auto name = GetObjCFullDeclName(target);
     std::replace(name.begin(), name.end(), '.', '_');
