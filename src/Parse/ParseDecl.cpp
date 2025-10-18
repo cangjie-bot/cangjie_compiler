@@ -825,7 +825,9 @@ void ParserImpl::CheckCJMappingAttr(Decl& decl) const
     if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC)) {
         // currently only support struct decl and enum decl.
         if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
-            decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
+            decl.EnableAttr(targetInteropLanguage == GlobalOptions::InteropLanguage::Java
+                            ? Attribute::JAVA_CJ_MAPPING
+                            : Attribute::OBJ_C_CJ_MAPPING);
         }
     }
 }
