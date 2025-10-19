@@ -1153,6 +1153,7 @@ std::string GlobalOptions::GetCangjieLibTargetPathName() const
     }
     name += "_" + target.ArchToString() + "_" + BackendToString(backend);
     return name;
+    
 }
 
 void GlobalOptions::SetCompilationCachedPath()
