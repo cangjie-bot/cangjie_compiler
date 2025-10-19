@@ -7,6 +7,7 @@
 #include "TypeMapper.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/ASTCasting.h"
+#include "cangjie/AST/Node.h"
 
 using namespace Cangjie;
 using namespace Cangjie::AST;
@@ -29,6 +30,7 @@ static constexpr auto NATIVE_UINT_TYPE = "size_t";
 static constexpr auto FLOAT_TYPE = "float";
 static constexpr auto DOUBLE_TYPE = "double";
 static constexpr auto BOOL_TYPE = "BOOL";
+static constexpr auto STRUCT_TYPE_PREFIX = "struct ";
 
 static constexpr auto OBJC_LANG_PACKAGE = "objc.lang";
 static constexpr auto OBJC_POINTER_TYPE = "ObjCPointer";
@@ -39,17 +41,24 @@ Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
     CJC_NULLPTR_CHECK(cjty);
 
     if (cjty->IsCoreOptionType()) {
-        CJC_ABORT();
-        return nullptr;
+        auto innerTy = cjty->typeArgs[0];
+        CJC_ASSERT(innerTy);
+        if (IsValidObjCMirror(*innerTy) || IsObjCImpl(*innerTy)) {
+            return bridge.GetNativeObjCIdTy();
+        }
     }
     if (IsValidObjCMirror(*cjty) || IsObjCImpl(*cjty)) {
         return bridge.GetNativeObjCIdTy();
     }
+
     if (IsObjCPointer(*cjty)) {
         CJC_ASSERT(cjty->typeArgs.size() == 1);
         return typeManager.GetPointerTy(Cj2CType(cjty->typeArgs[0]));
     }
-    CJC_ASSERT(cjty->IsBuiltin());
+    if (IsObjCCJMapping(*cjty)) {
+        return bridge.GetRegistryIdTy();
+    }
+    CJC_ASSERT(cjty->IsBuiltin() || Ty::IsCStructType(*cjty));
     return cjty;
 }
 
@@ -89,16 +98,27 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
         case TypeKind::TYPE_STRUCT:
             if (IsObjCPointer(from)) {
                 return Cj2ObjCForObjC(*from.typeArgs[0]) + "*";
+            } else if (Ty::IsCStructType(from)) {
+                return STRUCT_TYPE_PREFIX + from.name;
             }
-            /* continue to next case */
+            CJC_ABORT();
+            return UNSUPPORTED_TYPE;
         case TypeKind::TYPE_CLASS:
         case TypeKind::TYPE_INTERFACE:
-            if (IsValidObjCMirror(from) || IsObjCImpl(from)) {
+            if (IsValidObjCMirror(from) || IsObjCImpl(from) || IsObjCCJMapping(from)) {
                 return from.name + "*";
             }
             return UNSUPPORTED_TYPE;
         case TypeKind::TYPE_POINTER:
             return Cj2ObjCForObjC(*from.typeArgs[0]) + "*";
+        case TypeKind::TYPE_ENUM:
+            if (!from.IsCoreOptionType()) {
+                CJC_ABORT();
+                return UNSUPPORTED_TYPE;
+            };
+            if (IsValidObjCMirror(*from.typeArgs[0]) || IsObjCImpl(*from.typeArgs[0])) {
+                return Cj2ObjCForObjC(*from.typeArgs[0]);
+            }
         default:
             CJC_ABORT();
             return UNSUPPORTED_TYPE;
@@ -107,6 +127,9 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
 
 bool TypeMapper::IsObjCCompatible(const Ty& ty)
 {
+    if (IsObjCCJMapping(ty)) {
+        return true;
+    }
     switch (ty.kind) {
         case TypeKind::TYPE_UNIT:
         case TypeKind::TYPE_INT8:
@@ -129,11 +152,24 @@ bool TypeMapper::IsObjCCompatible(const Ty& ty)
             if (IsObjCPointer(ty)) {
                 CJC_ASSERT(ty.typeArgs.size() == 1);
                 return IsObjCCompatible(*ty.typeArgs[0]);
+            } else if (Ty::IsCStructType(ty)) {
+                return true;
             }
-            /* fall through to next case */
+            return false;
         case TypeKind::TYPE_CLASS:
         case TypeKind::TYPE_INTERFACE:
             if (IsValidObjCMirror(ty) || IsObjCImpl(ty)) {
+                return true;
+            }
+        case TypeKind::TYPE_ENUM:
+            if (!ty.IsCoreOptionType()) {
+                return false;
+            };
+            CJC_ASSERT(ty.typeArgs[0]);
+            if (ty.typeArgs[0]->IsCoreOptionType()) { // no nested options
+                return false;
+            }
+            if (IsValidObjCMirror(*ty.typeArgs[0]) || IsObjCImpl(*ty.typeArgs[0])) {
                 return true;
             }
         default:
@@ -259,4 +295,15 @@ bool TypeMapper::IsObjCPointer(const Ty& ty)
         return IsObjCPointerImpl(*structTy->decl);
     }
     return false;
+}
+
+bool TypeMapper::IsObjCCJMapping(const Decl& decl)
+{
+    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING);
+}
+
+bool TypeMapper::IsObjCCJMapping(const Ty& ty)
+{
+    auto structTy = DynamicCast<StructTy*>(&ty);
+    return structTy && structTy->decl && IsObjCCJMapping(*structTy->decl);
 }

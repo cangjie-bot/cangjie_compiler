@@ -258,6 +258,8 @@ bool IsJObject(const Decl& decl);
 bool IsJObject(const Decl& decl, const std::string& packageName);
 bool IsMirror(const Decl& decl);
 bool IsCJMapping(const Decl& decl);
+bool IsObject(const Decl& decl);
+bool IsFwdClass(const Decl& decl);
 
 /**
  * public func $getJavaRef(): Java_CFFI_JavaEntity {

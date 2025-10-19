@@ -290,8 +290,9 @@ void TypeChecker::TypeCheckerImpl::CheckIllegalMemberWalker(
                     refExpr->ref.identifier.Val(), errorStr);
                 return VisitAction::SKIP_CHILDREN;
             }
+            // 'this.x' might from the super type.
             if (refExpr && (refExpr->isThis || refExpr->isSuper)) {
-                CheckIllegalMemberHelper(ctx, reportThis, errorStr, *refExpr);
+                CheckIllegalMemberHelper(ctx, reportThis, errorStr, *ma);
             }
             return VisitAction::SKIP_CHILDREN;
         } else {
@@ -320,8 +321,7 @@ void TypeChecker::TypeCheckerImpl::CheckIllegalMemberHelper(
         bool inSameDecl = symOfExprStruct == symOfDeclStruct;
         std::string identifier = nre.astKind == ASTKind::REF_EXPR ? StaticCast<RefExpr>(&nre)->ref.identifier.Val()
                                                                   : StaticCast<MemberAccess>(&nre)->field.Val();
-        Position pos =
-            nre.astKind == ASTKind::REF_EXPR ? nre.GetBegin() : StaticCast<MemberAccess>(&nre)->field.Begin();
+        Position pos = nre.astKind == ASTKind::REF_EXPR ? nre.begin : StaticCast<MemberAccess>(&nre)->field.Begin();
         if (inSameDecl && reportThis) {
             // Report error when this reference and declaration are in same decl.
             diag.Diagnose(

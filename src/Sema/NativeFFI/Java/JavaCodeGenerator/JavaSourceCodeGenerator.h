@@ -25,9 +25,10 @@ using namespace AST;
 class JavaSourceCodeGenerator : public AbstractSourceCodeGenerator {
 public:
     JavaSourceCodeGenerator(
-        Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName);
+        Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName,
+	bool isInteropCJPackageConfig = false);
     JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
-        const std::string& outputFileName, std::string cjLibName);
+        const std::string& outputFileName, std::string cjLibName, bool isInteropCJPackageConfig = false);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -49,12 +50,14 @@ private:
     std::set<std::string> imports;
     const std::string cjLibName;
     const BaseMangler& mangler;
+    bool isInteropCJPackageConfig{false};
 
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
     std::string GenerateFuncParamLists(
         const std::vector<OwnedPtr<FuncParamList>>& paramLists, bool isNativeMethod = false);
     void ConstructResult() override;
     void AddClassDeclaration();
+    void AddInterfaceDeclaration();
     void AddLoadLibrary();
     void AddSelfIdField();
     void AddProperties();
@@ -76,6 +79,7 @@ private:
     void AddInstanceMethod(const FuncDecl& funcDecl);
     void AddStaticMethod(const FuncDecl& funcDecl);
     void AddMethods();
+    void AddInterfaceMethods();
     void AddEndClassParenthesis();
     void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params);
     void AddNativeDeleteCJObject();
@@ -83,6 +87,7 @@ private:
     void AddHeader();
     void AddPrivateCtorForCJMappring();
     void AddPrivateCtorForCJMappringEnum();
+    void AddEqualOrIdentityMethod(bool hasHascodeMethod, bool hasEqualsMethod, bool hasToStringMethod);
 };
 } // namespace Cangjie::Interop::Java
 

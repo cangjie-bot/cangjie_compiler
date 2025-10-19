@@ -21,11 +21,19 @@ void CheckMirrorTypes::HandleImpl(InteropContext& ctx)
     auto checker = HandlerFactory<TypeCheckContext>::Start<CheckInterface>()
                        .Use<CheckAbstractClass>()
                        .Use<CheckMirrorInheritMirror>()
-                       .Use<CheckMemberTypes>();
+                       .Use<CheckMemberTypes>(InteropType::ObjC_Mirror);
 
     for (auto& mirror : ctx.mirrors) {
         auto typeCheckCtx = TypeCheckContext(*mirror, ctx.diag, ctx.typeMapper);
 
         checker.Handle(typeCheckCtx);
+    }
+
+    auto funcChecker = HandlerFactory<TypeCheckContext>::Start<CheckTopLevelFuncTypes>();
+
+    for (auto& mirror : ctx.mirrorTopLevelFuncs) {
+        auto typeCheckCtx = TypeCheckContext(*mirror, ctx.diag, ctx.typeMapper);
+
+        funcChecker.Handle(typeCheckCtx);
     }
 }

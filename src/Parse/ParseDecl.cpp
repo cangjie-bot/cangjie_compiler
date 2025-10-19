@@ -34,7 +34,7 @@ OwnedPtr<Decl> ParserImpl::ParseDecl(ScopeKind scopeKind, std::set<Modifier> mod
     ParseAnnotations(annos);
     ParseModifiers(modifiers);
     CheckOverflowAnno(annos, scopeKind);
-    ffiParser->CheckAnnotations(annos);
+    ffiParser->CheckAnnotations(annos, scopeKind);
     CheckAnnotationAnno(annos, modifiers);
 
     // Enum construtor.
@@ -614,6 +614,11 @@ void ParserImpl::CheckMemberFuncJavaMirror(FuncDecl& decl)
     FFICheckClassLikeFuncBody(decl,
         DiagKindRefactor::parse_java_mirror_function_must_have_return_type,
         DiagKindRefactor::parse_java_mirror_function_cannot_have_body);
+
+    if (decl.outerDecl->astKind == ASTKind::INTERFACE_DECL &&
+        HasAnnotation(decl.annotations, AnnotationKind::JAVA_HAS_DEFAULT)) {
+        decl.EnableAttr(Attribute::JAVA_HAS_DEFAULT);
+    }
 }
 
 void ParserImpl::CheckMemberFuncObjCMirror(FuncDecl& func)
@@ -622,7 +627,7 @@ void ParserImpl::CheckMemberFuncObjCMirror(FuncDecl& func)
         && !func.outerDecl->TestAttr(Attribute::OBJ_C_MIRROR)
         && !func.funcBody && !func.funcBody->paramLists.empty()
         && !func.funcBody->paramLists[0]->params.empty()) {
-            ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_member_must_have_foreign_name, func);
+            ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_method_must_have_foreign_name, func);
     }
 
     if (!func.outerDecl || !func.outerDecl->TestAttr(Attribute::OBJ_C_MIRROR)) {
@@ -632,7 +637,7 @@ void ParserImpl::CheckMemberFuncObjCMirror(FuncDecl& func)
     func.EnableAttr(Attribute::OBJ_C_MIRROR);
 
     if (!func.HasAnno(AnnotationKind::FOREIGN_NAME) && !func.funcBody->paramLists[0]->params.empty()) {
-        ffiParser->ObjC().DiagObjCMirrorMemberMustHaveForeignName(func);
+        ffiParser->ObjC().DiagObjCMirrorMethodMustHaveForeignName(func);
         func.EnableAttr(Attribute::IS_BROKEN);
         func.outerDecl->EnableAttr(Attribute::HAS_BROKEN, Attribute::IS_BROKEN);
     }
@@ -702,7 +707,7 @@ void ParserImpl::CheckInitCtorDeclObjCMirror(FuncDecl& ctor)
         && !ctor.outerDecl->TestAttr(Attribute::OBJ_C_MIRROR)
         && !ctor.funcBody && !ctor.funcBody->paramLists.empty()
         && !ctor.funcBody->paramLists[0]->params.empty()) {
-            ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_member_must_have_foreign_name, ctor);
+            ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_ctor_must_have_foreign_name, ctor);
     }
 
     if (!ctor.outerDecl || !ctor.outerDecl->TestAttr(Attribute::OBJ_C_MIRROR)) {
@@ -712,7 +717,7 @@ void ParserImpl::CheckInitCtorDeclObjCMirror(FuncDecl& ctor)
     ctor.EnableAttr(Attribute::OBJ_C_MIRROR);
 
     if (!ctor.HasAnno(AnnotationKind::FOREIGN_NAME) && !ctor.funcBody->paramLists[0]->params.empty()) {
-        ffiParser->ObjC().DiagObjCMirrorMemberMustHaveForeignName(ctor);
+        ffiParser->ObjC().DiagObjCMirrorCtorMustHaveForeignName(ctor);
         ctor.EnableAttr(Attribute::IS_BROKEN);
         ctor.outerDecl->EnableAttr(Attribute::HAS_BROKEN, Attribute::IS_BROKEN);
     }
@@ -823,9 +828,21 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
 {
     if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC)) {
-        // currently only support struct decl and enum decl.
-        if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
-            decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
+        // currently only support struct decl, enum decl, class decl, interface decl.
+        bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT) &&
+            !decl.TestAttr(Attribute::JAVA_MIRROR) && !decl.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE);
+        // Java
+        if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL || isCJMappingClass ||
+            decl.astKind == ASTKind::INTERFACE_DECL) {
+            if (targetInteropLanguage == GlobalOptions::InteropLanguage::Java) {
+                decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
+            }
+        }
+        // ObjC
+        if (decl.astKind == ASTKind::STRUCT_DECL) {
+            if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
+                decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
+            }
         }
     }
 }
@@ -1389,6 +1406,8 @@ OwnedPtr<ClassDecl> ParserImpl::ParseClassDecl(
         Interop::Java::InsertSyntheticClassDecl(*ret, *currentFile);
     }
 
+    CheckCJMappingAttr(*ret);
+
     return ret;
 }
 
@@ -1407,6 +1426,7 @@ OwnedPtr<InterfaceDecl> ParserImpl::ParseInterfaceDecl(
     for (auto& it : attrs) {
         ret->EnableAttr(it);
     }
+    CheckCJMappingAttr(*ret);
     ffiParser->CheckClassLikeSignature(*ret, annos);
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->body = ParseInterfaceBody(*ret);
@@ -1979,15 +1999,18 @@ OwnedPtr<FuncDecl> ParserImpl::ParseFuncDecl(
     }
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->funcBody = ParseFuncBody(scopeKind);
-    if (ret->TestAttr(Attribute::COMMON) && !ret->funcBody->retType) {
+    bool hasNoBody = !ret->funcBody->body;
+    bool hasNoReturnType = !ret->funcBody->retType;
+    if (ret->TestAttr(Attribute::COMMON) && hasNoReturnType && hasNoBody) {
         ParseDiagnoseRefactor(DiagKindRefactor::parse_common_function_must_have_return_type, *ret);
     }
-    if (ret->TestAttr(Attribute::PLATFORM) && !ret->funcBody->retType) {
+    if (ret->TestAttr(Attribute::PLATFORM) && hasNoReturnType && hasNoBody) {
         ParseDiagnoseRefactor(DiagKindRefactor::parse_platform_function_must_have_return_type, *ret);
     }
     if (HasModifier(modifiers, TokenKind::UNSAFE) || HasModifier(modifiers, TokenKind::FOREIGN)) {
         SetUnsafe(ret.get(), modifiers);
     }
+    ffiParser->CheckFuncSignature(*ret, annos);
     ParseFuncDeclAnnos(annos, *ret);
     CheckFuncBody(scopeKind, *ret);
     if (ret->funcBody) {
@@ -2005,6 +2028,7 @@ OwnedPtr<FuncDecl> ParserImpl::ParseFuncDecl(
     if (scopeKind != ScopeKind::CLASS_BODY && scopeKind != ScopeKind::INTERFACE_BODY) {
         ffiParser->CheckForeignNameAnnotation(*ret);
     }
+
     return ret;
 }
 
@@ -2031,7 +2055,7 @@ void ParserImpl::CheckFuncBody(ScopeKind scopeKind, FuncDecl& decl)
         and when the outerDecl will be known - clarify it for mirrors / common declarations
      */
     if (fb && !fb->body && !parseDeclFile && scopeKind != ScopeKind::UNKNOWN_SCOPE
-        && !decl.TestAnyAttr(Attribute::FOREIGN, Attribute::INTRINSIC)) {
+        && !decl.TestAnyAttr(Attribute::FOREIGN, Attribute::INTRINSIC, Attribute::OBJ_C_MIRROR)) {
         if (CanBeAbstract(decl, scopeKind)) {
             decl.EnableAttr(Attribute::ABSTRACT);
         } else if (!fb->TestAttr(Attribute::HAS_BROKEN) && !inClassLikeScope && !decl.TestAttr(Attribute::COMMON)) {
@@ -2040,7 +2064,7 @@ void ParserImpl::CheckFuncBody(ScopeKind scopeKind, FuncDecl& decl)
         }
     }
 
-    if (decl.TestAttr(Attribute::FOREIGN)) {
+    if (decl.TestAnyAttr(Attribute::FOREIGN)) {
         if (decl.TestAttr(Attribute::GENERIC)) {
             ParseDiagnoseRefactor(DiagKindRefactor::parse_foreign_func_should_not_be_generic, *fb->generic);
             decl.EnableAttr(Attribute::IS_BROKEN);
@@ -2076,18 +2100,6 @@ void ParserImpl::FFICheckClassLikeFuncBody(
     if (decl.funcBody->body) {
         ParseDiagnoseRefactor(functionCanNotHaveBody, decl, decl.identifier);
         decl.EnableAttr(Attribute::IS_BROKEN);
-    }
-}
-
-// TODO: move to JFFIParserImpl
-namespace {
-using Cangjie::ParserImpl;
-
-    bool IsAbstractClassAbstractFunction(
-        bool hasFuncAbstractModifier, bool hasClassAbstractModifier, const Node& classDecl)
-    {
-        return hasFuncAbstractModifier && classDecl.astKind == ASTKind::CLASS_DECL &&
-            hasClassAbstractModifier;
     }
 }
 
@@ -2134,14 +2146,12 @@ void ParserImpl::CheckClassLikeFuncBodyAbstractness(FuncDecl& decl)
     }
 
     bool hasAbstractModifier = HasModifier(decl.modifiers, TokenKind::ABSTRACT);
-    bool hasOuterDeclAbstractModifier = HasModifier(decl.outerDecl->modifiers, TokenKind::ABSTRACT);
+    
     if (isJavaMirrorOrJavaMirrorSubtype) {
-        if ((IsAbstractClassAbstractFunction(hasAbstractModifier, hasOuterDeclAbstractModifier, *decl.outerDecl) ||
-            (decl.outerDecl->astKind == ASTKind::INTERFACE_DECL && !HasModifier(decl.modifiers, TokenKind::STATIC))) &&
-            !Interop::Java::IsImpl(*decl.outerDecl)) {
+        if (ffiParser->Java().IsAbstractFunction(decl, *decl.outerDecl)) {
             decl.EnableAttr(Attribute::ABSTRACT);
             return;
-        } else {
+        } else if (Interop::Java::IsMirror(*decl.outerDecl)) {
             decl.DisableAttr(Attribute::ABSTRACT);
         }
     }

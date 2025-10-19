@@ -522,6 +522,10 @@ public:
 
     bool enableMemoryCollect = false; /**< Whether enable memory usage report. */
 
+    enum class InteropLanguage : uint8_t { NA, Java, ObjC };
+
+    InteropLanguage targetInteropLanguage{InteropLanguage::NA};
+
     std::optional<unsigned int> errorCountLimit = 8; /**< limits the amount of errors compiler prints */
 
 #ifdef CANGJIE_CHIR_WFC_OFF
@@ -568,6 +572,7 @@ public:
     // LTO optimization options
     enum class LTOMode : uint8_t { FULL_LTO, THIN_LTO, NO_LTO };
     LTOMode ltoMod = LTOMode::NO_LTO;
+    bool enableCompileAsExe = false;
 
     /**
      * @brief Checks whether LTO is enabled.
@@ -578,7 +583,10 @@ public:
     {
         return ltoMod != LTOMode::NO_LTO;
     }
-
+    bool IsCompileAsExeEnabled() const
+    {
+        return enableCompileAsExe;
+    }
     /**
      * @brief Checks whether LTO is full enabled.
      *
@@ -734,6 +742,8 @@ public:
 
     /// Whether to compile .cj.d files. Note that when true, .cj files are not processed.
     bool compileCjd{false};
+
+    std::string interopCJPackageConfigPath = "./"; /**< cjinterop .toml package config file paths */
 
     enum class SanitizerType : uint8_t {
         NONE,
@@ -1044,6 +1054,11 @@ public:
         return emitCHIRPhase != CandidateEmitCHIRPhase::NA;
     }
 
+    bool IsCompilingCJMP() const
+    {
+        return inputChirFiles.size() > 0;
+    }
+
 protected:
     virtual std::optional<bool> ParseOption(OptionArgInstance& arg);
     virtual bool PerformPostActions();
@@ -1064,6 +1079,7 @@ private:
     bool CheckScanDependencyOptions() const;
     bool CheckSanitizerOptions() const;
     bool CheckLtoOptions() const;
+    bool CheckCompileAsExeOptions() const;
     bool CheckPgoOptions() const;
     bool CheckCompileMacro() const;
     void RefactJobs();

@@ -280,8 +280,7 @@ void ASTChecker::CheckPackageSpec(Ptr<Node> node)
 void ASTChecker::CheckFeaturesDirective(Ptr<Node> node)
 {
     auto fs = StaticAs<ASTKind::FEATURES_DIRECTIVE>(node);
-    EMPTY_VEC_CHECK(node, fs->content);
-    VEC_ZERO_POS_CHECK(node, fs->commaPoses);
+    ZERO_POSITION_CHECK(node, fs->featuresPos);
 }
 void ASTChecker::CheckFeatureId(Ptr<Node> node)
 {
@@ -290,6 +289,13 @@ void ASTChecker::CheckFeatureId(Ptr<Node> node)
         EMPTY_IDENTIFIER_CHECK(node, ident);
     }
     VEC_ZERO_POS_CHECK(node, fc->dotPoses);
+}
+void ASTChecker::CheckFeaturesSet(Ptr<Node> node)
+{
+    auto fs = StaticAs<ASTKind::FEATURES_SET>(node);
+    ZERO_POSITION_CHECK(node, fs->lCurlPos);
+    VEC_ZERO_POS_CHECK(node, fs->commaPoses);
+    ZERO_POSITION_CHECK(node, fs->rCurlPos);
 }
 void ASTChecker::CheckStructBody(Ptr<Node> node)
 {

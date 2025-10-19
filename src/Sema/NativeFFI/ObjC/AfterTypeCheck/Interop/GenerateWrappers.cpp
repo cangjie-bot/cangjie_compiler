@@ -19,12 +19,12 @@ using namespace Cangjie::Interop::ObjC;
 
 void GenerateWrappers::HandleImpl(InteropContext& ctx)
 {
-    for (auto& impl : ctx.impls) {
-        if (impl->TestAttr(Attribute::IS_BROKEN)) {
-            continue;
+    auto genWrapper = [this, &ctx](Decl& decl) {
+        if (decl.TestAttr(Attribute::IS_BROKEN)) {
+            return;
         }
 
-        for (auto& memberDecl : impl->GetMemberDeclPtrs()) {
+        for (auto& memberDecl : decl.GetMemberDeclPtrs()) {
             if (memberDecl->TestAnyAttr(Attribute::IS_BROKEN, Attribute::CONSTRUCTOR)) {
                 continue;
             }
@@ -38,17 +38,27 @@ void GenerateWrappers::HandleImpl(InteropContext& ctx)
 
             switch (memberDecl->astKind) {
                 case ASTKind::FUNC_DECL:
-                    GenerateWrapper(ctx, *StaticAs<ASTKind::FUNC_DECL>(memberDecl));
+                    this->GenerateWrapper(ctx, *StaticAs<ASTKind::FUNC_DECL>(memberDecl));
                     break;
                 case ASTKind::PROP_DECL:
-                    GenerateWrapper(ctx, *StaticAs<ASTKind::PROP_DECL>(memberDecl));
+                    this->GenerateWrapper(ctx, *StaticAs<ASTKind::PROP_DECL>(memberDecl));
                     break;
                 case ASTKind::VAR_DECL:
-                    GenerateWrapper(ctx, *StaticAs<ASTKind::VAR_DECL>(memberDecl));
+                    this->GenerateWrapper(ctx, *StaticAs<ASTKind::VAR_DECL>(memberDecl));
                     break;
                 default:
                     break;
             }
+        }
+    };
+
+    if (interopType == InteropType::ObjC_Mirror) {
+        for (auto& impl : ctx.impls) {
+            genWrapper(*impl);
+        }
+    } else if (interopType == InteropType::CJ_Mapping) {
+        for (auto& cjMapping : ctx.cjMappings) {
+            genWrapper(*cjMapping);
         }
     }
 }
@@ -73,9 +83,11 @@ void GenerateWrappers::GenerateWrapper(InteropContext& ctx, PropDecl& prop)
 
 void GenerateWrappers::GenerateSetterWrapper(InteropContext& ctx, PropDecl& prop)
 {
-    auto wrapper = ctx.factory.CreateSetterWrapper(prop);
-    CJC_NULLPTR_CHECK(wrapper);
-    ctx.genDecls.emplace_back(std::move(wrapper));
+    if (!SkipSetterForValueTypeDecl(*prop.outerDecl.get())) {
+        auto wrapper = ctx.factory.CreateSetterWrapper(prop);
+        CJC_NULLPTR_CHECK(wrapper);
+        ctx.genDecls.emplace_back(std::move(wrapper));
+    }
 }
 
 void GenerateWrappers::GenerateWrapper(InteropContext& ctx, VarDecl& field)
@@ -95,7 +107,14 @@ void GenerateWrappers::GenerateWrapper(InteropContext& ctx, VarDecl& field)
 
 void GenerateWrappers::GenerateSetterWrapper(InteropContext& ctx, VarDecl& field)
 {
-    auto wrapper = ctx.factory.CreateSetterWrapper(field);
-    CJC_NULLPTR_CHECK(wrapper);
-    ctx.genDecls.emplace_back(std::move(wrapper));
+    if (!SkipSetterForValueTypeDecl(*field.outerDecl.get())) {
+        auto wrapper = ctx.factory.CreateSetterWrapper(field);
+        CJC_NULLPTR_CHECK(wrapper);
+        ctx.genDecls.emplace_back(std::move(wrapper));
+    }
+}
+
+bool GenerateWrappers::SkipSetterForValueTypeDecl(Decl& decl) const
+{
+    return interopType == InteropType::CJ_Mapping && DynamicCast<StructTy*>(decl.ty.get()) != nullptr;
 }

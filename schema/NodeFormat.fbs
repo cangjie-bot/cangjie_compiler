@@ -852,7 +852,8 @@ union AnyDecl {
   EXTEND_DECL: ExtendDecl,
   MACRO_DECL: MacroDecl,
   MACRO_EXPAND_DECL: MacroExpandDecl,
-  FUNC_PARAM: FuncParam
+  FUNC_PARAM: FuncParam,
+  MACRO_EXPAND_PARAM: MacroExpandParam
 }
 
 table Decl {
@@ -933,10 +934,19 @@ table FeatureId {
   dotPoses: [Position];
 }
 
-table FeaturesDirective {
+table FeaturesSet {
   base: NodeBase;
+  lCurlPos: Position;
   content: [FeatureId];
   commaPoses: [Position];
+  rCurlPos: Position;
+}
+
+table FeaturesDirective {
+  base: NodeBase;
+  annotations: [Annotation];
+  featuresSet: FeaturesSet;
+  featuresPos: Position;
 }
 
 enum AccessibleKind:uint8 {

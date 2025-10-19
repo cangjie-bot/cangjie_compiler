@@ -249,7 +249,7 @@ public:
      *
      * @return empty vector If Parse failed.
      */
-    std::vector<Ptr<AST::Package>> GetSourcePackages() const;
+    std::vector<Ptr<AST::Package>> GetSourcePackages();
 
     /**
      * Get Source Manager.
@@ -491,6 +491,11 @@ public:
     std::vector<const AST::Decl*> order;
 
     /// Used by CJLint
+    bool IsBuildTrie() const
+    {
+        return buildTrie;
+    }
+
     void SetBuildTrie(bool flag)
     {
         buildTrie = flag;

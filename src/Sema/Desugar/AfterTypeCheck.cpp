@@ -18,9 +18,9 @@
 #include "Desugar/AfterTypeCheck.h"
 
 #include "AutoBoxing.h"
+#include "ExtraScopes.h"
 #include "NativeFFI/Java/AfterTypeCheck/JavaInteropManager.h"
 #include "NativeFFI/ObjC/AfterTypeCheck/Desugar.h"
-#include "ExtraScopes.h"
 #include "TypeCheckUtil.h"
 #include "TypeCheckerImpl.h"
 
@@ -279,16 +279,146 @@ void DesugarSetForPropDecl(TypeManager& tyMgr, Expr& expr)
 }
 } // namespace
 
-void TypeChecker::PerformDesugarAfterSema(const std::vector<Ptr<Package>>& pkgs) const
+void TypeChecker::PerformDesugarAfterSema(std::vector<Ptr<Package>>& pkgs) const
 {
     impl->PerformDesugarAfterSema(pkgs);
 }
 
+void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg, InteropCJPackageConfigReader packagesFullConfig)
+{
+    std::string currentPackageName = pkg.get()->fullPackageName;
+    pkg.get()->interopCJApiStrategy = packagesFullConfig.GetApiStrategy(currentPackageName);
+    pkg.get()->interopCJGenericTypeStrategy = packagesFullConfig.GetGenericTypeStrategy(currentPackageName);
+    if (auto currentPackageConfig = packagesFullConfig.GetPackage(currentPackageName)) {
+        pkg.get()->interopCJIncludedApis = currentPackageConfig->interopCJIncludedApis;
+        pkg.get()->interopCJExcludedApis = currentPackageConfig->interopCJExcludedApis;
+        pkg.get()->allowedInteropCJGenericInstantiations = currentPackageConfig->allowedInteropCJGenericInstantiations;
+        for (auto& file : pkg.get()->files) {
+            for (auto& decl : file.get()->decls) {
+                // Following the symbol exposure strategy "Full" requirement, and included_apis is empty
+                if (pkg.get()->interopCJApiStrategy == InteropCJStrategy::FULL &&
+                    pkg.get()->interopCJIncludedApis.size() == 0) {
+                    if (decl.get()->symbol) {
+                        decl.get()->symbol->isNeedExposedToInterop = true;
+                    }
+                    // For each memberDecl in structDecl
+                    if (auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get())) {
+                        for (auto& member : structDecl->GetMemberDecls()) {
+                            if (member.get()->symbol) {
+                                member.get()->symbol->isNeedExposedToInterop = true;
+                            }
+                        }
+                    }
+                }
+                // For exposed symbol
+                if (pkg.get()->interopCJApiStrategy == InteropCJStrategy::NONE) {
+                    for (const auto& element : pkg.get()->interopCJIncludedApis) {
+                        if (decl.get()->symbol) {
+                            if (element == decl.get()->symbol->name) {
+                                decl.get()->symbol->isNeedExposedToInterop = true;
+                            }
+                            if (auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get())) {
+                                for (auto& member : structDecl->GetMemberDecls()) {
+                                    if (member.get()->symbol &&
+                                        ((!decl.get()->symbol->isNeedExposedToInterop &&
+                                             element ==
+                                                 (decl.get()->symbol->name + "." + member.get()->symbol->name)) ||
+                                            decl.get()->symbol->isNeedExposedToInterop)) {
+                                        member.get()->symbol->isNeedExposedToInterop = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // For hiddened symbol
+                if (pkg.get()->interopCJApiStrategy == InteropCJStrategy::FULL) {
+                    for (const auto& element : pkg.get()->interopCJExcludedApis) {
+                        if (decl.get()->symbol) {
+                            if (element == decl.get()->symbol->name) {
+                                decl.get()->symbol->isNeedExposedToInterop = false;
+                            }
+                            if (auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get())) {
+                                for (auto& member : structDecl->GetMemberDecls()) {
+                                    if (member.get()->symbol &&
+                                        (!decl.get()->symbol->isNeedExposedToInterop ||
+                                            (element ==
+                                                 (decl.get()->symbol->name + "." + member.get()->symbol->name)))) {
+                                        member.get()->symbol->isNeedExposedToInterop = false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Packages not configured in the configuration file will be set using the default configuration information.
+        if (pkg.get()->interopCJApiStrategy == InteropCJStrategy::FULL) {
+            for (auto& file : pkg.get()->files) {
+                for (auto& decl : file.get()->decls) {
+                    if (decl.get()->symbol) {
+                        decl.get()->symbol->isNeedExposedToInterop = true;
+                    }
+                }
+            }
+        }
+    }
+    for (auto& file : pkg.get()->files) {
+        for (auto& decl : file.get()->decls) {
+            auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get());
+            /*
+              For member decl in includeApis and inside Struct_Decl, but Struct_Decl not in includeApis, need Warning &
+              insert Struc_Decl in includeApis.
+            */
+            if (!structDecl->symbol->isNeedExposedToInterop) {
+                for (auto& member : structDecl->GetMemberDecls()) {
+                    if (member.get()->symbol && member.get()->symbol->isNeedExposedToInterop) {
+                        structDecl->symbol->isNeedExposedToInterop = true;
+                        std::cerr << "Warning: " << structDecl->symbol->name << " is not config to exposed but "
+                                  << structDecl->symbol->name << "." << member.get()->symbol->name
+                                  << " is config to exposed" << std::endl;
+                    }
+                }
+            } else {
+                /*
+                  The Struct_Decl is configured to includeApis, but in the source code, structs with non-public
+                  modifiers are prohibited from exposing symbols for interoperability, and users are notified
+                  via a Warning.
+                */
+                if (structDecl->TestAnyAttr(Attribute::IS_BROKEN, Attribute::PRIVATE, Attribute::PROTECTED)) {
+                    structDecl->symbol->isNeedExposedToInterop = false;
+                    std::cerr << "Warning: " << structDecl->symbol->name << " is config to exposed but it not "
+                              << "public symbol, so it is hiddened." << std::endl;
+                }
+            }
+        }
+    }
+}
+
 /** @p pkgs is set of source packages, desugar only needs to be done on source package. */
-void TypeChecker::TypeCheckerImpl::PerformDesugarAfterSema(const std::vector<Ptr<Package>>& pkgs)
+void TypeChecker::TypeCheckerImpl::PerformDesugarAfterSema(std::vector<Ptr<AST::Package>>& pkgs)
 {
     TyVarScope ts(typeManager);
+    InteropCJPackageConfigReader packagesFullConfig;
+    // parse package config toml file.
+    if (ci->invocation.globalOptions.enableInteropCJMapping &&
+        ci->invocation.globalOptions.interopCJPackageConfigPath != "./" &&
+        !packagesFullConfig.Parse(ci->invocation.globalOptions.interopCJPackageConfigPath)) {
+        std::cerr << "Failed to parse package config file" << std::endl;
+    }
+    // validate parser result.
+    if (ci->invocation.globalOptions.enableInteropCJMapping && !packagesFullConfig.Validate()) {
+        std::cerr << "Package config validation failed" << std::endl;
+    }
     for (auto& pkg : pkgs) {
+        // Store and transmit information to the cjinterop stage.
+        if (ci->invocation.globalOptions.enableInteropCJMapping &&
+            ci->invocation.globalOptions.interopCJPackageConfigPath != "./") {
+            pkg.get()->isInteropCJPackageConfig = true;
+            ParsePackageConfigFile(pkg, packagesFullConfig);
+        }
         PerformDesugarAfterTypeCheck(*ci->pkgCtxMap[pkg], *pkg);
         TryDesugarForCoalescing(*pkg);
         AutoBoxing autoBox(typeManager);
@@ -404,7 +534,7 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck(ASTContext& ctx,
 {
     Interop::Java::JavaInteropManager jim(importManager, typeManager, diag, *ci->mangler,
         ci->invocation.globalOptions.outputJavaGenDir, ci->invocation.globalOptions.output,
-        ci->invocation.globalOptions.enableInteropCJMapping);
+        ci->invocation.globalOptions.targetInteropLanguage);
 
     jim.CheckImplRedefinition(pkg);
     for (auto& file : pkg.files) {
@@ -412,8 +542,8 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck(ASTContext& ctx,
     }
 
     jim.DesugarPackage(pkg);
-    Interop::ObjC::Desugar(Interop::ObjC::InteropContext(pkg, typeManager, importManager, diag, *ci->mangler,
-        ci->invocation.globalOptions.output));
+    Interop::ObjC::Desugar(Interop::ObjC::InteropContext(
+        pkg, typeManager, importManager, diag, *ci->mangler, ci->invocation.globalOptions.output));
 
     DesugarDeclsForPackage(pkg, ci->invocation.globalOptions.enableCoverage);
     std::function<VisitAction(Ptr<Node>)> preVisit = [this, &ctx](Ptr<Node> node) -> VisitAction {

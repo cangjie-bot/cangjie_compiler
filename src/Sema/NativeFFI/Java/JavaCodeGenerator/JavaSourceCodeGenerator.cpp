@@ -13,6 +13,7 @@
 #include <limits>
 
 #include "cangjie/AST/Match.h"
+#include "cangjie/AST/Symbol.h"
 #include "cangjie/Utils/FileUtil.h"
 #include "NativeFFI/Java/AfterTypeCheck/JavaDesugarManager.h"
 #include "NativeFFI/Java/AfterTypeCheck/Utils.h"
@@ -34,6 +35,9 @@ constexpr auto JAVA_WHITESPACE = " ";
 
 constexpr auto JAVA_BOOLEAN = "boolean";
 constexpr auto JAVA_SPECIAL_PARAM_NAME = "__init__";
+constexpr auto JAVA_OBJECT_HASHCODE_METHOD_NAME = "hashCode";
+constexpr auto JAVA_OBJECT_EQUALS_METHOD_NAME = "equals";
+constexpr auto JAVA_OBJECT_TOSTRING_METHOD_NAME = "toString";
 
 bool IsFuncDeclAndNotConstructor(OwnedPtr<Decl>& declPtr)
 {
@@ -57,22 +61,37 @@ bool NeedExtraFinalModifier(const Decl& declArg)
     return false;
 }
 
+std::string FuncParamToString(const OwnedPtr<FuncParam>& p)
+{
+    CJC_ASSERT(p && p->type && p->type->ty);
+    std::string res = p->identifier.Val();
+    if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
+        bool castToId = IsCJMapping(*ty) && !IsCJMappingInterface(*(p->type->ty));
+        res += castToId ? ".self" : "";
+    }
+    return res;
+}
+
 } // namespace
 
 namespace Cangjie::Interop::Java {
 JavaSourceCodeGenerator::JavaSourceCodeGenerator(
-    Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName)
-    : AbstractSourceCodeGenerator(outputFilePath), decl(decl), cjLibName(std::move(cjLibName)), mangler(mangler)
+    Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName,
+    bool isInteropCJPackageConfig)
+    : AbstractSourceCodeGenerator(outputFilePath), decl(decl), cjLibName(std::move(cjLibName)), mangler(mangler),
+      isInteropCJPackageConfig(isInteropCJPackageConfig)
 {
 }
 
 JavaSourceCodeGenerator::JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler,
-    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName)
+    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+    bool isInteropCJPackageConfig)
     : AbstractSourceCodeGenerator(
           outputFolderPath.value_or(JavaSourceCodeGenerator::DEFAULT_OUTPUT_DIR), outputFileName),
       decl(decl),
       cjLibName(std::move(cjLibName)),
-      mangler(mangler)
+      mangler(mangler),
+      isInteropCJPackageConfig(isInteropCJPackageConfig)
 {
 }
 
@@ -86,6 +105,15 @@ bool JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(const Decl& declArg
 void JavaSourceCodeGenerator::ConstructResult()
 {
     if (decl->TestAnyAttr(Attribute::IS_BROKEN, Attribute::HAS_BROKEN)) {
+        return;
+    }
+
+    auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(decl);
+    if (interfaceDecl) {
+        AddInterfaceDeclaration();
+        AddInterfaceMethods();
+        AddEndClassParenthesis();
+        AddHeader();
         return;
     }
 
@@ -168,7 +196,7 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
         case TypeKind::TYPE_CLASS:
             if (IsJArray(*declTy)) {
                 return MapCJTypeToJavaType(ty->typeArgs[0], javaImports, curPackageName) + "[]";
-            } else if (isNativeMethod && declTy && IsCJMapping(*declTy)) {
+            } else if (isNativeMethod && declTy && IsCJMapping(*declTy) && !IsCJMappingInterface(*ty)) {
                 return "long";
             }
             javaType = AddImport(ty, javaImports, curPackageName);
@@ -205,6 +233,16 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(const OwnedPtr<FuncPara
     return MapCJTypeToJavaType(param->type->ty, javaImports, curPackageName, isNativeMethod);
 }
 
+void JavaSourceCodeGenerator::AddInterfaceDeclaration()
+{
+    std::string modifier;
+    modifier += GetModifier(decl);
+    res += modifier;
+    res += "interface " + decl->identifier.Val();
+
+    res += " {\n";
+}
+
 void JavaSourceCodeGenerator::AddClassDeclaration()
 {
     std::string modifier = NeedExtraFinalModifier(*decl) ? "final " : "";
@@ -214,7 +252,7 @@ void JavaSourceCodeGenerator::AddClassDeclaration()
 
     if (auto classDecl = As<ASTKind::CLASS_DECL>(decl)) {
         Ptr<ClassDecl> superClassPtr = classDecl->GetSuperClassDecl();
-        bool isClassInheritedFromClass = !IsJObject(*superClassPtr);
+        bool isClassInheritedFromClass = !IsJObject(*superClassPtr) && !IsObject(*superClassPtr);
 
         std::set<Ptr<InterfaceTy>> implementedInterfacesPtrs = classDecl->GetSuperInterfaceTys();
         size_t implementedInterfacesCnt = implementedInterfacesPtrs.size();
@@ -286,20 +324,30 @@ void JavaSourceCodeGenerator::AddProperties()
 
             std::string getSignature = "get" + varDeclSuffix;
 
+             bool isStaticProp = propDecl.TestAttr(Attribute::STATIC);
+ 
             // add getter
-            AddWithIndent(TAB, "public " + type + " " + getSignature + "() {");
-            AddWithIndent(TAB2, "return " + getSignature + "Impl(this.self);");
+            std::string getPublicHead = isStaticProp ? "public static " : "public ";
+            AddWithIndent(TAB, getPublicHead + type + " " + getSignature + "() {");
+            std::string getSelfStr = isStaticProp ? "" : "this.self";
+            AddWithIndent(TAB2, "return " + getSignature + "Impl(" + getSelfStr + ");");
             AddWithIndent(TAB, "}\n");
-            AddWithIndent(TAB, "public native " + type + " " + getSignature + "Impl(long self);\n");
-
+            std::string getNativeHead = isStaticProp ? "public static native " : "public native ";
+            std::string getSelfNativeStr = isStaticProp ? "" : "long self";
+            AddWithIndent(TAB, getNativeHead + type + " " + getSignature + "Impl(" + getSelfNativeStr + ");\n");
+ 
             // add setter
             if (!propDecl.setters.empty()) {
+                std::string setPublicHead = isStaticProp ? "public static void " : "public void ";
                 std::string setSignature = "set" + varDeclSuffix;
-                AddWithIndent(TAB, "public void " + setSignature + "(" + type + " " + varDecl + ") {");
-                AddWithIndent(TAB2, setSignature + "Impl(this.self, " + varDecl + ");");
+                AddWithIndent(TAB,setPublicHead + setSignature + "(" + type + " " + varDecl + ") {");
+                std::string setSelfStr = isStaticProp ? "" : "this.self, ";
+                AddWithIndent(TAB2, setSignature + "Impl(" + setSelfStr + varDecl + ");");
                 AddWithIndent(TAB, "}\n");
+                std::string setNativeHead = isStaticProp ? "public static native void " : "public native void ";
+                std::string setSelfNativeStr = isStaticProp ? "" : "long self, ";
                 AddWithIndent(
-                    TAB, "public native void " + setSignature + "Impl(long self, " + type + " " + varDecl + ");\n");
+                    TAB, setNativeHead + setSignature + "Impl(" + setSelfNativeStr + type + " " + varDecl + ");\n");
             }
         }
     }
@@ -327,7 +375,7 @@ std::string JavaSourceCodeGenerator::GenerateFuncParamLists(
         CJC_ASSERT(cur && cur->type && cur->type->ty);
         std::string res = MapCJTypeToJavaType(cur, imp, curPackage, isNativeMethod) + " " + cur->identifier.Val();
         if (auto ty = Ty::GetDeclOfTy(cur->type->ty)) {
-            bool castToId = isNativeMethod && IsCJMapping(*ty);
+            bool castToId = isNativeMethod && IsCJMapping(*ty) && !IsCJMappingInterface(*(cur->type->ty));
             res += castToId ? "Id" : "";
         }
         return res;
@@ -489,7 +537,6 @@ std::string JavaSourceCodeGenerator::GenerateConstructorSuperCall(
     return superCall;
 }
 
-
 void JavaSourceCodeGenerator::AddConstructor(const FuncDecl& ctor, const std::string& superCall, bool isForCangjie)
 {
     AddWithIndent(TAB, GenerateConstructorDecl(ctor, isForCangjie) + " {");
@@ -502,8 +549,7 @@ void JavaSourceCodeGenerator::AddConstructor(const FuncDecl& ctor, const std::st
         auto& params = ctor.funcBody->paramLists[0]->params;
         std::string selfInit = "self = " + GetMangledJniInitCjObjectFuncName(mangler, params, false) + "(";
         if (ctor.funcBody) {
-            selfInit += GenerateParamLists(
-                ctor.funcBody->paramLists, [](const OwnedPtr<FuncParam>& p) { return p->identifier.Val(); });
+            selfInit += GenerateParamLists(ctor.funcBody->paramLists, FuncParamToString);
         }
         selfInit += ");";
         AddWithIndent(TAB2, selfInit);
@@ -543,13 +589,7 @@ void JavaSourceCodeGenerator::AddAllCtorsForCJMappingEnum(const EnumDecl& enumDe
             auto nativeFuncName = GetMangledJniInitCjObjectFuncNameForEnum(mangler, params, funcName);
             std::string selfInit = "return new " + enumName + "(" + nativeFuncName + "(";
             if (funcDecl->funcBody) {
-                selfInit += GenerateParamLists(funcDecl->funcBody->paramLists, [](const OwnedPtr<FuncParam>& p) {
-                    std::string res = p->identifier.Val();
-                    if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
-                        res += IsCJMapping(*ty) ? ".self" : "";
-                    }
-                    return res;
-                });
+                selfInit += GenerateParamLists(funcDecl->funcBody->paramLists, FuncParamToString);
             }
             selfInit += "));";
             AddWithIndent(TAB2, selfInit);
@@ -615,15 +655,9 @@ void JavaSourceCodeGenerator::AddInstanceMethod(const FuncDecl& funcDecl)
     AddWithIndent(TAB, methodSignature);
 
     std::string args = "this.self";
-    const std::function<std::string(const OwnedPtr<FuncParam>&)>& mapper = [](const OwnedPtr<FuncParam>& p) {
-        CJC_ASSERT(p && p->type && p->type->ty);
-        std::string res = p->identifier.Val();
-        if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
-            res += IsCJMapping(*ty) ? ".self" : "";
-        }
-        return res;
-    };
-    std::string paramList = Join(params, ", ", mapper);
+
+    std::string paramList =
+        Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
     if (!paramList.empty()) {
         args += ", ";
         args += paramList;
@@ -650,15 +684,7 @@ void JavaSourceCodeGenerator::AddStaticMethod(const FuncDecl& funcDecl)
     const std::string retType = MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
     std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
 
-    const std::function<std::string(const OwnedPtr<FuncParam>&)>& mapper = [](const OwnedPtr<FuncParam>& p) {
-        CJC_ASSERT(p && p->type && p->type->ty);
-        std::string res = p->identifier.Val();
-        if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
-            res += IsCJMapping(*ty) ? ".self" : "";
-        }
-        return res;
-    };
-    std::string paramList = Join(params, ", ", mapper);
+    std::string paramList = Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
 
     if (mangledNativeName != funcIdentifier) {
         AddWithIndent(TAB, "public static " + retType + " " + funcIdentifier + "(" + argsWithTypes + ") {");
@@ -679,6 +705,67 @@ void JavaSourceCodeGenerator::AddStaticMethod(const FuncDecl& funcDecl)
 
 void JavaSourceCodeGenerator::AddMethods()
 {
+    bool hasHashcodeMethod = false;
+    bool hasEqualsMethod = false;
+    bool hasToStringMethod = false;
+    for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
+        if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
+            continue;
+        }
+        if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
+            const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+	    // Hidden interopCj configure unexposed symbol.
+            if (isInteropCJPackageConfig && funcDecl.symbol && !funcDecl.symbol->isNeedExposedToInterop) {
+                continue;
+            }
+            if (funcDecl.funcBody && funcDecl.funcBody->retType) {
+                if (funcDecl.TestAttr(Attribute::STATIC)) {
+                    AddStaticMethod(funcDecl);
+                } else {
+                    AddInstanceMethod(funcDecl);
+                }
+                hasHashcodeMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_HASHCODE_METHOD_NAME;
+                hasEqualsMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_EQUALS_METHOD_NAME;
+                hasToStringMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_TOSTRING_METHOD_NAME;
+            }
+        }
+    }
+    AddEqualOrIdentityMethod(hasHashcodeMethod, hasEqualsMethod, hasToStringMethod);
+}
+
+void JavaSourceCodeGenerator::AddEqualOrIdentityMethod(
+    bool hasHascodeMethod, bool hasEqualsMethod, bool hasToStringMethod)
+{
+    if (!hasEqualsMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public boolean equals(Object obj) {");
+        AddWithIndent(
+            TAB2, "throw new UnsupportedOperationException(\"equals is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
+    }
+
+    if (!hasHascodeMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public int hashCode() {");
+        AddWithIndent(
+            TAB2, "throw new UnsupportedOperationException(\"hashCode is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
+    }
+
+    if (!hasToStringMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public String toString() {");
+        AddWithIndent(
+            TAB2, "throw new UnsupportedOperationException(\"toString is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
+    }
+}
+
+void JavaSourceCodeGenerator::AddInterfaceMethods()
+{
     for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
         if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
             continue;
@@ -686,11 +773,15 @@ void JavaSourceCodeGenerator::AddMethods()
         if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
-                if (funcDecl.TestAttr(Attribute::STATIC)) {
-                    AddStaticMethod(funcDecl);
-                } else {
-                    AddInstanceMethod(funcDecl);
-                }
+                auto funcIdentifier = GetJavaMemberName(funcDecl);
+                const std::string retType =
+                    MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
+                std::string methodSignature = "public " + retType + " ";
+                methodSignature += funcIdentifier + "(";
+                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
+                methodSignature += argsWithTypes;
+                methodSignature += ");";
+                AddWithIndent(TAB, methodSignature);
             }
         }
     }

@@ -574,6 +574,20 @@ enum class Attribute {
      * R: Sema.
      */
     JAVA_MIRROR_SUBTYPE,
+
+    /**
+     * Mark whether a function of @JavaMirror interface has default implementation on java side.
+     * W: Parser.
+     * R: Sema.
+     */
+    JAVA_HAS_DEFAULT,
+    
+    /**
+     * Mark whether a class is a wrapper synthetic class generated for every mirror interface and abstract class.
+     * W: Parser, Sema.
+     * R: Sema.
+     */
+    JAVA_MIRROR_SYNTHETIC_WRAPPER,
     /**
      * Mark whether a class is an Objective-C mirror (binding for a Objective-C class).
      * W: Parser.
@@ -586,13 +600,25 @@ enum class Attribute {
      * R: Sema.
      */
     OBJ_C_MIRROR_SUBTYPE,
-
     /**
      * Mark whether a pure cangjie decl is mapped to use by java side.
      * W: Parser
      * R: Sema.
      */
     JAVA_CJ_MAPPING,
+    /**
+     * Mark whether a pure cangjie decl is mapped to use by Objective-C side.
+     * W: Parser
+     * R: Sema.
+     */
+    OBJ_C_CJ_MAPPING,
+
+    /**
+     * Mark whether a class is a fwd class for cangjie interface.
+     * W: Sema
+     * R: Sema.
+     */
+    CJ_MIRROR_JAVA_INTERFACE_FWD,
 
     /**
      * Mark whether a node is a desugared mirror field decl.
@@ -601,6 +627,14 @@ enum class Attribute {
      * R: Sema.
      */
     DESUGARED_MIRROR_FIELD,
+
+    /**
+     * Mark whether a node is a special flag, which marks the class instance as initialized.
+     * Necessary for finalizer implementation on CHIR.
+     * W: Sema.
+     * R: AST2CHIR.
+     */
+    HAS_INITED_FIELD,
 
     AST_ATTR_END,
 };
@@ -684,10 +718,12 @@ static const std::unordered_map<AST::Attribute, std::string> ATTR2STR{
     {AST::Attribute::COMMON_WITH_DEFAULT, "COMMON_WITH_DEFAULT"},
     {AST::Attribute::JAVA_MIRROR, "JAVA_MIRROR"},
     {AST::Attribute::JAVA_MIRROR_SUBTYPE, "JAVA_MIRROR_SUBTYPE"},
+    {AST::Attribute::JAVA_CJ_MAPPING, "JAVA_CJ_MAPPING"},
     {AST::Attribute::OBJ_C_MIRROR, "OBJ_C_MIRROR"},
     {AST::Attribute::OBJ_C_MIRROR_SUBTYPE, "OBJ_C_MIRROR_SUBTYPE"},
-    {AST::Attribute::JAVA_CJ_MAPPING, "JAVA_CJ_MAPPING"},
+    {AST::Attribute::OBJ_C_CJ_MAPPING, "OBJ_C_CJ_MAPPING"},
     {AST::Attribute::DESUGARED_MIRROR_FIELD, "DESUGARED_MIRROR_FIELD"},
+    {AST::Attribute::HAS_INITED_FIELD, "HAS_INITED_FIELD"},
     {AST::Attribute::AST_ATTR_END, "AST_ATTR_END"},
 };
 
