@@ -505,6 +505,7 @@ enum class AnnotationKind {
     C,
     JAVA_MIRROR,
     JAVA_IMPL,
+    JAVA_HAS_DEFAULT,
     OBJ_C_MIRROR,
     OBJ_C_IMPL,
     FOREIGN_NAME,
@@ -524,6 +525,7 @@ enum class AnnotationKind {
     DEPRECATED,
     FROZEN,
     ENSURE_PREPARED_TO_MOCK,
+    NON_PRODUCT,
     UNKNOWN
 };
 
@@ -2723,14 +2725,14 @@ struct InvalidExpr : Expr {
     }
 };
 
- /**
- * FeatureId
- *      : Identifier (DOT Identifier)*
- *      ;
+/**
+ * featureId
+ *     : (Ident | ContextIdent) (DOT (Ident | ContextIdent))*
+ *     ;
  */
 struct FeatureId : Node {
-    std::vector<Identifier> identifiers;    /**< identifiers with positions */
-    std::vector<Position> dotPoses;         /**< position of dots */
+    std::vector<Identifier> identifiers;    /**< identifiers with positions. */
+    std::vector<Position> dotPoses;         /**< Positions of each '.'. */
     FeatureId() : Node(ASTKind::FEATURE_ID)
     {
     }
@@ -2738,15 +2740,33 @@ struct FeatureId : Node {
 };
 
 /**
- * A FeaturesDirective represents a feature set in file header.
+ * featuresSet
+ *     : LCURL NL* 
+ *     featureId NL* (COMMA NL* featureId NL*)* 
+ *     RCURL
+ *     ;
+ */
+struct FeaturesSet : Node {
+    Position lCurlPos; /**< Position of '{'. */
+    std::vector<FeatureId> content; /**< feature set items. */
+    std::vector<Position> commaPoses; /**< Positions of each ','. */
+    Position rCurlPos; /**< Position of '}'. */
+    FeaturesSet() : Node(ASTKind::FEATURES_SET)
+    {
+    }
+};
+
+/**
  * featuresDirective
- *      : FEATURES NL* FeatureId
- *      (COMMA NL* FeatureId)*
- *      end+;
+ *     : annotationList? FEATURES NL* 
+ *     featuresSet
+ *     end+
+ *     ;
  */
 struct FeaturesDirective : Node {
-    std::vector<FeatureId> content;      /**< content of featuresDirective*/
-    std::vector<Position> commaPoses;    /**< comma poses */
+    std::vector<OwnedPtr<Annotation>> annotations; /** < annotations of features directive */
+    OwnedPtr<FeaturesSet> featuresSet; //** < features set of features directive */
+    Position featuresPos; /** < position of 'features' keyword */
     FeaturesDirective() : Node(ASTKind::FEATURES_DIRECTIVE)
     {
     }
@@ -2929,10 +2949,10 @@ struct Package : Node {
         }
         return true;
     }
-    bool HasFeature() const
+    bool HasFtrDirective() const
     {
         for (auto& file : files) {
-            if (file->feature != nullptr && file->feature->content.size() > 0) {
+            if (file->feature != nullptr) {
                 return true;
             }
         }
