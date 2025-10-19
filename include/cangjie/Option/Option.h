@@ -1127,6 +1127,11 @@ public:
         return emitCHIRPhase != CandidateEmitCHIRPhase::NA;
     }
 
+    bool IsCompilingCJMP() const
+    {
+        return inputChirFiles.size() > 0;
+    }
+
 protected:
     virtual std::optional<bool> ParseOption(OptionArgInstance& arg);
     virtual bool PerformPostActions();
