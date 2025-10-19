@@ -48,7 +48,7 @@ public:
           opts(opts),
           gim(gim),
           increKind(kind),
-          mergingPlatform(opts.inputChirFiles.size() == 1),
+          mergingPlatform(opts.IsCompilingCJMP()),
           deserializedVals(deserializedVals),
           annoFactoryFuncs(annoFactories),
           maybeUnreachable(maybeUnreachable),
