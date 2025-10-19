@@ -267,14 +267,7 @@ void ImportManager::ExportDeclsWithContent(bool saveFileWithAbsPath, Package& pa
 {
     // NOTE: If 'importSrcCode' is disabled, we also do not need to export source code.
     auto writer = new ASTWriter(diag, GeneratePkgDepInfo(package),
-        {
-            .exportContent = importSrcCode,
-            .exportForIncr = false,
-            .exportForTest = opts.exportForTest,
-            .needAbsPath = saveFileWithAbsPath,
-            .compileCjd = opts.compileCjd,
-        },
-        *cjoManager);
+        {importSrcCode, false, opts.exportForTest, saveFileWithAbsPath, opts.compileCjd}, *cjoManager);
     if (opts.outputMode == GlobalOptions::OutputMode::CHIR) {
         writer->SetSerializingCommon();
     }
@@ -464,6 +457,9 @@ bool ImportManager::ResolveImportedPackages(const std::vector<Ptr<Package>>& pac
     bool success = true;
     for (auto pkg : packages) {
         curPackage = pkg;
+        // Files of common part need to be loaded in advance,
+        // to be able to handle `import`s of common part.
+        cjoManager->LoadFilesOfCommonPart(pkg);
         success = ResolveImportedPackageHeaders(*curPackage, false) && success;
         for (auto [_, typeWithFullPkgName] : stdDepsMap) {
             curPackage->AddDependentStdPkg(typeWithFullPkgName.second);
