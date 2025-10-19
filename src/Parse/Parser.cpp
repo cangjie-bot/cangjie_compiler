@@ -88,15 +88,18 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
     ret->fileHash = source.fileHash;
     SkipBlank(TokenKind::NL);
      /**
-     * preamble
-     *  : featureSpec? packageHeader? importSpec*
-     *  ;
-    */
-    // Parse features in TopLevel
-    if (SeeingFeature()) {
-        ParseFeatureDirective(ret->feature);
-    }
+     *  preamble
+     *      : featuresDirective? packageHeader? importList*
+     *      ;
+     */
     PtrVector<Annotation> annos;
+    if (SeeingBuiltinAnnotation()) {
+        ParseAnnotations(annos);
+    }
+    if (SeeingFeature()) {
+        ParseTopLvlFeatures(ret->feature, annos);
+    }
+    
     if (SeeingBuiltinAnnotation()) {
         ParseAnnotations(annos);
     }

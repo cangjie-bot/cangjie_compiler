@@ -1330,22 +1330,35 @@ void PrintCommandTypePattern(unsigned indent, const CommandTypePattern& commandT
     }
 }
 
+void PrintFeatureId(unsigned indent, const FeatureId& featureId)
+{
+    PrintIndent(indent, "FeatureId ", featureId.ToString(), " {");
+    PrintBasic(indent + ONE_INDENT, featureId);
+    PrintIndent(indent, "}");
+}
+
+void PrintFeatureSet(unsigned indent, const FeaturesSet& featureSet)
+{   
+    PrintIndent(indent, "FeaturesSet {");
+    PrintBasic(indent + ONE_INDENT, featureSet);
+    PrintIndent(indent + ONE_INDENT, "featureIds: ", "[");
+    for (auto& item : featureSet.content) {
+        PrintNode(&item, indent + TWO_INDENT);
+    }
+    PrintIndent(indent + ONE_INDENT, "]");
+    PrintIndent(indent, "}");
+}
+
 void PrintFeaturesDirective(unsigned indent, const FeaturesDirective& featuresDirective)
 {
     PrintIndent(indent, "FeaturesDirective:", "features", "{");
-    PrintIndent(indent + ONE_INDENT, "ids: ", "[");
-    if (!featuresDirective.content.empty()) {
-        std::stringstream ss;
-        for (size_t i = 0; i < featuresDirective.content.size(); i++) {
-            ss << featuresDirective.content[i].ToString();
-            if (i < featuresDirective.content.size() - 1) { ss << ", "; }
-        }
-        PrintIndent(indent + TWO_INDENT, ss.str());
-    } else {
-        PrintIndent(indent + TWO_INDENT, "// no feature arguments");
+    PrintBasic(indent + ONE_INDENT, featuresDirective);
+    PrintIndent(indent + ONE_INDENT, "annotations [");
+    for (auto& anno : featuresDirective.annotations) {
+        PrintAnnotation(indent + TWO_INDENT, *anno.get());
     }
     PrintIndent(indent + ONE_INDENT, "]");
-    PrintIndent(indent + ONE_INDENT, "position:", featuresDirective.begin.ToString(), featuresDirective.end.ToString());
+    PrintNode(featuresDirective.featuresSet, indent + ONE_INDENT);
     PrintIndent(indent, "}");
 }
 
@@ -1506,7 +1519,9 @@ void PrintNode([[maybe_unused]] Ptr<const Node> node, [[maybe_unused]] unsigned 
         [&indent](const CommandTypePattern& cmdTypePattern) { PrintCommandTypePattern(indent, cmdTypePattern); },
         [indent](const VarOrEnumPattern& ve) { PrintVarOrEnumPattern(indent, ve); },
         // ----------- package----------------------
-        [&indent](const FeaturesDirective& feature) { PrintFeaturesDirective(indent, feature); },
+        [&indent](const FeaturesDirective& featuresDir) { PrintFeaturesDirective(indent, featuresDir); },
+        [&indent](const FeaturesSet& featuresSet) { PrintFeatureSet(indent, featuresSet); },
+        [&indent](const FeatureId& featureId) { PrintFeatureId(indent, featureId); },
         [&indent](const PackageSpec& package) { PrintPackageSpec(indent, package); },
         [&indent](const ImportSpec& import) {
             if (import.IsImportMulti()) {
