@@ -116,6 +116,8 @@ def generate_cmake_defs(args):
     if args.target:
         if args.target == "aarch64-linux-ohos":
             toolchain_file = "ohos_aarch64_clang_toolchain.cmake"
+        elif args.target == "arm-linux-ohos":
+            toolchain_file = "ohos_arm_clang_toolchain.cmake"
         elif args.target == "x86_64-linux-ohos":
             toolchain_file = "ohos_x86_64_clang_toolchain.cmake"
         elif args.target == "x86_64-w64-mingw32":
