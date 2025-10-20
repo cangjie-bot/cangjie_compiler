@@ -15,9 +15,9 @@
 #include "llvm/Support/Casting.h"
 
 #include "Base/CGTypes/CGEnumType.h"
+#include "Utils/CGCommonDef.h"
 #include "CGModule.h"
 #include "IRBuilder.h"
-#include "Utils/CGCommonDef.h"
 #include "cangjie/Basic/Linkage.h"
 #include "cangjie/Basic/StringConvertor.h"
 #include "cangjie/CHIR/Expression/Terminator.h"

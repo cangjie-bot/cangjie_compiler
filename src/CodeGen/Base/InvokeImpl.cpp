@@ -37,7 +37,6 @@ llvm::MDTuple* GenObjTyMetaForVirtualCall(IRBuilder2& irBuilder, const CHIR::Typ
     }
     return llvm::MDTuple::get(llvmCtx, objTyMeta);
 }
-
 } // namespace
 llvm::Value* CodeGen::GenerateInvoke(IRBuilder2& irBuilder, const CHIRInvokeWrapper& invoke)
 {
