@@ -346,6 +346,9 @@ OPTION("--enable-eh", ENABLE_EFFECTS, FLAG, { BACKEND(CJNATIVE) },
 OPTION("--dump-chir-debug", DUMP_CHIR_DEBUG, FLAG, { BACKEND(ALL) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Dump CHIR readable txt file when compiling for debug")
+OPTION("--import-interop-cj-package-config-path", USE_INTEROP_CJ_PACKAGE_CONFIG_RPATH, SEPARATED, { BACKEND(ALL) },
+    { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, {}, SINGLE_OCCURRENCE,
+    "Add interop cj package config directory to path.")
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
 OPTION("--debug-annotations", DUMP_ANNOTATIONS_DEBUG, FLAG, { BACKEND(ALL) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
