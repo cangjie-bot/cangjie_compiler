@@ -37,6 +37,8 @@ public:
     void PerformDesugarAfterInstantiation(ASTContext& ctx, AST::Package& pkg) const;
 
     // Desugar after sema.
+    void PerformDesugarAfterSema(std::vector<Ptr<AST::Package>>& pkgs) const;
+
     void PerformDesugarAfterSema(const std::vector<Ptr<AST::Package>>& pkgs) const;
 
     /**
