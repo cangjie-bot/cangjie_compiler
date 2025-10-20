@@ -54,7 +54,8 @@ bool CompileStrategy::ConditionCompile() const
 
 void CompileStrategy::DesugarAfterSema() const
 {
-    ci->typeChecker->PerformDesugarAfterSema(ci->GetSourcePackages());
+    auto packages = ci->GetSourcePackages();
+    ci->typeChecker->PerformDesugarAfterSema(packages);
 }
 
 bool CompileStrategy::OverflowStrategy() const
