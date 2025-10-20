@@ -475,7 +475,7 @@ private:
     void DesugarSuperMethodCall(CallExpr& call, ClassDecl& impl);
 
     void GenerateInJavaImpl(AST::ClassDecl* classDecl);
-    void GenerateForCJStructMapping(AST::StructDecl* structDecl);
+    void GenerateForCJStructMapping(const File &file, AST::StructDecl* structDecl);
     void GenerateForCJEnumMapping(AST::EnumDecl& enumDecl);
     OwnedPtr<PrimitiveType> CreateUnitType();
 
