@@ -801,9 +801,10 @@ Ptr<FuncDecl> GIM::GenericInstantiationManagerImpl::FindImplFuncForAbstractFunc(
     // Rearrange for interface or open class call. Ignore function with following conditions:
     // 1. non-member function;
     // 2. non-static function which is accessed with interface type.
-    // 3. member function accessed by class type which function belone to.
+    // 3. member function accessed by class type which function belongs to.
     auto baseTyDecl = Ty::GetDeclPtrOfTy<InheritableDecl>(&ty);
     bool shouldIgnore = !fd.outerDecl || (ty.IsInterface() && !fd.TestAttr(Attribute::STATIC)) ||
+        (ty.IsClass() && baseTyDecl == Ty::GetDeclPtrOfTy<InheritableDecl>(fd.outerDecl->ty));
         (ty.IsClass() && baseTyDecl == Ty::GetDeclPtrOfTy<InheritableDecl>(fd.outerDecl->ty));
     if (shouldIgnore) {
         return &fd;
