@@ -65,6 +65,7 @@ void PrintBasic(unsigned indent, const Node& node)
     PrintIndent(indent, "position:", node.begin.ToString(), node.end.ToString());
     PrintIndent(indent, "scopeName:", "\"" + node.scopeName + "\"");
     PrintIndent(indent, "ty:", node.ty->String());
+    PrintIndent(indent, "ptr:", &node);
     auto fullPkgName = node.GetFullPackageName();
     if (!fullPkgName.empty()) {
         PrintIndent(indent, "fullPackageName:", fullPkgName);
