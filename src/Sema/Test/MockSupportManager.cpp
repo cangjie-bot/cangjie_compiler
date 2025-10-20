@@ -91,6 +91,10 @@ bool MockSupportManager::DoesClassLikeSupportMocking(ClassLikeDecl& classLikeToC
 
 void MockSupportManager::MakeOpenToMockIfNeeded(Decl& decl)
 {
+    auto outerDecl = decl.outerDecl;
+    if (outerDecl != nullptr && !outerDecl->IsClassLikeDecl()) {
+        return;
+    }
     if (!decl.TestAttr(Attribute::OPEN) && !decl.TestAttr(Attribute::ABSTRACT)) {
         decl.EnableAttr(Attribute::OPEN);
         decl.EnableAttr(Attribute::OPEN_TO_MOCK);
