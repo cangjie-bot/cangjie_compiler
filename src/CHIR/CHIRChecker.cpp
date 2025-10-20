@@ -509,6 +509,10 @@ bool CHIRChecker::TypeIsExpected(const Type& srcType, const Type& dstType)
     if (srcType.IsNothing()) {
         return true;
     }
+    // maybe struct S <: I, S is sub type of I, but we can't send S to I directly
+    if (srcType.IsStruct() && dstType.IsClass()) {
+        return false;
+    }
     // we can set a sub type to a parent type, it's safe in llvm ir,
     // but for legal CHIR, we still need to check this case later
     if (srcType.IsEqualOrSubTypeOf(dstType, builder)) {
@@ -630,7 +634,7 @@ bool CHIRChecker::CheckFuncBase(const FuncBase& func)
 
     // 3. check parent CustomTypeDef
     if (auto parentDef = func.GetParentCustomTypeDef()) {
-        if (!CheckParentCustomTypeDef(func, *parentDef)) {
+        if (!CheckParentCustomTypeDef(func, *parentDef, false)) {
             return false;
         }
     }
@@ -699,7 +703,7 @@ bool CHIRChecker::CheckFuncType(const Type* type, const Lambda* lambda, const Fu
     return CheckParamTypes(funcType->GetParamTypes(), lambda, topLevelFunc);
 }
 
-bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTypeDef& def)
+bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTypeDef& def, bool isInDef)
 {
     auto parentDef = func.GetParentCustomTypeDef();
     if (parentDef == nullptr) {
@@ -713,6 +717,9 @@ bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTyp
             parentDef->GetIdentifier() +", but this function is also member method of " + def.GetIdentifier() + ".";
         Errorln(errMsg);
         return false;
+    }
+    if (isInDef) {
+        return true;
     }
     for (auto method : def.GetMethods()) {
         if (method == &func) {
@@ -886,7 +893,7 @@ bool CHIRChecker::CheckParamTypes(
 void CHIRChecker::CheckStructDef(const StructDef& def)
 {
     for (auto method : def.GetMethods()) {
-        CheckParentCustomTypeDef(*method, def);
+        CheckParentCustomTypeDef(*method, def, true);
     }
 }
 
