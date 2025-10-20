@@ -13,6 +13,7 @@
 #include <limits>
 
 #include "cangjie/AST/Match.h"
+#include "cangjie/AST/Symbol.h"
 #include "cangjie/Utils/FileUtil.h"
 #include "NativeFFI/Java/AfterTypeCheck/JavaDesugarManager.h"
 #include "NativeFFI/Java/AfterTypeCheck/Utils.h"
@@ -61,18 +62,22 @@ bool NeedExtraFinalModifier(const Decl& declArg)
 
 namespace Cangjie::Interop::Java {
 JavaSourceCodeGenerator::JavaSourceCodeGenerator(
-    Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName)
-    : AbstractSourceCodeGenerator(outputFilePath), decl(decl), cjLibName(std::move(cjLibName)), mangler(mangler)
+    Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName,
+    bool isInteropCJPackageConfig)
+    : AbstractSourceCodeGenerator(outputFilePath), decl(decl), cjLibName(std::move(cjLibName)), mangler(mangler),
+      isInteropCJPackageConfig(isInteropCJPackageConfig)
 {
 }
 
 JavaSourceCodeGenerator::JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler,
-    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName)
+    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+    bool isInteropCJPackageConfig)
     : AbstractSourceCodeGenerator(
           outputFolderPath.value_or(JavaSourceCodeGenerator::DEFAULT_OUTPUT_DIR), outputFileName),
       decl(decl),
       cjLibName(std::move(cjLibName)),
-      mangler(mangler)
+      mangler(mangler),
+      isInteropCJPackageConfig(isInteropCJPackageConfig)
 {
 }
 
@@ -685,6 +690,10 @@ void JavaSourceCodeGenerator::AddMethods()
         }
         if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+            // Hidden interopCJ configure unexposed symbol.
+            if (isInteropCJPackageConfig && funcDecl.symbol && !funcDecl.symbol->isNeedExposedToInterop) {
+                continue;
+            }
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
                 if (funcDecl.TestAttr(Attribute::STATIC)) {
                     AddStaticMethod(funcDecl);
