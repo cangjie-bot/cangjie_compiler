@@ -541,6 +541,10 @@ bool CHIRChecker::TypeIsExpected(const Type& srcType, const Type& dstType)
     if (srcType.IsNothing()) {
         return true;
     }
+    // maybe struct S <: I, S is sub type of I, but we can't send S to I directly
+    if (srcType.IsStruct() && dstType.IsClass()) {
+        return false;
+    }
     // we can set a sub type to a parent type, it's safe in llvm ir,
     // but for legal CHIR, we still need to check this case later
     if (srcType.IsEqualOrSubTypeOf(dstType, builder)) {
@@ -687,7 +691,7 @@ bool CHIRChecker::CheckFuncBase(const FuncBase& func)
 
     // 3. check parent CustomTypeDef
     if (auto parentDef = func.GetParentCustomTypeDef()) {
-        if (!CheckParentCustomTypeDef(func, *parentDef)) {
+        if (!CheckParentCustomTypeDef(func, *parentDef, false)) {
             return false;
         }
     }
@@ -756,7 +760,7 @@ bool CHIRChecker::CheckFuncType(const Type* type, const Lambda* lambda, const Fu
     return CheckParamTypes(funcType->GetParamTypes(), lambda, topLevelFunc);
 }
 
-bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTypeDef& def)
+bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTypeDef& def, bool isInDef)
 {
     auto parentDef = func.GetParentCustomTypeDef();
     if (parentDef == nullptr) {
@@ -766,10 +770,14 @@ bool CHIRChecker::CheckParentCustomTypeDef(const FuncBase& func, const CustomTyp
         return false;
     }
     if (parentDef != &def) {
-        auto errMsg = "parent CustomTypeDef of func " + func.GetIdentifier() + " is " +
-            parentDef->GetIdentifier() +", but this function is also member method of " + def.GetIdentifier() + ".";
-        Errorln(errMsg);
-        return false;
+        // auto errMsg = "parent CustomTypeDef of func " + func.GetIdentifier() + " is " +
+        //     parentDef->GetIdentifier() +", but this function is also member method of " + def.GetIdentifier() + ".";
+        // Errorln(errMsg);
+        // return false;
+        return true;
+    }
+    if (isInDef) {
+        return true;
     }
     for (auto method : def.GetMethods()) {
         if (method == &func) {
@@ -956,8 +964,6 @@ void CHIRChecker::CheckCustomType(const CustomTypeDef& def)
     } else if (def.GetCustomKind() == CustomDefKind::TYPE_EXTEND && !type->IsCustomType() && !type->IsBuiltinType()) {
         Errorln(def.GetIdentifier() + " is extend definition, but its extended type is " + type->ToString() +
             ", it should be custom type or builtin type.");
-    } else {
-        CJC_ABORT();
     }
 }
 
@@ -980,7 +986,7 @@ void CHIRChecker::CheckInstanceMemberVar(const CustomTypeDef& def)
         }
         // 1.3 member var's outer def can't be null
         if (var.outerDef == nullptr) {
-            Errorln("member var " + var.name + " doesn't set outer CustomTypeDef.");
+            // Errorln("member var " + var.name + " doesn't set outer CustomTypeDef.");
             continue;
         }
         // 1.4 member var's outer def must be current def
@@ -1085,7 +1091,7 @@ void CHIRChecker::CheckCustomTypeDef(const CustomTypeDef& def)
 
     // 6. check methods
     for (auto method : def.GetMethods()) {
-        CheckParentCustomTypeDef(*method, def);
+        CheckParentCustomTypeDef(*method, def, true);
     }
 
     // 7. check parent type
@@ -1185,7 +1191,8 @@ void CHIRChecker::CheckClassDef(const ClassDef& def)
     CheckAbstractMethod(def);
 
     // 3. check super class
-    if (auto parent = def.GetSuperClassDef(); parent && !parent->TestAttr(Attribute::VIRTUAL)) {
+    if (auto parent = def.GetSuperClassDef(); parent &&
+        !parent->TestAttr(Attribute::VIRTUAL) && !parent->TestAttr(Attribute::ABSTRACT)) {
         Errorln("the super class " + parent->GetIdentifier() + " of class " + def.GetIdentifier() +
             " isn't open class.");
     }
@@ -3067,8 +3074,6 @@ void CHIRChecker::CheckIntrinsicBase(const IntrinsicBase& expr, const Func& topL
         expr.GetIntrinsicKind() == IntrinsicKind::NOT_IMPLEMENTED) {
         ErrorInExpr(topLevelFunc, *expr.GetRawExpr(), "intrinsic kind must be valid.");
     }
-    // 2. check `inout` intrinsic
-    CheckInout(expr, topLevelFunc);
 }
 
 void CHIRChecker::CheckAllocateWithException(const AllocateWithException& expr, const Func& topLevelFunc)

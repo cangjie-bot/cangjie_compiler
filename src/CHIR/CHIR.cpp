@@ -763,7 +763,7 @@ bool ToCHIR::RunIRChecker(const Phase& phase)
     auto checker = CHIRChecker(*chirPkg, opts, builder);
     std::unordered_set<CHIRChecker::Rule> rules;
     // after AST2CHIR, there are many empty block, we need to clean them
-    if (phase == Phase::RAW) {
+    if (phase != Phase::RAW) {
         rules.emplace(CHIRChecker::Rule::EMPTY_BLOCK);
     }
     // we need to translate correct InvokeStatic, but after function inline,
