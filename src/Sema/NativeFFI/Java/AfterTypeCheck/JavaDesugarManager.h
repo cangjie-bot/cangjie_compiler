@@ -476,7 +476,7 @@ private:
     void DesugarSuperMethodCall(CallExpr& call, ClassDecl& impl);
 
     void GenerateInJavaImpl(AST::ClassDecl* classDecl);
-    void GenerateForCJStructMapping(AST::StructDecl* structDecl);
+    void GenerateForCJStructOrClassTypeMapping(AST::Decl* decl);
     void GenerateForCJEnumMapping(AST::EnumDecl& enumDecl);
     void GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl);
     void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl);
