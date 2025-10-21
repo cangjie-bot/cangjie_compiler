@@ -8,6 +8,7 @@
 #define CANGJIE_CHIR_ATTRIBUTEINFO_H
 
 #include <bitset>
+#include <cstdint>
 #include <unordered_map>
 
 namespace Cangjie::CHIR {

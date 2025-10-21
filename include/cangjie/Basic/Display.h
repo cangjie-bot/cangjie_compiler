@@ -33,6 +33,7 @@
 #ifndef CANGJIE_BASIC_DISPLAY_H
 #define CANGJIE_BASIC_DISPLAY_H
 
+#include <cstdint>
 #include <vector>
 #include <bitset>
 #include <unordered_map>
