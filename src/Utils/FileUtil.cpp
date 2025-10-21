@@ -1107,11 +1107,12 @@ std::string FindSerializationFile(
     const std::string& fullPackageName, const std::string& suffix, const std::vector<std::string>& searchPaths)
 {
     auto names = Utils::SplitQualifiedName(fullPackageName);
-    auto fileName = ToCjoFileName(names.front()) + DIR_SEPARATOR + fullPackageName;
-    auto filePath = FileUtil::FindFileByName(fileName + suffix, searchPaths, true).value_or("");
+    auto packageName = ToCjoFileName(fullPackageName);
+    auto fileName = ToCjoFileName(names.front()) + DIR_SEPARATOR + packageName;
+    auto filePath = FindFileByName(fileName + suffix, searchPaths, true).value_or("");
     if (filePath.empty()) {
         // TEMPORARILY, find file in direct path.
-        return FileUtil::FindFileByName(fullPackageName + suffix, searchPaths, true).value_or("");
+        return FindFileByName(packageName + suffix, searchPaths, true).value_or("");
     }
     return filePath;
 }
