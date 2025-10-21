@@ -860,6 +860,10 @@ OwnedPtr<FuncDecl> MockSupportManager::GenerateFuncAccessor(FuncDecl& methodDecl
         param->outerDecl = methodAccessor.get();
         auto refExpr = CreateRefExpr(*param);
         refExpr->curFile = param->curFile;
+
+        if (param->desugarDecl) {
+            param->desugarDecl->DisableAttr(Attribute::GENERIC_INSTANTIATED);
+        }
         mockedMethodArgRefs.emplace_back(CreateFuncArg(std::move(refExpr)));
     }
 
