@@ -34,6 +34,9 @@ constexpr auto JAVA_WHITESPACE = " ";
 
 constexpr auto JAVA_BOOLEAN = "boolean";
 constexpr auto JAVA_SPECIAL_PARAM_NAME = "__init__";
+constexpr auto JAVA_OBJECT_HASHCODE_METHOD_NAME = "hashCode";
+constexpr auto JAVA_OBJECT_EQUALS_METHOD_NAME = "equals";
+constexpr auto JAVA_OBJECT_TOSTRING_METHOD_NAME = "toString";
 
 bool IsFuncDeclAndNotConstructor(OwnedPtr<Decl>& declPtr)
 {
@@ -214,7 +217,7 @@ void JavaSourceCodeGenerator::AddClassDeclaration()
 
     if (auto classDecl = As<ASTKind::CLASS_DECL>(decl)) {
         Ptr<ClassDecl> superClassPtr = classDecl->GetSuperClassDecl();
-        bool isClassInheritedFromClass = !IsJObject(*superClassPtr);
+        bool isClassInheritedFromClass = !IsJObject(*superClassPtr) && !IsObject(*superClassPtr);
 
         std::set<Ptr<InterfaceTy>> implementedInterfacesPtrs = classDecl->GetSuperInterfaceTys();
         size_t implementedInterfacesCnt = implementedInterfacesPtrs.size();
@@ -679,6 +682,9 @@ void JavaSourceCodeGenerator::AddStaticMethod(const FuncDecl& funcDecl)
 
 void JavaSourceCodeGenerator::AddMethods()
 {
+    bool hasHashcodeMethod = false;
+    bool hasEqualsMethod = false;
+    bool hasToStringMethod = false;
     for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
         if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
             continue;
@@ -691,8 +697,39 @@ void JavaSourceCodeGenerator::AddMethods()
                 } else {
                     AddInstanceMethod(funcDecl);
                 }
+                hasHashcodeMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_HASHCODE_METHOD_NAME;
+                hasEqualsMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_EQUALS_METHOD_NAME;
+                hasToStringMethod = GetJavaMemberName(funcDecl) == JAVA_OBJECT_TOSTRING_METHOD_NAME;
             }
         }
+    }
+    AddEqualOrIdentityMethod(hasHashcodeMethod, hasEqualsMethod, hasToStringMethod);
+}
+
+void JavaSourceCodeGenerator::AddEqualOrIdentityMethod(bool hasHashcodeMethod, bool hasEqualsMethod, bool hasToStringMethod)
+{
+    if(!hasEqualsMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public boolean equals(Object obj) {");
+        AddWithIndent(TAB2, "throw new UnsupportedOperationException(\"equals is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
+    }
+
+    if(!hasHashcodeMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public boolean hashCode() {");
+        AddWithIndent(TAB2, "throw new UnsupportedOperationException(\"hashCode is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
+    }
+
+    if(!hasToStringMethod) {
+        AddWithIndent(TAB, "@Override");
+        AddWithIndent(TAB, "public boolean toString() {");
+        AddWithIndent(TAB2, "throw new UnsupportedOperationException(\"toString is not supported for java proxy object.\");");
+        AddWithIndent(TAB, "}");
+        AddWithIndent("", "");
     }
 }
 

@@ -125,6 +125,9 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, 
         } else if (auto retEnumTy = DynamicCast<EnumTy*>(retTy)) {
             std::string clazzName = retEnumTy->decl->fullPackageName + "." + retTy->name;
             createCJMappingCall(clazzName, false);
+        } else if (auto retClassTy = DynamicCast<ClassTy*>(retTy)) {
+            std::string clazzName = retClassTy->decl->fullPackageName + "." + retTy->name;
+            createCJMappingCall(clazzName, true);
         }
     } else {
         OwnedPtr<Expr> methodResRef = WithinFile(CreateRefExpr(*methodCallRes), curFile);
