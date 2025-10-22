@@ -14,7 +14,6 @@
 #include "cangjie/CHIR/Checker/VarInitCheck.h"
 #include "cangjie/CHIR/CHIRChecker.h"
 #include "cangjie/CHIR/GenerateVTable/GenerateVTable.h"
-#include "cangjie/CHIR/IRChecker.h"
 #include "cangjie/CHIR/Interpreter/ConstEval.h"
 #include "cangjie/CHIR/Serializer/CHIRDeserializer.h"
 #include "cangjie/CHIR/Serializer/CHIRSerializer.h"
