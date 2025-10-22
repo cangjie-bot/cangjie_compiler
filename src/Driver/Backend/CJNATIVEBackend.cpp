@@ -133,7 +133,7 @@ void CJNATIVEBackend::GenerateCacheCopyTool(const std::vector<TempFileInfo>& fil
  */
 bool CJNATIVEBackend::ProcessGeneration()
 {
-    CJC_ASSERT(!driverOptions.frontendOutputFiles.empty() && "non-compiled file found!");
+    CJC_ASSERT((!driverOptions.frontendOutputFiles.empty() || !driverOptions.inputObjs.empty()) && "non-compiled file found!");
     std::vector<TempFileInfo> bitCodeFiles = GetFrontendOutputs();
     return driverOptions.incrementalCompileNoChange ? ProcessGenerationOfIncrementalNoChangeCompile(bitCodeFiles)
                                                     : ProcessGenerationOfNormalCompile(bitCodeFiles);
@@ -160,6 +160,11 @@ bool CJNATIVEBackend::ProcessGenerationOfNormalCompile(const std::vector<TempFil
         // When compiling a static library in LTO mode, the compilation process stops at the opt stage.
         if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
             return true;
+        }
+        for(const auto& objFile : driverOptions.inputObjs) 
+        {
+            auto filename = FileUtil::GetFileNameWithoutExtension(objFile);
+            preprocessedFiles.emplace_back(TempFileInfo{filename, objFile, objFile, false, true});
         }
         // In LTO mode, compilation is not performed using llc.
         return TC->ProcessGeneration(preprocessedFiles);
@@ -200,6 +205,11 @@ bool CJNATIVEBackend::ProcessGenerationOfNormalCompile(const std::vector<TempFil
         batch.emplace_back(std::move(tool));
     }
     backendCmds.emplace_back(std::move(batch));
+    for(const auto& objFile : driverOptions.inputObjs) 
+    {
+        auto filename = FileUtil::GetFileNameWithoutExtension(objFile);
+        objFiles.emplace_back(TempFileInfo{filename, objFile, objFile, false, true});
+    }
     return TC->ProcessGeneration(objFiles);
 }
 
@@ -223,6 +233,11 @@ bool CJNATIVEBackend::ProcessGenerationOfIncrementalNoChangeCompile(const std::v
         if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
             return true;
         }
+        for(const auto& objFile : driverOptions.inputObjs) 
+        {
+            auto filename = FileUtil::GetFileNameWithoutExtension(objFile);
+            preprocessedFiles.emplace_back(TempFileInfo{filename, objFile, objFile, false, true});
+        }
         return TC->ProcessGeneration(preprocessedFiles);
     }
 
@@ -237,6 +252,11 @@ bool CJNATIVEBackend::ProcessGenerationOfIncrementalNoChangeCompile(const std::v
             return false;
         }
         file.filePath = driverOptions.GetHashedObjFileName(file.fileName) + ".o";
+    }
+    for(const auto& objFile : driverOptions.inputObjs) 
+    {
+        auto filename = FileUtil::GetFileNameWithoutExtension(objFile);
+        tempBitCodeFiles.emplace_back(TempFileInfo{filename, objFile, objFile, false, true});
     }
     return TC->ProcessGeneration(tempBitCodeFiles);
 }

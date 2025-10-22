@@ -57,6 +57,23 @@ std::vector<std::string> PrependToPaths(
  * @return std::optional<std::string> The sdk version info.
  */
 std::optional<std::string> GetDarwinSDKVersion(const std::string& sdkPath);
+
+/**
+ * @brief read .linker-options section content in object file on different platforms
+ *
+ * @param objFile The object file path
+ * @return std::vector<std::string> The splitted content
+*/
+std::vector<std::string> readLinkSectionFromObjectFile(const std::string& objFile);
+
+/**
+* @brief Check whether string a ends with string b
+*
+* @param a
+* @param b
+* @return true if a ends with b else false
+*/
+bool endsWith(const std::string& a, const std::string& b);
 } // namespace Cangjie
 
 #endif // CANGJIE_DRIVER_UTILS_H

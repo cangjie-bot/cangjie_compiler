@@ -24,6 +24,7 @@
 #include "cangjie/CHIR/Analysis/ConstAnalysis.h"
 #include "cangjie/CHIR/Analysis/TypeAnalysis.h"
 #include "cangjie/CHIR/CHIRBuilder.h"
+#include "cangjie/Driver/Utils.h"
 #include "cangjie/Frontend/CompileStrategy.h"
 #include "cangjie/Frontend/CompilerInvocation.h"
 #include "cangjie/IncrementalCompilation/IncrementalScopeAnalysis.h"

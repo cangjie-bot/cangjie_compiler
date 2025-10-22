@@ -398,10 +398,19 @@ void GenSubCHIRPackage(CGModule& cgMod)
 
 class PackageGeneratorImpl : public IRGeneratorImpl {
 public:
-    PackageGeneratorImpl(CHIR::CHIRBuilder& chirBuilder, const CHIRData& chirData, const GlobalOptions& options,
+    PackageGeneratorImpl(CHIR::CHIRBuilder& chirBuilder, const CHIRData& chirData, const DefaultCompilerInstance& ci,
         bool enableIncrement, const CachedMangleMap& cachedMangleMap)
-        : cgPkgCtx(chirBuilder, chirData, options, enableIncrement, cachedMangleMap)
+        : cgPkgCtx(chirBuilder, chirData, ci.invocation.globalOptions, enableIncrement, cachedMangleMap)
     {
+        importStdLibs.clear();
+        auto importPkgs = ci.importManager.GetAllImportedPackages(true);
+        for(auto& pkg : importPkgs) {
+            auto& name = pkg->srcPackage->fullPackageName;
+            if(auto convertName = FileUtil::ConvertPackageNameToLibCangjieBaseFormat(name); convertName != std::string()) 
+            {
+                importStdLibs.emplace_back(name);
+            }
+        }
     }
 
     void EmitIR() override;
@@ -461,10 +470,25 @@ private:
         }
         Utils::ProfileRecorder::Stop("EmitIR", "GenSubCHIRPackages");
     }
+
+    /*
+    * @generate llvm.linker.options metadata to save it in .bc file
+    */
+    void EmitLinkOptionIR(CGModule& cgMod) 
+    {
+        auto* LINKMD = cgMod.GetLLVMModule()->getOrInsertNamedMetadata("llvm.linker.options");
+        for(auto& lib : importStdLibs) 
+        {
+            auto* LPath = llvm::MDString::get(cgMod.GetLLVMContext(), "");
+            auto* Llib = llvm::MDString::get(cgMod.GetLLVMContext(), lib + "@");
+            LINKMD->addOperand(llvm::MDTuple::get(cgMod.GetLLVMContext(), {LPath, Llib}));
+        }
+    }
 #endif
 
 private:
     CGPkgContext cgPkgCtx;
+    std::vector<std::string> importStdLibs;
 };
 
 
@@ -568,7 +592,7 @@ std::vector<std::unique_ptr<llvm::Module>> GenPackageModules(CHIR::CHIRBuilder& 
     if (enableIncrement) {
         cachedMangleMap = StaticCast<Cangjie::IncrementalCompilerInstance&>(compilerInstance).cacheMangles;
     }
-    auto temp = PackageGeneratorImpl(chirBuilder, chirData, options, enableIncrement, cachedMangleMap);
+    auto temp = PackageGeneratorImpl(chirBuilder, chirData, compilerInstance, enableIncrement, cachedMangleMap);
     temp.EmitIR();
     return temp.ReleaseLLVMModules();
 }

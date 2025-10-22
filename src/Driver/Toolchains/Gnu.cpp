@@ -31,6 +31,11 @@ inline void LinkStaticLibrary(Tool& tool, const std::string& lib)
     tool.AppendArg(lib);
     tool.AppendArg("--no-whole-archive");
 }
+
+bool isBCFile(const Cangjie::TempFileInfo& file) 
+{
+    return endsWith(file.filePath, ".bc");    
+}
 }
 
 
@@ -422,7 +427,7 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
 {
     size_t codegenOutputBCNum = 0;
     for (auto objName : objFiles) {
-        codegenOutputBCNum += objName.isForeignInput ? 0 : 1;
+        codegenOutputBCNum += (objName.isForeignInput && isBCFile(objName)) ? 0 : 1;
     }
     if (codegenOutputBCNum == 1) {
         // The '--output-type=staticlib', one more step to go, create an archive
@@ -445,7 +450,7 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
     tool->AppendArg("-r");
     std::vector<TempFileInfo> processedObjFiles{};
     for (auto objName : objFiles) {
-        if (objName.isForeignInput) {
+        if (objName.isForeignInput && isBCFile(objName)) {
             processedObjFiles.emplace_back(objName);
         } else {
             tool->AppendArg(objName.filePath);

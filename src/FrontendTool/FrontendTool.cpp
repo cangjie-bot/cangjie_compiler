@@ -107,14 +107,14 @@ static bool IsEmptyInputFile(const DefaultCompilerInstance& instance)
         return !globalOptions.compilePackage && globalOptions.inputCjoFile.empty();
     } else {
         // In code compilation mode, .cj file input is required or `-p` must be specified (with package path input).
-        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty();
+        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && globalOptions.inputObjs.empty();
     }
 }
 
 static bool HandleEmptyInputFileSituation(const DefaultCompilerInstance& instance)
 {
     auto& globalOptions = instance.invocation.globalOptions;
-    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty()) {
+    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && globalOptions.inputObjs.empty()) {
         instance.diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }

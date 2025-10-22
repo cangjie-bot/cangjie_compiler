@@ -1054,10 +1054,18 @@ bool CompilerInstance::DetectCangjieModules()
 bool CompilerInstance::ModularizeCompilation()
 {
     for (auto& objFile : importManager.GetUsedSTDLibFiles(DepType::DIRECT)) {
-        invocation.globalOptions.directBuiltinDependencies.insert(objFile);
+        invocation.globalOptions.indirectBuiltinDependencies.insert(objFile);
     }
     for (auto& objFile : importManager.GetUsedSTDLibFiles(DepType::INDIRECT)) {
         invocation.globalOptions.indirectBuiltinDependencies.insert(objFile);
+    }
+    for (auto& obj : invocation.globalOptions.inputObjs)
+    {
+        auto Libs = readLinkSectionFromObjectFile(obj);
+        for (const std::string& lib : Libs) 
+        {
+            invocation.globalOptions.indirectBuiltinDependencies.insert(lib);
+        }
     }
     return packageManager->ResolveDependence(pkgs);
 }

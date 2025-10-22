@@ -14,9 +14,16 @@
 
 #include <sstream>
 
+#include "cangjie/Basic/Print.h"
 #include "cangjie/Utils/FileUtil.h"
-#include "llvm/Support/JSON.h"
+#include "llvm/Object/Binary.h"
+#include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/JSON.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace Cangjie {
 std::string GetSingleQuoted(const std::string& str)
@@ -77,4 +84,48 @@ std::optional<std::string> GetDarwinSDKVersion(const std::string& sdkPath)
     }
     return std::nullopt;
 }
+
+std::vector<std::string> readLinkSectionFromObjectFile(const std::string& objFile) {
+    auto File = llvm::MemoryBuffer::getFile(objFile);
+    std::vector<std::string> content{};
+    if(auto error = File.getError()) {
+        Errorln("Can't open file: " + error.message());
+        return content;
+    }
+    auto memBufferRef = File->get()->getMemBufferRef();
+    auto binFile = llvm::object::createBinary(memBufferRef);
+    if(!binFile) {
+        Errorln(objFile + " isn't not a recognized object file.");
+        return content;
+    }
+    std::unique_ptr<llvm::object::Binary> Bin(std::move(binFile.get()));
+    if(auto* objContent = llvm::dyn_cast<llvm::object::ObjectFile>(Bin.get())) {
+        for(auto& sec : objContent->sections()) {
+            auto nameRef = sec.getName();
+            if(!nameRef) {
+                continue;
+            }
+            std::string name = nameRef->str();
+            if(name == ".linker-options") {
+                auto contentRef = sec.getContents();
+                if(!contentRef) {
+                    continue;
+                }
+                std::string contentStr = contentRef->str();
+                content = Utils::SplitString(contentStr, "@");
+                break;
+            }
+        }
+    }
+    return content;
+}
+
+bool endsWith(const std::string& a, const std::string& b) {
+    if(a.size() < b.size())
+    {
+        return false;
+    }
+    return a.rfind(b) + b.size() == a.size();
+}
+
 } // namespace Cangjie
