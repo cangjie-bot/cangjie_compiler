@@ -9,6 +9,9 @@ include(CTest)
 include_directories(${GTEST_INCLUDE_DIRS})
 include_directories(TestCompilerInstance)
 add_definitions(-DPROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+if(CANGJIE_CHIR_PLUGIN)
+    add_definitions(-DCANGJIE_CHIR_PLUGIN=1)
+endif()
 
 # use llvm
 include_directories(${LLVM_INCLUDE_DIRS})
