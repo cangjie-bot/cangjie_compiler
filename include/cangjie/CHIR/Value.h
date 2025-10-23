@@ -621,6 +621,7 @@ class FuncBase : public virtual Value {
     friend class TypeConverterForCC;
     friend class CustomTypeDef;
     friend class ImportedFunc;
+    friend class VirtualMethodInfo;
     friend class Func;
 
 public:
