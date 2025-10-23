@@ -36,6 +36,40 @@ void CHIRSerializer::Serialize(const Package& package, const std::string filenam
     serializer.Save(filename, phase);
 }
 
+#ifdef CANGJIE_CHIR_PLUGIN
+DetachedBuffer CHIRSerializer::Serialize(const Package& package, ToCHIR::Phase phase)
+{
+    CHIRSerializerImpl serializer(package);
+    serializer.Initialize();
+    serializer.Dispatch();
+    return serializer.SaveToMemory(phase);
+}
+
+namespace Cangjie::CHIR {
+struct DetachedBufferImpl {
+    DetachedBufferImpl(flatbuffers::DetachedBuffer&& buf) : buffer(std::move(buf)) {}
+    ~DetachedBufferImpl() = default;
+    flatbuffers::DetachedBuffer buffer;
+};
+
+DetachedBuffer::DetachedBuffer(flatbuffers::DetachedBuffer&& buf)
+    : impl(new DetachedBufferImpl(std::move(buf)))
+{
+}
+DetachedBuffer::~DetachedBuffer()
+{
+    delete impl;
+}
+void* DetachedBuffer::Data()
+{
+    return impl->buffer.data();
+}
+size_t DetachedBuffer::Size()
+{
+    return impl->buffer.size();
+}
+} // namespace Cangjie::CHIR
+#endif
 // ========================== ID Fetchers ==============================
 
 template <typename T, typename E> std::vector<uint32_t> CHIRSerializer::CHIRSerializerImpl::GetId(std::vector<E*> vec)
@@ -1776,6 +1810,22 @@ void CHIRSerializer::CHIRSerializerImpl::Save(const std::string& filename, ToCHI
     output.write(reinterpret_cast<const char*>(buf), static_cast<long>(size));
     output.close();
 }
+
+#ifdef CANGJIE_CHIR_PLUGIN
+flatbuffers::DetachedBuffer CHIRSerializer::CHIRSerializerImpl::SaveToMemory(ToCHIR::Phase phase)
+{
+    auto accesslevel = package.GetPackageAccessLevel();
+    auto packageName = package.GetName();
+    auto serializedPackage = PackageFormat::CreateCHIRPackageDirect(builder, packageName.c_str(), "",
+        PackageFormat::PackageAccessLevel(accesslevel), &typeKind, &allType, &valueKind, &allValue, &exprKind,
+        &allExpression, &defKind, &allCustomTypeDef, packageInitFunc, PackageFormat::Phase(phase),
+        packageLiteralInitFunc, maxImportedValueId, maxImportedStructId, maxImportedClassId, maxImportedEnumId,
+        maxImportedExtendId);
+
+    builder.Finish(serializedPackage);
+    return builder.Release();
+}
+#endif
 
 void CHIRSerializer::CHIRSerializerImpl::Initialize()
 {
