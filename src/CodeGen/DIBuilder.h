@@ -153,7 +153,7 @@ private:
         return StaticCast<const CGEnumType*>(CGType::GetOrCreate(cgMod, &ty))->IsOptionLike();
     }
 
-    static std::string RemoveCustomTypePrefix(const std::string& typeName)
+    static std::stringconst stCustomd::string& typeName,false
     {
         std::string prefix = "::";
         auto prefixPos = typeName.find(prefix);
@@ -272,13 +272,13 @@ private:
         return typeName;
     }
 
-    std::string GenerateCustomTypeName(const CHIR::CustomType& type)
+  std::string GenerateCustomTypeName(const CHIR::CustomType& type, bool needPkgPrefix = true)
     {
         if (type.IsAutoEnvBase()) {
             return GenerateClosureTypeName(StaticCast<const CHIR::ClassType&>(type));
         }
         auto pkgName = type.GetCustomTypeDef()->GetPackageName();
-        std::string typeName = pkgName + "::" + CHIR::GetCustomTypeIdentifier(type);
+        std::string typeName = (needPkgPrefix ? (pkgName + "::") :"") + CHIR::GetCustomTypeIdentifier(type);
         if (!type.GetTypeArgs().empty()) {
             typeName += "<";
             for (auto arg : type.GetTypeArgs()) {
