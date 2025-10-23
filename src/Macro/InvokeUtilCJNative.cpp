@@ -18,20 +18,15 @@ namespace {
 const static std::string G_CJ_RUNTIME_INIT = "InitCJRuntime";
 const static std::string G_CJ_RUNTIME_FINI = "FiniCJRuntime";
 const static std::string G_CJ_NEW_TASK_FROM_C = "RunCJTask";
+#ifdef CANGJIE_CHIR_PLUGIN
+constexpr std::string_view G_CJ_LOAD_CJ_LIB = "LoadCJLibraryWithInit";
+constexpr std::string_view G_CJ_GET_TASK_RET = "GetTaskRet";
+#endif
 const static std::string G_RELEASE_HANDLE_FROM_C = "ReleaseHandle";
 using CangjieInitFromC = int64_t (*)(ConfigParam*);
 using CangjieFiniFromC = int64_t (*)();
 std::vector<HANDLE> g_openedLibHandles;
 std::mutex g_openedLibMutex;
-
-#ifdef _WIN32
-// environment variable names in windows is case-insensitive, so they all uppercase in frontend global option
-const static std::string G_CJHEAPSIZE = "CJHEAPSIZE";
-const static std::string G_CJSTACKSIZE = "CJSTACKSIZE";
-#else
-const static std::string G_CJHEAPSIZE = "cjHeapSize";
-const static std::string G_CJSTACKSIZE = "cjStackSize";
-#endif
 
 const static size_t UNIT_LEN = 2; // supports "kb", "mb", "gb".
 const static size_t KB = 1024;
@@ -198,6 +193,14 @@ bool RuntimeInit::InitRuntimeMethod()
         Errorln("could not find the create task method: ", errorInfo);
         return false;
     }
+#ifdef CANGJIE_CHIR_PLUGIN
+    initLibFunc = InvokeRuntime::GetMethod(handle, G_CJ_LOAD_CJ_LIB.cbegin());
+    getRet = InvokeRuntime::GetMethod(handle, G_CJ_GET_TASK_RET.cbegin());
+    if (!initLibFunc || !getRet) {
+        Errorln("could not find the load cangjie library method: ", initLibFunc ? G_CJ_GET_TASK_RET : G_CJ_LOAD_CJ_LIB);
+        return false;
+    }
+#endif
     return true;
 }
 
