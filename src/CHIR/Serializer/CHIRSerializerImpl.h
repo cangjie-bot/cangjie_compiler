@@ -33,10 +33,13 @@ namespace Cangjie::CHIR {
 
 class CHIRSerializer::CHIRSerializerImpl {
 public:
-    explicit CHIRSerializerImpl(const Package& package) : package(package){};
+    explicit CHIRSerializerImpl(const Package& package) : package(package){}
 
     // Utility
     void Save(const std::string& filename, ToCHIR::Phase phase);
+#ifdef CANGJIE_CHIR_PLUGIN
+    flatbuffers::DetachedBuffer SaveToMemory(ToCHIR::Phase phase);
+#endif
     void Initialize();
     void Dispatch();
 

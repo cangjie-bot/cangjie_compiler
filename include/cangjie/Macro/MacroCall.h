@@ -23,13 +23,6 @@ static const std::string SOURCE_PACKAGE = "sourcePackage";
 static const std::string SOURCE_FILE = "sourceFile";
 static const std::string SOURCE_LINE = "sourceLine";
 static const std::vector<std::string> BUILD_IN_MACROS = {SOURCE_PACKAGE, SOURCE_FILE, SOURCE_LINE};
-#ifdef _WIN32
-const std::string LIB_SUFFIX = ".dll";
-#elif defined(__APPLE__)
-const std::string LIB_SUFFIX = ".dylib";
-#else
-const std::string LIB_SUFFIX = ".so";
-#endif
 
 // Short name for vector smart pointer.
 template <typename T> using PtrVector = std::vector<OwnedPtr<T>>;

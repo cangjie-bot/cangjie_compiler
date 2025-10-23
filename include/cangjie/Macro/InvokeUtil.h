@@ -159,6 +159,10 @@ public:
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     void* runtimeMethodFunc{nullptr};
     void* runtimeReleaseFunc{nullptr};
+#ifdef CANGJIE_CHIR_PLUGIN
+    void* initLibFunc{nullptr};
+    void* getRet{nullptr};
+#endif
 #endif
 private:
     /**
