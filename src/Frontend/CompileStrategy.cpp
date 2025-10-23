@@ -461,6 +461,7 @@ void CompileStrategy::ParseAndMergeCjds() const
     for (auto& future : futures) {
         future.get();
     }
+    ci->diag.EmitCategoryGroup();
     option.compileCjd = false;
     Utils::ProfileRecorder::Stop("ImportPackages", "ParseAndMergeCjds");
 }
