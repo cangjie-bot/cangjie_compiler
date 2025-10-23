@@ -6,7 +6,10 @@
 
 if (CANGJIE_CODEGEN_CJNATIVE_BACKEND)
     set(META_TRANSFORMATION_SRC MetaTransformPluginManager.cpp MetaTransformPluginBuilder.cpp)
-
+    if(CANGJIE_CHIR_PLUGIN)
+        list(APPEND META_TRANSFORMATION_SRC CangjieMetaTransform.cpp)
+    endif()
+    
     add_library(CangjieMetaTransformation OBJECT ${META_TRANSFORMATION_SRC})
     target_compile_options(CangjieMetaTransformation PRIVATE ${CJC_EXTRA_WARNINGS})
 endif()

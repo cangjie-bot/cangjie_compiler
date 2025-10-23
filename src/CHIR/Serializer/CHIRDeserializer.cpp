@@ -64,6 +64,24 @@ bool CHIRDeserializer::Deserialize(const std::string& fileName, Cangjie::CHIR::C
     return true;
 }
 
+#ifdef CANGJIE_CHIR_PLUGIN
+bool CHIRDeserializer::Deserialize(const void* data, size_t size, Cangjie::CHIR::CHIRBuilder& chirBuilder,
+    Cangjie::CHIR::ToCHIR::Phase& phase)
+{
+    CHIRDeserializerImpl deserializer(chirBuilder, false);
+    flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(data), size);
+    if (!verifier.VerifyBuffer<PackageFormat::CHIRPackage>()) {
+        Errorln("validation of CHIR data failed, please confirm it was created by compiler whose version is '",
+            CANGJIE_VERSION, "'.");
+        return false;
+    }
+    const PackageFormat::CHIRPackage* package = PackageFormat::GetCHIRPackage(data);
+    deserializer.Run(package);
+    phase = Cangjie::CHIR::ToCHIR::Phase(package->phase());
+    return true;
+}
+#endif
+
 template <typename T, typename FBT>
 std::vector<T> CHIRDeserializer::CHIRDeserializerImpl::Create(const flatbuffers::Vector<FBT>* vec)
 {

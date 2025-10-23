@@ -74,6 +74,9 @@ public:
     void AppendNewPackage(CHIR::Package* package);
     std::vector<CHIR::Package*> GetAllCHIRPackages() const;
     CHIR::Package* GetCurrentCHIRPackage() const;
+#ifdef CANGJIE_CHIR_PLUGIN
+    void SetPackage(CHIR::Package& package);
+#endif
 
     void SetImplicitFuncs(const std::unordered_map<std::string, CHIR::FuncBase*>& funcs);
     std::unordered_map<std::string, CHIR::FuncBase*> GetImplicitFuncs() const;
@@ -560,6 +563,10 @@ private:
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     std::vector<HANDLE> pluginHandles;
+#ifdef CANGJIE_CHIR_PLUGIN
+    std::vector<std::pair<std::string, HANDLE>> cangjieCHIRPlugins;
+    bool ExecuteCHIRPlugins();
+#endif
 #endif
 };
 } // namespace Cangjie
