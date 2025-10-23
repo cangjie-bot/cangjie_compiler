@@ -894,23 +894,6 @@ const std::vector<GenericType*>& DynamicDispatch::GetGenericTypeParams() const
     return virMethodCtx.genericTypeParams;
 }
 
-std::vector<VTableSearchRes> DynamicDispatch::GetVirtualMethodInfo(CHIRBuilder& builder) const
-{
-    auto thisTypeDeref = thisType->StripAllRefs();
-    if (thisTypeDeref->IsThis()) {
-        thisTypeDeref = GetTopLevelFunc()->GetParentCustomTypeDef()->GetType();
-    }
-    std::vector<Type*> instParamTypes;
-    for (auto arg : GetArgs()) {
-        instParamTypes.emplace_back(arg->GetType());
-    }
-    auto instFuncType = builder.GetType<FuncType>(instParamTypes, builder.GetUnitTy());
-    FuncCallType funcCallType{virMethodCtx.srcCodeIdentifier, instFuncType, instantiatedTypeArgs};
-    auto res = GetFuncIndexInVTable(*thisTypeDeref, funcCallType, IsInvokeStaticBase(), builder);
-    CJC_ASSERT(!res.empty());
-    return res;
-}
-
 size_t DynamicDispatch::GetVirtualMethodOffset(CHIRBuilder* builder) const
 {
     auto offset = Get<VirMethodOffset>();
