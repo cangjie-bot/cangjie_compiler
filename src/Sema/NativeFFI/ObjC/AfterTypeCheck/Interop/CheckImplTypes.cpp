@@ -24,7 +24,7 @@ void CheckImplTypes::HandleImpl(InteropContext& ctx)
                        .Use<CheckMemberTypes>(InteropType::ObjC_Mirror);
 
     for (auto& impl : ctx.impls) {
-        auto typeCheckCtx = TypeCheckContext(*impl, ctx.diag, ctx.typeMapper);
+        auto typeCheckCtx = TypeCheckContext(*impl, ctx.diag, ctx.typeMapper, ctx.typeManager);
 
         checker.Handle(typeCheckCtx);
     }
