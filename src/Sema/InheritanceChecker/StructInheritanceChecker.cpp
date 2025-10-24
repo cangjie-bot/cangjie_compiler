@@ -34,6 +34,7 @@
 #include "TypeCheckUtil.h"
 #include "TypeCheckerImpl.h"
 #include "NativeFFI/Java/TypeCheck/InheritanceChecker.h"
+#include "NativeFFI/ObjC/Utils/OCStructInheritanceCheckerImpl.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -280,6 +281,19 @@ void GenerateNativeFFIJavaMirrorSyntheticWrapper(
     Interop::Java::GenerateSyntheticClassMemberStubs(*cd, interfaceMembers, instanceMembers);
 }
 
+/**
+ * precondition: instance methods must be merged
+ */
+void GenerateNativeFFIObjCMirrorSyntheticWrapper(
+    InheritableDecl& decl, const MemberMap& interfaceMembers, const MemberMap& instanceMembers)
+{
+    if (!Interop::ObjC::IsSyntheticWrapper(decl)) {
+        return;
+    }
+    auto cd = StaticCast<ClassDecl*>(&decl);
+    Interop::ObjC::GenerateSyntheticClassMemberStubs(*cd, interfaceMembers, instanceMembers);
+}
+
 } // namespace
 
 void TypeChecker::TypeCheckerImpl::CheckInheritance(Package& pkg)
@@ -347,6 +361,7 @@ void StructInheritanceChecker::CheckMembersWithInheritedDecls(InheritableDecl& d
         CheckExtendExportDependence(decl, interface.second, visibleExtendMembers);
     }
     GenerateNativeFFIJavaMirrorSyntheticWrapper(decl, interfaceMembers, instanceMembers);
+    GenerateNativeFFIObjCMirrorSyntheticWrapper(decl, interfaceMembers, instanceMembers);
     // 1. Merge & check members inherited in from super class or extended type of extend decl first.
     for (auto& member : decl.GetMemberDecls()) {
         if (!Ty::IsTyCorrect(member->ty) || !member->outerDecl || member->TestAttr(Attribute::CONSTRUCTOR)) {
@@ -882,7 +897,7 @@ void StructInheritanceChecker::DiagnoseForUnimplementedInterfaces(const MemberMa
     // Do not check unimplemented function for:
     // 1. Foreign struct.
     // 2. Mirror struct.
-    if (structDecl.TestAttr(Attribute::FOREIGN) || structDecl.TestAnyAttr(Attribute::OBJ_C_MIRROR)) {
+    if (structDecl.TestAttr(Attribute::FOREIGN) || structDecl.TestAnyAttr(Attribute::OBJ_C_MIRROR, Attribute::OBJ_C_MIRROR_SYNTHETIC_WRAPPER)) {
         return;
     }
     std::string prefix = structDecl.astKind == ASTKind::EXTEND_DECL ? "extend " : "";
@@ -1397,6 +1412,7 @@ void StructInheritanceChecker::CheckNativeFFI(
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     if (checkingDecls.size() > 0 && checkingDecls.back()) {
         Interop::Java::CheckForeignName(diag, typeManager, parent, child, *checkingDecls.back());
+        Interop::ObjC::CheckForeignName(diag, typeManager, parent, child, *checkingDecls.back());
     }
 #endif
 }

@@ -36,6 +36,7 @@ void DesugarMirrors::HandleImpl(InteropContext& ctx)
                 continue;
             }
 
+            memberDecl->DisableAttr(Attribute::ABSTRACT);
             switch (memberDecl->astKind) {
                 case ASTKind::FUNC_DECL: {
                     auto& fd = *StaticAs<ASTKind::FUNC_DECL>(memberDecl);
@@ -83,7 +84,7 @@ void DesugarMirrors::DesugarCtor(InteropContext& ctx, ClassLikeDecl& mirror, Fun
     CJC_ASSERT(!ctor.funcBody->paramLists.empty());
 
     auto& params = ctor.funcBody->paramLists[0]->params;
-    auto& generatedCtor = *ctx.factory.GetGeneratedMirrorCtor(mirror);
+    auto& generatedCtor = *ctx.factory.GetGeneratedBaseCtor(mirror);
     auto thisCall = CreateThisCall(mirror, generatedCtor, generatedCtor.ty, curFile);
     auto allocCall = ctx.factory.CreateAllocCall(*StaticAs<ASTKind::CLASS_DECL>(&mirror), curFile);
 
@@ -105,6 +106,13 @@ void DesugarMirrors::DesugarMethod(InteropContext& ctx, ClassLikeDecl& mirror, F
 {
     auto methodTy = StaticCast<FuncTy>(method.ty);
     auto curFile = method.curFile;
+    if (mirror.astKind == ASTKind::INTERFACE_DECL && method.TestAttr(Attribute::STATIC)) {
+        // We are unable to provide a default implementation for the static method of an interface
+        method.funcBody->body =
+            CreateBlock(Nodes(ctx.factory.CreateThrowUnreachableCodeExpr(*curFile)), methodTy->retTy);
+        return;
+    }
+
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(mirror, method.TestAttr(Attribute::STATIC), curFile);
     std::vector<OwnedPtr<Expr>> msgSendArgs;
 
@@ -182,11 +190,16 @@ void DesugarGetter(InteropContext& ctx, ClassLikeDecl& mirror, PropDecl& prop)
     auto& getter = prop.getters[0];
     auto curFile = prop.curFile;
 
-    auto nativeHandle = ctx.factory.CreateNativeHandleExpr(mirror, prop.TestAttr(Attribute::STATIC), curFile);
+    if (mirror.astKind == ASTKind::INTERFACE_DECL && prop.TestAttr(Attribute::STATIC)) {
+        // We are unable to provide a default implementation for the static property getter of an interface
+        getter->funcBody->body = CreateBlock(Nodes(ctx.factory.CreateThrowUnreachableCodeExpr(*curFile)),
+            ctx.typeManager.GetPrimitiveTy(TypeKind::TYPE_NOTHING));
+        return;
+    }
 
+    auto nativeHandle = ctx.factory.CreateNativeHandleExpr(mirror, prop.TestAttr(Attribute::STATIC), curFile);
     auto arpScopeCall = ctx.factory.CreateAutoreleasePoolScope(
         prop.ty, Nodes(ctx.factory.CreatePropGetterCallViaMsgSend(prop, std::move(nativeHandle))));
-
     getter->funcBody->body = CreateBlock({}, prop.ty);
     getter->funcBody->body->body.emplace_back(ctx.factory.WrapEntity(std::move(arpScopeCall), *prop.ty));
 }
@@ -198,8 +211,12 @@ void DesugarSetter(InteropContext& ctx, ClassLikeDecl& mirror, PropDecl& prop)
     auto& setter = prop.setters[0];
     auto curFile = prop.curFile;
     auto unitTy = ctx.typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    if (mirror.astKind == ASTKind::INTERFACE_DECL && prop.TestAttr(Attribute::STATIC)) {
+        // We are unable to provide a default implementation for the static property setter of an interface
+        setter->funcBody->body = CreateBlock(Nodes(ctx.factory.CreateThrowUnreachableCodeExpr(*curFile)), unitTy);
+        return;
+    }
     setter->funcBody->body = CreateBlock({}, unitTy);
-
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(mirror, prop.TestAttr(Attribute::STATIC), curFile);
     auto paramRef = WithinFile(CreateRefExpr(*setter->funcBody->paramLists[0]->params[0]), curFile);
     auto arg = ctx.factory.UnwrapEntity(std::move(paramRef));
@@ -240,7 +257,7 @@ void DesugarFieldSetter(InteropContext& ctx, ClassLikeDecl& mirror, PropDecl& fi
     auto arg = ctx.factory.UnwrapEntity(std::move(paramRef));
 
     auto setInstanceVariableCall =
-        ctx.factory.CreateObjCRuntimeSetInstanceVariableCall(field, std::move(nativeHandle), std::move(arg));
+        ctx.factory.CreateSetInstanceVariableCall(field, std::move(nativeHandle), std::move(arg));
 
     setter->funcBody->body->body.emplace_back(std::move(setInstanceVariableCall));
 }
