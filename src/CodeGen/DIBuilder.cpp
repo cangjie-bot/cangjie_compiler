@@ -10,6 +10,7 @@
 #include "Utils/CGUtils.h"
 #include "cangjie/Basic/SourceManager.h"
 #include "cangjie/CHIR/Type/Type.h"
+#include "cangjie/Utils/CastingTemplate.h"
 #include "cangjie/Utils/CheckUtils.h"
 
 namespace Cangjie {
@@ -946,13 +947,13 @@ llvm::DIType* DIBuilder::CreateClassType(const CHIR::ClassType& classTy)
     if (IsCapturedClass(*classDef)) {
         name = "$Captured_";
         auto capturedTy = DeRef(*classDef->GetDirectInstanceVar(0).type);
-        if (capturedTy->IsClass() || capturedTy->IsStruct() || capturedTy->IsEnum()) {
-            name +=GenerateTypeName(*capturedTy,false);
+        if (capturedTy->IsCustomType()) {
+            name +=GenerateCustomTypeName(StaticCast<const CHIR::CustomType*>(*capturedTy),false);
         } else {
             name += GenerateTypeName(*capturedTy);
         }
     } else {
-        name =classTy,Customfalse,false;
+        name = GenerateCustomTypeName(classTy,false);
     }
     auto diFile = GetOrCreateFile(position);
     auto classSize = GetClassSize(classLayout) + 64u;
