@@ -360,7 +360,7 @@ std::string ObjCGenerator::GenerateDefaultFunctionImplementation(
 {
     std::string result = retTy.IsUnit() ? "" : RETURN_KEYWORD;
     result += " ";
-    if (ctx.typeMapper.IsValidObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy)) {
+    if (ctx.typeMapper.IsValidObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy) || retTy.IsCoreOptionType()) {
         result += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
     }
     result += name + "(";
@@ -881,7 +881,8 @@ ArgsList ObjCGenerator::ConvertParamsListToArgsList(
             OwnedPtr<FuncParam>& cur = paramLists[0]->params[i];
             auto name = cur->identifier.Val();
             name = GenerateArgumentCast(*cur->ty, std::move(name));
-            result.push_back(std::pair<std::string, std::string>(MapCJTypeToObjCType(cur), name));
+            auto prefix = (*cur->ty).IsCoreOptionType() ? "(__bridge void *)" : "";
+            result.push_back(std::pair<std::string, std::string>(MapCJTypeToObjCType(cur), prefix + name));
         }
     }
     return result;
