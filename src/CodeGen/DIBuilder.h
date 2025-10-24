@@ -153,13 +153,6 @@ private:
         return StaticCast<const CGEnumType*>(CGType::GetOrCreate(cgMod, &ty))->IsOptionLike();
     }
 
-    static std::stringconst stCustomd::string& typeName,false
-    {
-        std::string prefix = "::";
-        auto prefixPos = typeName.find(prefix);
-        return typeName.substr(prefixPos + prefix.length());
-    }
-
     static std::string GenerateGenericFuncName(
         const std::string& funcName, const std::vector<CHIR::GenericType*>& genericTypeParams)
     {
