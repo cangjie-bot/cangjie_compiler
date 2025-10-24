@@ -360,7 +360,7 @@ std::string ObjCGenerator::GenerateDefaultFunctionImplementation(
 {
     std::string result = retTy.IsUnit() ? "" : RETURN_KEYWORD;
     result += " ";
-    if (ctx.typeMapper.IsValidObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy)) {
+    if (ctx.typeMapper.IsObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy)) {
         result += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
     }
     result += name + "(";
@@ -812,7 +812,8 @@ void ObjCGenerator::AddConstructors()
             if (ctx.factory.IsGeneratedMember(*ctor)) {
                 continue;
             }
-            if (ctor->funcBody->paramLists[0]->params.empty()) {
+            if (ctor->funcBody->paramLists[0]->params.size() > 1 && !ctx.nameGenerator.GetUserDefinedObjCName(*ctor)) {
+                // remove when generating selectors without foreign name is implemented
                 continue;
             }
             auto selectorComponents = ctx.nameGenerator.GetObjCDeclSelectorComponents(*ctor);
@@ -939,7 +940,7 @@ std::string ObjCGenerator::GenerateArgumentCast(const Ty& retTy, std::string val
     if (ctx.typeMapper.IsObjCImpl(retTy)) {
         return CAST_TO_VOID_PTR + std::move(value);
     }
-    if (ctx.typeMapper.IsValidObjCMirror(retTy)) {
+    if (ctx.typeMapper.IsObjCMirror(retTy)) {
         return CAST_TO_VOID_PTR_RETAINED + std::move(value);
     }
     if (ctx.typeMapper.IsObjCPointer(retTy)) {
