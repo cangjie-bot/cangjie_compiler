@@ -263,8 +263,7 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
     if (calleeType.HasSRet()) {
         callBaseInst->addAttributeAtIndex(llvm::AttributeList::FirstArgIndex, llvm::Attribute::NoAlias);
         auto sretAttr = llvm::Attribute::getWithStructRetType(callBaseInst->getContext(),
-            (!returnCGType->GetSize() && !returnCGType->GetOriginal().IsGeneric() &&
-                !DeRef(returnCGType->GetOriginal())->IsBox())
+            (!returnCGType->GetSize() && !returnCGType->GetOriginal().IsGeneric())
                 ? llvm::Type::getInt8Ty(GetLLVMContext())
                 : returnCGType->GetLLVMType());
         callBaseInst->addAttributeAtIndex(llvm::AttributeList::FirstArgIndex, sretAttr);
