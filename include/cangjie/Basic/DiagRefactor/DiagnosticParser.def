@@ -315,6 +315,7 @@ ERROR(parse_deprecated_invalid_target, "%s can not be target of @Deprecated")
 
 ERROR(parse_annotation_max_one_argument, "%s requires zero or one%s argument", "expected %s here")
 ERROR(parse_annotation_one_argument, "%s requires exactly one%s argument", "expected %s here")
+ERROR(parse_annotation_no_arguments, "%s accepts no arguments", "unexpected argument(s)")
 // interop
 ERROR(parse_foreign_name_on_ffi_decl_member, "@ForeignName could only be used on FFI declaration member")
 
@@ -361,6 +362,8 @@ ERROR(parse_objc_mirror_field_cannot_have_initializer, "@ObjCMirror declaration 
 ERROR(parse_objc_mirror_field_cannot_be_static, "@ObjCMirror declaration field cannot be 'static'")
 ERROR(parse_objc_mirror_prop_cannot_have_getter, "@ObjCMirror declaration property '%s' cannot have getter", "@ObjCMirror declaration property cannot have getter")
 ERROR(parse_objc_mirror_prop_cannot_have_setter, "@ObjCMirror declaration property '%s' cannot have setter", "@ObjCMirror declaration property cannot have setter")
+ERROR(parse_objc_init_method_must_be_static, "@ObjCInit method must be modified with 'static'")
+ERROR(parse_objc_init_method_must_be_in_mirror_class, "@ObjCInit method must be declared within '@ObjCMirror' class")
 ERROR(parse_objc_mirror_member_must_have_foreign_name, "@ObjCMirror declaration member must have @ForeignName annotation", "@ObjCMirror declaration member must have @ForeignName annotation")
 ERROR(parse_objc_impl_member_must_have_foreign_name, "@ObjCImpl declaration member must have @ForeignName annotation", "@ObjCImpl declaration member must have @ForeignName annotation")
 

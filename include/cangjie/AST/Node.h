@@ -507,6 +507,7 @@ enum class AnnotationKind {
     JAVA_IMPL,
     OBJ_C_MIRROR,
     OBJ_C_IMPL,
+    OBJ_C_INIT, // Indicate a method as Objective-C init.
     FOREIGN_NAME,
     ATTRIBUTE,
     /**

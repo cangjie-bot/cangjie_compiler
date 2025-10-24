@@ -58,3 +58,12 @@ Ptr<Decl> Cangjie::Interop::ObjC::FindMirrorMember(const std::string_view& mirro
     return Ptr<Decl>(nullptr);
 }
 
+bool Cangjie::Interop::ObjC::IsStaticInitMethod(const Node& node)
+{
+    const auto fd = DynamicCast<const FuncDecl*>(&node);
+    if (!fd) {
+        return false;
+    }
+
+    return fd->TestAttr(Attribute::OBJ_C_INIT);
+}

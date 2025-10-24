@@ -49,7 +49,7 @@ std::string ConvertToken(const Token& t);
 const std::unordered_map<std::string, AST::AnnotationKind> NAME_TO_ANNO_KIND = {
     {"JavaMirror", AST::AnnotationKind::JAVA_MIRROR}, {"JavaImpl", AST::AnnotationKind::JAVA_IMPL},
     {"ObjCMirror", AST::AnnotationKind::OBJ_C_MIRROR}, {"ObjCImpl", AST::AnnotationKind::OBJ_C_IMPL},
-    {"ForeignName", AST::AnnotationKind::FOREIGN_NAME},
+    {"ObjCInit", AST::AnnotationKind::OBJ_C_INIT}, {"ForeignName", AST::AnnotationKind::FOREIGN_NAME},
     {"CallingConv", AST::AnnotationKind::CALLING_CONV}, {"C", AST::AnnotationKind::C},
     {"Attribute", AST::AnnotationKind::ATTRIBUTE}, {"Intrinsic", AST::AnnotationKind::INTRINSIC},
     {"OverflowThrowing", AST::AnnotationKind::NUMERIC_OVERFLOW},
