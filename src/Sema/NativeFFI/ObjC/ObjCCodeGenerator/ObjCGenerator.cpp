@@ -373,8 +373,8 @@ std::string ObjCGenerator::GenerateDefaultFunctionImplementation(
     std::string result = retTy.IsUnit() ? "" : RETURN_KEYWORD;
     result += " ";
     std::string nativeCall = "";
-    if (ctx.typeMapper.IsObjCObjectType(retTy)) {
-        nativeCall += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
+    if (ctx.typeMapper.IsValidObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy) || retTy.IsCoreOptionType()) {
+        result += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
     }
     nativeCall += name + "(";
     for (size_t i = 0; i < args.size(); i++) {
