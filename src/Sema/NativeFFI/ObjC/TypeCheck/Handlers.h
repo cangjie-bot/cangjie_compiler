@@ -50,6 +50,11 @@ public:
 
 class CheckGeneric : public Handler<CheckGeneric, TypeCheckContext> {
 public:
+void HandleImpl(TypeCheckContext& ctx);
+};
+
+class CheckInitMethod : public Handler<CheckInitMethod, TypeCheckContext> {
+public:
     void HandleImpl(TypeCheckContext& ctx);
 };
 
