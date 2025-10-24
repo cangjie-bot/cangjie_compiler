@@ -373,8 +373,8 @@ std::string ObjCGenerator::GenerateDefaultFunctionImplementation(
     std::string result = retTy.IsUnit() ? "" : RETURN_KEYWORD;
     result += " ";
     std::string nativeCall = "";
-    if (ctx.typeMapper.IsObjCObjectType(retTy)) {
-        nativeCall += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
+    if (ctx.typeMapper.IsValidObjCMirror(retTy) || ctx.typeMapper.IsObjCImpl(retTy) || retTy.IsCoreOptionType()) {
+        result += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
     }
     nativeCall += name + "(";
     for (size_t i = 0; i < args.size(); i++) {
@@ -920,7 +920,8 @@ ArgsList ObjCGenerator::ConvertParamsListToArgsList(
                 name += SELF_WEAKLINK_NAME;
             }
             name = GenerateArgumentCast(*cur->ty, std::move(name));
-            result.push_back(std::pair<std::string, std::string>(MapCJTypeToObjCType(cur), name));
+            auto prefix = (*cur->ty).IsCoreOptionType() ? "(__bridge void *)" : "";
+            result.push_back(std::pair<std::string, std::string>(MapCJTypeToObjCType(cur), prefix + name));
         }
     }
     return result;
