@@ -28,6 +28,7 @@ Ptr<AST::Decl> FindMirrorMember(const std::string_view& mirrorMemberIdent, const
 
 Ptr<AST::ClassDecl> GetMirrorSuperClass(const AST::ClassLikeDecl& target);
 bool HasMirrorSuperClass(const AST::ClassLikeDecl& target);
+bool IsStaticInitMethod(const AST::Node& node);
 
 } // namespace Cangjie::Interop::ObjC
 

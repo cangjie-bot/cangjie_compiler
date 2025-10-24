@@ -130,6 +130,8 @@ public:
  * with getFromRegistryByHandle call).
  * 3. Prop setter (@ObjCMirror field is always var) is essentially ObjCRuntime.setInstanceVariable
  * (setInstanceVariableObj for object type) call.
+ *
+ * @ObjCInit static method initializers are desugared the same way as init-constructors.
  */
 class DesugarMirrors : public Handler<DesugarMirrors, InteropContext> {
 public:
@@ -138,6 +140,10 @@ public:
 private:
     void DesugarMethod(InteropContext& ctx, AST::ClassLikeDecl& mirror, AST::FuncDecl& method);
     void DesugarCtor(InteropContext& ctx, AST::ClassLikeDecl& mirror, AST::FuncDecl& ctor);
+    /**
+     * @ObjCInit static method initializer
+     */
+    void DesugarStaticInitializer(InteropContext& ctx, AST::FuncDecl& initializer);
     void DesugarProp(InteropContext& ctx, AST::ClassLikeDecl& mirror, AST::PropDecl& prop);
     void DesugarField(InteropContext& ctx, AST::ClassLikeDecl& mirror, AST::PropDecl& field);
 };

@@ -48,6 +48,11 @@ public:
     void HandleImpl(TypeCheckContext& ctx);
 };
 
+class CheckInitMethod : public Handler<CheckInitMethod, TypeCheckContext> {
+public:
+    void HandleImpl(TypeCheckContext& ctx);
+};
+
 class CheckMemberTypes : public Handler<CheckMemberTypes, TypeCheckContext> {
 public:
     void HandleImpl(TypeCheckContext& ctx);

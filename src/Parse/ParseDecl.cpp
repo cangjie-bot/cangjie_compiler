@@ -567,6 +567,7 @@ void ParserImpl::CheckObjCInteropMember(Decl& member)
                 // method branch
                 CheckMemberFuncObjCMirror(fd);
                 ffiParser->CheckForeignNameAnnotation(fd);
+                ffiParser->ObjC().CheckInitAnnotation(fd);
             }
             break;
         }
@@ -769,7 +770,7 @@ void ParserImpl::CheckVarDeclObjCMirror(VarDecl& field) const
         field.EnableAttr(Attribute::IS_BROKEN);
         field.outerDecl->EnableAttr(Attribute::HAS_BROKEN, Attribute::IS_BROKEN);
     }
- 
+
     if (field.initializer) {
         ffiParser->ObjC().DiagObjCMirrorFieldCannotHaveInitializer(field);
         field.EnableAttr(Attribute::IS_BROKEN);
@@ -2005,6 +2006,9 @@ OwnedPtr<FuncDecl> ParserImpl::ParseFuncDecl(
     if (scopeKind != ScopeKind::CLASS_BODY && scopeKind != ScopeKind::INTERFACE_BODY) {
         ffiParser->CheckForeignNameAnnotation(*ret);
     }
+    if (scopeKind != ScopeKind::CLASS_BODY) {
+        ffiParser->ObjC().CheckInitAnnotation(*ret);
+    }
     return ret;
 }
 
@@ -2145,7 +2149,7 @@ void ParserImpl::CheckClassLikeFuncBodyAbstractness(FuncDecl& decl)
             decl.DisableAttr(Attribute::ABSTRACT);
         }
     }
-    
+
     if (hasAbstractModifier && !inAbstractCJMPClass) {
         Ptr<const Modifier> abstractMod = nullptr;
         for (auto& modifier : decl.modifiers) {
