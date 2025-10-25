@@ -181,7 +181,7 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
         case TypeKind::TYPE_CLASS:
             if (IsJArray(*declTy)) {
                 return MapCJTypeToJavaType(ty->typeArgs[0], javaImports, curPackageName) + "[]";
-            } else if (isNativeMethod && declTy && IsCJMapping(*declTy)) {
+            } else if (isNativeMethod && declTy && IsCJMapping(*declTy) && !IsCJMappingInterface(*ty)) {
                 return "long";
             }
             javaType = AddImport(ty, javaImports, curPackageName);
@@ -360,7 +360,7 @@ std::string JavaSourceCodeGenerator::GenerateFuncParamLists(
         CJC_ASSERT(cur && cur->type && cur->type->ty);
         std::string res = MapCJTypeToJavaType(cur, imp, curPackage, isNativeMethod) + " " + cur->identifier.Val();
         if (auto ty = Ty::GetDeclOfTy(cur->type->ty)) {
-            bool castToId = isNativeMethod && IsCJMapping(*ty);
+            bool castToId = isNativeMethod && IsCJMapping(*ty) && !IsCJMappingInterface(*(cur->type->ty));
             res += castToId ? "Id" : "";
         }
         return res;
@@ -651,7 +651,8 @@ void JavaSourceCodeGenerator::AddInstanceMethod(const FuncDecl& funcDecl)
         CJC_ASSERT(p && p->type && p->type->ty);
         std::string res = p->identifier.Val();
         if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
-            res += IsCJMapping(*ty) ? ".self" : "";
+            bool castToId = IsCJMapping(*ty) && !IsCJMappingInterface(*(p->type->ty));
+            res += castToId ? ".self" : "";
         }
         return res;
     };
