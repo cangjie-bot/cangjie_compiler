@@ -354,6 +354,10 @@ ERROR(sema_objc_interop_toplevel_ret_must_be_objc_compatible, "return type of Ob
 ERROR(sema_objc_cjmapping_inheritance_interface_not_supported, "cangjie mirror decl type inheritance interface is not supported")
 ERROR(sema_objc_cjmapping_generic_not_supported, "cangjie mirror decl type generic %s is not supported")
 
+// CJMapping for Objective-C
+ERROR(sema_objc_cjmapping_inheritance_interface_not_supported, "cangjie mirror decl type inheritance interface is not supported")
+ERROR(sema_objc_cjmapping_generic_not_supported, "cangjie mirror decl type generic %s is not supported")
+
 ERROR(sema_foreign_name_appeared_in_child, "@ForeignName could not appear on overridden declaration")
 ERROR(sema_foreign_name_conflicting_annotation, "Declaration '%s' has a conflicting @ForeignName annotation")
 ERROR(sema_foreign_name_conflicting_derived_annotation, "Declaration '%s' has a conflicting derived @ForeignName '%s'")

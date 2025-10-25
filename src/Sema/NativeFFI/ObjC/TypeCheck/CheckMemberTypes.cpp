@@ -113,3 +113,15 @@ std::string CheckMemberTypes::GetDeclInteropName()
 {
     return "Objective-C mirror";
 }
+
+std::string CheckMemberTypes::GetDeclInteropName()
+{
+    if (interopType == InteropType::ObjC_Mirror) {
+        return "Objective-C mirror";
+    } else if (interopType == InteropType::CJ_Mapping) {
+        return "cangjie mirror decl";
+    } else {
+        CJC_ABORT();
+        return "";
+    }
+}

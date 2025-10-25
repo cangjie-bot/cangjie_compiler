@@ -79,6 +79,7 @@ private:
     void AddMethods();
     void AddInterfaceMethods();
     void AddEndClassParenthesis();
+    void AddInterfaceMethods();
     void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params);
     void AddNativeDeleteCJObject();
     void AddFinalize();
