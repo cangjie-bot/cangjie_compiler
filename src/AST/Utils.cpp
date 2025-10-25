@@ -797,11 +797,14 @@ bool IsCJMapping(const Decl& decl)
     return decl.TestAttr(Attribute::JAVA_CJ_MAPPING);
 }
 
+<<<<<<< Updated upstream
 bool IsObject(const Decl& decl)
 {
     return decl.ty->IsObject();
 }
 
+=======
+>>>>>>> Stashed changes
 bool IsFwdClass(const Decl& decl)
 {
     return decl.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);

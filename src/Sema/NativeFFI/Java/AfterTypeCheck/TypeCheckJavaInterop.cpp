@@ -418,7 +418,10 @@ void JavaInteropManager::CheckCJMappingDeclSupportRange(Decl& decl)
     switch (decl.astKind) {
         case ASTKind::STRUCT_DECL:
         case ASTKind::ENUM_DECL:
+<<<<<<< Updated upstream
         case ASTKind::CLASS_DECL:
+=======
+>>>>>>> Stashed changes
         case ASTKind::INTERFACE_DECL:
             break;
         default:
