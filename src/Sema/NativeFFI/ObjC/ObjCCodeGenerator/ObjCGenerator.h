@@ -31,7 +31,7 @@ using ArgsList = std::vector<std::pair<std::string, std::string>>;
 
 class ObjCGenerator {
 public:
-    ObjCGenerator(InteropContext& ctx, Ptr<Decl> declArg, const std::string& outputFilePath,
+    ObjCGenerator(InteropContext& ctx, Ptr<AST::Decl> declArg, const std::string& outputFilePath,
         const std::string& cjLibOutputPath, InteropType interopType);
     void Generate();
 
@@ -79,8 +79,8 @@ private:
     std::vector<std::string> ConvertParamsListToCallableParamsString(
         std::vector<OwnedPtr<AST::FuncParamList>>& paramLists, bool withSelf) const;
     std::string GenerateSetterParamLists(const std::string& type) const;
-    std::string WrapperCallByInitForCJMappingReturn(const Ty& retTy, const std::string& nativeCall) const;
-    bool SkipSetterForValueTypeDecl(Decl& declArg) const;
+    std::string WrapperCallByInitForCJMappingReturn(const AST::Ty& retTy, const std::string& nativeCall) const;
+    bool SkipSetterForValueTypeDecl(AST::Decl& declArg) const;
 
     void GenerateForwardDeclarations();
     void GenerateStaticFunctionsReferences();

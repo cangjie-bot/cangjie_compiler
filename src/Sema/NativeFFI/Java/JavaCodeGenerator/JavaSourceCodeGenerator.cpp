@@ -223,7 +223,11 @@ void JavaSourceCodeGenerator::AddInterfaceDeclaration()
     std::string modifier;
     modifier += GetModifier(decl);
     res += modifier;
+<<<<<<< Updated upstream
     res += "interface " + decl->identifier.Val();
+=======
+    res += "interface" + decl->identifier.Val();
+>>>>>>> Stashed changes
 
     res += " {\n";
 }
@@ -778,6 +782,29 @@ void JavaSourceCodeGenerator::AddInterfaceMethods()
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
                 auto funcIdentifier = GetJavaMemberName(funcDecl);
                 const std::string retType =
+                    MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
+                std::string methodSignature = "public " + retType + " ";
+                methodSignature += funcIdentifier + "(";
+                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
+                methodSignature += argsWithTypes;
+                methodSignature += ");";
+                AddWithIndent(TAB, methodSignature);
+            }
+        }
+    }
+}
+
+void JavaSourceCodeGenerator::AddInterfaceMethods()
+{
+    for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
+        if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
+            continue;
+        }
+        if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
+            const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+            if (funcDecl.funcBody && funcDecl.funcBody->retType) {
+                auto funcIdentifier = GetJavaMemberName(funcDecl);
+                const std::string retType = 
                     MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
                 std::string methodSignature = "public " + retType + " ";
                 methodSignature += funcIdentifier + "(";

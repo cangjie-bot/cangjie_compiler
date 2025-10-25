@@ -852,6 +852,14 @@ void ObjCGenerator::AddConstructors()
         }
     }
 
+    if (interopType == InteropType::CJ_Mapping) {
+        AddWithIndent(INIT_WITH_REGISTRY_ID_SIGNATURE, GenerationTarget::BOTH, OptionalBlockOp::OPEN);
+        AddWithIndent(GenerateIfStatement(SELF_NAME, GenerateObjCCall(SUPER_KEYWORD, INIT_FUNC_NAME), EQ_OP),
+            GenerationTarget::SOURCE, OptionalBlockOp::OPEN);
+        AddWithIndent(GenerateAssignment(string(SELF_NAME) + "." + SELF_WEAKLINK_NAME, REGISTRY_ID_PARAM_NAME) + ";",
+            GenerationTarget::SOURCE, OptionalBlockOp::CLOSE);
+        AddWithIndent(GenerateReturn(SELF_NAME), GenerationTarget::SOURCE, OptionalBlockOp::CLOSE);
+    }
 }
 
 /*

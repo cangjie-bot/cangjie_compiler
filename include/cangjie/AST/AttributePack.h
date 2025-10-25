@@ -630,6 +630,7 @@ enum class Attribute {
      */
     CJ_MIRROR_JAVA_INTERFACE_FWD,
 
+<<<<<<< Updated upstream
     /**
      * Mark whether a node is a special flag, which marks the class instance as initialized.
      * Necessary for finalizer implementation on CHIR.
@@ -638,6 +639,8 @@ enum class Attribute {
      */
     HAS_INITED_FIELD,
 
+=======
+>>>>>>> Stashed changes
     AST_ATTR_END,
 };
 
