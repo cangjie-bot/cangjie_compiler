@@ -608,12 +608,27 @@ enum class Attribute {
     JAVA_CJ_MAPPING,
 
     /**
+     * Mark whether a pure cangjie decl is mapped to use by Objective-C side.
+     * W: Parser
+     * R: Sema.
+     */
+    OBJ_C_CJ_MAPPING,
+
+    /**
      * Mark whether a node is a desugared mirror field decl.
      * Usually the node is a prop decl.
      * W: Parser.
      * R: Sema.
      */
     DESUGARED_MIRROR_FIELD,
+
+    /**
+     * Mark whether a class decl is a forward class for cangjie interface.
+     * A forward class is used to forward the method call to Java side.
+     * W: Sema.
+     * R: Sema.
+     */
+    CJ_MIRROR_JAVA_INTERFACE_FWD,
 
     /**
      * Mark whether a node is a special flag, which marks the class instance as initialized.
@@ -708,6 +723,7 @@ static const std::unordered_map<AST::Attribute, std::string> ATTR2STR{
     {AST::Attribute::JAVA_CJ_MAPPING, "JAVA_CJ_MAPPING"},
     {AST::Attribute::OBJ_C_MIRROR, "OBJ_C_MIRROR"},
     {AST::Attribute::OBJ_C_MIRROR_SUBTYPE, "OBJ_C_MIRROR_SUBTYPE"},
+    {AST::Attribute::OBJ_C_CJ_MAPPING, "OBJ_C_CJ_MAPPING"},
     {AST::Attribute::DESUGARED_MIRROR_FIELD, "DESUGARED_MIRROR_FIELD"},
     {AST::Attribute::HAS_INITED_FIELD, "HAS_INITED_FIELD"},
     {AST::Attribute::AST_ATTR_END, "AST_ATTR_END"},
