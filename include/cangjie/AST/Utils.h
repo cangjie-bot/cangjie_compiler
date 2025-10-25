@@ -273,6 +273,18 @@ bool IsObject(const Decl& decl);
 bool IsFwdClass(const Decl& decl);
 
 /**
+ * The forward class is used to forward the method call to Java side.
+ * An example of a forward class is as follows(pseudocode):
+ * 
+ * public class A_fwd {
+ *     public func foo() {
+ *         jniCall("Java/A", "foo", "()V", [])
+ *     }    
+ * }
+ */
+bool IsFwdClass(const Decl& decl);
+
+/**
  * public func $getJavaRef(): Java_CFFI_JavaEntity {
  *     return Java_CFFI_JavaEntity()
  * }

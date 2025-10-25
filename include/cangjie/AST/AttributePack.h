@@ -615,20 +615,20 @@ enum class Attribute {
     OBJ_C_CJ_MAPPING,
 
     /**
-     * Mark whether a node is a desugared mirror field decl.
-     * Usually the node is a prop decl.
-     * W: Parser.
-     * R: Sema.
-     */
-    DESUGARED_MIRROR_FIELD,
-
-    /**
      * Mark whether a class decl is a forward class for cangjie interface.
      * A forward class is used to forward the method call to Java side.
      * W: Sema.
      * R: Sema.
      */
     CJ_MIRROR_JAVA_INTERFACE_FWD,
+
+    /**
+     * Mark whether a node is a desugared mirror field decl.
+     * Usually the node is a prop decl.
+     * W: Parser.
+     * R: Sema.
+     */
+    DESUGARED_MIRROR_FIELD,
 
     /**
      * Mark whether a node is a special flag, which marks the class instance as initialized.
