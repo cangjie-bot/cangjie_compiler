@@ -842,7 +842,7 @@ void ParserImpl::CheckCJMappingAttr(Decl& decl) const
         if (decl.astKind == ASTKind::STRUCT_DECL) {
             if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
                 decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
-            }
+            } 
         }
     }
 }
@@ -1426,6 +1426,7 @@ OwnedPtr<InterfaceDecl> ParserImpl::ParseInterfaceDecl(
     for (auto& it : attrs) {
         ret->EnableAttr(it);
     }
+    CheckCJMappingAttr(*ret);
     ffiParser->CheckClassLikeSignature(*ret, annos);
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     ret->body = ParseInterfaceBody(*ret);

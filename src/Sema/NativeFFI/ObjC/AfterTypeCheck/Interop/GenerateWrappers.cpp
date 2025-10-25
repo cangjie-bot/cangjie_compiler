@@ -22,9 +22,6 @@ void GenerateWrappers::HandleImpl(InteropContext& ctx)
     auto genWrapper = [this, &ctx](Decl& decl) {
         if (decl.TestAttr(Attribute::IS_BROKEN)) {
             return;
-    auto genWrapper = [this, &ctx](Decl& decl) {
-        if (decl.TestAttr(Attribute::IS_BROKEN)) {
-            return;
         }
         for (auto& memberDecl : decl.GetMemberDeclPtrs()) {
             if (memberDecl->TestAnyAttr(Attribute::IS_BROKEN, Attribute::CONSTRUCTOR)) {
