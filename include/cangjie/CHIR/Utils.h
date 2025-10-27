@@ -752,6 +752,8 @@ BuiltinType* GetBuiltinTypeWithVTable(BuiltinType& type, CHIRBuilder& builder);
  */
 Type* GetInstSubType(Type& genericSubType, const ClassType& instParentType, CHIRBuilder& builder);
 
+bool VirMethodTypeIsMatched(const FuncType& type1, const FuncType& type2);
+
 bool VirMethodParamTypeIsMatched(const Type& type1, const Type& type2);
 
 bool VirMethodRetureTypeIsMatched(const Type& type1, const Type& type2);
