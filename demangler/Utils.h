@@ -10,6 +10,7 @@
 
 #include <unordered_map>
 #include <cstring>
+#include <cstdint>
 
 namespace Cangjie {
 const char MANGLE_CANGJIE_PREFIX[] = "_C";
