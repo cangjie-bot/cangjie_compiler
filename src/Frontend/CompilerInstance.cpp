@@ -1080,7 +1080,8 @@ CHIR::CHIRContext& CompilerInstance::GetCHIRContext()
 }
 
 // used only by cjlint
-const CHIR::AnalysisWrapper<CHIR::ConstAnalysis, CHIR::ConstDomain>& CompilerInstance::GetConstAnalysisWrapper() const
+const CHIR::AnalysisWrapper<CHIR::ConstAnalysis<CHIR::ConstStatePool>, CHIR::ConstDomain>&
+CompilerInstance::GetConstAnalysisWrapper() const
 {
     return chirData.GetConstAnalysisResult();
 }
@@ -1139,12 +1140,14 @@ std::vector<CHIR::FuncBase*> CHIRData::GetConstVarInitFuncs() const
     return initFuncsForConstVar;
 }
 
-CHIR::AnalysisWrapper<CHIR::ConstAnalysis, CHIR::ConstDomain>& CHIRData::GetConstAnalysisResultRef()
+CHIR::AnalysisWrapper<CHIR::ConstAnalysis<CHIR::ConstStatePool>, CHIR::ConstDomain>&
+CHIRData::GetConstAnalysisResultRef()
 {
     return constAnalysisWrapper;
 }
 
-const CHIR::AnalysisWrapper<CHIR::ConstAnalysis, CHIR::ConstDomain>& CHIRData::GetConstAnalysisResult() const
+const CHIR::AnalysisWrapper<CHIR::ConstAnalysis<CHIR::ConstStatePool>, CHIR::ConstDomain>&
+CHIRData::GetConstAnalysisResult() const
 {
     return constAnalysisWrapper;
 }
