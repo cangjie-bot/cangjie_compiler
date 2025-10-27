@@ -1229,6 +1229,11 @@ void CHIRChecker::CheckFunc(const Func& func)
 
     // 7. check unreachable op and unreachable generic type
     CheckUnreachableOpAndGenericTyInFuncBody(*func.GetBody());
+
+    // 8. can't be abstract
+    if (func.TestAttr(Attribute::ABSTRACT)) {
+        Errorln("func " + func.GetIdentifier() + " shouldn't have attribute: ABSTRACT.");
+    }
 }
 
 void CHIRChecker::CheckFuncParams(
