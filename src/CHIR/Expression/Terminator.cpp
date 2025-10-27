@@ -385,14 +385,17 @@ size_t DynamicDispatchWithException::GetVirtualMethodOffset(CHIRBuilder* builder
 
 ClassType* DynamicDispatchWithException::GetInstSrcParentCustomTypeOfMethod(CHIRBuilder& builder) const
 {
+    ClassType* result = nullptr;
     for (auto& r : GetVirtualMethodInfo(builder)) {
         if (r.offset == GetVirtualMethodOffset()) {
             CJC_NULLPTR_CHECK(r.instSrcParentType);
-            return r.instSrcParentType;
+            if (result == nullptr || r.instSrcParentType->GetClassDef()->IsClass()) {
+                result = r.instSrcParentType;
+            }
         }
     }
-    CJC_ABORT();
-    return nullptr;
+    CJC_NULLPTR_CHECK(result);
+    return result;
 }
 
 InvokeWithException::InvokeWithException(
