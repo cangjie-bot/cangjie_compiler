@@ -1701,6 +1701,7 @@ OwnedPtr<ExtendDecl> ParserImpl::ParseExtendDecl(
     } else if (!modifiers.empty() && !chainedAST.back()->TestAttr(Attribute::IS_BROKEN)) {
         DiagExpectNoModifier(*modifiers.begin());
     }
+    CheckCJMappingAttr(*ret);
     ParseExtendedType(*ret);
     if (Skip(TokenKind::UPPERBOUND)) { // Interface extension.
         ret->upperBoundPos = lastToken.Begin();
