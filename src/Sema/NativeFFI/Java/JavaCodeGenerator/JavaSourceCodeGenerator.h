@@ -53,6 +53,7 @@ private:
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
     std::string GenerateFuncParamLists(
         const std::vector<OwnedPtr<FuncParamList>>& paramLists, bool isNativeMethod = false);
+    std::string GenerateFuncParamClasses(const std::vector<OwnedPtr<FuncParamList>>& paramLists);
     void ConstructResult() override;
     void AddClassDeclaration();
     void AddInterfaceDeclaration();
@@ -86,6 +87,15 @@ private:
     void AddPrivateCtorForCJMappring();
     void AddPrivateCtorForCJMappringEnum();
     void AddEqualOrIdentityMethod(bool hasHascodeMethod, bool hasEqualsMethod, bool hasToStringMethod);
+    void AddGuardClass();
+    void AddClassAnalyser();
+    void AddClassAnalyserCtorParams();
+    void AddCJLockField();
+    void AddGuardField();
+    void AddOverrideMaskField();
+    void AddAttachCJObject();
+    void AddDetachCJObject();
+    void AddNativeDetachCJObject();
 };
 } // namespace Cangjie::Interop::Java
 
