@@ -809,24 +809,33 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
 
 {
-    if (enableInteropCJMapping && decl.TestAttr(Attribute::PUBLIC) &&
-        !decl.TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
-        // currently only support struct decl and enum decl, enum decl, class decl.
-        bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT) &&
-            !decl.TestAttr(Attribute::JAVA_MIRROR) && !decl.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE);
-        // support java type
-        if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL || isCJMappingClass ||
-            decl.astKind == ASTKind::INTERFACE_DECL) {
-            if (targetInteropLanguage == GlobalOptions::InteropLanguage::Java) {
-                decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
-            }
+    if (!enableInteropCJMapping) {
+        return;
+    }
+    if (decl.TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
+        return;
+    }
+    // currently only support struct decl, enum decl, class decl interface decl, extend decl.
+    bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT) &&
+        !decl.TestAttr(Attribute::JAVA_MIRROR) && !decl.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE);
+    // support java type
+    if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL || isCJMappingClass ||
+        decl.astKind == ASTKind::INTERFACE_DECL) {
+        if (decl.TestAttr(Attribute::PUBLIC) && targetInteropLanguage == GlobalOptions::InteropLanguage::Java) {
+            decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
         }
-        // support objc type
-        if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
-            if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
-                decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
-            }
+    }
+    if (decl.astKind == ASTKind::EXTEND_DECL) {
+        if (targetInteropLanguage == GlobalOptions::InteropLanguage::Java) {
+            decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
         }
+    }
+    
+    // support objc type
+    if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
+        if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
+            decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
+        } 
     }
 }
 
@@ -1706,6 +1715,7 @@ OwnedPtr<ExtendDecl> ParserImpl::ParseExtendDecl(
     } else if (!modifiers.empty() && !chainedAST.back()->TestAttr(Attribute::IS_BROKEN)) {
         DiagExpectNoModifier(*modifiers.begin());
     }
+    CheckCJMappingAttr(*ret);
     ParseExtendedType(*ret);
     if (Skip(TokenKind::UPPERBOUND)) { // Interface extension.
         ret->upperBoundPos = lastToken.Begin();
