@@ -28,6 +28,8 @@ public:
         Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName);
     JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
         const std::string& outputFileName, std::string cjLibName);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
+        const std::string& outputFileName, std::string cjLibName, std::vector<Ptr<ExtendDecl>> extends);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -49,6 +51,7 @@ private:
     std::set<std::string> imports;
     const std::string cjLibName;
     const BaseMangler& mangler;
+    std::vector<Ptr<ExtendDecl>> extendDecls;
 
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
     std::string GenerateFuncParamLists(
