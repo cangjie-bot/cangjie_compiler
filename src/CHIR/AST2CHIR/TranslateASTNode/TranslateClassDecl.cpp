@@ -183,6 +183,7 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
         func->SetFuncKind(FuncKind::INSTANCEVAR_INIT);
         func->EnableAttr(Attribute::PRIVATE);
         func->EnableAttr(Attribute::COMPILER_ADD);
+        func->EnableAttr(Attribute::MUT);
 
         builder.CreateParameter(funcType->GetParamType(0), loc, *func);
         body = builder.CreateBlockGroup(*func);
