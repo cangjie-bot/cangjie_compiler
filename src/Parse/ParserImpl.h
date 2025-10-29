@@ -168,7 +168,7 @@ private:
 
     bool SkipCombinedDoubleArrow();
 
-    inline bool SeeingImport2()
+    inline bool SeeingImport()
     {
         return Seeing(TokenKind::IMPORT) || Seeing({TokenKind::PUBLIC, TokenKind::IMPORT}) ||
             Seeing({TokenKind::PROTECTED, TokenKind::IMPORT}) || Seeing({TokenKind::INTERNAL, TokenKind::IMPORT}) ||
@@ -178,7 +178,7 @@ private:
     {
         return Seeing(TokenKind::PACKAGE);
     }
-    inline bool SeeingFeature()
+    inline bool SeeingFeatures()
     {
         return Seeing(TokenKind::FEATURES);
     }
@@ -482,7 +482,7 @@ private:
         // Other Decls that illegal in FuncBody.
         return SeeingAny({TokenKind::CLASS, TokenKind::INIT, TokenKind::INTERFACE, TokenKind::EXTEND, TokenKind::STRUCT,
                    TokenKind::PROP}) ||
-            SeeingImport2();
+            SeeingImport();
     }
     // When a children ast is broken, the father ast will be broken. Only used on diagnostic.
     void SpreadAttrAndConsume(Ptr<const AST::Node> source, Ptr<AST::Node> target, std::vector<TokenKind>&& kind);
@@ -908,6 +908,14 @@ private:
     void DiagRedundantArrowAfterFunc(const AST::Type& type);
     void DiagExpectedDeclaration(ScopeKind scopeKind);
     void DiagExpectedDeclaration(const Position& pos, const std::string& str);
+    /**
+        * Suggest keywords for expected declaration.
+        * @param keywords keywords to suggest
+        * @param minLevDis minimum Levenshtein distance to suggest
+        * @param scopeKind scope kind to determine which keywords to suggest
+    */
+    void DiagAndSuggestKeywordForExpectedDeclaration(
+        const std::vector<std::string>& keywords, size_t minLevDis = 1, ScopeKind scopeKind = ScopeKind::TOPLEVEL);
     void DiagUnExpectedModifierOnDeclaration(const AST::Decl& vd);
     void DiagConstVariableExpectedStatic(const Token& key);
     void DiagConstVariableExpectedInitializer(AST::Decl& vd);
@@ -1219,5 +1227,8 @@ const std::unordered_map<TokenKind, AST::TypeKind> TOKENKIND_TO_PRIMITIVE_TYPEKI
     {TokenKind::NOTHING, AST::TypeKind::TYPE_NOTHING},
     {TokenKind::UNIT, AST::TypeKind::TYPE_UNIT},
 };
+
+// Levenshtein distance calculation for suggesting similar names in diagnostics.
+unsigned LevenshteinDistance(const std::string& source, const std::string& target);
 } // namespace Cangjie
 #endif
