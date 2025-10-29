@@ -149,6 +149,42 @@ OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassMethod(
     return funcDecl;
 }
 
+OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassDefaultMethod(
+    AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl)
+{
+    auto replaceRefCall = [&interfaceFuncDecl](const Node&, Node& target) {
+        auto targetPtr = Ptr<Node>(&target);
+        if (Ptr<CallExpr> call = As<ASTKind::CALL_EXPR>(targetPtr.get())) {
+            if (Ptr<RefExpr> refE = As<ASTKind::REF_EXPR>(call->baseFunc.get())) {
+                if (Ptr<FuncDecl> fd = As<ASTKind::FUNC_DECL>(refE->GetTarget())) {
+                    if (fd->outerDecl && fd->outerDecl == interfaceFuncDecl.outerDecl) {
+                        auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(interfaceFuncDecl.outerDecl);
+                        auto thisRef = CreateThisRef(interfaceDecl, interfaceDecl->ty, interfaceDecl->curFile);
+                        auto ma = CreateMemberAccess(std::move(thisRef), *fd);
+                        ma->callOrPattern = call.get();
+                        call->baseFunc = std::move(ma);
+                    }
+                }
+            }
+        }
+    };
+    OwnedPtr<FuncDecl> funcStub = ASTCloner::Clone(Ptr(&interfaceFuncDecl), replaceRefCall);
+    funcStub->DisableAttr(Attribute::DEFAULT);
+    funcStub->EnableAttr(Attribute::JAVA_CJ_MAPPING_INTERFACE_DEFAULT, AST::Attribute::COMPILER_ADD);
+
+    // remove foreign anno from cloned func decl
+    for (auto it = funcStub->annotations.begin(); it != funcStub->annotations.end(); ++it) {
+        if ((*it)->kind == AnnotationKind::FOREIGN_NAME) {
+            funcStub->annotations.erase(it);
+            break;
+        }
+    }
+
+    funcStub->outerDecl = Ptr(&fwdclassDecl);
+    funcStub->identifier = funcStub->identifier.Val() + "_default_impl";
+    return funcStub;
+}
+
 void JavaDesugarManager::GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl)
 {
     InsertJavaRefVarDecl(fwdclassDecl);
@@ -157,6 +193,9 @@ void JavaDesugarManager::GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassD
         if (FuncDecl* fd = As<ASTKind::FUNC_DECL>(decl.get());
             fd && !fd->TestAttr(Attribute::CONSTRUCTOR) && !fd->TestAttr(Attribute::STATIC)) {
             fwdclassDecl.body->decls.push_back(GenerateInterfaceFwdclassMethod(fwdclassDecl, *fd));
+            if (fd->TestAttr(Attribute::DEFAULT)) {
+                fwdclassDecl.body->decls.push_back(GenerateInterfaceFwdclassDefaultMethod(fwdclassDecl, *fd));
+            }
         } else if (auto prop = As<ASTKind::PROP_DECL>(decl.get())) {
             // not support yet
             auto message = "property in interface";
@@ -187,6 +226,23 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(AST::InterfaceDecl& inter
     GenerateInterfaceFwdclassBody(*fwdclassDecl, interfaceDecl);
 
     generatedDecls.push_back(std::move(fwdclassDecl));
+}
+
+void JavaDesugarManager::GenerateNativeForCJInterfaceMapping(AST::ClassDecl& classDecl)
+{
+    CJC_ASSERT(IsFwdClass(classDecl));
+
+    for (auto& member : classDecl.GetMemberDecls()) {
+        if (member->TestAttr(Attribute::IS_BROKEN) || !member->TestAttr(Attribute::PUBLIC)) {
+            continue;
+        }
+        if (!member->TestAttr(Attribute::JAVA_CJ_MAPPING_INTERFACE_DEFAULT)) {
+            continue;
+        }
+        if (auto fd = As<ASTKind::FUNC_DECL>(member.get())) {
+            generatedDecls.push_back(GenerateNativeMethod(*fd, classDecl));
+        }
+    }
 }
 
 void JavaDesugarManager::GenerateFwdClassInCJMapping(File& file) 
@@ -228,6 +284,10 @@ void JavaDesugarManager::GenerateInCJMapping(File& file)
         auto classDecl = As<ASTKind::CLASS_DECL>(decl.get());
         if (classDecl && IsCJMapping(*classDecl)) {
             GenerateForCJStructOrClassTypeMapping(file, classDecl);
+            continue;
+        }
+        if (classDecl && IsFwdClass(*classDecl)) {
+            GenerateNativeForCJInterfaceMapping(*classDecl);
             continue;
         }
     }
