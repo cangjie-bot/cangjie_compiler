@@ -505,7 +505,7 @@ def main():
         "--enable-assert", action="store_true", help="build with assert and self-checking, only effective in release mode"
     )
     parser_build.add_argument(
-        "--no-tests", action="store_true", help="build without unittests"
+        "--no-tests", action="store_true", help="build without unittests1"
     )
     # cjnative BE supports stack grow feature and cjc enables stack grow feature by default. However, the feature is
     # supported at a cost of code-size and performance. In code-size and performance sensitive scenario, the feature
