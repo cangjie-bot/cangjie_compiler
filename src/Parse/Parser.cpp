@@ -93,8 +93,17 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
      *  ;
     */
     // Parse features in TopLevel
-    if (SeeingFeature()) {
+    if (SeeingFeatures()) {
         ParseFeatureDirective(ret->feature);
+    } else if (!SeeingPackage() && !SeeingMacroPackage() && !SeeingImport() && !Seeing(TokenKind::SEMI) &&
+        !SeeingDecl() && !SeeingMacroCallDecl()) {
+        DiagAndSuggestKeywordForExpectedDeclaration({"features", "macro", "package", "import", "func", "let", "var",
+            "const", "enum", "type", "struct", "class", "interface", "extend", "main"});
+        auto consumeTarget = [this]() {
+            return SeeingPackage() || SeeingMacroPackage() || Seeing(TokenKind::SEMI) || SeeingImport() ||
+                SeeingDecl() || SeeingMacroCallDecl();
+        };
+        ConsumeUntilAny(consumeTarget, false);
     }
     PtrVector<Annotation> annos;
     if (SeeingBuiltinAnnotation()) {
@@ -123,6 +132,12 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
             annos.clear();
         }
     } else {
+        bool maybeConstDecl = lastToken.kind == TokenKind::CONST;
+        bool maybeForeignBlock = lastToken.kind == TokenKind::FOREIGN && Seeing(TokenKind::LCURL);
+        if (!SeeingImport() && !Seeing(TokenKind::SEMI) && !SeeingDecl() && !SeeingMacroCallDecl() && !maybeConstDecl) {
+            DiagAndSuggestKeywordForExpectedDeclaration({"macro", "package", "import", "func", "let", "var", "const",
+                "enum", "type", "struct", "class", "interface", "extend", "main"});
+        }
         scope.ResetParserScope();
     }
     // Parse importSpec in TopLevel.
