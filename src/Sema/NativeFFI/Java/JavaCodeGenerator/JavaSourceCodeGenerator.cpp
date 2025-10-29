@@ -113,6 +113,7 @@ void JavaSourceCodeGenerator::ConstructResult()
         AddInterfaceDeclaration();
         AddInterfaceMethods();
         AddEndClassParenthesis();
+        AddInterfaceFwdClass();
         AddHeader();
         return;
     }
@@ -655,7 +656,8 @@ void JavaSourceCodeGenerator::AddInstanceMethod(const FuncDecl& funcDecl)
     AddWithIndent(TAB, methodSignature);
 
     std::string args = "this.self";
-    std::string paramList = Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
+    std::string paramList =
+        Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
     if (!paramList.empty()) {
         args += ", ";
         args += paramList;
@@ -682,7 +684,8 @@ void JavaSourceCodeGenerator::AddStaticMethod(const FuncDecl& funcDecl)
     const std::string retType = MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
     std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
 
-    std::string paramList = Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
+    std::string paramList =
+        Join(params, ", ", std::function<std::string(const OwnedPtr<FuncParam>&)>(FuncParamToString));
 
     if (mangledNativeName != funcIdentifier) {
         AddWithIndent(TAB, "public static " + retType + " " + funcIdentifier + "(" + argsWithTypes + ") {");
@@ -771,13 +774,64 @@ void JavaSourceCodeGenerator::AddInterfaceMethods()
         if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
+                bool isDefault = declPtr->TestAttr(Attribute::DEFAULT);
+                std::string modifier = isDefault ? "default " : "";
                 auto funcIdentifier = GetJavaMemberName(funcDecl);
                 const std::string retType =
                     MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
-                std::string methodSignature = "public " + retType + " ";
+                std::string methodSignature = "public " + modifier + retType + " ";
                 methodSignature += funcIdentifier + "(";
                 std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
                 methodSignature += argsWithTypes;
+                methodSignature += isDefault ? ") {" : ");";
+                AddWithIndent(TAB, methodSignature);
+                if (isDefault) {
+                    std::string defaultCall =
+                        decl->identifier.Val() + "_fwd." + funcDecl.identifier.Val() + "_default_impl(this";
+                    auto params = GenerateParamLists(funcDecl.funcBody->paramLists, FuncParamToString);
+                    if (params != "") {
+                        defaultCall += ", " + params;
+                    }
+                    defaultCall += ");";
+                    AddWithIndent(TAB2, defaultCall);
+                    AddWithIndent(TAB, "}");
+                }
+            }
+        }
+    }
+}
+
+void JavaSourceCodeGenerator::AddInterfaceFwdClass()
+{
+    auto className = decl->identifier.Val() + "_fwd";
+    res += "final class " + className + " {\n";
+    AddWithIndent(TAB, "private " + className + "() {}");
+    AddLoadLibrary();
+    AddInterfaceFwdClassNativeMethod();
+    AddEndClassParenthesis();
+}
+
+void JavaSourceCodeGenerator::AddInterfaceFwdClassNativeMethod()
+{
+    for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
+        if (IsCJMapping(*decl) && !declPtr->TestAttr(Attribute::PUBLIC)) {
+            continue;
+        }
+        if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
+            const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+            if (!declPtr->TestAttr(Attribute::DEFAULT)) {
+                continue;
+            }
+            if (funcDecl.funcBody && funcDecl.funcBody->retType) {
+                auto funcIdentifier = GetJavaMemberName(funcDecl);
+                const std::string retType =
+                    MapCJTypeToJavaType(funcDecl.funcBody->retType, &imports, &decl->fullPackageName);
+                std::string methodSignature = "public static native " + retType + " ";
+                methodSignature += funcIdentifier + "_default_impl(" + decl->identifier.Val() + " javaref";
+                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
+                if (argsWithTypes != "") {
+                    methodSignature += ", " + argsWithTypes;
+                }
                 methodSignature += ");";
                 AddWithIndent(TAB, methodSignature);
             }
