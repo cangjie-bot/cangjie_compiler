@@ -111,6 +111,23 @@ public:
      * Get objc.lang.ObjCPointer declaration
     */
     Ptr<AST::StructDecl> GetObjCPointerDecl();
+    Ptr<AST::FuncDecl> GetObjCPointerConstructor();
+    Ptr<AST::VarDecl> GetObjCPointerPointerField();
+
+    /**
+     * Get objc.lang.ObjCFunc declaration
+    */
+    Ptr<AST::StructDecl> GetObjCFuncDecl();
+    Ptr<AST::FuncDecl> GetObjCFuncConstructor();
+    Ptr<AST::FuncDecl> GetObjCFuncFPointerAccessor();
+
+    /**
+     * Get objc.lang.ObjCBlock declaration
+    */
+    Ptr<AST::ClassDecl> GetObjCBlockDecl();
+    Ptr<AST::FuncDecl> GetObjCBlockConstructor();
+    Ptr<AST::FuncDecl> GetObjCBlockAbiPointerAccessor();
+    Ptr<AST::FuncDecl> GetObjCBlockFPointerAccessor();
 
 private:
     template <AST::ASTKind K = AST::ASTKind::DECL> auto GetInteropLibDecl(const std::string& ident)
