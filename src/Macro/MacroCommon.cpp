@@ -132,25 +132,29 @@ namespace Cangjie {
 bool CheckAddSpace(Token curToken, Token nextToken)
 {
     // Add no space after current token.
-    static std::set<TokenKind> noSpaceKinds1{TokenKind::DOT, TokenKind::QUEST, TokenKind::DOLLAR, TokenKind::LPAREN,
-        TokenKind::LSQUARE, TokenKind::AT, TokenKind::AT_EXCL, TokenKind::ILLEGAL, TokenKind::NL};
-    if (noSpaceKinds1.find(curToken.kind) != noSpaceKinds1.end()) {
+    static std::set<TokenKind> noSpaceAfterKinds{TokenKind::DOT, TokenKind::QUEST, TokenKind::DOLLAR, TokenKind::LPAREN,
+        TokenKind::LSQUARE, TokenKind::AT, TokenKind::AT_EXCL, TokenKind::ILLEGAL, TokenKind::NL, TokenKind::NOT};
+    if (noSpaceAfterKinds.find(curToken.kind) != noSpaceAfterKinds.end()) {
         return false;
     }
     // Add no space before next token.
-    static std::set<TokenKind> noSpaceKinds2{TokenKind::DOT, TokenKind::COLON, TokenKind::COMMA, TokenKind::SEMI,
+    static std::set<TokenKind> noSpaceBeforeKinds{TokenKind::DOT, TokenKind::COLON, TokenKind::COMMA, TokenKind::SEMI,
         TokenKind::QUEST, TokenKind::LPAREN, TokenKind::RPAREN, TokenKind::LSQUARE, TokenKind::RSQUARE, TokenKind::NL,
-        TokenKind::END};
-    if (noSpaceKinds2.find(nextToken.kind) != noSpaceKinds2.end()) {
+        TokenKind::END, TokenKind::INCR, TokenKind::DECR};
+    // Must have space after current token.
+    static std::set<TokenKind> haveSpaceAfterKinds{TokenKind::COLON, TokenKind::ASSIGN, TokenKind::LET, TokenKind::VAR,
+        TokenKind::CONST, TokenKind::WHILE, TokenKind::FOR, TokenKind::IF, TokenKind::DOUBLE_ARROW, TokenKind::COMMA,
+        TokenKind::SYNCHRONIZED, TokenKind::TRY, TokenKind::CATCH, TokenKind::RETURN, TokenKind::MATCH};
+    if (noSpaceBeforeKinds.find(nextToken.kind) != noSpaceBeforeKinds.end() && haveSpaceAfterKinds.find(curToken.kind) == haveSpaceAfterKinds.end()) {
         return false;
     }
     // Add no space between current token and next token.
     static std::set<std::pair<TokenKind, TokenKind>> tkSet = {
         std::pair<TokenKind, TokenKind>(TokenKind::GT, TokenKind::GT),
-        std::pair<TokenKind, TokenKind>(TokenKind::GT, TokenKind::ASSIGN),
         std::pair<TokenKind, TokenKind>(TokenKind::QUEST, TokenKind::QUEST),
         std::pair<TokenKind, TokenKind>(TokenKind::LPAREN, TokenKind::RPAREN),
         std::pair<TokenKind, TokenKind>(TokenKind::LSQUARE, TokenKind::RSQUARE),
+        std::pair<TokenKind, TokenKind>(TokenKind::LCURL, TokenKind::RCURL),
         std::pair<TokenKind, TokenKind>(TokenKind::IDENTIFIER, TokenKind::NOT),
         std::pair<TokenKind, TokenKind>(TokenKind::BITNOT, TokenKind::INIT)};
     return tkSet.find(std::pair<TokenKind, TokenKind>(curToken.kind, nextToken.kind)) == tkSet.end();
@@ -262,8 +266,8 @@ std::string LineToString(TokenVector& line)
         } else if (token.kind == TokenKind::JSTRING_LITERAL) {
             ret += "J" + quote + ProcessQuotaMarksForSingle(token.Value()) + quote + blank;
         } else if (token.kind == TokenKind::RUNE_LITERAL) {
-            // For case: let c = '\''
-            ret += ((token == "\'") ? "r\'\\'\'" : "r\'" + token.Value() + "\'") + blank;
+            // For case: let c = r'\''
+            ret += ((token == "\'") ? "r\'\\'\'" : "r" + quote + token.Value() + quote) + blank;
         } else if (token.kind == TokenKind::MULTILINE_STRING) {
             ret += GetMultiStringValue(token) + blank;
         } else if (token.kind == TokenKind::MULTILINE_RAW_STRING) {
