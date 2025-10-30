@@ -91,6 +91,23 @@ OwnedPtr<CallExpr> CreateCall(Ptr<FuncDecl> fd, Ptr<File> curFile, OwnedPtr<Args
                           CallKind::CALL_DECLARED_FUNCTION);
 }
 
+template <typename... Args>
+OwnedPtr<CallExpr> CreateMemberCall(OwnedPtr<Expr> receiver, Ptr<FuncDecl> fd, OwnedPtr<Args>&&... args) {
+    if (!receiver || !fd) {
+        return nullptr;
+    }
+
+    std::vector<OwnedPtr<FuncArg>> funcArgs;
+
+    (details::WrapArg(&funcArgs, std::forward<OwnedPtr<Args>>(args)), ...);
+
+    auto funcTy = StaticCast<FuncTy*>(fd->ty);
+    auto ma = CreateMemberAccess(std::move(receiver), *fd);
+    CopyBasicInfo(ma->baseExpr, ma);
+    return CreateCallExpr(std::move(ma), std::move(funcArgs), fd, funcTy->retTy,
+                          CallKind::CALL_DECLARED_FUNCTION);
+}
+
 OwnedPtr<Type> CreateType(Ptr<Ty> ty);
 OwnedPtr<Type> CreateFuncType(Ptr<FuncTy> ty);
 
