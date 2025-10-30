@@ -657,6 +657,8 @@ void AST2CHIR::CreateFuncSignatureAndSetGlobalCache(const AST::FuncDecl& funcDec
     if (fn) {
         if (isPlatform) {
             ResetPlatformFunc(funcDecl, *fn);
+            const auto& loc = GetDeclLoc(builder.GetChirContext(), funcDecl);
+            fn->SetDebugLocation(loc);
         }
         globalCache.Set(funcDecl, *fn);
         if (implicitDecls.count(&funcDecl) != 0) {
@@ -786,6 +788,8 @@ void AST2CHIR::CreateImportedFuncSignatureAndSetGlobalCache(const AST::FuncDecl&
         if (implicitDecls.count(&funcDecl) != 0) {
             implicitFuncs.emplace(fn->GetIdentifierWithoutPrefix(), fn);
         }
+        const auto& loc = GetDeclLoc(builder.GetChirContext(), funcDecl);
+        fn->SetDebugLocation(loc);
         return;
     }
     bool isGeneric = funcDecl.TestAttr(AST::Attribute::GENERIC);
@@ -850,6 +854,8 @@ void AST2CHIR::CreateAndCacheGlobalVar(const AST::VarDecl& decl, bool isLocalCon
         if (IsSrcCodeImportedGlobalDecl(decl, opts)) {
             srcCodeImportedVars.emplace(VirtualCast<GlobalVar*>(gv));
         }
+        const auto& loc = GetDeclLoc(builder.GetChirContext(), decl);
+        gv->SetDebugLocation(loc);
         return;
     }
     auto loc = TranslateLocationWithoutScope(builder.GetChirContext(), decl.begin, decl.end);
@@ -858,7 +864,7 @@ void AST2CHIR::CreateAndCacheGlobalVar(const AST::VarDecl& decl, bool isLocalCon
     auto rawMangledName = decl.rawMangleName;
     auto packageName = decl.fullPackageName;
     auto ty = builder.GetType<RefType>(chirType.TranslateType(*decl.ty));
-    auto warnPos = GetVarLoc(builder.GetChirContext(), decl);
+    auto warnPos = GetDeclLoc(builder.GetChirContext(), decl);
     Value* gv = nullptr;
     if (kind == IncreKind::INCR && !decl.toBeCompiled && !IsSrcCodeImportedGlobalDecl(decl, opts)) {
         gv = builder.CreateImportedVarOrFunc<ImportedVar>(ty, mangledName, srcCodeName, rawMangledName, packageName);
@@ -1039,6 +1045,8 @@ void AST2CHIR::CreateCustomTypeDef(const AST::Decl& decl, bool isImported)
             if (customTypeDef == nullptr) {
                 customTypeDef = builder.CreateClass(
                     loc, identifier, mangledName, pkgName, decl.astKind == AST::ASTKind::CLASS_DECL, isImported);
+            } else {
+                customTypeDef->SetDebugLocation(loc);
             }
             uniqueDecl = StaticCast<AST::ClassLikeTy*>(decl.ty)->commonDecl;
             break;
@@ -1046,6 +1054,8 @@ void AST2CHIR::CreateCustomTypeDef(const AST::Decl& decl, bool isImported)
             customTypeDef = TryGetDeserialized<StructDef>(decl);
             if (customTypeDef == nullptr) {
                 customTypeDef = builder.CreateStruct(loc, identifier, mangledName, pkgName, isImported);
+            } else {
+                customTypeDef->SetDebugLocation(loc);
             }
             uniqueDecl = StaticCast<AST::StructTy*>(decl.ty)->decl;
             break;
@@ -1054,6 +1064,8 @@ void AST2CHIR::CreateCustomTypeDef(const AST::Decl& decl, bool isImported)
             if (customTypeDef == nullptr) {
                 customTypeDef = builder.CreateEnum(
                     loc, identifier, mangledName, pkgName, isImported, StaticCast<AST::EnumDecl>(decl).hasEllipsis);
+            } else {
+                customTypeDef->SetDebugLocation(loc);
             }
             uniqueDecl = StaticCast<AST::EnumTy*>(decl.ty)->decl;
             break;
@@ -1062,6 +1074,8 @@ void AST2CHIR::CreateCustomTypeDef(const AST::Decl& decl, bool isImported)
             if (customTypeDef == nullptr) {
                 auto gts = GetGenericParamType(decl, chirType);
                 customTypeDef = builder.CreateExtend(loc, mangledName, pkgName, isImported, gts);
+            } else {
+                customTypeDef->SetDebugLocation(loc);
             }
             break;
         }

@@ -157,7 +157,8 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
         CJC_ASSERT(params.size() == 1);
         func->ReplaceBody(*body);
         func->AddParam(*params[0]);
-        func->SetDebugLocation(DebugLocation());
+        const auto& loc = DebugLocation(TranslateLocationWithoutScope(builder.GetChirContext(), decl.begin, decl.end));
+        func->SetDebugLocation(loc);
     } else {
         auto identifier = decl.identifier + POSTFIX;
         auto rawMangledName = decl.rawMangleName + POSTFIX;
