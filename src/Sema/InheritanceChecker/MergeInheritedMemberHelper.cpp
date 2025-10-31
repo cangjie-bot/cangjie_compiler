@@ -16,9 +16,9 @@
 #include "cangjie/AST/Types.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/Sema/TypeManager.h"
-
 #include "TypeCheckUtil.h"
 #include "NativeFFI/Java/TypeCheck/InheritanceChecker.h"
+#include "InheritanceChecker/MemberSignature.h"
 
 using namespace Cangjie;
 using namespace AST;

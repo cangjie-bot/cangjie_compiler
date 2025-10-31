@@ -9,14 +9,16 @@
 #include "TypeCheckUtil.h"
 
 #include "Desugar/AfterTypeCheck.h"
+#include "JavaDesugarManager.h"
+#include "cangjie/AST/Match.h"
+#include "cangjie/AST/Utils.h"
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Modules/ImportManager.h"
-#include "cangjie/AST/Match.h"
 #include "cangjie/Utils/ConstantsUtils.h"
-#include "JavaDesugarManager.h"
-#include "../../../InheritanceChecker/StructInheritanceChecker.h"
-#include "cangjie/AST/Utils.h"
 
+namespace Cangjie {
+    struct MemberSignature;
+}
 
 namespace {
 using namespace Cangjie;
@@ -68,7 +70,7 @@ void GenerateSyntheticClassAbstractMemberImplStubs(ClassDecl& synthetic, const M
         const auto& signature = idMemberSignature.second;
 
         // only abstract functions must be inside synthetic class
-        if (!signature.decl->TestAnyAttr(Attribute::ABSTRACT)) {
+        if (!signature.decl->TestAttr(Attribute::ABSTRACT)) {
             continue;
         }
 
@@ -89,7 +91,7 @@ void GenerateSyntheticClassAbstractMemberImplStubs(ClassDecl& synthetic, const M
         }
     }
 }
-}
+} // namespace
 
 namespace Cangjie::Interop::Java {
 
@@ -98,7 +100,8 @@ using namespace Cangjie::Native::FFI;
 
 Utils::Utils(ImportManager& importManager, TypeManager& typeManager)
     : importManager(importManager), typeManager(typeManager)
-{}
+{
+}
 
 Ptr<Ty> Utils::GetOptionTy(Ptr<Ty> ty)
 {
@@ -141,7 +144,7 @@ OwnedPtr<Expr> Utils::CreateOptionNoneRef(Ptr<Ty> ty)
 
 OwnedPtr<Expr> Utils::CreateOptionSomeCall(OwnedPtr<Expr> expr, Ptr<Ty> ty)
 {
-    std::vector<OwnedPtr<FuncArg>> someDeclCallArgs {};
+    std::vector<OwnedPtr<FuncArg>> someDeclCallArgs{};
     someDeclCallArgs.emplace_back(CreateFuncArg(std::move(expr)));
     auto someDeclCall = CreateCallExpr(CreateOptionSomeRef(ty), std::move(someDeclCallArgs));
     someDeclCall->ty = GetOptionTy(ty);
@@ -179,10 +182,9 @@ StructDecl& Utils::GetStringDecl()
 Ptr<VarDecl> GetJavaRefField(ClassDecl& mirrorLike)
 {
     if (mirrorLike.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE)) {
-        if (auto superClass = mirrorLike.GetSuperClassDecl();
-            superClass && !superClass->ty->IsObject()
-            && superClass->TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
-                return GetJavaRefField(*superClass);
+        if (auto superClass = mirrorLike.GetSuperClassDecl(); superClass && !superClass->ty->IsObject() &&
+            superClass->TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
+            return GetJavaRefField(*superClass);
         }
 
         auto superClass = mirrorLike.GetSuperClassDecl();
@@ -223,16 +225,16 @@ Ptr<VarDecl> GetJavaRefField(ClassLikeDecl& mirror)
 
 bool IsJavaRefGetter(const Decl& fd)
 {
-    return fd.astKind == ASTKind::FUNC_DECL &&
-        fd.TestAttr(Attribute::COMPILER_ADD) &&
+    return fd.astKind == ASTKind::FUNC_DECL && fd.TestAttr(Attribute::COMPILER_ADD) &&
         fd.identifier.Val() == JAVA_REF_GETTER_FUNC_NAME;
 }
 
 Ptr<FuncDecl> GetJavaRefGetter(ClassLikeDecl& mirror)
 {
     CJC_ASSERT(mirror.TestAnyAttr(Attribute::JAVA_MIRROR_SUBTYPE, Attribute::JAVA_MIRROR));
-    const std::function<bool(const Decl& d)>& isDeclJavaRefGetterFunc =
-                [](const Decl& d) { return IsJavaRefGetter(d); };
+    const std::function<bool(const Decl& d)>& isDeclJavaRefGetterFunc = [](const Decl& d) {
+        return IsJavaRefGetter(d);
+    };
 
     if (auto cd = DynamicCast<ClassDecl*>(&mirror)) {
         if (!IsJObject(mirror)) {
@@ -323,7 +325,7 @@ OwnedPtr<Expr> CreateJavaRefCall(OwnedPtr<Expr> expr)
 bool IsGeneratedJavaMirrorConstructor(const FuncDecl& ctor)
 {
     return ctor.TestAttr(Attribute::JAVA_MIRROR) && ctor.TestAttr(Attribute::CONSTRUCTOR) &&
-           ctor.TestAttr(Attribute::COMPILER_ADD);
+        ctor.TestAttr(Attribute::COMPILER_ADD);
 }
 
 Ptr<FuncDecl> GetGeneratedConstructorInMirror(ClassDecl& mirror)
@@ -488,7 +490,7 @@ std::string GetFQNameJoinBy(const std::string& name, std::string_view separator)
     return StringJoin(parts.begin(), parts.end(), separator);
 }
 
-}
+} // namespace
 
 std::string GetJavaFQName(const Decl& decl)
 {
@@ -518,19 +520,15 @@ DestructedJavaClassName DestructJavaClassName(const ClassLikeDecl& decl)
     CJC_ASSERT(parts.size() > 0);
     auto ind = parts[0].find_last_of('.');
     if (ind == std::string::npos) {
-        return {
-            .packageName=std::nullopt,
-            .topLevelClassName=parts[0],
-            .fullClassName=StringJoin(parts.begin(), parts.end(), ".")
-        };
+        return {.packageName = std::nullopt,
+            .topLevelClassName = parts[0],
+            .fullClassName = StringJoin(parts.begin(), parts.end(), ".")};
     }
     auto package = parts[0].substr(0, ind);
     parts[0] = parts[0].substr(ind + 1);
-    return {
-        .packageName=package,
-        .topLevelClassName=parts[0],
-        .fullClassName=StringJoin(parts.begin(), parts.end(), ".")
-    };
+    return {.packageName = package,
+        .topLevelClassName = parts[0],
+        .fullClassName = StringJoin(parts.begin(), parts.end(), ".")};
 }
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl)
@@ -668,25 +666,47 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
     std::string jsig;
 
     switch (cjtype.kind) {
-        case TypeKind::TYPE_UNIT: jsig = "V"; break;
-        case TypeKind::TYPE_BOOLEAN: jsig = "Z"; break;
-        case TypeKind::TYPE_INT8: jsig = "B"; break;
-        case TypeKind::TYPE_UINT16: jsig = "C"; break;
-        case TypeKind::TYPE_INT16: jsig = "S"; break;
-        case TypeKind::TYPE_INT32: jsig = "I"; break;
-        case TypeKind::TYPE_INT64: jsig = "J"; break;
-        case TypeKind::TYPE_FLOAT32: jsig = "F"; break;
-        case TypeKind::TYPE_FLOAT64: jsig = "D"; break;
+        case TypeKind::TYPE_UNIT:
+            jsig = "V";
+            break;
+        case TypeKind::TYPE_BOOLEAN:
+            jsig = "Z";
+            break;
+        case TypeKind::TYPE_INT8:
+            jsig = "B";
+            break;
+        case TypeKind::TYPE_UINT16:
+            jsig = "C";
+            break;
+        case TypeKind::TYPE_INT16:
+            jsig = "S";
+            break;
+        case TypeKind::TYPE_INT32:
+            jsig = "I";
+            break;
+        case TypeKind::TYPE_INT64:
+            jsig = "J";
+            break;
+        case TypeKind::TYPE_FLOAT32:
+            jsig = "F";
+            break;
+        case TypeKind::TYPE_FLOAT64:
+            jsig = "D";
+            break;
 
         case TypeKind::TYPE_STRUCT: {
             if (cjtype.IsString()) {
                 jsig = "L" + NormalizeJavaSignature(GetJavaFQName(*GetJStringDecl())) + ";";
                 break;
             }
-            if (!cjtype.IsStructArray()) { break; }
+            if (!cjtype.IsStructArray()) {
+                break;
+            }
             [[fallthrough]]; // for Array<T> - fallback
         }
-        case TypeKind::TYPE_ARRAY: jsig = "[" + GetJavaTypeSignature(*cjtype.typeArgs[0]); break;
+        case TypeKind::TYPE_ARRAY:
+            jsig = "[" + GetJavaTypeSignature(*cjtype.typeArgs[0]);
+            break;
         case TypeKind::TYPE_ENUM: {
             if (!cjtype.IsCoreOptionType()) {
                 break;
@@ -704,9 +724,7 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
             if (IsJArray(*StaticCast<ClassLikeTy&>(cjtype).commonDecl)) {
                 jsig = "[" + GetJavaTypeSignature(*cjtype.typeArgs[0]);
             } else {
-                jsig = "L" + NormalizeJavaSignature(
-                    GetJavaFQName(*StaticCast<ClassLikeTy&>(cjtype).commonDecl)
-                ) + ";";
+                jsig = "L" + NormalizeJavaSignature(GetJavaFQName(*StaticCast<ClassLikeTy&>(cjtype).commonDecl)) + ";";
             }
             break;
         case TypeKind::TYPE_FUNC: {
@@ -719,7 +737,9 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
             jsig.append(GetJavaTypeSignature(*funcTy.retTy));
             break;
         }
-        default: CJC_ABORT(); break; // method must be called only on java-compatible types
+        default:
+            CJC_ABORT();
+            break; // method must be called only on java-compatible types
     }
 
     return jsig;
@@ -730,8 +750,8 @@ std::string Utils::GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& p
     return GetJavaTypeSignature(*typeManager.GetFunctionTy(params, &retTy));
 }
 
-std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler,
-                                              const std::vector<OwnedPtr<FuncParam>>& params, bool isGeneratedCtor)
+std::string GetMangledJniInitCjObjectFuncName(
+    const BaseMangler& mangler, const std::vector<OwnedPtr<FuncParam>>& params, bool isGeneratedCtor)
 {
     std::string name("initCJObject");
 
@@ -803,16 +823,15 @@ bool IsCJMapping(const Ty& ty)
 
 const Ptr<ClassDecl> GetSyntheticClass(const ImportManager& importManager, const ClassLikeDecl& cld)
 {
-    ClassDecl* synthetic = importManager.GetImportedDecl<ClassDecl>(
-        cld.fullPackageName, GetSyntheticNameFromClassLike(cld));
+    ClassDecl* synthetic =
+        importManager.GetImportedDecl<ClassDecl>(cld.fullPackageName, GetSyntheticNameFromClassLike(cld));
 
     CJC_NULLPTR_CHECK(synthetic);
 
     return Ptr(synthetic);
 }
 
-OwnedPtr<Expr> CreateMirrorConstructorCall(
-    const ImportManager& importManager, OwnedPtr<Expr> entity, Ptr<Ty> mirrorTy)
+OwnedPtr<Expr> CreateMirrorConstructorCall(const ImportManager& importManager, OwnedPtr<Expr> entity, Ptr<Ty> mirrorTy)
 {
     auto curFile = entity->curFile;
     auto classLikeTy = DynamicCast<ClassLikeTy*>(mirrorTy.get());
@@ -1011,8 +1030,9 @@ OwnedPtr<MatchExpr> InteropLibBridge::CreateMatchByTypeArgument(
 
     std::vector<OwnedPtr<MatchCase>> cases;
 
-    for (auto & [typeDesc, expr] : typeToCaseMap) {
-        auto isOption = typeDesc.rfind(std::string(CORE_PACKAGE_NAME) + ":" + OPTION_NAME, 0) == 0; // starts_with actually
+    for (auto& [typeDesc, expr] : typeToCaseMap) {
+        auto isOption =
+            typeDesc.rfind(std::string(CORE_PACKAGE_NAME) + ":" + OPTION_NAME, 0) == 0; // starts_with actually
         auto caseCall = MakeOwned<CallExpr>();
         auto caseMa = CreateMemberAccess(ASTCloner::Clone(cStrToStringCall.get()), isOption ? "startsWith" : "==");
         caseMa->ty = isOption ? strStartsWithDecl->ty : strEqualsDecl->ty;
@@ -1046,8 +1066,8 @@ OwnedPtr<MatchExpr> InteropLibBridge::CreateMatchByTypeArgument(
 
 void GenerateSyntheticClassMemberStubs(
     ClassDecl& synthetic,
-    const MemberMap& interfaceMembers,
-    const MemberMap& instanceMembers)
+    const std::multimap<std::string, MemberSignature>& interfaceMembers,
+    const std::multimap<std::string, MemberSignature>& instanceMembers)
 {
     GenerateSyntheticClassAbstractMemberImplStubs(synthetic, interfaceMembers);
     GenerateSyntheticClassAbstractMemberImplStubs(synthetic, instanceMembers);
@@ -1081,4 +1101,25 @@ OwnedPtr<ClassDecl> CreateConstructorMarkerClassDecl()
     markerClassDecl->fullPackageName = NATIVE_CONSTRUCTOR_MARKER_PACKAGE_NAME;
     return markerClassDecl;
 }
+
+bool IsSyntheticClassGenerationRequired(const Node& node)
+{
+    bool isJavaMirror = node.TestAttr(Attribute::JAVA_MIRROR);
+    bool isInterface = node.astKind == ASTKind::INTERFACE_DECL;
+    bool isAbstractClass = node.astKind == ASTKind::CLASS_DECL && node.TestAttr(Attribute::ABSTRACT);
+
+    return isJavaMirror && (isInterface || isAbstractClass);
 }
+
+void GenerateNativeFFIJavaMirrorSyntheticWrapper(
+    Decl& decl,
+    const std::multimap<std::string, MemberSignature>& interfaceMembers,
+    const std::multimap<std::string, MemberSignature>& instanceMembers)
+{
+    if (!IsSynthetic(decl)) {
+        return;
+    }
+    auto cd = StaticCast<ClassDecl*>(&decl);
+    GenerateSyntheticClassMemberStubs(*cd, interfaceMembers, instanceMembers);
+}
+} // namespace Cangjie::Interop::Java

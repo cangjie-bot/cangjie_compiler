@@ -29,6 +29,11 @@
 #include "cangjie/Utils/ProfileRecorder.h"
 #include "CJMP/MPTypeCheckerImpl.h"
 
+
+namespace Cangjie::Interop::Java {
+    struct MemberMapCache;
+} 
+
 namespace Cangjie {
 class Synthesizer;
 
@@ -1719,6 +1724,13 @@ private:
     Ptr<AST::Node> strictDeprecatedContext = nullptr;
     // cjmp typechecker implementation class
     class MPTypeCheckerImpl* mpImpl;
+    /**
+     * Will be std::moved (ownership transferred) in TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck
+     * at Perform desugar after typecheck before generic instantiation stage.
+     *
+     * Needed for generation of Synthetic class wrappers in Java interop.
+     */
+    std::unique_ptr<Interop::Java::MemberMapCache> javaCache;
 };
 } // namespace Cangjie
 #endif

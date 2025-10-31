@@ -37,6 +37,7 @@
 #include "cangjie/Utils/Utils.h"
 #include "NativeFFI/Java/BeforeTypeCheck/GenerateJavaMirror.h"
 #include "NativeFFI/ObjC/BeforeTypeCheck/Desugar.h"
+#include "NativeFFI/Java/AfterTypeCheck/MemberMapCache.h"
 
 
 namespace Cangjie {
