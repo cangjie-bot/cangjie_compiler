@@ -19,6 +19,7 @@
 #include "cangjie/AST/Utils.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/Sema/TypeManager.h"
+#include "InheritanceChecker/MemberSignature.h"
 
 #include "Diags.h"
 #include "TypeCheckUtil.h"

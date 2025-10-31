@@ -14,6 +14,8 @@
 #include "cangjie/Utils/ConstantsUtils.h"
 #include "Utils.h"
 #include "NativeFFI/Utils.h"
+#include "NativeFFI/Java/AfterTypeCheck/Utils.h"
+#include "NativeFFI/Java/AfterTypeCheck/MemberMapCache.h"
 #include "cangjie/AST/Utils.h"
 
 
@@ -697,6 +699,14 @@ void JavaDesugarManager::GenerateInMirrors(File& file, bool doStub)
             }
             if (doStub && cldecl->astKind == ASTKind::INTERFACE_DECL) {
                 InsertAbstractJavaRefGetter(*cldecl);
+            }
+            // Generating synthetic classes for abstract classes and interfaces.
+            if (doStub && IsSyntheticClassGenerationRequired(*decl.get())) {
+                if (auto id = DynamicCast<InheritableDecl*>(cldecl)) {
+                    auto& interfaceMembers = memberMap->interfaceMembers.at(id);
+                    auto& instanceMembers = memberMap->instanceMembers.at(id);
+                    GenerateNativeFFIJavaMirrorSyntheticWrapper(*(decl.get()), interfaceMembers, instanceMembers);
+                }
             }
         }
     }

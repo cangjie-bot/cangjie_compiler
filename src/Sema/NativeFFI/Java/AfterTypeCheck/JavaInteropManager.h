@@ -19,6 +19,8 @@
 namespace Cangjie::Interop::Java {
 using namespace AST;
 
+struct MemberMapCache;
+
 class JavaInteropManager {
 public:
     JavaInteropManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
@@ -42,7 +44,7 @@ public:
     void CheckJavaImplTypes(ClassLikeDecl& decl);
     void CheckCJMappingType(Decl& decl);
     void CheckCJMappingDeclSupportRange(Decl& decl);
-    void DesugarPackage(Package& pkg);
+    void DesugarPackage(Package& pkg, std::unique_ptr<MemberMapCache> memberMap);
 
 private:
     void CheckUsageOfJavaTypes(Decl& decl);

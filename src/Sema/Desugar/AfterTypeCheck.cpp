@@ -37,6 +37,7 @@
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/Utils/Utils.h"
+#include "NativeFFI/Java/AfterTypeCheck/MemberMapCache.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -552,7 +553,7 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck(ASTContext& ctx,
         jim.CheckTypes(*file);
     }
 
-    jim.DesugarPackage(pkg);
+    jim.DesugarPackage(pkg, std::move(javaCache));
     Interop::ObjC::Desugar(Interop::ObjC::InteropContext(
         pkg, typeManager, importManager, diag, *ci->mangler, ci->invocation.globalOptions.output));
 

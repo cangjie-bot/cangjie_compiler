@@ -18,7 +18,7 @@
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Utils.h"
-#include "../../../InheritanceChecker/StructInheritanceChecker.h"
+#include "InheritanceChecker/StructInheritanceChecker.h"
 #include "NativeFFI/Utils.h"
 
 namespace Cangjie::Interop::Java {
@@ -299,8 +299,8 @@ Ptr<MemberDecl> FindFirstMemberDecl(
 
 void GenerateSyntheticClassMemberStubs(
     ClassDecl& synthetic,
-    const MemberMap& interfaceMembers,
-    const MemberMap& instanceMembers);
+    const std::multimap<std::string, MemberSignature>& interfaceMembers,
+    const std::multimap<std::string, MemberSignature>& instanceMembers);
 
 
 /**
@@ -309,6 +309,12 @@ void GenerateSyntheticClassMemberStubs(
 std::string GetConstructorMarkerFQName();
 std::string GetConstructorMarkerClassName();
 OwnedPtr<ClassDecl> CreateConstructorMarkerClassDecl();
+
+bool IsSyntheticClassGenerationRequired(const Node& node);
+void GenerateNativeFFIJavaMirrorSyntheticWrapper(
+    Decl& decl,
+    const std::multimap<std::string, MemberSignature>& interfaceMembers,
+    const std::multimap<std::string, MemberSignature>& instanceMembers);
 
 } // namespace Cangjie::Interop::Java
 

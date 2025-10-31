@@ -18,22 +18,14 @@
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Modules/ImportManager.h"
+#include "MemberSignature.h"
+
+namespace Cangjie::Interop::Java {
+    struct MemberMapCache;
+}
 
 namespace Cangjie {
 using namespace AST;
-struct MemberSignature {
-    Ptr<Decl> decl = nullptr;
-    Ptr<Ty> ty = nullptr;
-    Ptr<Ty> structTy = nullptr;
-    Ptr<ExtendDecl> extendDecl = nullptr; // If the member is a member of another visible extension, it points to the
-                                          // extension declaration. Otherwise, it is null.
-    std::vector<std::unordered_set<Ptr<Ty>>> upperBounds;
-    std::unordered_set<Ptr<const Ty>> inconsistentTypes; // List of the corresponding types came from super-types which
-                                                         // are inconsistent
-    bool shouldBeImplemented = false;                    // True: if this member has multiple default implementation.
-    bool replaceOther = false;                           // True: if this member override others.
-    bool isInheritedInterface = false; // True: if current member is implementing inherited interface decl.
-};
 using MemberMap = std::multimap<std::string, MemberSignature>;
 class StructInheritanceChecker {
 public:
@@ -49,6 +41,8 @@ public:
      * Collect and check decls declared inside given pkg node tree when node is not imported.
      */
     void Check();
+
+    std::unique_ptr<Interop::Java::MemberMapCache>  GetInterfaceAbstractClassMemberMap() const;
 
 private:
     void CheckMembersWithInheritedDecls(InheritableDecl& decl);
@@ -175,6 +169,11 @@ private:
     std::vector<std::tuple<Ptr<const Node>, Ptr<const Decl>, const std::vector<Ptr<Ty>>>> instTriggerInfos;
     std::stack<TypeSubst> institutionMaps;
     bool infiniteInstantiationOccured{false};
+
+    // These collections are std::move'd when StructInheritanceChecker Check() finished
+    // specifically at TypeChecker::TypeCheckerImpl::CheckInheritance(Package& pkg)
+    std::unordered_map<Ptr<const InheritableDecl>, MemberMap> interfaceMemberMap;
+    std::unordered_map<Ptr<const InheritableDecl>, MemberMap> abstractClassMemberMap;
 
     /**
      * Used for store & re-store context info for checking declaration status in instantiated status.
