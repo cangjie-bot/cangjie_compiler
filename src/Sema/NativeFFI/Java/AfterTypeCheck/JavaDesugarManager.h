@@ -18,6 +18,7 @@
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Modules/ImportManager.h"
 #include "cangjie/Sema/TypeManager.h"
+#include "NativeFFI/Java/AfterTypeCheck/MemberMapCache.h"
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
@@ -43,7 +44,7 @@ class JavaDesugarManager {
 public:
     JavaDesugarManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
                        const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath,
-                       const std::string& outputLibPath)
+                       const std::string& outputLibPath, std::unique_ptr<MemberMapCache> memberMap)
         : importManager(importManager),
           typeManager(typeManager),
           utils(importManager, typeManager),
@@ -51,7 +52,8 @@ public:
           mangler(mangler),
           lib(importManager, typeManager, diag, utils),
           javaCodeGenPath(javaCodeGenPath),
-          outputLibPath(outputLibPath)
+          outputLibPath(outputLibPath),
+          memberMap(std::move(memberMap))
     {
             lib.CheckInteropLibVersion();
     }
@@ -501,6 +503,9 @@ private:
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring
      */
     std::vector<OwnedPtr<Decl>> generatedDecls;
+
+    // member map contains abstract class and interface member signatures
+    const std::unique_ptr<MemberMapCache> memberMap;
 };
 
 } // namespace Cangjie::Interop::Java

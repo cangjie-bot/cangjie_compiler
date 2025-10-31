@@ -30,6 +30,9 @@
 #include "cangjie/Modules/ModulesUtils.h"
 #include "cangjie/Sema/TestManager.h"
 #include "cangjie/Sema/TypeManager.h"
+#include "NativeFFI/Java/AfterTypeCheck/Utils.h"
+#include "NativeFFI/Java/AfterTypeCheck/MemberMapCache.h"
+
 
 #include "Diags.h"
 #include "TypeCheckUtil.h"
@@ -229,18 +232,6 @@ bool CompMemberSignatureByPosAndTy(Ptr<const MemberSignature> m1, Ptr<const Memb
     return CompTyByNames(m1->ty, m2->ty);
 }
 
-/**
- * precondition: instance methods must be merged
- */
-void GenerateNativeFFIJavaMirrorSyntheticWrapper(
-    InheritableDecl& decl, const MemberMap& interfaceMembers, const MemberMap& instanceMembers)
-{
-    if (!Interop::Java::IsSynthetic(decl)) {
-        return;
-    }
-    auto cd = StaticCast<ClassDecl*>(&decl);
-    Interop::Java::GenerateSyntheticClassMemberStubs(*cd, interfaceMembers, instanceMembers);
-}
 
 /**
  * precondition: instance methods must be merged
@@ -305,6 +296,12 @@ void TypeChecker::TypeCheckerImpl::CheckInheritance(Package& pkg)
 {
     StructInheritanceChecker checker(diag, typeManager, pkg, importManager, ci->invocation.globalOptions);
     checker.Check();
+    this->javaCache = checker.GetInterfaceAbstractClassMemberMap();
+}
+
+std::unique_ptr<Interop::Java::MemberMapCache> StructInheritanceChecker::GetInterfaceAbstractClassMemberMap() const
+{
+    return std::make_unique<Interop::Java::MemberMapCache>(std::move(interfaceMemberMap), std::move(abstractClassMemberMap));
 }
 
 void StructInheritanceChecker::Check()
@@ -357,6 +354,11 @@ void StructInheritanceChecker::CheckMembersWithInheritedDecls(InheritableDecl& d
     checkingDecls.push_back(&decl);
     MemberMap interfaceMembers = GetAndCheckInheritedInterfaces(decl);
     MemberMap instanceMembers = GetAndCheckInheritedMembers(decl);
+    
+    if (Interop::Java::IsSyntheticClassGenerationRequired(decl)) {
+        interfaceMemberMap[&decl] = interfaceMembers;
+        abstractClassMemberMap[&decl] = instanceMembers;
+    }
     auto [visibleExtendMembers, invisibleMembers] = GetVisibleExtendMembersForExtend(decl);
     // 0. Merge inherited members for extend decl. Must merge 'instanceMembers' to 'visibleExtendMembers'.
     // 'instanceMembers' will replace any interface members in 'visibleExtendMembers'.
@@ -365,7 +367,6 @@ void StructInheritanceChecker::CheckMembersWithInheritedDecls(InheritableDecl& d
     for (auto& interface : interfaceMembers) {
         CheckExtendExportDependence(decl, interface.second, visibleExtendMembers);
     }
-    GenerateNativeFFIJavaMirrorSyntheticWrapper(decl, interfaceMembers, instanceMembers);
     GenerateNativeFFIObjCMirrorSyntheticWrapper(decl, interfaceMembers, instanceMembers);
     // 1. Merge & check members inherited in from super class or extended type of extend decl first.
     for (auto& member : decl.GetMemberDecls()) {
@@ -897,6 +898,33 @@ void StructInheritanceChecker::DiagnoseForInheritedInterfaces(
     }
 }
 
+/**
+ * Diagnoses unimplemented interface members and abstract methods in structs/classes.
+ * 
+ * This method identifies members that should be implemented but are not, according to inheritance rules.
+ * 
+ * CHECK EXCLUSIONS (skips checking for):
+ * 1. Foreign structs (marked with FOREIGN attribute)
+ * 2. Mirror structs (marked with OBJ_C_MIRROR attribute)
+ * 
+ * MEMBER EXCLUSIONS (members that are skipped):
+ * 1. Non-inheritable members (non-properties, non-functions)
+ * 2. Members defined in extend declarations
+ * 3. Built-in operator functions in extend declarations
+ * 4. Common interface members with no body (IsCommonWithoutDefault)
+ * 5. Members defined in foreign types (member.decl->outerDecl has FOREIGN attribute)
+ * 6. Abstract members from abstract classes in extend declarations
+ * 7. Abstract members from interfaces inherited by extend declarations
+ * 
+ * UNIMPLEMENTED MEMBER DETECTION RULES:
+ * - An abstract member is unimplemented if:
+ *   * The member has ABSTRACT attribute
+ *   * The containing type is NOT abstract AND NOT an interface
+ *   * The member's outerDecl is the struct being checked
+ * 
+ * @param members Map of all members in the struct
+ * @param structDecl The struct/class/interface/extend being checked
+ */
 void StructInheritanceChecker::DiagnoseForUnimplementedInterfaces(const MemberMap& members, const Decl& structDecl)
 {
     // Do not check unimplemented function for:
