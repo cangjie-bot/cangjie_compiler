@@ -47,13 +47,26 @@ flatbuffers::Offset<NodeFormat::FeaturesDirective> NodeWriter::SerializeFeatures
         return flatbuffers::Offset<NodeFormat::FeaturesDirective>();
     }
     auto ftrNodeBase = SerializeNodeBase(featuresDirective);
-    auto commas = CreatePositionVector(featuresDirective->commaPoses);
+    auto featuresPos = NodeFormat::Position(featuresDirective->featuresPos.fileID,
+        featuresDirective->featuresPos.line, featuresDirective->featuresPos.column);
+    auto commas = CreatePositionVector(featuresDirective->featuresSet->commaPoses);
+    auto lCurlPos = NodeFormat::Position(featuresDirective->featuresSet->lCurlPos.fileID,
+        featuresDirective->featuresSet->lCurlPos.line, featuresDirective->featuresSet->lCurlPos.column);
     std::vector<flatbuffers::Offset<NodeFormat::FeatureId>> itemsVec;
-    for (const auto& item : featuresDirective->content) {
+    for (const auto& item : featuresDirective->featuresSet->content) {
         itemsVec.emplace_back(SerializeFeatureId(item));
     }
     auto items = builder.CreateVector(itemsVec);
-    return NodeFormat::CreateFeaturesDirective(builder, ftrNodeBase, items, commas);
+    auto rCurlPos = NodeFormat::Position(featuresDirective->featuresSet->rCurlPos.fileID,
+        featuresDirective->featuresSet->rCurlPos.line, featuresDirective->featuresSet->rCurlPos.column);
+    auto ftrSetBase = SerializeNodeBase(featuresDirective->featuresSet);
+    auto featuresSet = NodeFormat::CreateFeaturesSet(builder, ftrSetBase, &lCurlPos, items, commas, &rCurlPos);
+    std::vector<flatbuffers::Offset<NodeFormat::Annotation>> annosVec;
+    for (const auto& item : featuresDirective->annotations) {
+        annosVec.emplace_back(SerializeAnnotation(item));
+    }
+    auto annos = builder.CreateVector(annosVec);
+    return NodeFormat::CreateFeaturesDirective(builder, ftrNodeBase, annos, featuresSet, &featuresPos);
 }
 
 flatbuffers::Offset<NodeFormat::FeatureId> NodeWriter::SerializeFeatureId(const AST::FeatureId& content)

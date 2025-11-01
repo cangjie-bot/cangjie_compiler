@@ -115,16 +115,19 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
     SkipBlank(TokenKind::NL);
      /**
      * preamble
-     *  : featureSpec? packageHeader? importSpec*
+     *  : featureDirective? packageHeader? importSpec*
      *  ;
     */
     // Parse features in TopLevel
+    PtrVector<Annotation> annos;
+    if (SeeingBuiltinAnnotation()) {
+        ParseAnnotations(annos);
+    }
     if (SeeingFeatures()) {
-        ParseFeatureDirective(ret->feature);
+        ParseTopLvlFeatures(ret->feature, annos);
     } else {
         CheckAndHandleUnexpectedTopLevelDeclAfterFeatures();
     }
-    PtrVector<Annotation> annos;
     if (SeeingBuiltinAnnotation()) {
         ParseAnnotations(annos);
     }

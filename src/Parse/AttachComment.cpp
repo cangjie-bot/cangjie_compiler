@@ -1004,14 +1004,22 @@ private:
                 }
                 break;
             }
-            case ASTKind::FEATURES_DIRECTIVE: {
-                auto fd = StaticCast<FeaturesDirective>(node);
-                for (size_t i = 0; i < fd->content.size(); ++i) {
-                    Visit(&fd->content[i]);
-                    if (i < fd->commaPoses.size()) {
-                        VisitToken(fd->commaPoses[i]);
+            case ASTKind::FEATURES_SET: {
+                auto fSet = StaticCast<FeaturesSet>(node);
+                VisitToken(fSet->lCurlPos);
+                for (size_t i = 0; i < fSet->content.size(); ++i) {
+                    Visit(&fSet->content[i]);
+                    if (i < fSet->commaPoses.size()) {
+                        VisitToken(fSet->commaPoses[i]);
                     }
                 }
+                VisitToken(fSet->rCurlPos);
+            }
+            case ASTKind::FEATURES_DIRECTIVE: {
+                auto fd = StaticCast<FeaturesDirective>(node);
+                VisitAnnotations(fd->annotations);
+                Visit(fd->featuresSet.get());
+                VisitToken(fd->featuresPos);
                 break;
             }
             case ASTKind::GENERIC: {

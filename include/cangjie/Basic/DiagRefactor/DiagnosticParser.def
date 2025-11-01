@@ -24,6 +24,9 @@ ERROR(parse_expected_import, "expected 'import' after module name, found %s", "e
 ERROR(parse_expected_right_delimiter, "unclosed delimiter: '%s'", "expected '%s' here", {
     "to match this opening '%s'",
 })
+ERROR(parse_now_allowed_raw_identifier, "escaped identifier with backticks '%s' is now allowed", {
+    "don't use backticks here",
+})
 ERROR(parse_invalid_return_type, "there should be no return type in a %s")
 
 ERROR(parse_unmatched_right_delimiter, "unmatched delimiter: '%s'", "unmatched delimiter")
@@ -254,6 +257,9 @@ ERROR(parse_duplicated_annotation, "duplicated annotation: '%s'", "duplicated an
 })
 ERROR(parse_conflict_annotation, "'%s' and '%s' annotations conflict on %s", "unexpected annotation", {
     "because it is conflicted with this"
+})
+ERROR(parse_fail_expected_annotation, "expected annotation '%s'", {
+    "declare annotation before this",
 })
 
 // common/platform
