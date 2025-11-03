@@ -487,21 +487,6 @@ CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, ll
     return cgType;
 }
 
-bool NeedDumpIR(const GlobalOptions& options)
-{
-    return options.dumpAll || options.dumpIR;
-}
-
-bool NeedDumpIRToFile(const GlobalOptions& options)
-{
-    return (NeedDumpIR(options) && !options.dumpToScreen) || options.codegenDebugMode;
-}
-
-bool NeedDumpIRToScreen(const GlobalOptions& options)
-{
-    return NeedDumpIR(options) && options.dumpToScreen;
-}
-
 void ClearOldIRDumpFiles(const std::string& output, const std::string& pkgName)
 {
     std::string dumpDir;

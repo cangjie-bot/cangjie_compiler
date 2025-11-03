@@ -56,7 +56,7 @@ static inline void DumpIRIfNeeded(const CGModule& cgMod, size_t& subDirNum)
 {
     const auto& cgPkgCtx = cgMod.GetCGContext().GetCGPkgContext();
     const auto& options = cgPkgCtx.GetGlobalOptions();
-    if (!NeedDumpIRToFile(options)) {
+    if (!options.NeedDumpIRToFile()) {
         return;
     }
     const auto& dumpPath = GenDumpPath(options.output, cgPkgCtx.GetCurrentPkgName(),
@@ -454,7 +454,7 @@ private:
         Utils::ProfileRecorder::Start("EmitIR", "GenSubCHIRPackages");
         auto& cgMods = cgPkgCtx.GetCGModules();
         auto& globalOptions = cgPkgCtx.GetGlobalOptions();
-        if (NeedDumpIRToFile(globalOptions)) {
+        if (globalOptions.NeedDumpIRToFile()) {
             ClearOldIRDumpFiles(globalOptions.output, cgPkgCtx.GetCurrentPkgName());
         }
         size_t threadNum = cgPkgCtx.GetGlobalOptions().codegenDebugMode ? 1 : cgMods.size();
@@ -469,7 +469,7 @@ private:
             }
             taskQueueCHIRIR2LLVMIR.RunAndWaitForAllTasksCompleted();
         }
-        if (NeedDumpIRToScreen(cgPkgCtx.GetGlobalOptions())) {
+        if (cgPkgCtx.GetGlobalOptions().NeedDumpIRToScreen()) {
             for (auto& cgMod : cgPkgCtx.GetCGModules()) {
                 DumpIR(*cgMod->GetLLVMModule());
             }
