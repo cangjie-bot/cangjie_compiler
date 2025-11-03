@@ -119,11 +119,10 @@ void DiagNotMatchedDecl(DiagnosticEngine &diag, const AST::Decl& decl, const std
             info = "variable with pattern";
         } else if (decl.astKind == ASTKind::EXTEND_DECL) {
             auto& ed = StaticCast<const ExtendDecl&>(decl);
-            if (Ty::IsTyCorrect(ed.ty.get())) {
-                info = "extend '" + GetTypeNameFromTy(ed.extendedType->ty.get(), false, {}) + "'";
-            } else {
-                info = "extend '" + DynamicCast<AST::RefType>(ed.extendedType.get())->ref.identifier + "'";
-            }
+            info = DeclKindToString(decl) + " '" +
+                (Ty::IsTyCorrect(ed.ty.get()) ? GetTypeNameFromTy(ed.extendedType->ty.get(), false, {})
+                                              : decl.identifier.GetRawText()) +
+                "'";
         } else {
             info = DeclKindToString(decl) + " '" + decl.identifier.GetRawText() + "'";
         }
