@@ -274,6 +274,19 @@ llvm::Value* HandleUnBoxExpr(IRBuilder2& irBuilder, const CHIR::Expression& chir
     auto cgVal = (cgMod | unboxExpr.GetSourceValue());
     auto targetCHIRType = unboxExpr.GetTargetTy();
     auto targetCGType = CGType::GetOrCreate(cgMod, targetCHIRType);
+    // if unbox a Box<xxx>& parameter, need to check the real type from OverrideSrcFuncType
+    auto srcFuncType = chirExpr.GetTopLevelFunc()->Get<CHIR::OverrideSrcFuncType>();
+    if (srcFuncType && unboxExpr.GetSourceValue()->IsParameter()) {
+        for (size_t i = 0; i < chirExpr.GetTopLevelFunc()->GetNumOfParams(); i++) {
+            if (unboxExpr.GetSourceValue()->GetSrcCodeIdentifier() ==
+                chirExpr.GetTopLevelFunc()->GetParam(i)->GetSrcCodeIdentifier()) {
+                auto cgParamType = CGType::GetOrCreate(cgMod, srcFuncType->GetParamType(i));
+                if (cgParamType->GetSize()) {
+                    return cgVal->GetRawValue();
+                }
+            }
+        }
+    }
     if (targetCGType->IsReference()) {
         return cgVal->GetRawValue();
     }
