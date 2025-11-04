@@ -66,6 +66,19 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
 
 void JavaInteropManager::DesugarPackage(Package& pkg)
 {
+    for (auto& file : pkg.files) {
+        for (auto& decl : file->decls) {
+            auto funcDecl = As<ASTKind::FUNC_DECL>(decl.get());
+            if (funcDecl) {
+                auto callExpr = As<ASTKind::CALL_EXPR>(funcDecl->funcBody->body->body[1]);
+                if (callExpr) {
+                    continue;
+                }
+                continue;
+            }    
+        }
+    }
+
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
