@@ -39,11 +39,14 @@ private:
     static const std::string IGNORE_IMPORT;
     static std::string AddImport(Ptr<Ty> ty, std::set<std::string>* javaImports, const std::string* curPackageName);
     static std::string MapCJTypeToJavaType(const Ptr<Ty> ty, std::set<std::string>* javaImports,
-        const std::string* curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false, bool needGenericInstant = false,
+        std::unordered_set<std::string>* actualTypeSet = nullptr);
     static std::string MapCJTypeToJavaType(const OwnedPtr<Type>& type, std::set<std::string>* javaImports,
-        const std::string* curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false, bool needGenericInstant = false,
+        std::unordered_set<std::string>* actualTypeSet = nullptr);
     static std::string MapCJTypeToJavaType(const OwnedPtr<FuncParam>& param, std::set<std::string>* javaImports,
-        const std::string* curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false, bool needGenericInstant = false,
+        std::unordered_set<std::string>* actualTypeSet = nullptr);
     static std::string GenerateParams(const std::vector<OwnedPtr<FuncParam>>& params,
         const std::function<std::string(const OwnedPtr<FuncParam>& ptr)>& transform);
     static std::string GenerateParamLists(const std::vector<OwnedPtr<FuncParamList>>& paramLists,
@@ -55,8 +58,11 @@ private:
     const BaseMangler& mangler;
     std::vector<Ptr<ExtendDecl>> extendDecls;
     bool isInteropCJPackageConfig{false};
+    std::unordered_set<std::string> genericMemberSet;
+    std::unordered_set<std::string> genericTypeSet;
 
-    std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
+    std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false,
+                                   bool needGenericInstant = false, std::unordered_set<std::string>* actualTypeSet = nullptr);
     std::string GenerateFuncParamLists(
         const std::vector<OwnedPtr<FuncParamList>>& paramLists, bool isNativeMethod = false);
     std::string GenerateFuncParamClasses(const std::vector<OwnedPtr<FuncParamList>>& paramLists);
@@ -76,12 +82,13 @@ private:
     std::string GenerateSuperCall(
         const CallExpr& call, const std::vector<OwnedPtr<FuncParam>>& params, std::vector<std::string>& nativeArgs);
     std::string GenerateConstructorSuperCall(const FuncBody& body, std::vector<std::string>& nativeArgs);
-    void AddConstructor(const FuncDecl& ctor, const std::string& superCall, bool isForCangjie);
+    void AddConstructor(const FuncDecl& ctor, const std::string& superCall, bool isForCangjie,
+        std::unordered_set<std::string> actualTypeSet);
     // Generate constructors and native funcs.
-    void AddConstructor(const FuncDecl& ctor);
+    void AddConstructor(const FuncDecl& ctor, std::unordered_set<std::string> actualTypeSet);
     void AddConstructors();
     void AddAllCtorsForCJMappingEnum(const EnumDecl& enumDecl);
-    void AddInstanceMethod(const FuncDecl& funcDecl);
+    void AddInstanceMethod(const FuncDecl& funcDecl, std::unordered_set<std::string> actualTypeSet);
     void AddStaticMethod(const FuncDecl& funcDecl);
     void AddMethods();
     void AddInterfaceMethods();
@@ -101,7 +108,8 @@ private:
     void AddInterfaceFwdClassNativeMethod();
 
     void AddEndClassParenthesis();
-    void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params, const FuncDecl& ctor);
+    void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params, const FuncDecl& ctor,
+        std::unordered_set<std::string> actualTypeSet);
     void AddNativeDeleteCJObject();
     void AddFinalize();
     void AddHeader();
@@ -117,6 +125,10 @@ private:
     void AddAttachCJObject();
     void AddDetachCJObject();
     void AddNativeDetachCJObject();
+    std::unordered_set<std::string> GetFunctionParamActualTypeSet(const Decl& decl);
+    void AddInstanceMethodForGeneric(std::ostringstream& selfInitStream, std::ostringstream& nativeMethodDefStream,
+        std::string retType, std::string mangledNativeName, std::string paramList,
+        std::unordered_map<std::string, std::string> paramsMap, std::string actualType);
 };
 } // namespace Cangjie::Interop::Java
 
