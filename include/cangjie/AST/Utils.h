@@ -20,6 +20,31 @@
 #include "cangjie/Utils/CastingTemplate.h"
 
 namespace Cangjie::AST {
+
+enum class TypeCategory { Integer, String, Float, Double, Long, Unknown };
+
+// lack customer type
+inline TypeCategory GetTypeCategory(const std::string& key) {
+    if (key == "int32") return TypeCategory::Integer;
+    if (key == "string") return TypeCategory::String;
+    if (key == "float") return TypeCategory::Float;
+    if (key == "double") return TypeCategory::Double;
+    if (key == "long") return TypeCategory::Long;
+    return TypeCategory::Unknown;
+}
+
+inline std::string TypeCategoryToString(TypeCategory category) {
+    switch (category) {
+        case TypeCategory::Integer: return "Integer";
+        case TypeCategory::String: return "String";
+        case TypeCategory::Float: return "Float";
+        case TypeCategory::Double: return "Double";
+        case TypeCategory::Long: return "Long";
+        case TypeCategory::Unknown: return "Unknown";
+        default: return "Unknown";
+    }
+}
+
 /**
  * Add Attribute and curfile in macro expanded node.
  */

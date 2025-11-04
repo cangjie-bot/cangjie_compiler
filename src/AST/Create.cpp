@@ -483,7 +483,7 @@ OwnedPtr<MemberAccess> CreateMemberAccess(OwnedPtr<Expr> expr, const std::string
     return memberAccess;
 }
 
-OwnedPtr<AST::MemberAccess> CreateMemberAccess(OwnedPtr<AST::Expr> expr, Decl& field)
+OwnedPtr<AST::MemberAccess> CreateMemberAccess(OwnedPtr<AST::Expr> expr, Decl& field, Ptr<FuncTy> funcTy)
 {
     auto ret = MakeOwned<MemberAccess>();
     if (expr->astKind == ASTKind::BLOCK) {
@@ -499,8 +499,14 @@ OwnedPtr<AST::MemberAccess> CreateMemberAccess(OwnedPtr<AST::Expr> expr, Decl& f
     ret->field = field.identifier.Val();
     ret->field.SetRaw(field.identifier.IsRaw());
     ret->target = &field;
-    ret->ty = field.ty;
-    ret->isExposedAccess = field.ty && field.ty->IsGeneric();
+    if (funcTy) {
+        ret->ty = funcTy;
+        ret->isExposedAccess = funcTy && funcTy->IsGeneric();
+    } else {
+        ret->ty = field.ty;
+        ret->isExposedAccess = field.ty && field.ty->IsGeneric();
+    }
+
     ret->EnableAttr(Attribute::COMPILER_ADD);
     return ret;
 }
