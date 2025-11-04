@@ -502,10 +502,10 @@ void ParserImpl::CheckInitCtorDeclBody(FuncDecl& ctor)
 void ParserImpl::CheckJavaInteropMember(Decl& decl)
 {
     if (decl.outerDecl->TestAttr(Attribute::JAVA_MIRROR_SUBTYPE) && !decl.outerDecl->TestAttr(Attribute::JAVA_MIRROR)) {
-        if (decl.GetGeneric() != nullptr) {
-            ffiParser->Java().DiagJavaImplCannotBeGeneric(decl);
-            return;
-        }
+        // if (decl.GetGeneric() != nullptr) {
+        //     ffiParser->Java().DiagJavaImplCannotBeGeneric(decl);
+        //     return;
+        // }
         if (decl.astKind == ASTKind::FUNC_DECL && decl.TestAttr(Attribute::CONSTRUCTOR, Attribute::STATIC)) {
             ffiParser->Java().DiagJavaImplCannotHaveStaticInit(decl);
             return;

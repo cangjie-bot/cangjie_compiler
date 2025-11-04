@@ -95,7 +95,8 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateCJMappingNativeDetachCjObjectFunc(Cla
 }
 
 // Current support struct, class type.
-void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl)
+void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl,
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>>* declActualMap)
 {
     CJC_ASSERT(decl && IsCJMapping(*decl));
     auto classDecl = DynamicCast<AST::ClassDecl*>(decl);
@@ -113,10 +114,28 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
             if (fd->TestAttr(Attribute::CONSTRUCTOR)) {
                 generatedCtors.push_back(fd);
             } else {
-                auto nativeMethod = GenerateNativeMethod(*fd, *decl);
-                if (nativeMethod != nullptr) {
-                    generatedDecls.push_back(std::move(nativeMethod));
+                if (declActualMap) {
+                    auto declIt = declActualMap->find(decl->symbol->name);
+                    if (declIt != declActualMap->end()) {
+                        auto& funcDeclMap = declIt->second;
+                        auto funcIt = funcDeclMap.find(fd->symbol->name);
+                        if (funcIt != funcDeclMap.end()) {
+                            auto& innerVector = funcIt->second;
+                            for (auto& funcNameAndType : innerVector) {
+                                auto nativeMethod = GenerateNativeMethod(*fd, *decl, &funcNameAndType);
+                                if (nativeMethod != nullptr) {
+                                    generatedDecls.push_back(std::move(nativeMethod));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    auto nativeMethod = GenerateNativeMethod(*fd, *decl);
+                    if (nativeMethod != nullptr) {
+                        generatedDecls.push_back(std::move(nativeMethod));
+                    }
                 }
+
             }
         }
     }
@@ -125,6 +144,39 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
         for (auto generatedCtor : generatedCtors) {
             generatedDecls.push_back(GenerateNativeInitCjObjectFunc(*generatedCtor, false));
         }
+    }
+}
+
+void JavaDesugarManager::GenerateForCJGenericTypeMapping(const File &file, AST::Decl* decl)
+{
+    std::unordered_map<std::string, std::vector<std::string>> symbolMap;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> declActualMap;
+    for (const auto& outerPait : file.curPackage->allowedInteropCJGenericInstantiations) {
+        const auto& innerMap = outerPair.second;
+
+        for (const auto& innerPair : innerMap) {
+            const GenericTypeArguments& args = innerPair.second;
+            for (const std::string& symbol : args.symbols) {
+                size_t pos = symbol.find('<');
+                if (pos == std::string::npos) continue;
+                std::string key = symbol.substr(0, pos);
+                std::string value = symbol.substr(pos + 1);
+
+                size_t endPos = value.find('>');
+                if (endPos != std::string::npos) {
+                    value = value.substr(0, endPos);
+                }
+                symbolMap[key].push_back(value);
+            }
+        }
+    }
+    if (decl->symbol) {
+        declActualMap[decl->symbol->name] = symbolMap;
+    }
+    auto classDecl = As<ASTKind::CLASS_DECL>(decl);
+    auto structDecl = As<ASTKind::STRUCT_DECL>(decl);
+    if (classDecl || structDecl) {
+        GenerateForCJStructOrClassTypeMapping(file, decl, &declActualMap);
     }
 }
 
@@ -621,7 +673,7 @@ void JavaDesugarManager::GenerateInCJMapping(File& file)
             continue;
         }
         auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get());
-        if (file.curPackage.get()->isInteropCJPackageConfig && !structDecl->symbol->isNeedExposedToInterop) {
+        if (file.curPackage.get()->isInteropCJPackageConfig && structDecl && !structDecl->symbol->isNeedExposedToInterop) {
             continue;
         }
         if (structDecl && IsCJMapping(*structDecl)) {
@@ -635,7 +687,11 @@ void JavaDesugarManager::GenerateInCJMapping(File& file)
         }
         auto classDecl = As<ASTKind::CLASS_DECL>(decl.get());
         if (classDecl && IsCJMapping(*classDecl) && !classDecl->TestAttr(Attribute::OPEN)) {
-            GenerateForCJStructOrClassTypeMapping(file, classDecl);
+            if (classDecl->ty->HasGeneric()) {
+                GenerateForCJGenericTypeMapping(file, classDecl);
+            } else {
+                GenerateForCJStructOrClassTypeMapping(file, classDecl);
+            }
             continue;
         }
     }

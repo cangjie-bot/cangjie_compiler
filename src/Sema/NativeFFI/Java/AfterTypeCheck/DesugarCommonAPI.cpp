@@ -14,6 +14,28 @@
 namespace Cangjie::Interop::Java {
 using namespace Cangjie::Native::FFI;
 
+const std::unordered_map<std::string, TypeKind>& getTypeMap() {
+    static const std::unordered_map<std::string, TypeKind> typeMap = {
+        {"int8", TypeKind::TYPE_INT8},
+        {"int16", TypeKind::TYPE_INT16},
+        {"int32", TypeKind::TYPE_INT32},
+        {"int64", TypeKind::TYPE_INT64},
+        {"int", TypeKind::TYPE_INT_NATIVE},
+        {"long", TypeKind::TYPE_INT64},
+        {"uint8", TypeKind::TYPE_UINT8},
+        {"uint16", TypeKind::TYPE_UINT16},
+        {"uint32", TypeKind::TYPE_UINT32},
+        {"uint64", TypeKind::TYPE_UINT64},
+        {"float16", TypeKind::TYPE_FLOAT16},
+        {"float32", TypeKind::TYPE_FLOAT32},
+        {"float64", TypeKind::TYPE_FLOAT64},
+        {"float", TypeKind::TYPE_FLOAT32},
+        {"double", TypeKind::TYPE_FLOAT64},
+        {"bool", TypeKind::TYPE_BOOLEAN},
+    };
+    return typeMap;
+}
+
 inline void JavaDesugarManager::PushEnvParams(std::vector<OwnedPtr<FuncParam>>& params, std::string name)
 {
     auto jniEnvPtrDecl = lib.GetJniEnvPtrDecl();
@@ -100,12 +122,23 @@ bool JavaDesugarManager::FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>&
     return true;
 }
 
-OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl)
+OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl,
+    std::string* actualType)
 {
     auto curFile = sampleMethod.curFile;
     CJC_NULLPTR_CHECK(curFile);
-    auto retTy = StaticCast<FuncTy*>(sampleMethod.ty)->retTy;
 
+    Ptr<Ty> retTy;
+    if (actualType) {
+        const auto& map = getTypeMap();
+        auto it = map.find(*actualType);
+        if (it != map.end()) {
+            PrimitiveTy newTy = PrimitiveTy(it->second);
+            retTy = Ptr(*newTy);
+        }
+    } else {
+        retTy = StaticCast<FuncTy*>(sampleMethod.ty)->retTy;
+    }
     std::vector<OwnedPtr<FuncParam>> params;
     PushEnvParams(params);
     // jobject or jclass
