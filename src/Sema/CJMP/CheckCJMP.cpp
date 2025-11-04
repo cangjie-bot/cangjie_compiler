@@ -889,7 +889,7 @@ bool MPTypeCheckerImpl::MatchEnumFuncTypes(const FuncDecl& platform, const FuncD
     }
 
     TypeSubst genericTyMap;
-    MapCJMPGenericTypeArgs(genericTyMap, common, platform);
+    MapCJMPGenericTypeArgs(genericTyMap, *common.outerDecl, *platform.outerDecl);
     if (genericTyMap.empty()) {
         return false;
     }
@@ -1162,15 +1162,6 @@ void MPTypeCheckerImpl::UpdatePlatformMemberGenericTy(
                     if (member->TestAttr(Attribute::FROM_COMMON_PART)) {
                         auto ptr = member.get();
                         UpdateGenericTyInMemberFromCommon(genericTyMap, ptr);
-                    }
-                }
-
-                if (auto en = DynamicCast<EnumDecl>(platformDecl)) {
-                    for (auto& ctor : en->constructors) {
-                        auto platformCtor = ctor->platformImplementation;
-                        if (platformCtor) {
-                            UpdateGenericTyInMemberFromCommon(genericTyMap, platformCtor);
-                        }
                     }
                 }
             }
