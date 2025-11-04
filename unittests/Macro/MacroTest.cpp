@@ -416,7 +416,7 @@ TEST_F(MacroTest, DISABLED_MacroDiagReportForLsp)
 
 TEST_F(MacroTest, DISABLED_NoErrorInLSPMacro)
 {
-    std::string command = "cd " + definePath + " && cjc define.cj --compile-macro";
+    std::string command = "cd " + definePath + " && cjc derive_define.cj --compile-macro";
     int err = system(command.c_str());
     ASSERT_EQ(0, err);
  
@@ -429,6 +429,31 @@ TEST_F(MacroTest, DISABLED_NoErrorInLSPMacro)
     instance->Compile(CompileStage::SEMA);
  
     EXPECT_EQ(diag.GetErrorCount(), 0);
+    Cangjie::MacroProcMsger::GetInstance().CloseMacroSrv();
+}
+
+TEST_F(MacroTest, DISABLED_NoDylibErrorInLSPMacro)
+{
+    std::string command = "cd " + definePath + " && cjc dylib_define.cj --compile-macro";
+    int err = system(command.c_str());
+    ASSERT_EQ(0, err);
+
+    command = "cd " + definePath + " && rm -rf lib-macro_dylib_define.*";
+    err = system(command.c_str());
+    ASSERT_EQ(0, err);
+
+    auto src = srcPath + "dylib_error.cj";
+    invocation.globalOptions.enableMacroInLSP = true;
+    invocation.globalOptions.executablePath = projectPath + "/output/bin/";
+    instance = std::make_unique<TestCompilerInstance>(invocation, diag);
+    instance->compileOnePackageFromSrcFiles = true;
+    instance->srcFilePaths = {src};
+    instance->Compile(CompileStage::SEMA);
+
+    EXPECT_EQ(diag.GetErrorCount(), 1);
+    auto error = diag.GetCategoryDiagnostic(DiagCategory::MACRO_EXPAND);
+    ASSERT_EQ(p.size(), 1);
+    ASSERT_EQ(p[0].errorMessage, std::string(Cannot find method from dynamic libs for macro call 'M'));
     Cangjie::MacroProcMsger::GetInstance().CloseMacroSrv();
 }
 

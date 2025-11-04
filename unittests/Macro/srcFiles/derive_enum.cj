@@ -6,7 +6,7 @@
  * See https://cangjie-lang.cn/pages/LICENSE for license information.
  */
  
-import define.*
+import derive_define.*
  
 @M
 public enum Rotation {
