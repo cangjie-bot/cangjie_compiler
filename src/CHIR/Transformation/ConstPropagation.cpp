@@ -31,7 +31,6 @@ void ConstPropagation::RunOnFunc(const Ptr<const Func>& func, bool isDebug, bool
         return; // Nothing to check
     }
     auto result = analysisWrapper->CheckFuncResult(func);
-    CJC_ASSERT(result != std::nullopt);
     if (result == nullptr) {
         return;
     }
@@ -95,7 +94,7 @@ void ConstPropagation::RunOnFunc(const Ptr<const Func>& func, bool isDebug, bool
         }
     };
 
-    result.value()->VisitWith(actionBeforeVisitExpr, actionAfterVisitExpr, actionOnTerminator);
+    result->VisitWith(actionBeforeVisitExpr, actionAfterVisitExpr, actionOnTerminator);
 
     for (auto& rewriteInfo : toBeRewrited) {
         RewriteToConstExpr(rewriteInfo, isDebug);
