@@ -1073,7 +1073,8 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateJavaStringToCangjieCall(OwnedPtr<Expr
     return CreateCall(funcDecl, curFile, std::move(env), std::move(jstring));
 }
 
-OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Ptr<Ty> ty)
+OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Ptr<Ty> ty,
+    OwnedPtr<Type> actualTy)
 {
     auto curFile = self->curFile;
     auto funcDecl = GetGetFromRegistryDecl();
@@ -1086,6 +1087,9 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> en
     callArgs.push_back(CreateFuncArg(std::move(self)));
 
     auto fdRef = WithinFile(CreateRefExpr(*funcDecl), curFile);
+    if (actualTy) {
+        fdRef->typeArguments.emplace_back(std::move(actualTy));
+    }
     fdRef->instTys.push_back(ty);
     fdRef->ty = typeManager.GetInstantiatedTy(funcDecl->ty, GenerateTypeMapping(*funcDecl, fdRef->instTys));
     return CreateCallExpr(std::move(fdRef), std::move(callArgs), funcDecl, ty, CallKind::CALL_DECLARED_FUNCTION);

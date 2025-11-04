@@ -500,6 +500,9 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (IsCJMapping(*ty)) {
         return jlongTy;
     }
+    if (ty->kind == TypeKind::TYPE_GENERICS) {
+        return nullptr;
+    }
     CJC_ASSERT(ty->IsBuiltin());
     return ty;
 }
