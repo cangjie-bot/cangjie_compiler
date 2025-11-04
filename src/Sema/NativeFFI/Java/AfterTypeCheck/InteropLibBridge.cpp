@@ -631,7 +631,7 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateNewJavaObjectCall(OwnedPtr<Expr> env,
 OwnedPtr<Expr> InteropLibBridge::SelectJSigByTypeKind([[maybe_unused]] TypeKind kind, Ptr<Ty> ty)
 {
     static auto strTy = utils.GetStringDecl().ty;
-    return CreateLitConstExpr(LitConstKind::STRING, utils.GetJavaTypeSignature(*ty), strTy);
+    return CreateLitConstExpr(LitConstKind::STRING, utils.GetJavaClassNormalizeSignature(*ty), strTy);
 }
 
 OwnedPtr<Expr> InteropLibBridge::SelectJPrimitiveNameByTypeKind(TypeKind kind, [[maybe_unused]] Ptr<Ty> ty)
@@ -716,7 +716,7 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateCFFINewJavaArrayCall(
 
     static auto strTy = utils.GetStringDecl().ty;
     auto defaultTypeOption =
-        CreateLitConstExpr(LitConstKind::STRING, utils.GetJavaTypeSignature(*utils.GetJObjectDecl()->ty), strTy);
+        CreateLitConstExpr(LitConstKind::STRING, utils.GetJavaClassNormalizeSignature(*utils.GetJObjectDecl()->ty), strTy);
     defaultTypeOption->curFile = curFile;
     auto typeMatch = CreateMatchByTypeArgument(genericParam,
         GenerateTypeMappingWithSelector([this](TypeKind kind, Ptr<Ty> ty) { return SelectJSigByTypeKind(kind, ty); }),
