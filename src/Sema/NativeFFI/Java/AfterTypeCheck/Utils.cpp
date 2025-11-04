@@ -741,7 +741,8 @@ std::string Utils::GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& p
 }
 
 std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler,
-                                              const std::vector<OwnedPtr<FuncParam>>& params, bool isGeneratedCtor)
+                                              const std::vector<OwnedPtr<FuncParam>>& params, bool isGeneratedCtor,
+                                              std::unordered_map<std::string, Ptr<Ty>>* actualTyArgMap)
 {
     std::string name("initCJObject");
 
@@ -752,7 +753,15 @@ std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler,
             toSkip--;
             continue;
         }
-        auto mangledParam = mangler.MangleType(*param->ty);
+        std::string mangledParam;
+        if (actualTyArgMap && param->ty->IsGeneric()) {
+            auto it = actualTyArgMap->find(param->ty->name);
+            if (it != actualTyArgMap->end()) {
+                mangledParam = mangler.MangleType(*it->second);
+            }
+        } else {
+            mangledParam = mangler.MangleType(*param->ty);
+        }
         std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
         name += mangledParam;
     }
@@ -809,6 +818,92 @@ bool IsCJMapping(const Ty& ty)
     }
     
     return false;
+}
+
+bool IsCJMappingGeneric(const Decl& decl) {
+    auto classDecl = DynamicCast<ClassDecl*>(&decl);
+    if (classDecl && !classDecl->TestAnyAttr(AST::Attribute::ABSTRACT, AST::Attribute::OPEN) &&
+        classDecl->ty->HasGeneric()) {
+        return true;
+    }
+
+    auto structDecl = DynamicCast<StructDecl*>(&decl);
+    if (structDecl && structDecl->ty->HasGeneric()) {
+        return true;
+    }
+
+    auto enumDecl = DynamicCast<EnumDecl*>(&decl);
+    if (enumDecl && enumDecl->ty->HasGeneric()) {
+        return true;
+    }
+
+    auto interfaceDecl = DynamicCast<InterfaceDecl*>(&decl);
+    if (interfaceDecl && interfaceDecl->ty->HasGeneric()) {
+        return true;
+    }
+    return false;
+}
+
+void SplitAndTrim(std::string str, std::vector<std::string>& types)
+{
+    size_t pos = str.find(',');
+    if (pos == std::string::npos) {
+        types.push_back(str);
+        return;
+    }
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        token.erase(0, token.find_first_not_of(" \t"));
+        token.erase(token.find_last_not_of(" \t") + 1);
+        types.push_back(token);
+    }
+}
+
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter)
+{
+    std::string result;
+    for (size_t i = 0; i < vec.size(); ++i) {
+        result += vec[i];
+        if (i != vec.size() - 1) {
+            result += delimiter;
+        }
+    }
+    return result;
+}
+
+std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName)
+{
+    CJC_ASSERT(config);
+    for (size_t i = 0; i < config->instTypes.size(); ++i) {
+        if (config->instTypes[i].first == genericName) {
+            std::string instType = config->instTypes[i].second;
+            return instType;
+        }
+    }
+    return "";
+}
+
+TypeKind GetGenericActualTypeKind(std::string configType) {
+    static const std::unordered_map<std::string, TypeKind> typeMap = {
+        {"Int8", TypeKind::TYPE_INT8},
+        {"Int16", TypeKind::TYPE_INT16},
+        {"Int32", TypeKind::TYPE_INT32},
+        {"Int64", TypeKind::TYPE_INT64},
+        {"IntNative", TypeKind::TYPE_INT_NATIVE},
+        {"Uint8", TypeKind::TYPE_UINT8},
+        {"Uint16", TypeKind::TYPE_UINT16},
+        {"Uint32", TypeKind::TYPE_UINT32},
+        {"Uint64", TypeKind::TYPE_UINT64},
+        {"UIntNative", TypeKind::TYPE_UINT_NATIVE},
+        {"Float16", TypeKind::TYPE_FLOAT16},
+        {"Float32", TypeKind::TYPE_FLOAT32},
+        {"Float64", TypeKind::TYPE_FLOAT64},
+        {"Bool", TypeKind::TYPE_BOOLEAN},
+    };
+    auto it = typeMap.find(configType);
+    CJC_ASSERT(it != typeMap.end());
+    return it->second;
 }
 
 const Ptr<ClassDecl> GetSyntheticClass(const ImportManager& importManager, const ClassLikeDecl& cld)

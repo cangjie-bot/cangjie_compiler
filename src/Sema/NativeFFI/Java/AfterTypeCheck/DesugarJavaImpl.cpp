@@ -500,16 +500,19 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (IsCJMapping(*ty)) {
         return jlongTy;
     }
+    if (ty->kind == TypeKind::TYPE_GENERICS) {
+        return nullptr;
+    }
     CJC_ASSERT(ty->IsBuiltin());
     return ty;
 }
 
-std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method)
+std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method, std::unordered_map<std::string, Ptr<Ty>>* actualTyArgMap)
 {
     auto sampleJavaName = GetJavaMemberName(method);
     std::string fqname = GetJavaFQName(*(method.outerDecl));
     MangleJNIName(fqname);
-    auto mangledFuncName = GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName);
+    auto mangledFuncName = GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName, actualTyArgMap);
     MangleJNIName(mangledFuncName);
 
     return "Java_" + fqname + "_" + mangledFuncName;
@@ -534,12 +537,13 @@ inline std::string JavaDesugarManager::GetJniSuperArgFuncName(const ClassLikeDec
     return "Java_" + fqname + "_super" + id;
 }
 
-std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const FuncDecl& ctor, bool isGeneratedCtor)
+std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const FuncDecl& ctor, bool isGeneratedCtor,
+    std::unordered_map<std::string, Ptr<Ty>>* actualTyArgMap)
 {
     std::string fqname = GetJavaFQName(*(ctor.outerDecl));
     MangleJNIName(fqname);
     auto mangledFuncName = GetMangledJniInitCjObjectFuncName(mangler, ctor.funcBody->paramLists[0]->params,
-                                                             isGeneratedCtor);
+                                                             isGeneratedCtor, actualTyArgMap);
     MangleJNIName(mangledFuncName);
 
     if (Is<EnumDecl>(ctor.outerDecl)) {

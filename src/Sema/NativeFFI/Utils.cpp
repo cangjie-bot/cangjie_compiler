@@ -186,12 +186,20 @@ std::string GetCangjieLibName(const std::string& outputLibPath, const std::strin
 }
 
 std::string GetMangledMethodName(const BaseMangler& mangler,
-    const std::vector<OwnedPtr<FuncParam>>& params, const std::string& methodName)
+    const std::vector<OwnedPtr<FuncParam>>& params, const std::string& methodName, std::unordered_map<std::string, Ptr<Ty>>* actualTyArgMap)
 {
     std::string name(methodName);
 
     for (auto& param : params) {
-        auto mangledParam = mangler.MangleType(*param->ty);
+        std::string mangledParam;
+        if (actualTyArgMap && param->ty->IsGeneric()) {
+            auto it = actualTyArgMap->find(param->ty->name);
+            if (it != actualTyArgMap->end()) {
+                mangledParam = mangler.MangleType(*it->second);
+            }
+        } else {
+            mangledParam = mangler.MangleType(*param->ty);
+        }
         std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
         name += mangledParam;
     }
