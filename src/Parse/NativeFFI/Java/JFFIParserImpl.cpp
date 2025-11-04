@@ -83,11 +83,10 @@ void JFFIParserImpl::CheckImplSignature(AST::ClassLikeDecl& decl, const PtrVecto
     CJC_ASSERT(p.HasAnnotation(annos, AnnotationKind::JAVA_IMPL));
     decl.EnableAttr(Attribute::JAVA_MIRROR_SUBTYPE);
 
-    if (decl.GetGeneric() != nullptr) {
-        DiagJavaImplCannotBeGeneric(decl);
-        decl.EnableAttr(Attribute::IS_BROKEN);
-    }
-
+    // if (decl.GetGeneric() != nullptr) {
+    //     DiagJavaImplCannotBeGeneric(decl);
+    //     decl.EnableAttr(Attribute::IS_BROKEN);
+    // }
     if (decl.TestAttr(Attribute::ABSTRACT)) {
         DiagJavaImplCannotBeAbstract(decl);
         decl.EnableAttr(Attribute::IS_BROKEN);

@@ -281,16 +281,16 @@ private:
     OwnedPtr<CallExpr> GetFwdClassInstance(OwnedPtr<RefExpr> paramRef, Decl& fwdClassDecl);
 
     bool FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>& params, std::vector<OwnedPtr<FuncArg>>& callArgs,
-        FuncDecl& funcDecl, OwnedPtr<FuncParam>& arg, FuncParam& jniEnvPtrParam);
+        FuncDecl& funcDecl, OwnedPtr<FuncParam>& arg, FuncParam& jniEnvPtrParam, Ptr<Ty> actualTy = nullptr);
 
-    OwnedPtr<Decl> GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl);
+    OwnedPtr<Decl> GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl, std::string* actualType = nullptr);
 
     void GenerateFuncParamsForNativeDeleteCjObject(
         Decl& decl, std::vector<OwnedPtr<FuncParam>>& params, FuncParam*& jniEnv, OwnedPtr<Expr>& selfRef);
 
     OwnedPtr<Decl> GenerateNativeFuncDeclBylambda(Decl& decl, OwnedPtr<LambdaExpr>& wrappedNodesLambda,
         std::vector<OwnedPtr<FuncParamList>>& paramLists, FuncParam& jniEnvPtrParam, Ptr<Ty>& retTy,
-        std::string funcName);
+        std::string funcName, Ptr<Ty> actualTy = nullptr);
 
     std::string GetJniMethodName(const FuncDecl& method);
 
@@ -352,7 +352,8 @@ private:
      *     )
      * }
      */
-    OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(FuncDecl& ctor, bool isClassLikeDecl, bool isOpenClass = false, Ptr<FuncDecl> fwdCtor = nullptr);
+    OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(FuncDecl& ctor, bool isClassLikeDecl, bool isOpenClass = false, Ptr<FuncDecl> fwdCtor = nullptr,
+        const std::string* actualType = nullptr);
 
     /**
      * for func [fun]:
@@ -487,7 +488,8 @@ private:
     void DesugarSuperMethodCall(CallExpr& call, ClassDecl& impl);
 
     void GenerateInJavaImpl(AST::ClassDecl* classDecl);
-    void GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl);
+    void GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl,
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>>* declActualMap = nullptr);
     void GenerateForCJEnumMapping(AST::EnumDecl& enumDecl);
     void GenerateForCJExtendMapping(AST::ExtendDecl& extendDecl);
 
@@ -519,6 +521,7 @@ private:
      */
     void GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl);
     void GenerateNativeForCJInterfaceMapping(AST::ClassDecl& classDecl);
+    void GenerateForCJGenericTypeMapping(const File& file, AST::Decl* decl);
     void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl);
     OwnedPtr<FuncDecl> GenerateInterfaceFwdclassMethod(AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl);
     OwnedPtr<FuncDecl> GenerateInterfaceFwdclassDefaultMethod(
