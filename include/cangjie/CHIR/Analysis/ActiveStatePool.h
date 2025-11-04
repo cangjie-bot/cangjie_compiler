@@ -190,11 +190,8 @@ public:
         if (other.first == nullptr) {
             return;
         }
-        for (auto& it : other.data) {
-            data.emplace(it.first, it.second);
-            auto newNode = ActiveStateNode(it.first);
-            obj2StateNode.emplace(it.first, newNode);
-        }
+        data = other.data;
+        obj2StateNode = other.obj2StateNode;
         for (auto& it : other.data) {
             auto& newNode = obj2StateNode.at(it.first);
             auto& node = other.obj2StateNode.at(it.first);
@@ -223,11 +220,8 @@ public:
         if (other.first == nullptr) {
             return *this;
         }
-        for (auto& it : other.data) {
-            data.emplace(it.first, it.second);
-            auto newNode = ActiveStateNode(it.first);
-            obj2StateNode.emplace(it.first, newNode);
-        }
+        data = other.data;
+        obj2StateNode = other.obj2StateNode;
         for (auto& it : other.data) {
             auto& newNode = obj2StateNode.at(it.first);
             auto& node = other.obj2StateNode.at(it.first);
@@ -479,12 +473,16 @@ bool MapJoin(ActiveStatePool<Domain>& lhs, const ActiveStatePool<Domain>& rhs)
     return lhs.Join(rhs);
 }
 
+// eviction high-water mark
 template <typename ValueDomain>
 size_t ActiveStatePool<ValueDomain>::MAX_STATE_POOL_SIZE = 120;
+// eviction low-water mark
 template <typename ValueDomain>
 size_t ActiveStatePool<ValueDomain>::BASE_STATE_POOL_SIZE = 80;
+// non-ref top state
 template <typename ValueDomain>
 ValueDomain ActiveStatePool<ValueDomain>::TOP_STATE = ValueDomain(true);
+// non-ref top state
 template <typename ValueDomain>
 ValueDomain ActiveStatePool<ValueDomain>::TOP_REF_STATE = ValueDomain(Ref::GetTopRefInstance());
 }  // namespace Cangjie::CHIR
