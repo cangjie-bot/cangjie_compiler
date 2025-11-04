@@ -600,7 +600,8 @@ OwnedPtr<TupleLit> CreateTupleLit(std::vector<OwnedPtr<Expr>> elements, Ptr<Ty> 
 }
 
 OwnedPtr<CallExpr> CreateCallExpr(OwnedPtr<Expr> funcExpr,
-    std::vector<OwnedPtr<FuncArg>> args, Ptr<FuncDecl> resolvedFunc, Ptr<Ty> ty, CallKind callTy)
+    std::vector<OwnedPtr<FuncArg>> args, Ptr<FuncDecl> resolvedFunc, Ptr<Ty> ty, CallKind callTy,
+    Ptr<Ty> actualTy)
 {
     auto ret = MakeOwned<CallExpr>();
     CJC_NULLPTR_CHECK(funcExpr);
@@ -615,6 +616,12 @@ OwnedPtr<CallExpr> CreateCallExpr(OwnedPtr<Expr> funcExpr,
     ret->baseFunc = std::move(funcExpr);
     ret->args = std::move(args);
     ret->callKind = callTy;
+    if (actualTy) {
+        ty->typeArgs.emplace_back(actualTy);
+        if (ty->typeArgs.size() > 1) {
+            ty->typeArgs.erase(ty->typeArgs.begin());
+        }
+    }
     if (Ty::IsTyCorrect(ty)) {
         ret->ty = ty;
     }

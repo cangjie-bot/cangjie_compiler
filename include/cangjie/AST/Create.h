@@ -32,7 +32,7 @@ OwnedPtr<ForInExpr> CreateForInExpr(
 OwnedPtr<JumpExpr> CreateBreakExpr(Expr& refLoop);
 OwnedPtr<CallExpr> CreateCallExpr(OwnedPtr<Expr> funcExpr,
     std::vector<OwnedPtr<FuncArg>> args, Ptr<FuncDecl> resolvedFunc = nullptr, Ptr<Ty> ty = nullptr,
-    CallKind callTy = CallKind::CALL_INVALID);
+    CallKind callTy = CallKind::CALL_INVALID, Ptr<Ty> actualTy = nullptr);
 OwnedPtr<FuncArg> CreateFuncArgForOptional(const FuncParam& param);
 OwnedPtr<FuncParam> CreateFuncParamForOptional(const FuncParam& param);
 /** Create FuncParamList node. */
