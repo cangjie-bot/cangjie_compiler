@@ -138,7 +138,7 @@ std::string GetCangjieLibName(const std::string& outputLibPath, const std::strin
     bool trimmed = true);
 
 std::string GetMangledMethodName(const BaseMangler& mangler, const std::vector<OwnedPtr<FuncParam>>& params,
-    const std::string& methodName);
+    const std::string& methodName, std::unordered_map<std::string, Ptr<Ty>>* actualTyArgMap = nullptr);
 
 Ptr<Annotation> GetForeignNameAnnotation(const Decl& decl);
 Ptr<Annotation> GetAnnotation(const Decl& decl, AnnotationKind annotationKind);
