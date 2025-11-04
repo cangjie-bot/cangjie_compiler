@@ -59,7 +59,7 @@ OwnedPtr<RefExpr> CreateRefExpr(Decl& vd, const Node& pos);
 OwnedPtr<RefType> CreateRefType(const std::string& refName, std::vector<Ptr<Type>> args = {});
 OwnedPtr<RefType> CreateRefType(InheritableDecl& typeDecl);
 /** Create MemberAccess node with given target sema. */
-OwnedPtr<MemberAccess> CreateMemberAccess(OwnedPtr<Expr> expr, Decl& field);
+OwnedPtr<MemberAccess> CreateMemberAccess(OwnedPtr<Expr> expr, Decl& field, Ptr<FuncTy> funcTy = nullptr);
 OwnedPtr<MemberAccess> CreateMemberAccess(OwnedPtr<Expr> expr, const std::string& field);
 /** Create CType Generic Constraint */
 OwnedPtr<GenericConstraint> CreateConstraintForFFI(const std::string& upperBound);
