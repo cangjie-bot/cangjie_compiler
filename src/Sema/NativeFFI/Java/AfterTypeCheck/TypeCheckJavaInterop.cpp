@@ -212,7 +212,7 @@ struct JavaInteropTypeChecker {
             switch (member->astKind) {
                 case ASTKind::FUNC_DECL:
                     if (member->TestAttr(Attribute::CONSTRUCTOR)) {
-                        CheckJavaMirrorConstructorTypes(*StaticAs<ASTKind::FUNC_DECL>(member.get()));
+                        continue;
                     } else {
                         if (isImpl && member->TestAttr(Attribute::PRIVATE)) {
                             continue;
@@ -240,9 +240,6 @@ struct JavaInteropTypeChecker {
             } else {
                 node = &fd;
             }
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmapping_method_ret_unsupported, *node,
-                Ty::ToString(fd.funcBody->retType->ty), GetJavaClassKind());
-            fd.EnableAttr(Attribute::IS_BROKEN);
         }
 
         CheckCJMappingCompatibleParamTypes(fd);
@@ -258,12 +255,6 @@ struct JavaInteropTypeChecker {
                 bool isOptionArg = (*param->ty).IsCoreOptionType();
                 if ((*param->ty).IsInterface()) {
                     continue;
-                }
-                if (isOptionArg || !IsJavaCompatible(*param->ty)) {
-                    diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmapping_method_arg_not_supported, *param);
-                    fdecl.EnableAttr(Attribute::IS_BROKEN);
-                    fdecl.outerDecl->EnableAttr(Attribute::HAS_BROKEN);
-                    fdecl.outerDecl->EnableAttr(Attribute::IS_BROKEN);
                 }
             }
         }
