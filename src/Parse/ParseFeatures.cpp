@@ -101,7 +101,7 @@ void ParserImpl::ParseFeaturesSet(OwnedPtr<FeaturesSet>& ftrSet)
             break;
         }
         if (SeeingBuiltinAnnotation() || SeeingPackage() || 
-            SeeingMacroPackage() || SeeingImport2() || SeeingDecl()) {
+            SeeingMacroPackage() || SeeingImport() || SeeingDecl()) {
             isBroken = true;
             break;
         }
