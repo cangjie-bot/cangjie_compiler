@@ -96,6 +96,8 @@ inline AST::OrderedDeclSet GetVisibleDeclToMap(
     return ret;
 }
 
+std::string GetImportPackageNameByImportSpec(const AST::ImportSpec& importSpec);
+
 const std::string NO_CJO_HELP_INFO =
     "check if the .cjo file of the package exists in CANGJIE_PATH or CANGJIE_HOME, or use "
     "'--import-path' to specify the .cjo file path";

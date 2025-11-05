@@ -107,6 +107,7 @@ public:
     DiagnosticEngine& GetDiag() const;
     Ptr<std::unordered_map<std::string, Ptr<AST::Decl>>> GetExportIdDeclMap(const std::string& fullPackageName) const;
 
+    size_t GetLoadedPackageSize() const;
 private:
     class CjoManagerImpl* impl;
 };
