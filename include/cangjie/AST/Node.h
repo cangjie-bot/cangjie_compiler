@@ -2799,13 +2799,21 @@ struct ImportSpec : Node {
     Position importPos; /**< Position of 'import'. */
     ImportContent content;
     std::vector<OwnedPtr<Annotation>> annotations; /**< Annotation set of the ImportSpec. */
+    /**< Implicitly export all imported decls, initialized with true to  ensure compatibility. */
+    bool withImplicitExport{true};
     ImportSpec() : Node(ASTKind::IMPORT_SPEC)
     {
     }
 
-    bool IsReExport() const
+    bool IsReExport(bool noSubPkg = false) const
     {
-        return modifier && modifier->modifier != TokenKind::PRIVATE;
+        if (!modifier) {
+            return false;
+        }
+        if (noSubPkg) {
+            return modifier->modifier != TokenKind::PRIVATE && modifier->modifier != TokenKind::INTERNAL;
+        }
+        return modifier->modifier != TokenKind::PRIVATE;
     }
     bool IsImportAll() const
     {
@@ -2910,6 +2918,7 @@ struct Package : Node {
     bool isMacroPackage{false};
     bool noSubPkg{false};
     bool needExported{true}; /**< Parent path of package path is "src", there is no need to export this package. */
+    std::vector<std::string> allDependentStdPkgs;
 
     Package() : Node(ASTKind::PACKAGE)
     {

@@ -38,4 +38,23 @@ PackageRelation GetPackageRelation(const std::string& srcFullPkgName, const std:
 
     return srcPath.front() == targetPath.front() ? PackageRelation::SAME_MODULE : PackageRelation::NONE;
 }
+
+std::string GetImportPackageNameByImportSpec(const AST::ImportSpec& importSpec)
+{
+    std::string packageName;
+    if (importSpec.IsImportMulti()) {
+        return packageName;
+    }
+    for (size_t i = 0; i < importSpec.content.prefixPaths.size(); ++i) {
+        packageName += importSpec.content.prefixPaths[i];
+        if (i + 1 < importSpec.content.prefixPaths.size()) {
+            packageName += ".";
+        }
+    }
+    if (!importSpec.IsImportAll() && !importSpec.content.isDecl) {
+        packageName += ".";
+        packageName += importSpec.content.identifier.Val();
+    }
+    return packageName;
+}
 } // namespace Cangjie::Modules
