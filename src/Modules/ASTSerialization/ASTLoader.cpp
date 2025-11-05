@@ -285,7 +285,7 @@ std::vector<OwnedPtr<ImportSpec>> ASTLoader::ASTLoaderImpl::LoadImportSpecs(cons
 
         LoadImportContent(importSpec->content, *rawImportSpec);
         LoadNodePos(*rawImportSpec, *importSpec);
-
+        importSpec->withImplicitExport = rawImportSpec->withImplicitExport();
         importSpecsVec.emplace_back(std::move(importSpec));
     }
     return importSpecsVec;
@@ -432,6 +432,13 @@ OwnedPtr<AST::Package> ASTLoader::ASTLoaderImpl::PreLoadImportedPackageNode()
         std::string importItem = package->imports()->Get(i)->str();
         importedFullPackageNames.emplace_back(importItem);
     }
+    if (package->allDependentStdPkgs()) {
+        uoffset_t nDepStdPkgs = package->allDependentStdPkgs()->size();
+        for (uoffset_t i = 0; i < nDepStdPkgs; i++) {
+            std::string depStdPkg = package->allDependentStdPkgs()->Get(i)->str();
+            packageNode->allDependentStdPkgs.emplace_back(depStdPkg);
+        }
+    }
     return packageNode;
 }
 
@@ -547,6 +554,7 @@ Ptr<Decl> ASTLoader::ASTLoaderImpl::GetDeclFromIndex(const PackageFormat::FullId
             return it1->second;
         }
     }
+    Warningln("cannot find decl", exportId);
     if (cjoManager.GetPackageDecl(fullPackageName) == nullptr && !isLoadCache) {
         diag.DiagnoseRefactor(
             DiagKindRefactor::package_invalid_cjo_dependency, DEFAULT_POSITION, importedPackageName, fullPackageName);

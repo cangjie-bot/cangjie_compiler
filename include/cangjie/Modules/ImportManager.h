@@ -185,9 +185,9 @@ public:
     std::unordered_set<std::string> GetUsedSTDLibFiles(DepType type)
     {
         std::unordered_set<std::string> result;
-        for (auto& item : stdDepsMap) {
-            if (item.second == type || item.second == DepType::BOTH) {
-                (void)result.emplace(item.first);
+        for (auto& [cjoPath, typeWithFullPkgName] : stdDepsMap) {
+            if (typeWithFullPkgName.first == type || typeWithFullPkgName.first == DepType::BOTH) {
+                (void)result.emplace(cjoPath);
             }
         }
         return result;
@@ -367,7 +367,7 @@ private:
     std::unordered_map<Ptr<const AST::Package>, ASTWriter*> astWriters;
 
     /** Store the cjo file path of STD packages on used. */
-    std::unordered_map<std::string, DepType> stdDepsMap;
+    std::unordered_map<std::string, std::pair<DepType, std::string>> stdDepsMap;
 
     /** Direct imported macro packages. */
     std::unordered_set<Ptr<AST::Package>> directMacroDeps;
