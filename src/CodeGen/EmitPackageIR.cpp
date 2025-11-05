@@ -52,7 +52,7 @@ const std::string CANGJIE_SDK_VERSION = "";
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
 // Encapsulate repeated IR dump logic used in GenSubCHIRPackage
-static inline void DumpIRIfNeeded(const CGModule& cgMod, size_t& subDirNum)
+static inline void DumpIRIfNeeded(const CGModule& cgMod, const std::string& suffix, size_t& subDirNum)
 {
     const auto& cgPkgCtx = cgMod.GetCGContext().GetCGPkgContext();
     const auto& options = cgPkgCtx.GetGlobalOptions();
@@ -60,7 +60,7 @@ static inline void DumpIRIfNeeded(const CGModule& cgMod, size_t& subDirNum)
         return;
     }
     const auto& dumpPath = GenDumpPath(options.output, cgPkgCtx.GetCurrentPkgName(),
-        std::to_string(subDirNum) + "_subModules", cgMod.GetLLVMModule()->getSourceFileName());
+        std::to_string(subDirNum) + "_" + suffix, cgMod.GetLLVMModule()->getSourceFileName());
     DumpIR(*cgMod.GetLLVMModule(), dumpPath);
     subDirNum++;
 }
@@ -357,30 +357,40 @@ void GenSubCHIRPackage(CGModule& cgMod)
         CreatePackageInitResetFunction(cgMod);
         SpecifyPackageInitFunc(cgMod);
     }
-    GenerateExtensionDefs(cgMod);
-    cgMod.GenTypeTemplate();
-    cgMod.GenTypeInfo();
     size_t subDirNum = 0; // for sub-directory naming, starts from 0, increments after each dump. remember to ++ after
                           // each dump, modify maxSubDirNum in ClearOldIRDumpFiles.
-    DumpIRIfNeeded(cgMod, subDirNum);
+    DumpIRIfNeeded(cgMod, "TranslateCHIRNode", subDirNum);
+    GenerateExtensionDefs(cgMod);
+    DumpIRIfNeeded(cgMod, "GenExtensionDefs", subDirNum);
+    cgMod.GenTypeTemplate();
+    DumpIRIfNeeded(cgMod, "GenTypeTemplates", subDirNum);
+    cgMod.GenTypeInfo();
+    DumpIRIfNeeded(cgMod, "GenTypeInfos", subDirNum);
     ReplaceFunction(cgMod);
     cgMod.Opt();
     InlineFunction(cgMod);
+    DumpIRIfNeeded(cgMod, "ReplaceAndInlineFunc", subDirNum);
     CJNativeReflectionInfo(cgMod, subCHIRPkg).Gen();
     cgMod.GenTypeInfo(); // for reflect generated typeinfo
+    DumpIRIfNeeded(cgMod, "GenReflectionInfo", subDirNum);
     cgMod.diBuilder->Finalize();
     TransformFFIs(cgMod);
+    DumpIRIfNeeded(cgMod, "TransformFFIs", subDirNum);
     InitializeCjStringLiteral(cgMod);
+    DumpIRIfNeeded(cgMod, "InitCJStringLiteral", subDirNum);
     GenerateBinarySectionInfo(cgMod);
     KeepSomeTypesManually(cgMod);
-    DumpIRIfNeeded(cgMod, subDirNum);
+    DumpIRIfNeeded(cgMod, "GenBinarySectionInfo", subDirNum);
     cgMod.EraseUselessInstsAndDeclarations();
+    DumpIRIfNeeded(cgMod, "EraseUselessInstsAndDecls", subDirNum);
     RecordCodeInfoInCodeGen("CodeGen EmitIR", cgMod);
     cgMod.GenIncremental();
     SetSymbolLinkageType(cgMod);
-    DumpIRIfNeeded(cgMod, subDirNum);
+    DumpIRIfNeeded(cgMod, "GenIncremental", subDirNum);
     cgMod.EraseUselessGVAndFunctions();
+    DumpIRIfNeeded(cgMod, "EraseUselessGVAndFuncs", subDirNum);
     GenerateStaticGIs(cgMod);
+    DumpIRIfNeeded(cgMod, "GenStaticGIs", subDirNum);
     CreateLLVMUsedGVs(cgMod);
     // Incremental compilation generates invalid IRs, which need to be deleted by EraseUselessGVAndFunctions.
     // Therefore, the verification is performed after incremental compilation.
@@ -393,7 +403,7 @@ void GenSubCHIRPackage(CGModule& cgMod)
         InternalError("Broken llvm ir! The result is saved in " + path);
     }
 #endif
-    DumpIRIfNeeded(cgMod, subDirNum);
+    DumpIRIfNeeded(cgMod, "Final", subDirNum);
     if (!success) {
         InternalError("Broken llvm ir!");
     }
