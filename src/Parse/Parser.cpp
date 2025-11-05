@@ -66,8 +66,8 @@ bool ParserImpl::ParsePackageHeaderEnd()
 
 void ParserImpl::CheckAndHandleUnexpectedTopLevelDeclAfterFeatures()
 {
-    if (!SeeingPackage() && !SeeingMacroPackage() && !SeeingImport() && !Seeing(TokenKind::SEMI) &&
-        !SeeingDecl() && !SeeingMacroCallDecl() && !SeeingInitializer() && !SeeingFinalizer() &&
+    if (!SeeingPackage() && !SeeingMacroPackage() && !SeeingImport() && !Seeing(TokenKind::SEMI) && !SeeingDecl() &&
+        !SeeingMacroCallDecl() && !SeeingInitializer() && !SeeingFinalizer() && !SeeingBuiltinAnnotation() &&
         !Seeing(TokenKind::END)) {
         DiagAndSuggestKeywordForExpectedDeclaration({"features", "macro", "package", "import", "func", "let", "var",
             "const", "enum", "type", "struct", "class", "interface", "extend", "main"});
@@ -79,12 +79,14 @@ void ParserImpl::CheckAndHandleUnexpectedTopLevelDeclAfterFeatures()
     }
 }
 
-void ParserImpl::CheckExpectedTopLevelDeclWhenNoPackage()
+void ParserImpl::CheckExpectedTopLevelDeclWhenNoPackage(
+    const PtrVector<Annotation>& annos, const std::set<Modifier>& modifiers)
 {
-    bool maybeConstDecl = lastToken.kind == TokenKind::CONST;
-    bool maybeForeignBlock = lastToken.kind == TokenKind::FOREIGN && Seeing(TokenKind::LCURL);
-    if (!SeeingImport() && !Seeing(TokenKind::SEMI) && !SeeingDecl() && !SeeingMacroCallDecl() && !maybeConstDecl &&
-        !maybeForeignBlock && !SeeingInitializer() && !SeeingFinalizer() && !Seeing(TokenKind::END)) {
+    if (!annos.empty() || !modifiers.empty()) {
+        return;
+    }
+    if (!SeeingImport() && !Seeing(TokenKind::SEMI) && !SeeingDecl() && !SeeingMacroCallDecl() && !SeeingInitializer() &&
+        !SeeingFinalizer() && !Seeing(TokenKind::END)) {
         DiagAndSuggestKeywordForExpectedDeclaration({"macro", "package", "import", "func", "let", "var", "const",
             "enum", "type", "struct", "class", "interface", "extend", "main"});
     }
@@ -151,7 +153,7 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
             annos.clear();
         }
     } else {
-        CheckExpectedTopLevelDeclWhenNoPackage();
+        CheckExpectedTopLevelDeclWhenNoPackage(annos, modifiers);
         scope.ResetParserScope();
     }
     // Parse importSpec in TopLevel.
