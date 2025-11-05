@@ -164,10 +164,15 @@ private:
                 VisitModifiers(f->modifiers);
                 VisitToken(f->keywordPos);
                 VisitIdentifier(f->identifier);
-                if (f->generic) {
-                    VisitChild(f->generic);
+                VisitGenericParams(f->generic);
+                auto& fb = f->funcBody;
+                for (auto& l : fb->paramLists) {
+                    VisitChild(l);
                 }
-                VisitChild(f->funcBody);
+                VisitToken(fb->colonPos);
+                VisitChild(fb->retType);
+                VisitGenericConstraints(f->generic);
+                VisitChild(fb->body);
                 break;
             }
             case ASTKind::PROP_DECL: {
@@ -197,12 +202,12 @@ private:
                 VisitModifiers(c->modifiers);
                 VisitToken(c->keywordPos);
                 VisitIdentifier(c->identifier);
-                if (c->generic) {
-                    VisitChild(c->generic);
-                }
+                VisitGenericParams(c->generic);
                 for (auto& it : c->inheritedTypes) {
                     VisitChild(it);
+                    VisitToken(it->bitAndPos);
                 }
+                VisitGenericConstraints(c->generic);
                 if (c->body) {
                     VisitChild(c->body);
                 }
@@ -222,6 +227,7 @@ private:
                 VisitToken(pl->leftParenPos);
                 for (auto& p : pl->params) {
                     VisitChild(p);
+                    VisitToken(p->commaPos);
                 }
                 VisitToken(pl->rightParenPos);
                 break;
@@ -231,7 +237,6 @@ private:
                 for (auto& l : fb->paramLists) {
                     VisitChild(l);
                 }
-                VisitToken(fb->doubleArrowPos);
                 VisitToken(fb->colonPos);
                 if (fb->retType) {
                     VisitChild(fb->retType);
@@ -278,6 +283,12 @@ private:
                 VisitModifiers(e->modifiers);
                 VisitToken(e->keywordPos);
                 VisitIdentifier(e->identifier);
+                VisitGenericParams(e->generic);
+                for (auto& it : e->inheritedTypes) {
+                    VisitChild(it);
+                    VisitToken(it->bitAndPos);
+                }
+                VisitGenericConstraints(e->generic);
                 VisitToken(e->leftCurlPos);
                 VisitEnumCtors(*e);
                 for (auto& m : e->members) {
@@ -292,12 +303,10 @@ private:
                 VisitModifiers(ex->modifiers);
                 VisitToken(ex->keywordPos);
                 VisitIdentifier(ex->identifier);
-                if (!ex->wherePos.IsZero()) {
-                    VisitToken(ex->wherePos);
-                }
-                if (ex->extendedType) {
-                    VisitChild(ex->extendedType);
-                }
+                VisitGenericParams(ex->generic);
+                VisitToken(ex->wherePos);
+                VisitChild(ex->extendedType);
+                VisitGenericConstraints(ex->generic);
                 VisitToken(ex->leftCurlPos);
                 for (auto& m : ex->members) {
                     VisitChild(m);
@@ -322,26 +331,16 @@ private:
             }
             case ASTKind::MACRO_EXPAND_PARAM: {
                 auto mp = StaticCast<MacroExpandParam>(node);
+                VisitInvocation(mp->invocation);
                 // Reuse FuncParam visiting
                 VisitAnnotations(mp->annotations);
                 VisitModifiers(mp->modifiers);
                 VisitToken(mp->keywordPos);
                 VisitIdentifier(mp->identifier);
-                if (mp->type) {
-                    VisitToken(mp->colonPos);
-                    VisitChild(mp->type);
-                }
-                if (!mp->notMarkPos.IsZero()) {
-                    VisitToken(mp->notMarkPos);
-                }
-                if (mp->assignment) {
-                    VisitChild(mp->assignment);
-                }
-                // Visit macro invocation embedded nodes
-                VisitChild(mp->invocation.decl);
-                for (auto& n : mp->invocation.nodes) {
-                    VisitChild(n);
-                }
+                VisitToken(mp->notMarkPos);
+                VisitToken(mp->colonPos);
+                VisitChild(mp->type);
+                VisitChild(mp->assignment);
                 break;
             }
             case ASTKind::MACRO_DECL: {
@@ -351,9 +350,7 @@ private:
                 VisitToken(m->keywordPos);
                 VisitIdentifier(m->identifier);
                 VisitToken(m->leftParenPos);
-                if (m->funcBody) {
-                    VisitChild(m->funcBody);
-                }
+                VisitChild(m->funcBody);
                 VisitToken(m->rightParenPos);
                 break;
             }
@@ -363,9 +360,7 @@ private:
                 VisitModifiers(md->modifiers);
                 VisitToken(md->keywordPos);
                 VisitIdentifier(md->identifier);
-                if (md->funcBody) {
-                    VisitChild(md->funcBody);
-                }
+                VisitChild(md->funcBody);
                 break;
             }
             case ASTKind::PRIMARY_CTOR_DECL: {
@@ -374,9 +369,7 @@ private:
                 VisitModifiers(pc->modifiers);
                 VisitToken(pc->keywordPos);
                 VisitIdentifier(pc->identifier);
-                if (pc->funcBody) {
-                    VisitChild(pc->funcBody);
-                }
+                VisitChild(pc->funcBody);
                 break;
             }
 
@@ -448,28 +441,20 @@ private:
                 auto te = StaticCast<TryExpr>(node);
                 VisitToken(te->tryPos);
                 VisitToken(te->lParen);
-                    for (size_t i = 0; i < te->resourceSpec.size(); ++i) {
-                        VisitChild(te->resourceSpec[i]);
-                        if (i < te->resourceSpecCommaPos.size()) {
-                            VisitToken(te->resourceSpecCommaPos[i]);
-                        }
+                for (size_t i = 0; i < te->resourceSpec.size(); ++i) {
+                    VisitChild(te->resourceSpec[i]);
+                    if (i < te->resourceSpecCommaPos.size()) {
+                        VisitToken(te->resourceSpecCommaPos[i]);
                     }
+                }
                 VisitToken(te->rParen);
                 VisitChild(te->tryBlock);
-                for (auto& pos : te->catchPosVector) {
-                    VisitToken(pos);
-                }
-                for (auto& pos : te->catchLParenPosVector) {
-                    VisitToken(pos);
-                }
-                for (auto& pos : te->catchRParenPosVector) {
-                    VisitToken(pos);
-                }
-                for (auto& blk : te->catchBlocks) {
-                    VisitChild(blk);
-                }
-                for (auto& p : te->catchPatterns) {
-                    VisitChild(p);
+                for (size_t i{0}; i < te->catchPosVector.size(); ++i) {
+                    VisitToken(te->catchPosVector[i]);
+                    VisitToken(te->catchLParenPosVector[i]);
+                    VisitChild(te->catchPatterns[i]);
+                    VisitToken(te->catchRParenPosVector[i]);
+                    VisitChild(te->catchBlocks[i]);
                 }
                 VisitToken(te->finallyPos);
                 VisitChild(te->finallyBlock);
@@ -645,7 +630,16 @@ private:
             }
             case ASTKind::LAMBDA_EXPR: {
                 auto e = StaticCast<LambdaExpr>(node);
-                VisitChild(e->funcBody);
+                auto fb = &StaticCast<FuncBody>(*e->funcBody);
+                VisitToken(fb->body->leftCurlPos);
+                for (auto& l : fb->paramLists) {
+                    VisitChild(l);
+                }
+                VisitToken(fb->doubleArrowPos);
+                for (auto& ex : fb->body->body) {
+                    VisitChild(ex);
+                }
+                VisitToken(fb->body->rightCurlPos);
                 break;
             }
             case ASTKind::TRAIL_CLOSURE_EXPR: {
@@ -785,7 +779,6 @@ private:
             case ASTKind::CONST_PATTERN: {
                 auto p = StaticCast<ConstPattern>(node);
                 VisitChild(p->literal);
-                VisitChild(p->operatorCallExpr);
                 break;
             }
             case ASTKind::VAR_PATTERN: {
@@ -833,13 +826,12 @@ private:
             case ASTKind::EXCEPT_TYPE_PATTERN: {
                 auto p = StaticCast<ExceptTypePattern>(node);
                 VisitChild(p->pattern);
-                VisitToken(p->patternPos);
                 VisitToken(p->colonPos);
-                for (auto& t : p->types) {
-                    VisitChild(t);
-                }
-                for (auto& pos : p->bitOrPosVector) {
-                    VisitToken(pos);
+                for (size_t i{0}; i < p->types.size(); ++i) {
+                    VisitChild(p->types[i]);
+                    if (i < p->bitOrPosVector.size()) {
+                        VisitToken(p->bitOrPosVector[i]);
+                    }
                 }
                 break;
             }
@@ -848,11 +840,11 @@ private:
                 VisitChild(p->pattern);
                 VisitToken(p->patternPos);
                 VisitToken(p->colonPos);
-                for (auto& t : p->types) {
-                    VisitChild(t);
-                }
-                for (auto& pos : p->bitOrPosVector) {
-                    VisitToken(pos);
+                for (size_t i{0}; i < p->types.size(); ++i) {
+                    VisitChild(p->types[i]);
+                    if (i < p->bitOrPosVector.size()) {
+                        VisitToken(p->bitOrPosVector[i]);
+                    }
                 }
                 break;
             }
@@ -936,15 +928,17 @@ private:
             // ========================= Macro Expand Expr/Decl =========================
             case ASTKind::MACRO_EXPAND_EXPR: {
                 auto e = StaticCast<MacroExpandExpr>(node);
+                VisitInvocation(e->invocation);
                 VisitAnnotations(e->annotations);
-                VisitToken(e->identifier.Begin());
                 for (auto& n : e->invocation.nodes) {
                     VisitChild(n);
                 }
+                VisitToken(e->invocation.rightParenPos);
                 break;
             }
             case ASTKind::MACRO_EXPAND_DECL: {
                 auto d = StaticCast<MacroExpandDecl>(node);
+                VisitInvocation(d->invocation);
                 VisitAnnotations(d->annotations);
                 VisitChild(d->invocation.decl);
                 break;
@@ -1014,30 +1008,17 @@ private:
                 }
                 break;
             }
-            case ASTKind::GENERIC: {
-                auto g = StaticCast<Generic>(node);
-                VisitToken(g->leftAnglePos);
-                for (auto& tp : g->typeParameters) {
-                    VisitChild(tp);
-                }
-                VisitToken(g->rightAnglePos);
-                for (auto& gc : g->genericConstraints) {
-                    VisitChild(gc);
-                }
-                break;
-            }
             case ASTKind::GENERIC_CONSTRAINT: {
                 auto gc = StaticCast<GenericConstraint>(node);
                 VisitToken(gc->wherePos);
                 VisitChild(gc->type);
                 VisitToken(gc->operatorPos);
-                for (auto& pos : gc->bitAndPos) {
-                    VisitToken(pos);
+                for (size_t i = 0; i < gc->upperBounds.size(); ++i) {
+                    VisitChild(gc->upperBounds[i]);
+                    if (i < gc->bitAndPos.size()) {
+                        VisitToken(gc->bitAndPos[i]);
+                    }
                 }
-                for (auto& ub : gc->upperBounds) {
-                    VisitChild(ub);
-                }
-                VisitToken(gc->commaPos);
                 break;
             }
             case ASTKind::FUNC_PARAM: {
@@ -1046,11 +1027,11 @@ private:
                 VisitModifiers(p->modifiers);
                 VisitToken(p->keywordPos);
                 VisitIdentifier(p->identifier);
+                VisitToken(p->notMarkPos);
                 VisitToken(p->colonPos);
                 VisitChild(p->type);
-                VisitToken(p->notMarkPos);
                 VisitChild(p->assignment);
-                VisitToken(p->commaPos);
+                // visit comma outside
                 break;
             }
             case ASTKind::TYPE_ALIAS_DECL: {
@@ -1069,10 +1050,12 @@ private:
                 VisitModifiers(c->modifiers);
                 VisitToken(c->keywordPos);
                 VisitIdentifier(c->identifier);
-                VisitChild(c->generic);
+                VisitGenericParams(c->generic);
                 for (auto& it : c->inheritedTypes) {
                     VisitChild(it);
+                    VisitToken(it->bitAndPos);
                 }
+                VisitGenericConstraints(c->generic);
                 VisitChild(c->body);
                 break;
             }
@@ -1082,10 +1065,12 @@ private:
                 VisitModifiers(s->modifiers);
                 VisitToken(s->keywordPos);
                 VisitIdentifier(s->identifier);
-                VisitChild(s->generic);
+                VisitGenericParams(s->generic);
                 for (auto& it : s->inheritedTypes) {
                     VisitChild(it);
+                    VisitToken(it->bitAndPos);
                 }
+                VisitGenericConstraints(s->generic);
                 VisitChild(s->body);
                 break;
             }
@@ -1128,6 +1113,10 @@ private:
             case ASTKind::WILDCARD_EXPR:
                 VisitToken(node->begin);
                 break;
+            case ASTKind::GENERIC:
+                CJC_ASSERT(false &&
+                    "generic cannot be visited in one, use VisitGenericParams and VisitGenericConstraints instead");
+                break;
             case ASTKind::IF_AVAILABLE_EXPR:
             case ASTKind::DECL:
             case ASTKind::CLASS_LIKE_DECL:
@@ -1146,6 +1135,41 @@ private:
             case ASTKind::NODE:
                 break;
         }
+    }
+
+    void VisitGenericParams(OwnedPtr<Generic>& g)
+    {
+        if (!g) {
+            return;
+        }
+        VisitToken(g->leftAnglePos);
+        for (auto& tp : g->typeParameters) {
+            VisitChild(tp);
+        }
+        VisitToken(g->rightAnglePos);
+    }
+
+    void VisitGenericConstraints(OwnedPtr<Generic>& g)
+    {
+        if (!g) {
+            return;
+        }
+        for (auto& gc : g->genericConstraints) {
+            VisitChild(gc);
+            VisitToken(gc->commaPos);
+        }
+    }
+
+    void VisitInvocation(const MacroInvocation& invocation)
+    {
+        VisitToken(invocation.atPos);
+        VisitToken(invocation.macroNamePos);
+        VisitToken(invocation.leftSquarePos);
+        for (auto& tok : invocation.attrs) {
+            VisitToken(tok.Begin());
+        }
+        VisitToken(invocation.rightSquarePos);
+        VisitToken(invocation.leftParenPos);
     }
 };
 
@@ -1514,7 +1538,7 @@ CommentGroupsLocInfo CollectCommentGroups(const std::set<Token>& tokens)
             continue;
         }
         if (tk.kind != TokenKind::COMMENT) {
-            if (tk.kind != TokenKind::SEMI && tk.kind != TokenKind::COMMA) {
+            if (tk.kind != TokenKind::SEMI) {
                 preTkIdxIgnTrivialStuff = i;
             }
             preTokenIgnoreNL = tk;
@@ -1603,9 +1627,6 @@ void ParserImpl::AttachCommentToNodes(std::vector<OwnedPtr<Node>>& nodes)
 void ParserImpl::AttachCommentToFile(Ptr<File> node)
 {
     auto nodes = CollectPtrsOfASTNodes(node);
-    if (nodes.empty()) {
-        return;
-    }
     auto cgInfo = CollectCommentGroups(lexer->GetTokenStream());
     auto cgIdx = CollectFileCG(nodes, cgInfo, node);
     AttachCommentToSortedNodes(nodes, cgInfo, cgIdx);
