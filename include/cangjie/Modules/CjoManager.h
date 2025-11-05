@@ -54,8 +54,8 @@ public:
      */
     void AddPackageDeclMap(const std::string& fullPackageName, const std::string& importedPackage = "");
     /** For loading cached types during incremental compilation. */
-    std::unordered_set<std::string> LoadCachedPackage(const AST::Package& pkg,
-        const std::string& cjoPath, const std::map<std::string, Ptr<AST::Decl>>& mangledName2DeclMap) const;
+    std::unordered_set<std::string> LoadCachedPackage(const AST::Package& pkg, const std::string& cjoPath,
+        const std::map<std::string, Ptr<AST::Decl>>& mangledName2DeclMap) const;
     /** For --scan-dependency of cjo. */
     std::string GetPackageDepInfo(const std::string& cjoPath) const;
 
@@ -67,8 +67,7 @@ public:
 
     void RemovePackage(const std::string& fullPkgName, const Ptr<AST::Package> package) const;
 
-    const std::map<std::string, AST::OrderedDeclSet>& GetPackageMembers(
-        const std::string& fullPackageName) const;
+    const std::map<std::string, AST::OrderedDeclSet>& GetPackageMembers(const std::string& fullPackageName) const;
     const AST::OrderedDeclSet& GetPackageMembersByName(
         const std::string& fullPackageName, const std::string& name) const;
     Ptr<AST::Decl> GetImplicitPackageMembersByName(const std::string& fullPackageName, const std::string& name) const;
