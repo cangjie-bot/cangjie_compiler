@@ -38,4 +38,25 @@ PackageRelation GetPackageRelation(const std::string& srcFullPkgName, const std:
 
     return srcPath.front() == targetPath.front() ? PackageRelation::SAME_MODULE : PackageRelation::NONE;
 }
+
+std::string GetImportPackageNameByImportSpec(const AST::ImportSpec& importSpec)
+{
+    if (importSpec.IsImportMulti()) {
+        return "";
+    }
+    std::stringstream ss;
+    for (size_t i{0}; i < importSpec.content.prefixPaths.size(); ++i) {
+        ss << importSpec.content.prefixPaths[i];
+        if (i == 0 && importSpec.content.hasDoubleColon) {
+            ss << TOKENS[static_cast<int>(TokenKind::DOUBLE_COLON)];
+        } else if (i + 1 != importSpec.content.prefixPaths.size()) {
+            ss << TOKENS[static_cast<int>(TokenKind::DOT)];
+        }
+    }
+    if (!importSpec.IsImportAll() && !importSpec.content.isDecl) {
+        ss << TOKENS[static_cast<int>(TokenKind::DOT)];
+        ss << importSpec.content.identifier.Val();
+    }
+    return ss.str();
+}
 } // namespace Cangjie::Modules

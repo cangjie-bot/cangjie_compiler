@@ -15,14 +15,16 @@
 
 #include "flatbuffers/ModuleFormat_generated.h"
 
+#include "cangjie/AST/Create.h"
+#include "cangjie/AST/Match.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/Basic/Version.h"
-#include "cangjie/AST/Match.h"
 #include "cangjie/Mangle/ASTMangler.h"
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Mangle/CHIRMangler.h"
 #include "cangjie/Modules/CjoManager.h"
+#include "cangjie/Modules/ModulesUtils.h"
 #include "cangjie/Utils/CheckUtils.h"
 
 using namespace Cangjie;
@@ -670,6 +672,32 @@ void ASTWriter::ASTWriterImpl::DFSCollectFilesDeclarations(Ptr<File> file,
     std::move(topLevelDeclsOfFile.begin(), topLevelDeclsOfFile.end(), std::back_inserter(topLevelDeclsOrdered));
 }
 
+void ASTWriter::ASTWriterImpl::MarkImplicitExportOfImportSpec(Package& package)
+{
+    for (auto& file : package.files) {
+        for (auto& import : file->imports) {
+            if (import->IsImportMulti()) {
+                continue;
+            }
+            auto importPkgName = Modules::GetImportPackageNameByImportSpec(*import);
+            if (!Utils::In(importPkgName, implicitPackageNames) && !import->IsReExport(package.noSubPkg)) {
+                import->withImplicitExport = false;
+            } else {
+                implicitPackageNames.erase(importPkgName);
+            }
+            Debugln("++++", importPkgName, import->content.ToString(), "mark as", import->withImplicitExport);
+        }
+    }
+    for (auto implicitAddedPkgName : implicitPackageNames) {
+        auto implicitAdd = CreateImportSpec(implicitAddedPkgName);
+        package.files[0]->imports.emplace_back(std::move(implicitAdd));
+        Debugln("implicit add import", implicitAddedPkgName);
+    }
+    for (auto& file : package.files) {
+        allFileImports.push_back(SaveFileImports(*file));
+    }
+}
+
 // Export external decls of a Package AST to a buffer.
 void ASTWriter::ASTWriterImpl::ExportAST(const PackageDecl& package)
 {
@@ -702,6 +730,7 @@ void ASTWriter::ASTWriterImpl::ExportAST(const PackageDecl& package)
     for (auto decl : topLevelDeclsOrdered) {
         (void)GetDeclIndex(decl);
     }
+    MarkImplicitExportOfImportSpec(*package.srcPackage);
 }
 
 void ASTWriter::SetSerializingCommon()
@@ -736,6 +765,11 @@ void ASTWriter::ASTWriterImpl::AST2FB(std::vector<uint8_t>& data, const PackageD
     auto vdecls = builder.CreateVector<TDeclOffset>(allDecls);
     auto vexprs = builder.CreateVector<TExprOffset>(allExprs);
     auto vtypes = builder.CreateVector<TTypeOffset>(allTypes);
+    std::vector<TStringOffset> vpackageNames;
+    for (auto& depStdPkg : package.srcPackage->allDependentStdPkgs) {
+        vpackageNames.emplace_back(builder.CreateString(depStdPkg));
+    }
+    auto vdependentStdPkgs = builder.CreateVector<TStringOffset>(vpackageNames);
     PackageFormat::PackageKind kind = PackageFormat::PackageKind_Normal;
     if (package.srcPackage->isMacroPackage) {
         kind = PackageFormat::PackageKind_Macro;
@@ -751,7 +785,8 @@ void ASTWriter::ASTWriterImpl::AST2FB(std::vector<uint8_t>& data, const PackageD
         builder.CreateString(hasModuleName ? package.srcPackage->files.front()->decls.front()->moduleName : "");
     PackageFormat::CjoVersion cjoVersion(CJO_MAJOR_VERSION, CJO_MINOR_VERSION, CJO_PATCH_VERSION);
     auto root = PackageFormat::CreatePackage(builder, cjcVersion, &cjoVersion, packageName, dependencyInfo, vimports,
-        vfiles, vfileImports, vtypes, vdecls, vexprs, INVALID_FORMAT_INDEX, kind, access, moduleName, vfileInfo);
+        vfiles, vfileImports, vtypes, vdecls, vexprs, INVALID_FORMAT_INDEX, kind, access, moduleName, vfileInfo,
+        vdependentStdPkgs);
     FinishPackageBuffer(builder, root);
     auto size = static_cast<size_t>(builder.GetSize());
     data.resize(size);
@@ -791,6 +826,8 @@ TFullIdOffset ASTWriter::ASTWriterImpl::GetFullDeclIndex(Ptr<const Decl> decl)
     } else if (decl->TestAttr(Attribute::IMPORTED)) {
         // Get full decl index from imported map.
         auto pkgIndex = static_cast<PackageIndex>(SavePackageName(decl->fullPackageName));
+        Debugln("astwriter need decl", decl->fullPackageName, decl->identifier.Val());
+        implicitPackageNames.emplace(decl->fullPackageName);
         // NOTE: FullId using 'int32' to distinguish with current package and invalid references.
         return PackageFormat::CreateFullId(
             builder, pkgIndex, builder.CreateString(decl->exportId.empty() ? decl->identifier.Val() : decl->exportId));
@@ -816,7 +853,7 @@ flatbuffers::Offset<PackageFormat::Imports> ASTWriter::ASTWriterImpl::SaveFileIm
             builder.CreateVectorOfStrings(importSpec->content.prefixPaths),
             builder.CreateString(importSpec->content.identifier.Val()),
             builder.CreateString(importSpec->content.aliasName.Val()), reExport, importSpec->content.isDecl,
-            importSpec->content.hasDoubleColon));
+            importSpec->content.hasDoubleColon, importSpec->withImplicitExport));
         if (importSpec->IsReExport()) {
             // If the import package is reExported, it should be stored as used.
             SavePackageName(cjoManager.GetPackageNameByImport(*importSpec));
@@ -843,7 +880,6 @@ void ASTWriter::ASTWriterImpl::SaveFileInfo(const File& file)
                 FileUtil::JoinPath(file.curPackage->fullPackageName, FileUtil::GetFileName(file.filePath))));
         }
         savedFileMap.emplace(file.begin.fileID, std::make_pair(0, fileIndex));
-        allFileImports.push_back(SaveFileImports(file));
         // Add additional file info for CJMP
         auto fileID = file.begin.fileID;
         auto begin = TPosition(fileIndex, 0, file.begin.line, file.begin.column, false);
