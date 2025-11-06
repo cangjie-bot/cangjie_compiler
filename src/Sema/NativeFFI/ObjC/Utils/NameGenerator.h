@@ -34,6 +34,10 @@ public:
      */
     std::string GetObjCDeclName(const AST::Decl& target);
 
+    std::string GetObjCGetterName(const AST::Decl& arget);
+    std::string GetObjCSetterName(const AST::Decl& target);
+    std::string MakeSetterName(std::string propName);
+
     /**
      * Returns name declared in @ForeignName split by ':' 
      * or function name followed by argument names if no @ForeignName is specified
@@ -50,6 +54,8 @@ public:
      * Gets the pointer to value of @ForeignName anno or @ObjCMirror/@ObjCImpl annos or returns nullptr.
      */
     Ptr<std::string> GetUserDefinedObjCName(const AST::Decl& target);
+    Ptr<std::string> GetUserDefinedObjCGetter(const AST::Decl& target);
+    Ptr<std::string> GetUserDefinedObjCSetter(const AST::Decl& target);
 
 private:
     const BaseMangler& mangler;

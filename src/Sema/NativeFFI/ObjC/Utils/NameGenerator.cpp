@@ -14,6 +14,7 @@
 #include "NameGenerator.h"
 #include "cangjie/AST/Match.h"
 #include "NativeFFI/Utils.h"
+#include "cangjie/Utils/CheckUtils.h"
 
 using namespace Cangjie::AST;
 using namespace Cangjie::Interop::ObjC;
@@ -134,6 +135,50 @@ Ptr<std::string> NameGenerator::GetUserDefinedObjCName(const Decl& target)
     return nullptr;
 }
 
+Ptr<std::string> NameGenerator::GetUserDefinedObjCGetter(const Decl& target)
+{
+    for (auto& anno : target.annotations) {
+        if (anno->kind != AnnotationKind::FOREIGN_GETTER_NAME) {
+            continue;
+        }
+
+        CJC_ASSERT(anno->args.size() < 2);
+        if (anno->args.empty()) {
+            break;
+        }
+
+        CJC_ASSERT(anno->args[0]->expr->astKind == ASTKind::LIT_CONST_EXPR);
+        auto lce = As<ASTKind::LIT_CONST_EXPR>(anno->args[0]->expr.get());
+        CJC_ASSERT(lce);
+
+        return &lce->stringValue;
+    }
+
+    return nullptr;
+}
+
+Ptr<std::string> NameGenerator::GetUserDefinedObjCSetter(const Decl& target)
+{
+    for (auto& anno : target.annotations) {
+        if (anno->kind != AnnotationKind::FOREIGN_SETTER_NAME) {
+            continue;
+        }
+
+        CJC_ASSERT(anno->args.size() < 2);
+        if (anno->args.empty()) {
+            break;
+        }
+
+        CJC_ASSERT(anno->args[0]->expr->astKind == ASTKind::LIT_CONST_EXPR);
+        auto lce = As<ASTKind::LIT_CONST_EXPR>(anno->args[0]->expr.get());
+        CJC_ASSERT(lce);
+
+        return &lce->stringValue;
+    }
+
+    return nullptr;
+}
+
 std::string NameGenerator::GetObjCDeclName(const Decl& target)
 {
     auto foreignName = GetUserDefinedObjCName(target);
@@ -155,6 +200,44 @@ std::string NameGenerator::GetObjCDeclName(const Decl& target)
     }
 
     return target.identifier;
+}
+
+std::string NameGenerator::GetObjCGetterName(const Decl& target)
+{
+    auto foreignName = GetUserDefinedObjCGetter(target);
+    if (foreignName) {
+        return *foreignName;
+    }
+
+    foreignName = GetUserDefinedObjCName(target);
+    if (foreignName) {
+        return *foreignName;
+    }
+
+    return target.identifier;
+}
+
+std::string NameGenerator::GetObjCSetterName(const Decl& target)
+{
+    auto foreignName = GetUserDefinedObjCSetter(target);
+    if (foreignName) {
+        return *foreignName;
+    }
+
+    foreignName = GetUserDefinedObjCName(target);
+    if (foreignName) {
+        return MakeSetterName(*foreignName);
+    }
+
+    return MakeSetterName(target.identifier);
+}
+
+std::string NameGenerator::MakeSetterName(std::string propName)
+{
+    auto newName = propName;
+    std::transform(
+        newName.begin(), newName.begin() + 1, newName.begin(), [](unsigned char c) { return std::toupper(c); });
+    return "set" + newName + ":";
 }
 
 std::vector<std::string> NameGenerator::GetObjCDeclSelectorComponents(const FuncDecl& target)
