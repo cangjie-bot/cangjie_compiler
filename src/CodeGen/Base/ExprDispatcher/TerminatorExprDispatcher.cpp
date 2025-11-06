@@ -88,8 +88,8 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
             if (irBuilder.GetCGContext().GetCompileOptions().enableCompileDebug &&
                 !goTo.GetDebugLocation().IsInvalidPos() && chirExpr.GetParentBlock()->GetExpressionsNum() > 1) {
                 auto func = irBuilder.GetInsertFunction();
-                auto gotoBB = llvm::BasicBlock::Create(
-                    irBuilder.GetLLVMContext(), "goto", func, cgMod.GetMappedBB(succ));
+                auto gotoBB =
+                    llvm::BasicBlock::Create(irBuilder.GetLLVMContext(), "goto", func, cgMod.GetMappedBB(succ));
                 irBuilder.CreateBr(gotoBB);
                 irBuilder.SetInsertPoint(gotoBB);
             }
