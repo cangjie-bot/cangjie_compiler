@@ -605,7 +605,18 @@ std::string BaseMangler::MangleDecl(const Decl& decl, const std::vector<Ptr<Node
                 (decl.identifier.Val().size() - MANGLE_PROP_LEN) ? "ps" : "pg";
         } else {
             std::string name = decl.identifier;
-            if (decl.TestAttr(Attribute::HAS_INITIAL)) {
+            if (decl.astKind == ASTKind::GENERIC_PARAM_DECL) {
+                auto outerdecl = decl.outerDecl;
+                auto& typeParameters = outerdecl->IsFunc()
+                    ? StaticCast<AST::FuncDecl*>(outerdecl)->funcBody->generic->typeParameters
+                    : outerdecl->generic->typeParameters;
+                auto it = std::find_if(typeParameters.begin(), typeParameters.end(),
+                    [&decl](const auto& param) { return param.get() == &decl; });
+                CJC_ASSERT(it != typeParameters.end() && "Using undeclared generic type!");
+                auto number =
+                    MangleUtils::DecimalToManglingNumber(std::to_string(std::distance(typeParameters.begin(), it)));
+                name = MANGLE_GENERIC_TYPE_PREFIX + number;
+            } else if (decl.TestAttr(Attribute::HAS_INITIAL)) {
                 // eg: c.2 ==> pos = 1, name = c, idx = "2"
                 size_t pos = decl.identifier.Val().find(MANGLE_DOT_PREFIX);
                 name = decl.identifier.Val().substr(0, pos);
