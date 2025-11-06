@@ -283,7 +283,7 @@ private:
     bool FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>& params, std::vector<OwnedPtr<FuncArg>>& callArgs,
         FuncDecl& funcDecl, OwnedPtr<FuncParam>& arg, FuncParam& jniEnvPtrParam);
 
-    OwnedPtr<Decl> GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl);
+    OwnedPtr<Decl> GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl, std::string* actualType = nullptr);
 
     void GenerateFuncParamsForNativeDeleteCjObject(
         Decl& decl, std::vector<OwnedPtr<FuncParam>>& params, FuncParam*& jniEnv, OwnedPtr<Expr>& selfRef);
