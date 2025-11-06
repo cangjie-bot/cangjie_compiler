@@ -89,9 +89,8 @@ const std::unordered_map<std::string, Environment> STRING_ENVIRONMENT_MAP = {
 const std::unordered_map<Environment, std::string> ENVIRONMENT_STRING_MAP = {
     {Environment::OHOS, "ohos"},
     {Environment::GNU, "gnu"},
-    {Environment::GNU, "mingw32"},
     {Environment::ANDROID, "android"},
-    {Environment::SIMULATOR, "simulator"}, 
+    {Environment::SIMULATOR, "simulator"},
     {Environment::NOT_AVAILABLE, ""},
 };
 
