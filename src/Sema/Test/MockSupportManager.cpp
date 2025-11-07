@@ -1677,8 +1677,8 @@ void MockSupportManager::PrepareClassWithDefaults(ClassDecl& classDecl, Interfac
             accessorImplDecl->EnableAttr(Attribute::REDEF);
         } else {
             CJC_ASSERT(accessorImplDecl->TestAttr(Attribute::ABSTRACT));
-            accessorImplDecl->DisableAttr(Attribute::ABSTRACT);
         }
+        accessorImplDecl->DisableAttr(Attribute::ABSTRACT);
         accessorImplDecl->EnableAttr(Attribute::GENERATED_TO_MOCK);
 
         std::vector<OwnedPtr<FuncArg>> args;
