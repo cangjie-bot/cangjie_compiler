@@ -302,7 +302,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                         decl->symbol->isNeedExposedToInterop = true;
                     }
                     // For each memberDecl in decl
-                    for (auto& member : decl.GetMemberDecls()) {
+                    for (auto& member : decl->GetMemberDecls()) {
                         if (member->symbol) {
                             member->symbol->isNeedExposedToInterop = true;
                         }
@@ -316,7 +316,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                             if (element == decl->symbol->name) {
                                 decl->symbol->isNeedExposedToInterop = true;
                             }
-                            for (auto& member : decl.GetMemberDecls()) {
+                            for (auto& member : decl->GetMemberDecls()) {
                                 if (member->symbol &&
                                     ((!decl->symbol->isNeedExposedToInterop &&
                                             element ==
@@ -345,7 +345,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                             if (element == decl->symbol->name) {
                                 decl->symbol->isNeedExposedToInterop = false;
                             }
-                            for (auto& member : decl.GetMemberDecls()) {
+                            for (auto& member : decl->GetMemberDecls()) {
                                 if (member->symbol &&
                                     (!decl->symbol->isNeedExposedToInterop &&
                                         (element ==

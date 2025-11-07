@@ -487,7 +487,8 @@ private:
     void DesugarSuperMethodCall(CallExpr& call, ClassDecl& impl);
 
     void GenerateInJavaImpl(AST::ClassDecl* classDecl);
-    void GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl);
+    void GenerateForCJStructOrClassTypeMapping(const File &file, AST::Decl* decl,
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>>* declActualMap = nullptr);
     void GenerateForCJEnumMapping(AST::EnumDecl& enumDecl);
     void GenerateForCJExtendMapping(AST::ExtendDecl& extendDecl);
 
@@ -519,6 +520,7 @@ private:
      */
     void GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl);
     void GenerateNativeForCJInterfaceMapping(AST::ClassDecl& classDecl);
+    void GenerateForCJGenericTypeMapping(const File& file, AST::Decl* decl);
     void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl);
     OwnedPtr<FuncDecl> GenerateInterfaceFwdclassMethod(AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl);
     OwnedPtr<FuncDecl> GenerateInterfaceFwdclassDefaultMethod(

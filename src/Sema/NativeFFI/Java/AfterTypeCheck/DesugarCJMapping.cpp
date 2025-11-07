@@ -151,7 +151,7 @@ void JavaDesugarManager::GenerateForCJGenericTypeMapping(const File &file, AST::
 {
     std::unordered_map<std::string, std::vector<std::string>> symbolMap;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> declActualMap;
-    for (const auto& outerPait : file.curPackage->allowedInteropCJGenericInstantiations) {
+    for (const auto& outerPair : file.curPackage->allowedInteropCJGenericInstantiations) {
         const auto& innerMap = outerPair.second;
 
         for (const auto& innerPair : innerMap) {

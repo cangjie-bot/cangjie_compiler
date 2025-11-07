@@ -140,7 +140,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, 
         auto it = map.find(*actualType);
         if (it != map.end()) {
             PrimitiveTy newTy = PrimitiveTy(it->second);
-            retTy = Ptr(*newTy);
+            retTy = Ptr(&newTy);
         }
     } else {
         retTy = StaticCast<FuncTy*>(sampleMethod.ty)->retTy;
