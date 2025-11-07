@@ -253,7 +253,7 @@ private:
     bool IsIllegalStartDecimalPart(const char* pStart, const char* pEnd) const;
     void DiagUnexpectedDecimalPoint(const char* reasonPoint);
     void DiagExpectedDigit(const char base);
-    inline void DiagSmallExpectedDigit(const bool& hasDigit, const char base);
+    inline void DiagSmallExpectedDigit(bool hasDigit, char base);
     inline void CheckIllegalUTF8InStringLiteral(uint32_t byte);
     void CheckUnsecureUnicodeValue(const int32_t& ch);
     void DiagUnexpectedDigit(const int& base, const char* reasonPoint);
