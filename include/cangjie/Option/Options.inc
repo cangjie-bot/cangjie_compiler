@@ -223,32 +223,32 @@ PREDEFVALUE(mock_mode, {
 //////////////////////////////
 // Frontend Options: Frontend Group options only work when "-frontend" is enabled.
 OPTION("--dump-tokens", DUMP_TOKENS, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) },
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)},
     nullptr, {}, MULTIPLE_OCCURRENCE,
     "Print all of the tokens in one compile unit")
 OPTION("--dump-parse", DUMP_PARSE, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Print AST after parser")
 OPTION("--dump-ast", DUMP_AST, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Print AST after semantic analysis")
 OPTION("--dump-symbols", DUMP_SYMBOLS, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Print symbols after semantic analysis")
 OPTION("--dump-ir", DUMP_IR, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Print human readable IR")
 OPTION("--dump-bc", DUMP_BC, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Dump machine-readable LLVM bitcode")
 OPTION("--typecheck", TYPE_CHECK, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Parse and check type of input file(s)")
 OPTION("--dump-macro", DUMP_MACRO, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Dump tokens after macro expansion")
 OPTION("-d", COMPILE_CJD, FLAG, { BACKEND(ALL) },
-    { GROUP(FRONTEND) COMMA GROUP(STABLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
+    { GROUP(FRONTEND) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE)}, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Compile declaration file(s) (.cj.d)")
 
 OPTION("--diagnostic-format", DIAG_FORMAT, SEPARATED, { BACKEND(ALL) },
