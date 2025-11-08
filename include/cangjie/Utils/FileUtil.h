@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #ifdef _MSC_VER
@@ -31,6 +30,13 @@ struct IUnknown;
 #define access _access
 #else
 #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#ifdef RemoveDirectory
+// avoid conflicts between Windows API macros and Cangjie::FileUtil::RemoveDirectory
+#undef RemoveDirectory
+#endif
 #endif
 
 #include "cangjie/Basic/Print.h"
@@ -90,6 +96,13 @@ bool CheckCommandLineInjection(const std::string& cmd);
  * @return string with escaped backtick.
  */
 std::string TransferEscapeBacktick(const std::string& s);
+
+/**
+ * Recursively remove directory and its contents.
+ * @param dirPath target directory.
+ * @return true if directory removed successfully.
+ */
+bool RemoveDirectory(const std::string& dirPath);
 
 /**
  * Get file name from filePath.
