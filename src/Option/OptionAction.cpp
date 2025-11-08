@@ -89,7 +89,7 @@ const std::unordered_map<std::string, Environment> STRING_ENVIRONMENT_MAP = {
 const std::unordered_map<Environment, std::string> ENVIRONMENT_STRING_MAP = {
     {Environment::OHOS, "ohos"},
     {Environment::GNU, "gnu"},
-    {Environment::GNU, "mingw32"},
+    {Environment::GNU, "mingw32"}, // 怎么有两个 GNU ？？？
     {Environment::ANDROID, "android"},
     {Environment::SIMULATOR, "simulator"}, 
     {Environment::NOT_AVAILABLE, ""},
@@ -1045,7 +1045,7 @@ std::string Triple::Info::EnvironmentToString() const
 {
     if (auto search = ENVIRONMENT_STRING_MAP.find(env); search != ENVIRONMENT_STRING_MAP.end()) {
         if (env == Environment::ANDROID) {
-            return search->second + apiLevel;
+            return search->second + apiLevel; // 以后是否要删除apiLevel？？？
         }
         return search->second;
     } else {

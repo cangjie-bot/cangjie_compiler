@@ -125,7 +125,7 @@ enum class Vendor : uint8_t {
 
 enum class Environment : uint8_t {
     OHOS,
-    GNU,
+    GNU, // 确认这个是否属于env字段
     ANDROID,
     SIMULATOR,
     NOT_AVAILABLE,
