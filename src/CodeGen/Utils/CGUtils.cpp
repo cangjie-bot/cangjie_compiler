@@ -8,6 +8,7 @@
 
 #include <queue>
 #include <sstream>
+#include <cctype>
 
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/InstrTypes.h"
@@ -487,47 +488,45 @@ CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, ll
     return cgType;
 }
 
-bool NeedDumpIR(const GlobalOptions& options)
-{
-    return options.dumpAll || options.dumpIR;
-}
-
-bool NeedDumpIRToFile(const GlobalOptions& options)
-{
-    return (NeedDumpIR(options) && !options.dumpToScreen) || options.codegenDebugMode;
-}
-
-bool NeedDumpIRToScreen(const GlobalOptions& options)
-{
-    return NeedDumpIR(options) && options.dumpToScreen;
-}
-
 void ClearOldIRDumpFiles(const std::string& output, const std::string& pkgName)
 {
+    // Clear all previously dumped IR phase directories for the given package.
+    // New IR dumping now uses numbered directories with human-readable phase suffixes
+    // (e.g. 0_TranslateCHIRNode, 1_GenExtensionDefs, ... Final, Incre). Instead of a
+    // fixed maxSubDirNum heuristic we remove any matching directories under <pkg>_IR.
     std::string dumpDir;
     if (FileUtil::IsDir(output)) {
         dumpDir = FileUtil::JoinPath(output, pkgName + "_IR");
     } else {
         dumpDir = FileUtil::GetFileBase(output) + "_IR";
     }
-    std::string subName = "Incre";
-    std::string subDir = FileUtil::JoinPath(dumpDir, subName);
-    if (FileUtil::FileExist(subDir)) {
-        for (auto file : FileUtil::GetAllFilesUnderCurrentPath(subDir, "ll")) {
-            std::string fullPath = FileUtil::JoinPath(subDir, file);
-            (void)FileUtil::Remove(fullPath);
-        }
+    if (!FileUtil::FileExist(dumpDir)) {
+        return;
     }
-    size_t maxSubDirNum = 3; // assume it is same as in GenSubCHIRPackage
-    for (size_t i = 0; i <= maxSubDirNum; ++i) {
-        subName = std::to_string(i) + "_subModules";
-        subDir = FileUtil::JoinPath(dumpDir, subName);
-        if (FileUtil::FileExist(subDir)) {
-            for (auto file : FileUtil::GetAllFilesUnderCurrentPath(subDir, "ll")) {
-                std::string fullPath = FileUtil::JoinPath(subDir, file);
-                (void)FileUtil::Remove(fullPath);
-            }
+    // Collect subdirectories and remove the matching directories entirely.
+    auto directories = FileUtil::GetDirectories(dumpDir);
+    auto isPhaseDir = [](const std::string& name) -> bool {
+        // Accept directories that start with a digit and an underscore, or the special "Incre" directory.
+        if (name == "Incre") {
+            return true;
         }
+        if (name.empty() || !std::isdigit(static_cast<unsigned char>(name[0]))) {
+            return false;
+        }
+        // Must contain at least one underscore after leading number sequence.
+        auto pos = name.find('_');
+        return pos != std::string::npos && pos > 0; // ensure there's a numeric prefix.
+    };
+    for (const auto& directory : directories) {
+        const auto& subName = directory.name;
+        if (!isPhaseDir(subName)) {
+            continue; // leave unrelated directories (e.g. user-added) untouched.
+        }
+        std::string subDir = directory.path;
+        if (!FileUtil::FileExist(subDir)) {
+            continue;
+        }
+        (void)FileUtil::RemoveDirectory(subDir);
     }
 }
 
