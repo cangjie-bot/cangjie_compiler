@@ -50,7 +50,7 @@ private:
     }
     inline std::string GetEnv() const
     {
-        return triple.EnvironmentToString();
+        return triple.EnvironmentToSimpleString();
     }
     std::string GetOSType() const;
     inline std::string GetCJCVersion() const

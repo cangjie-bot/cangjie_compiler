@@ -125,6 +125,7 @@ const std::map<std::string, std::vector<std::string>> CONDITION_VALUES = {
         ENV_STR,
         {
             "",
+            "gnu",
             "ohos",
             "musl",
             "simulator",
@@ -257,12 +258,13 @@ bool ConditionalCompilationImpl::ConditionCheck(
             DiagKindRefactor::conditional_compilation_not_support_this_condition, begin, conditionStr);
         return false;
     }
-    // Check `arch`, `backend` and `os` condition value.
+    // Check `arch`, `env`, `backend` and `os` condition value.
     if (CONDITION_VALUES.count(conditionStr) > 0 && !Utils::In(right, CONDITION_VALUES.at(conditionStr))) {
         std::string supportedValues = "";
         for (const auto& it : CONDITION_VALUES.at(conditionStr)) {
             supportedValues += it + " ";
         }
+        supportedValues.pop_back();
         (void)ci->diag.DiagnoseRefactor(DiagKindRefactor::conditional_compilation_not_support_builtin_value, begin,
             conditionStr, right, supportedValues);
         return false;
@@ -382,7 +384,7 @@ bool ConditionalCompilationImpl::EvalUnaryExpr(const UnaryExpr& ue) const
     if (relatedInfo == "invaild") {
         return false;
     }
-    return relatedInfo != "1"; // 为啥是 != ？
+    return relatedInfo != "1"; // !debug or !test
 }
 
 bool ConditionalCompilationImpl::EvalRefExpr(const RefExpr& re) const
