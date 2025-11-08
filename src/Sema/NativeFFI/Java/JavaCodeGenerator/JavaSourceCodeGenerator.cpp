@@ -903,7 +903,7 @@ void JavaSourceCodeGenerator::AddInterfaceMethods()
                 methodSignature += isDefault ? ") {" : ");";
                 AddWithIndent(TAB, methodSignature);
                 if (isDefault) {
-                    std::string defaultCall = decl->identifier.Val() + JAVA_FWD_CLASS_SUFFIX + "." +
+                    std::string defaultCall = "return " + decl->identifier.Val() + JAVA_FWD_CLASS_SUFFIX + "." +
                         funcDecl.identifier.Val() + JAVA_INTERFACE_FWD_CLASS_DEFAULT_METHOD_SUFFIX + "(this";
                     auto params = GenerateParamLists(funcDecl.funcBody->paramLists, FuncParamToString);
                     if (params != "") {
