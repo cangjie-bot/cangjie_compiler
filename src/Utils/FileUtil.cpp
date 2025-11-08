@@ -173,6 +173,19 @@ std::string TransferEscapeBacktick(const std::string& s)
 #endif
 }
 
+void ClearDumpFilesOnce(const std::string& dir, const std::string& extension, bool& alreadyCleared)
+{
+    if (alreadyCleared) {
+        return;
+    }
+    if (FileExist(dir)) {
+        for (auto file : GetAllFilesUnderCurrentPath(dir, extension)) {
+            (void)Remove(JoinPath(dir, file));
+        }
+    }
+    alreadyCleared = true;
+}
+
 std::string GetFileName(const std::string& filePath)
 {
     std::string path = filePath;
