@@ -53,6 +53,7 @@ enum class CompileStage {
     MACRO_EXPAND,      /**< Expand macros. */
     AST_DIFF,          /**< Diff the AST to get incremental compilation scope. */
     SEMA,              /**< TypeCheck. */
+    LATE_MACRO_EXPAND, /**< Expand late macros. */
     DESUGAR_AFTER_SEMA,
     GENERIC_INSTANTIATION, /**< GenericInstantiation. */
     OVERFLOW_STRATEGY,     /**< Overflow strategy. */
@@ -104,7 +105,8 @@ private:
  */
 class CompilerInstance {
     friend class CompileStrategy;
-    friend class MacroExpansion;
+    friend class EarlyMacroExpansion;
+    friend class LateMacroExpansion;
     friend class MacroEvaluation;
     friend class TypeChecker;
     friend class GenericInstantiationManager;
@@ -163,6 +165,11 @@ public:
      * Perform macro expand.
      */
     virtual bool PerformMacroExpand();
+
+    /**
+     * Perform late macro expand.
+     */
+    virtual bool PerformLateMacroExpand();
 
     /**
      * Perform AST diff to get incremental compilation scope.
