@@ -7,7 +7,7 @@
 #ifndef CANGJIE_UGTYPEKIND_H
 #define CANGJIE_UGTYPEKIND_H
 
-#include <stdint.h>
+#include <cstdint>
 
 enum UGTypeKind {
     UG_CLASS = -128,
