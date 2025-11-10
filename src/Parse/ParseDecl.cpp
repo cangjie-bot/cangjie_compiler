@@ -846,7 +846,7 @@ void ParserImpl::CheckCJMappingAttr(Decl& decl) const
     if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
         if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
             decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
-        } 
+        }
     }
 }
 

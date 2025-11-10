@@ -980,7 +980,12 @@ std::vector<std::string> ObjCGenerator::ConvertParamsListToCallableParamsString(
     if (!paramLists.empty() && paramLists[0]) {
         for (size_t i = 0; i < paramLists[0]->params.size(); i++) {
             OwnedPtr<FuncParam>& cur = paramLists[0]->params[i];
-            std::string name = GenerateArgumentCast(*cur->ty, cur->identifier.Val());
+            auto name = cur->identifier.Val();
+            if (ctx.typeMapper.IsObjCCJMapping(*cur->ty)) {
+                name += ".";
+                name += SELF_WEAKLINK_NAME;
+            }
+            name = GenerateArgumentCast(*cur->ty, std::move(name));
             result.push_back(std::move(name));
         }
     }
