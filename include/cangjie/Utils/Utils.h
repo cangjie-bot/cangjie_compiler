@@ -83,7 +83,8 @@ inline std::string FillZero(int num, int len)
 }
 
 /* Get Mangled name for wrapper function of macro. */
-std::string GetMacroFuncName(const std::string& fullPackageName, bool isAttr, const std::string& ident);
+std::string GetMacroFuncName(const std::string& fullPackageName, bool isAttr, const std::string& ident,
+    const std::string& externPrefix = MC_INPUT_TOKENS);
 
 /**
  * Trim from left.

@@ -25,34 +25,6 @@ using namespace Cangjie;
 using namespace AST;
 
 namespace {
-
-bool HasNoMacros(const MacroCollector& mc)
-{
-    return mc.macroDefFuncs.empty() && mc.macCalls.empty();
-}
-
-bool HasNoMacroCalls(const std::vector<MacroCall>& macCalls)
-{
-    return macCalls.empty();
-}
-
-bool HasDefAndCallInSamePkg(const MacroCollector& macroCollector, DiagnosticEngine& diag)
-{
-    // macro-def and macro-call can't be in the same package.
-    bool ret = false;
-    std::unordered_set<std::string> s1;
-    for (auto fd : macroCollector.macroDefFuncs) {
-        (void)s1.insert(fd->identifier);
-    }
-    for (auto call : macroCollector.macCalls) {
-        if (s1.find(call.GetFullName()) != s1.end()) {
-            ret = true;
-            (void)diag.Diagnose(call.GetBeginPos(), DiagKind::macro_unexpect_def_and_call_in_same_pkg);
-        }
-    }
-    return ret;
-}
-
 bool HasMacroCallInNode(const OwnedPtr<Node>& node, DiagnosticEngine& diag)
 {
     bool hasMacroCall = false;
