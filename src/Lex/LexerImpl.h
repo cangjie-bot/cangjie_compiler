@@ -313,6 +313,8 @@ private:
         tokenMap["false"] = TokenKind::BOOL_LITERAL;
         auto ftrIndex = static_cast<unsigned char>(TokenKind::FEATURES);
         tokenMap[TOKENS[ftrIndex]] = TokenKind::FEATURES;
+        auto lateIndex = static_cast<unsigned char>(TokenKind::LATE);
+        tokenMap[TOKENS[lateIndex]] = TokenKind::LATE;
     }
     void Back();
     bool IsCharOrString() const;

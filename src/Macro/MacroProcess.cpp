@@ -432,12 +432,14 @@ void MacroEvaluation::ProcessNewTokens(MacroCall& macCall)
     // Append line comment, "/* 7.1 */".
     auto subline = 1;
     auto mcline = std::to_string(macCall.GetBeginPos().line);
-    auto comment = "/* " + mcline + "." + std::to_string(subline) + " */";
-    (void)pInvocation->newTokens.emplace_back(
-        TokenKind::COMMENT, comment, macCall.GetBeginPos(), macCall.GetEndPos(), true);
+    if (!macCall.genLateMacro) {
+        auto comment = "/* " + mcline + "." + std::to_string(subline) + " */";
+        (void)pInvocation->newTokens.emplace_back(
+            TokenKind::COMMENT, comment, macCall.GetBeginPos(), macCall.GetEndPos(), true);
+    }
     for (const auto& tk : std::as_const(retTokens)) {
         ProcessCombinedToken(pInvocation->newTokens, tk, ci->diag);
-        if (tk.kind == TokenKind::NL) {
+        if (tk.kind == TokenKind::NL && !macCall.genLateMacro) {
             subline++;
             auto lineComment = "/* " + mcline + "." + std::to_string(subline) + " */";
             auto pos = Position{tk.Begin().fileID, tk.Begin().line + 1, 1};
@@ -467,15 +469,19 @@ void MacroEvaluation::ProcessNewTokens(MacroCall& macCall)
                 pInvocation->newTokens.back().Begin() + 1, true));
         }
     }
-    pInvocation->newTokensStr = ConvertTokensToString(pInvocation->newTokens, macCall.GetBeginPos().column);
+    if (macCall.genLateMacro) {
+        pInvocation->newTokensStr = ConvertTokensToString(pInvocation->newTokens, macCall.GetBeginPos().column, false);
+    } else {
+        pInvocation->newTokensStr = ConvertTokensToString(pInvocation->newTokens, macCall.GetBeginPos().column);
+    }
     vecOfGeneratedCodes.push_back(pInvocation->newTokensStr);
 }
 
 std::string MacroEvaluation::ConvertTokensToString(
-    const TokenVector& tokens, int offset)
+    const TokenVector& tokens, int offset, bool hasComment)
 {
     MacroFormatter formatter = MacroFormatter(tokens, escapePosVec, offset);
-    return formatter.Produce();
+    return formatter.Produce(hasComment);
 }
 
 /**
@@ -509,6 +515,13 @@ void MacroExpansion::ProcessMacros(Package& package)
             continue;
         }
         file->macroCallFilePath = file->filePath + ".macrocall";
+        std::string suffix = ".macrocall";
+        if (file->filePath.length() >= suffix.length() &&
+            file->filePath.compare(file->filePath.length() - suffix.length(), suffix.length(), suffix) == 0) {
+            file->macroCallFilePath = file->filePath.substr(0, file->filePath.length() - suffix.length()) + ".latemacrocall"; // already is macrocall file
+        } else {
+            file->macroCallFilePath = file->filePath + ".macrocall";
+        }
         if (foundSucMacroMap.find(file.get()) == foundSucMacroMap.end() &&
             (ci->invocation.globalOptions.enableMacroInLSP || ci->invocation.globalOptions.enableMacroDebug)) {
             RemoveMacroCallFile(*file);

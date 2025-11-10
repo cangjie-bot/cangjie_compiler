@@ -591,10 +591,11 @@ struct DiscardedHelper {
         };
 
         auto unitifyBlock = [&isUnitExpr, &isNothingExpr](Block& b) -> void {
-            if (b.body.empty() || (b.body.back() &&
-                (!isUnitExpr(*b.body.back())) &&
-                (!isNothingExpr(*b.body.back())))) {
-                b.body.push_back(CreateUnitExpr());
+            if (b.body.empty() ||
+                (b.body.back() && (!isUnitExpr(*b.body.back())) && (!isNothingExpr(*b.body.back())))) {
+                auto unitExpr = CreateUnitExpr();
+                unitExpr->EnableAttr(Attribute::COMPILER_ADD);
+                b.body.push_back(std::move(unitExpr));
             }
         };
 
