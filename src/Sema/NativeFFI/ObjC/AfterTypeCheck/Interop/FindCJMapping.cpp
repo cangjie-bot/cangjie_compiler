@@ -24,6 +24,9 @@ void FindCJMapping::HandleImpl(InteropContext& ctx)
             if (ctx.typeMapper.IsObjCCJMapping(*decl)) {
                 ctx.cjMappings.emplace_back(decl);
             }
+            if (auto enumDecl = As<ASTKind::ENUM_DECL>(decl); enumDecl && ctx.typeMapper.IsObjCCJMapping(*enumDecl)) {
+                ctx.cjMappings.emplace_back(enumDecl);
+            }
         }
     }
 }
