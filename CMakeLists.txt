@@ -329,6 +329,11 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
                 runtime/lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH} # LIBRARY includes shared libraries except DLLs.
     )
     install(TARGETS boundscheck-static DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH})
+    install(
+        FILES lib/libboundscheck${CMAKE_SHARED_LIBRARY_SUFFIX}
+        DESTINATION lib/${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND}${SANITIZER_SUBPATH}
+        RENAME libsecurec${CMAKE_SHARED_LIBRARY_SUFFIX}
+    )
     if(WIN32 AND CANGJIE_BUILD_CJDB)
         install(TARGETS boundscheck RUNTIME DESTINATION third_party/llvm/bin)
     endif()
