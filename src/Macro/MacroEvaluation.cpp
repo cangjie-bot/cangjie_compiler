@@ -152,7 +152,10 @@ bool HasChildMacroCall(MacroCall& macCall)
 {
     for (auto mc : macCall.children) {
         auto pInvocation = mc->GetInvocation();
-        if (pInvocation && !pInvocation->isCustom) {
+        if (mc->status == MacroEvalStatus::LATE || mc->genLateMacro) {
+            macCall.genLateMacro = true;
+        }
+        if (pInvocation && !pInvocation->isCustom && mc->status != MacroEvalStatus::LATE) {
             return true;
         }
     }
@@ -230,7 +233,9 @@ void RefreshMacroCallArgs(MacroCall& macCall, DiagnosticEngine& diag)
 {
     auto pInvocation = macCall.GetInvocation();
     TokenVector tokensAfterEval;
-    if (macCall.status == MacroEvalStatus::ANNOTATION) {
+    TokenVector lateMacroArgs;
+    bool addAnnotation = macCall.status == MacroEvalStatus::ANNOTATION || macCall.status == MacroEvalStatus::LATE;
+    if (addAnnotation) {
         // Add @annotation[a,b] tokens.
         size_t atTokenSize{1};
         if (pInvocation->isCompileTimeVisible) {
@@ -264,7 +269,7 @@ void RefreshMacroCallArgs(MacroCall& macCall, DiagnosticEngine& diag)
             }
         }
     }
-    if (macCall.status == MacroEvalStatus::ANNOTATION && pInvocation->hasParenthesis && !pInvocation->nodes.empty()) {
+    if (addAnnotation && pInvocation->hasParenthesis && !pInvocation->nodes.empty()) {
         (void)tokensAfterEval.emplace_back(
             Token(TokenKind::LPAREN, "(", pInvocation->leftParenPos, pInvocation->leftParenPos + 1));
     }
@@ -272,12 +277,16 @@ void RefreshMacroCallArgs(MacroCall& macCall, DiagnosticEngine& diag)
         if (node->astKind == ASTKind::TOKEN_PART) {
             auto tp = RawStaticCast<TokenPart*>(node.get());
             (void)tokensAfterEval.insert(tokensAfterEval.end(), tp->tokens.begin(), tp->tokens.end());
+            (void)lateMacroArgs.insert(
+                lateMacroArgs.end(), tp->tokens.begin(), tp->tokens.end());
         } else {
             auto pInv = node->GetInvocation();
             (void)tokensAfterEval.insert(tokensAfterEval.end(), pInv->newTokens.begin(), pInv->newTokens.end());
+            (void)lateMacroArgs.insert(
+                lateMacroArgs.end(), pInv->newTokens.begin(), pInv->newTokens.end());
         }
     }
-    if (macCall.status == MacroEvalStatus::ANNOTATION && pInvocation->hasParenthesis && !pInvocation->nodes.empty()) {
+    if (addAnnotation && pInvocation->hasParenthesis && !pInvocation->nodes.empty()) {
         (void)tokensAfterEval.emplace_back(
             Token(TokenKind::RPAREN, ")", pInvocation->rightParenPos, pInvocation->rightParenPos + 1));
     }
@@ -288,6 +297,14 @@ void RefreshMacroCallArgs(MacroCall& macCall, DiagnosticEngine& diag)
     }
     if (macCall.status == MacroEvalStatus::REEVAL || macCall.status == MacroEvalStatus::ANNOTATION) {
         pInvocation->newTokens.assign(tokensAfterEval.begin(), tokensAfterEval.end());
+        macCall.status = MacroEvalStatus::SUCCESS;
+        return;
+    }
+    if (macCall.status == MacroEvalStatus::LATE) {
+        pInvocation->newTokens.assign(tokensAfterEval.begin(), tokensAfterEval.end());
+        pInvocation->args.assign(lateMacroArgs.begin(), lateMacroArgs.end());
+        pInvocation->decl = nullptr;
+        macCall.genLateMacro = true;
         macCall.status = MacroEvalStatus::SUCCESS;
         return;
     }
@@ -370,7 +387,7 @@ bool IsMacroCallReadyForEval(MacroCall& macCall, DiagnosticEngine& diag, bool co
         return false;
     }
     if (macCall.status == MacroEvalStatus::INIT || macCall.status == MacroEvalStatus::REEVAL ||
-        macCall.status == MacroEvalStatus::ANNOTATION) {
+        macCall.status == MacroEvalStatus::ANNOTATION || macCall.status == MacroEvalStatus::LATE) {
         size_t sucCnt = 0;
         for (auto& mc : macCall.children) {
             if (mc->status == MacroEvalStatus::SUCCESS) {
@@ -708,10 +725,20 @@ bool MacroEvaluation::NeedCreateMacroCallTree(MacroCall& macCall, bool reEval)
         if (macCall.status == MacroEvalStatus::REEVALFAILED) {
             return false;
         }
+        if (!isLateMacro && macCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
+            macCall.status = MacroEvalStatus::LATE;
+        }
         return true;
     }
     if (macCall.ResolveMacroCall(ci)) {
         SaveUsedMacros(macCall);
+        if (!isLateMacro && macCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
+            macCall.status = MacroEvalStatus::LATE;
+        }
+        if (isLateMacro && !macCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
+            macCall.status = MacroEvalStatus::FAIL;
+            return false;
+        }
         CheckDeprecatedMacrosUsage(macCall);
         // Find macrodef and check attr.
         if (!CheckAttrTokens(pInvocation->attrs, macCall)) {
@@ -746,7 +773,11 @@ void MacroEvaluation::CreateMacroCallTree(MacroCall& macCall, bool reEval)
     }
     auto pInvocation = macCall.GetInvocation();
     pInvocation->nodes.clear();
-    auto& inputTokens = reEval ? pInvocation->newTokens : pInvocation->args;
+    std::vector<Token> inputTokens = pInvocation->args;
+    // if late macro expanded in early macro expansion, reEval inputTokens is in args not in newTokens.
+    if (reEval && macCall.status != MacroEvalStatus::LATE) {
+        inputTokens = pInvocation->newTokens;
+    }
     if (!PreprocessTokens(inputTokens, escapePosVec)) {
         (void)ci->diag.Diagnose(inputTokens[0].Begin(), DiagKind::macro_expand_invalid_escape);
         return;
@@ -804,11 +835,59 @@ void MacroEvaluation::CreateMacroCallTree(MacroCall& macCall, bool reEval)
             (void)pMacroCalls.emplace_back(&macCall); // For evaluate.
             return;
         }
+        if (macCall.status == MacroEvalStatus::LATE) {
+            macCall.status = reEval ? MacroEvalStatus::FINISH : MacroEvalStatus::LATE;
+            return;
+        }
         macCall.status = reEval ? MacroEvalStatus::FINISH : MacroEvalStatus::READY;
     }
     if (!macCall.isForInterpolation && macCall.status != MacroEvalStatus::FAIL &&
         macCall.status != MacroEvalStatus::FINISH) {
         (void)pMacroCalls.emplace_back(&macCall); // For evaluate.
+    }
+}
+
+void PrintMacroCallsTree(MacroCall& macCall, const std::string& prefix)
+{
+    std::string statusStr;
+    switch (macCall.status) {
+        case MacroEvalStatus::INIT:
+            statusStr = "INIT";
+            break;
+        case MacroEvalStatus::READY:
+            statusStr = "READY";
+            break;
+        case MacroEvalStatus::EVAL:
+            statusStr = "EVAL";
+            break;
+        case MacroEvalStatus::SUCCESS:
+            statusStr = "SUCCESS";
+            break;
+        case MacroEvalStatus::FAIL:
+            statusStr = "FAIL";
+            break;
+        case MacroEvalStatus::REEVAL:
+            statusStr = "REEVAL";
+            break;
+        case MacroEvalStatus::REEVALFAILED:
+            statusStr = "REEVALFAILED";
+            break;
+        case MacroEvalStatus::ANNOTATION:
+            statusStr = "ANNOTATION";
+            break;
+        case MacroEvalStatus::LATE:
+            statusStr = "LATE";
+            break;
+        case MacroEvalStatus::FINISH:
+            statusStr = "FINISH";
+            break;
+        default:
+            statusStr = "UNKNOWN";
+            break;
+    }
+    std::cout << prefix << macCall.GetFullName() << "(" + statusStr + ")\n";
+    for (auto& childMacCall : macCall.children) {
+        PrintMacroCallsTree(*childMacCall, prefix + "  ");
     }
 }
 
@@ -820,6 +899,7 @@ void MacroEvaluation::CreateMacroCallsTree(bool reEval)
             continue;
         }
         CreateMacroCallTree(macCall, reEval);
+        PrintMacroCallsTree(macCall, "");
     }
 }
 

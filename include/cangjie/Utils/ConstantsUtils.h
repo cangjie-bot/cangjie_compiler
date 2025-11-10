@@ -93,6 +93,13 @@ inline const int MACRO_ATTR_ARGS = 2;
 inline const std::string MACRO_OBJECT_NAME = "MACRO_OBJECT";
 constexpr std::string_view IF_AVAILABLE = "IfAvailable";
 
+// Late Macro
+inline const std::string MC_INPUT_DECL = "Decl";
+inline const std::string MC_INPUT_EXPR = "Expr";
+inline const std::string MC_INPUT_TOKENS = "Tokens";
+inline const std::string MC_GEN_DECL = "genDeclFromBytes";
+inline const std::string MC_GEN_EXPR = "genExprFromBytes";
+
 // Standard library package name
 // Please do not change the const char[] type to std::string type because the initialization order of
 // std::string and std::map types across translation units is undefined,especially on the Windows platform.

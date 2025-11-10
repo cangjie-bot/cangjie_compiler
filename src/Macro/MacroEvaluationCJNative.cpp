@@ -12,6 +12,7 @@
 
 #include "cangjie/Macro/MacroEvaluation.h"
 #include "cangjie/Macro/TokenSerialization.h"
+#include "cangjie/Macro/NodeSerialization.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -58,8 +59,20 @@ HANDLE InvokeMacroFunc(HANDLE mc)
     auto pMacCall = static_cast<MacroCall*>(mc);
     auto pInvocation = pMacCall->GetInvocation();
     auto attrTksBytes = TokenSerialization::GetTokensBytes(pInvocation->attrs);
-    auto inputTksBytes = TokenSerialization::GetTokensBytes(pInvocation->args);
-
+    std::vector<uint8_t> inputTksBytes;
+    /* if (pMacCall->definition->TestAttr(Attribute::LATE_MACRO)) {
+        CJC_ASSERT(pInvocation->decl != nullptr || pInvocation->expr != nullptr);
+        if (pInvocation->decl != nullptr) {
+            NodeSerialization::NodeWriter nodeWriter(pInvocation->decl);
+            inputTksBytes = nodeWriter.ExportByteVector();
+        } else {
+            NodeSerialization::NodeWriter nodeWriter(pInvocation->expr);
+            inputTksBytes = nodeWriter.ExportByteVector();
+        }
+    } else {
+        inputTksBytes = TokenSerialization::GetTokensBytes(pInvocation->args);
+    } */
+    inputTksBytes = TokenSerialization::GetTokensBytes(pInvocation->args);
     uint8_t* retBuffer{nullptr};
     if (pInvocation->hasAttr) {
         auto attrMacroFunc = reinterpret_cast<AttrFuncPtrT>(pMacCall->invokeFunc);
