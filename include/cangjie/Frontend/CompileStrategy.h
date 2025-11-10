@@ -47,6 +47,7 @@ public:
     void DesugarAfterSema() const;
     bool ImportPackages() const;
     bool MacroExpand() const;
+    bool LateMacroExpand() const;
     virtual bool Sema() = 0;
     bool OverflowStrategy() const;
     StrategyType type{StrategyType::DEFAULT};

@@ -201,6 +201,8 @@ OwnedPtr<MacroDecl> ParserImpl::ParseMacroDecl(
 
 void ParserImpl::CheckMacroParamType(AST::Type& type, bool isReturnTy)
 {
+    // to be impletement
+    return;
     if (auto ref = AST::As<ASTKind::REF_TYPE>(&type); ref && ref->ref.identifier == "Tokens") {
         return;
     }
