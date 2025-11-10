@@ -783,6 +783,16 @@ struct ASTHasherImpl {
         SUPERHash<whatTypeToHash>(expr.GetArg(), expr.GetLambda1(), expr.GetLambda2());
     }
 
+    template <int whatTypeToHash> void HashMacroExpandExpr(const MacroExpandExpr& mee)
+    {
+        HashExpr<whatTypeToHash>(mee);
+    }
+
+    template <int whatTypeToHash> void HashMacroExpandDecl(const MacroExpandDecl& med)
+    {
+        HashDecl<whatTypeToHash>(med);
+    }
+
     template <int whatTypeToHash> hash_type Hash(Ptr<const AST::Node> node)
     {
         if (node == nullptr) {

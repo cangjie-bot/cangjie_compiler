@@ -710,6 +710,15 @@ std::vector<Ptr<Decl>> Node::GetTargets() const
     }
 }
 
+std::string MacroDecl::GetInputTypeName()
+{
+    bool isAttr = funcBody->paramLists.front()->params.size() == 2;
+    auto &type = funcBody->paramLists.front()->params[isAttr ? 1 : 0]->type;
+    if (auto refType = DynamicCast<RefType*>(type.get()); refType) {
+        return refType->ref.identifier.Val();
+    }
+    return "";
+}
 /**
  * Get a MacroInvocation ptr.
  * @return MacroInvocation ptr if a node is MacroExpandExpr or MacroExpandDecl,

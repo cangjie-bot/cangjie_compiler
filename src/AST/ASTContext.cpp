@@ -62,6 +62,12 @@ void ASTContext::Reset()
     SymbolApi::ResetID();
     symbolTable.clear();
     invertedIndex.Reset();
+    declMap.clear();
+    typeCheckCache.clear();
+    typeToAutoBoxedDeclMap.clear();
+    typeToAutoBoxedDeclBaseMap.clear();
+    varDeclToVarWithPatternDeclMap.clear();
+    enumConstructors.clear();
 }
 
 std::string ASTContext::GetPackageName(Ptr<Node> node)

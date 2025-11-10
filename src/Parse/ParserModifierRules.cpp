@@ -37,6 +37,7 @@ static const std::unordered_map<TokenKind, AST::Attribute> TK2ATTRMAP = {
     {TokenKind::UNSAFE, AST::Attribute::UNSAFE},
     {TokenKind::MUT, AST::Attribute::MUT},
     {TokenKind::OPERATOR, AST::Attribute::OPERATOR},
+    {TokenKind::LATE, AST::Attribute::LATE_MACRO},
 };
 } // namespace
 
@@ -142,6 +143,7 @@ const static std::unordered_map<TokenKind, std::vector<TokenKind>> TOPLEVEL_FUNC
 
 const static std::unordered_map<TokenKind, std::vector<TokenKind>> TOPLEVEL_MACRODECL_MODIFIERS = {
     ACCESSIBLE_MODIFIERS
+    {TokenKind::LATE, {}},
 };
 
 const static std::unordered_map<TokenKind, std::vector<TokenKind>> TOPLEVEL_MAINDECL_MODIFIERS = {
