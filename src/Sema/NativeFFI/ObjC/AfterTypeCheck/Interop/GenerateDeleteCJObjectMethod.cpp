@@ -23,7 +23,8 @@ void GenerateDeleteCJObjectMethod::HandleImpl(InteropContext& ctx)
             return;
         }
         bool forOneWayMapping = false;
-        forOneWayMapping = this->interopType == InteropType::CJ_Mapping && As<ASTKind::STRUCT_DECL>(&decl);
+        forOneWayMapping = this->interopType == InteropType::CJ_Mapping &&
+            (As<ASTKind::STRUCT_DECL>(&decl) || As<ASTKind::ENUM_DECL>(&decl));
         auto deleteCjObject = ctx.factory.CreateDeleteCjObject(decl, forOneWayMapping);
         CJC_ASSERT(deleteCjObject);
         ctx.genDecls.emplace_back(std::move(deleteCjObject));

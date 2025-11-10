@@ -114,6 +114,9 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
         case TypeKind::TYPE_POINTER:
             return Cj2ObjCForObjC(*from.typeArgs[0]) + "*";
         case TypeKind::TYPE_ENUM:
+            if (IsObjCCJMapping(from)) {
+                return from.name + "*";
+            }
             if (!from.IsCoreOptionType()) {
                 CJC_ABORT();
                 return UNSUPPORTED_TYPE;
@@ -299,6 +302,10 @@ bool TypeMapper::IsObjCCJMapping(const Decl& decl)
 
 bool TypeMapper::IsObjCCJMapping(const Ty& ty)
 {
-    auto structTy = DynamicCast<StructTy*>(&ty);
-    return structTy && structTy->decl && IsObjCCJMapping(*structTy->decl);
+    if (auto structTy = DynamicCast<StructTy*>(&ty)) {
+        return structTy->decl && IsObjCCJMapping(*structTy->decl);
+    } else if (auto enumTy = DynamicCast<EnumTy*>(&ty)) {
+        return enumTy->decl && IsObjCCJMapping(*enumTy->decl);
+    }
+    return false;
 }
