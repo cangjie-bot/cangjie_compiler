@@ -76,7 +76,10 @@ public:
     {
     }
     uint8_t* ExportNode(); // uint8_t* -> unsafePtr in CangJie
+
+    std::vector<uint8_t> ExportByteVector();
 private:
+    void DoSerialize();
     std::vector<uint8_t> bufferData;
     Ptr<AST::Node> nodePtr = nullptr; // nodePtr is the AST node to be serialized
     flatbuffers::Offset<NodeFormat::DeclBase> emptyDeclBase = flatbuffers::Offset<NodeFormat::DeclBase>();
