@@ -161,6 +161,9 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
             }
             return UNSUPPORTED_TYPE;
         case TypeKind::TYPE_INTERFACE:
+            if (IsObjCId(from)) {
+                return "id";
+            }
             if (IsObjCMirror(from)) {
                 return "id<" + from.name + ">";
             }
