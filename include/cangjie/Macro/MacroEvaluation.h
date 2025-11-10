@@ -44,10 +44,11 @@
 namespace Cangjie {
 class MacroEvaluation {
 public:
-    MacroEvaluation(CompilerInstance* cIns, MacroCollector* mc, bool useChildProcess)
+    MacroEvaluation(CompilerInstance* cIns, MacroCollector* mc, bool useChildProcess, bool isLateMacro = false)
         : ci(cIns),
           macroCollector(mc),
-          useChildProcess(useChildProcess)
+          useChildProcess(useChildProcess),
+          isLateMacro(isLateMacro)
     {
         InitThreadNum();
         if (useChildProcess) {
@@ -78,7 +79,7 @@ public:
      * @param offset Indentation in file.
      * @return std::string results after converting.
      */
-    std::string ConvertTokensToString(const TokenVector& tokens, int offset = 1);
+    std::string ConvertTokensToString(const TokenVector& tokens, int offset = 1, bool hasComment = true);
 
     // Begin: for process isolation in lsp.
     void CreateMacroSrvProcess();
@@ -99,6 +100,7 @@ private:
     bool enableParallelMacro{false};
     std::unordered_map<std::string, bool> usedMacroPkgs;    // for compiled macro
     bool useChildProcess{false};
+    bool isLateMacro{false};
 
     // Begin: for process isolation in lsp.
     static MacroEvalMsgSerializer msgSlzer;
@@ -128,12 +130,12 @@ private:
     bool FindDef(const std::vector<uint8_t>& msg) const; // find macro libs and opene lib handles in macro srv
     bool EvalMacroCall(std::vector<uint8_t>& msg); // EvalMacroCall in macro srv
     void ResetForNextEval();
-    // End: for process isolation in isolation lsp.
+    // End: for process isolation in isolation lsp. late macro always enable parallel.
     void InitThreadNum()
     {
         // Maxnum of threads: half of hardware_concurrency.
         threadNum = std::thread::hardware_concurrency() / 2;
-        if (ci->invocation.globalOptions.enableParallelMacro && threadNum > 1) {
+        if ((ci->invocation.globalOptions.enableParallelMacro || isLateMacro) && threadNum > 1) {
             isThreadUseds.resize(threadNum, false);
             enableParallelMacro = true;
         }

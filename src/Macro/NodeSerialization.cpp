@@ -14,6 +14,7 @@
 
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Node.h"
+#include "cangjie/AST/Symbol.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/Basic/Match.h"
 #include "cangjie/Basic/Print.h"
@@ -1111,7 +1112,7 @@ flatbuffers::Offset<NodeFormat::MacroInvocation> NodeWriter::MacroInvocationCrea
         isCompileTimeVisible);
 }
 
-uint8_t* NodeWriter::ExportNode()
+void NodeWriter::DoSerialize()
 {
     // Match the nodePtr to Expr or Decl.
     match (*nodePtr)(
@@ -1171,6 +1172,10 @@ uint8_t* NodeWriter::ExportNode()
     (void)std::copy(pBufferSize, pBufferSize + sizeof(uint32_t), bufferData.begin());
     (void)std::copy(
         buf, buf + static_cast<size_t>(length), bufferData.begin() + static_cast<int32_t>(sizeof(uint32_t)));
+}
+uint8_t* NodeWriter::ExportNode()
+{
+    DoSerialize();
     uint8_t* rawPtr = (uint8_t*)malloc(bufferData.size());
     if (rawPtr == nullptr) {
         Errorln("Memory Allocation Failed.");
@@ -1179,3 +1184,9 @@ uint8_t* NodeWriter::ExportNode()
     (void)std::copy_n(bufferData.begin(), bufferData.size(), rawPtr);
     return rawPtr;
 }
+
+std::vector<uint8_t> NodeWriter::ExportByteVector() {
+    DoSerialize();
+    return bufferData;
+}
+
