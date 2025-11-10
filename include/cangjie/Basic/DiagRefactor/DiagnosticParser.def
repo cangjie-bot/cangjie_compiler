@@ -105,6 +105,8 @@ ERROR(parse_macro_expected_right_parameter_nums, "too many parameters in macro d
     "too many parameters here")
 ERROR(parse_macro_illegal_param_type, "macro declaration's parameter type must be 'Tokens'",
     "expected 'Tokens' here")
+ERROR(parse_macro_illegal_param_type, "late macro declaration's parameter type must be 'Decl' or 'Expr'",
+    "expected 'Decl' or 'Expr' here")
 ERROR(parse_macro_illegal_ret_type, "macro declaration's return type must be 'Tokens'",
     "expected 'Tokens' here, got '%s'")
 ERROR(parse_macro_illegal_named_param, "cannot use named parameter in macro declaration", "unexpected '!' here", {

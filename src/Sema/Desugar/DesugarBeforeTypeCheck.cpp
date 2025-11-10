@@ -591,9 +591,9 @@ struct DiscardedHelper {
         };
 
         auto unitifyBlock = [&isUnitExpr, &isNothingExpr](Block& b) -> void {
-            if (b.body.empty() || (b.body.back() &&
-                (!isUnitExpr(*b.body.back())) &&
-                (!isNothingExpr(*b.body.back())))) {
+            if (b.body.empty() ||
+                (b.body.back() && (!isUnitExpr(*b.body.back())) && (!isNothingExpr(*b.body.back())))) {
+                unitExpr->EnableAttr(Attribute::COMPILER_ADD);
                 b.body.push_back(CreateUnitExpr());
             }
         };
