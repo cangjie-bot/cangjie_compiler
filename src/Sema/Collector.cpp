@@ -402,9 +402,7 @@ void Collector::CollectMacroExpandDecl(ASTContext& ctx, MacroExpandDecl& med, bo
     AddSymbol(ctx, nodeInfo, buildTrie);
     if (med.invocation.decl) {
         WalkMacroCall(med, med.invocation.decl);
-        scopeManager.InitializeScope(ctx);
         BuildSymbolTable(ctx, med.invocation.decl.get(), buildTrie);
-        scopeManager.FinalizeScope(ctx);
     }
 }
 
@@ -414,9 +412,7 @@ void Collector::CollectMacroExpandExpr(ASTContext& ctx, MacroExpandExpr& mee, bo
     AddSymbol(ctx, nodeInfo, buildTrie);
     if (mee.invocation.decl) {
         WalkMacroCall(mee, mee.invocation.decl);
-        scopeManager.InitializeScope(ctx);
         BuildSymbolTable(ctx, mee.invocation.decl.get(), buildTrie);
-        scopeManager.FinalizeScope(ctx);
     }
 }
 

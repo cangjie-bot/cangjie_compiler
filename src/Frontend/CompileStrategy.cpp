@@ -17,6 +17,8 @@
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/ConditionalCompilation/ConditionalCompilation.h"
 #include "cangjie/Frontend/CompilerInstance.h"
+#include "cangjie/Macro/EarlyMacroExpansion.h"
+#include "cangjie/Macro/LateMacroExpansion.h"
 #include "cangjie/Macro/MacroExpansion.h"
 #include "cangjie/Parse/Parser.h"
 #if defined(CMAKE_ENABLE_ASSERT) || !defined(NDEBUG)
@@ -470,7 +472,7 @@ void CompileStrategy::ParseAndMergeCjds() const
 bool CompileStrategy::MacroExpand() const
 {
     auto beforeErrCnt = ci->diag.GetErrorCount();
-    MacroExpansion me(ci);
+    EarlyMacroExpansion me(ci);
     me.Execute(ci->srcPkgs);
     ci->diag.EmitCategoryDiagnostics(DiagCategory::PARSE);
 
@@ -483,6 +485,18 @@ bool CompileStrategy::MacroExpand() const
     ci->tokensEvalInMacro = me.tokensEvalInMacro;
     bool hasNoMacroErr = beforeErrCnt == ci->diag.GetErrorCount();
     return hasNoMacroErr;
+}
+
+bool CompileStrategy::LateMacroExpand() const
+{
+    auto beforeErrCnt = ci->diag.GetErrorCount();
+    LateMacroExpansion me(ci);
+    // disable warning when expand late macro, for warning will duplicate
+    ci->diag.SetDisableWarning(true); 
+    me.Execute(ci->srcPkgs);
+    ci->diag.EmitCategoryDiagnostics(DiagCategory::PARSE);
+    ci->diag.SetDisableWarning(false);
+    return beforeErrCnt == ci->diag.GetErrorCount();
 }
 
 bool FullCompileStrategy::Sema()

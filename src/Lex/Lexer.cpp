@@ -47,7 +47,7 @@ const std::vector<TokenKind>& GetContextualKeyword()
 {
     static const std::vector<TokenKind> CONTEXTUAL_KEYWORD_TOKEN = {TokenKind::PUBLIC, TokenKind::PRIVATE,
         TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::OVERRIDE, TokenKind::REDEF, TokenKind::ABSTRACT,
-        TokenKind::SEALED, TokenKind::OPEN, TokenKind::COMMON, TokenKind::PLATFORM, TokenKind::FEATURES};
+        TokenKind::SEALED, TokenKind::OPEN, TokenKind::COMMON, TokenKind::PLATFORM, TokenKind::FEATURES, TokenKind::LATE};
     return CONTEXTUAL_KEYWORD_TOKEN;
 }
 bool IsContextualKeyword(std::string_view s)

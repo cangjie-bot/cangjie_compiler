@@ -440,7 +440,7 @@ VisitAction WalkerT<NodeT>::Walk(Ptr<NodeT> curNode) const
             }
             case ASTKind::MACRO_EXPAND_EXPR: {
                 auto mee = StaticAs<ASTKind::MACRO_EXPAND_EXPR>(curNode);
-                if (Walk(mee->invocation.decl.get()) == VisitAction::STOP_NOW) {
+                if (Walk(mee->invocation.expr.get()) == VisitAction::STOP_NOW) {
                     return VisitAction::STOP_NOW;
                 }
                 action = VisitAction::WALK_CHILDREN;
