@@ -27,15 +27,17 @@ public:
     MacroExpansion(CompilerInstance* ci) : ci(ci)
     {
     }
-    void Execute(AST::Package& package);
+    virtual ~MacroExpansion() = default;
     void Execute(std::vector<OwnedPtr<AST::Package>>& packages);
     // String format of macro generated Tokens, for pretty print.
     std::vector<std::string> tokensEvalInMacro;
 
-private:
+protected:
     Ptr<AST::Package> curPackage{nullptr};
     CompilerInstance* ci{nullptr};
     MacroCollector macroCollector;
+
+    virtual void ExecutePkg(AST::Package& package) = 0;
 
     /**
      * Collect macro placeholder nodes in a package.
@@ -45,7 +47,7 @@ private:
     /**
      * Evaluate macro.
      */
-    void EvaluateMacros();
+    virtual void EvaluateMacros() = 0;
 
     /**
      * Process macro information after macro expansion.
@@ -73,8 +75,8 @@ private:
         PtrVector<T>& nodes, PtrVector<AST::Node>& newNodes, VectorTarget<OwnedPtr<T>>& target) const;
     void ReplaceDecls(
         MacroCall& macroNode, PtrVector<AST::Node>& newNodes, VectorTarget<OwnedPtr<AST::Decl>>& target) const;
-    void ReplaceParams(MacroCall& macroNode, PtrVector<AST::Node>& newNodes,
-        VectorTarget<OwnedPtr<AST::FuncParam>>& target) const;
+    void ReplaceParams(
+        MacroCall& macroNode, PtrVector<AST::Node>& newNodes, VectorTarget<OwnedPtr<AST::FuncParam>>& target) const;
     /**
      * Check FuncParamList legality.
      */
