@@ -114,6 +114,7 @@ bool CompilerInstance::InitCompilerInstance()
     performMap.insert_or_assign(CompileStage::MACRO_EXPAND, &CompilerInstance::PerformMacroExpand);
     performMap.insert_or_assign(CompileStage::AST_DIFF, &CompilerInstance::PerformIncrementalScopeAnalysis);
     performMap.insert_or_assign(CompileStage::SEMA, &CompilerInstance::PerformSema);
+    performMap.insert_or_assign(CompileStage::LATE_MACRO_EXPAND, &CompilerInstance::PerformLateMacroExpand);
     performMap.insert_or_assign(CompileStage::DESUGAR_AFTER_SEMA, &CompilerInstance::PerformDesugarAfterSema);
     performMap.insert_or_assign(CompileStage::GENERIC_INSTANTIATION, &CompilerInstance::PerformGenericInstantiation);
     performMap.insert_or_assign(CompileStage::OVERFLOW_STRATEGY, &CompilerInstance::PerformOverflowStrategy);
@@ -364,6 +365,12 @@ bool CompilerInstance::PerformMacroExpand()
     if (!srcPkgs.empty() && invocation.globalOptions.NeedDumpASTToFile()) {
         DumpAST(GetSourcePackages(), invocation.globalOptions.output, "macroexp");
     }
+    return ret;
+}
+
+bool CompilerInstance::PerformLateMacroExpand()
+{
+    auto ret = compileStrategy->LateMacroExpand();
     return ret;
 }
 

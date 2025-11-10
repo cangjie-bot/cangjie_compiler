@@ -160,6 +160,9 @@ void PrintMacroInvocation(unsigned indent, const MacroInvocation& invocation, st
     if (invocation.decl) {
         PrintNode(invocation.decl, indent + ONE_INDENT, "decl", stream);
     }
+    if (invocation.expr) {
+        PrintNode(invocation.expr, indent + ONE_INDENT, "expr", stream);
+    }
 }
 
 void PrintPackage(unsigned indent, const Package& package, std::ostream& stream = std::cout)
@@ -390,7 +393,7 @@ void PrintPropDecl(unsigned indent, const PropDecl& propDecl, std::ostream& stre
 
 void PrintMacroExpandDecl(unsigned indent, const AST::MacroExpandDecl& macroExpand, std::ostream& stream = std::cout)
 {
-    PrintIndent(stream, indent, "MacroExpand:", macroExpand.invocation.fullName, "{");
+    PrintIndent(stream, indent, "MacroExpandDecl:", macroExpand.invocation.fullName, "{");
     PrintBasic(indent + ONE_INDENT, macroExpand, stream);
     PrintMacroInvocation(indent, macroExpand.invocation, stream);
     PrintIndent(stream, indent, "}");
@@ -1167,7 +1170,7 @@ void PrintQuoteExpr(unsigned indent, const AST::QuoteExpr& qe, std::ostream& str
 
 void PrintMacroExpandExpr(unsigned indent, const AST::MacroExpandExpr& expr, std::ostream& stream = std::cout)
 {
-    PrintIndent(stream, indent, "MacroExpand:", expr.invocation.fullName, "{");
+    PrintIndent(stream, indent, "MacroExpandExpr:", expr.invocation.fullName, "{");
     PrintBasic(indent + ONE_INDENT, expr, stream);
     PrintMacroInvocation(indent, expr.invocation, stream);
     PrintIndent(stream, indent, "}");

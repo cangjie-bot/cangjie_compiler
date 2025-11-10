@@ -65,7 +65,19 @@ if(NOT CANGJIE_BUILD_CJC AND CANGJIE_BUILD_STD_SUPPORT)
         $<TARGET_OBJECTS:CangjieBasic>
         $<TARGET_OBJECTS:CangjieOption>
         $<TARGET_OBJECTS:CangjieAstSerialization>
+        $<TARGET_OBJECTS:CangjieSema>
+        $<TARGET_OBJECTS:CangjieModules>
+        $<TARGET_OBJECTS:CangjieAstExtra>
+        $<TARGET_OBJECTS:CangjieFrontend>
+        $<TARGET_OBJECTS:CangjieCodeGen>
+        $<TARGET_OBJECTS:CangjieIncrementalCompilation>
+        $<TARGET_OBJECTS:CangjieCHIRBase>
+        $<TARGET_OBJECTS:CangjieCHIRExtra>
+        $<TARGET_OBJECTS:CangjieMacro>
         $<TARGET_OBJECTS:CangjieCommonUtilFFI>
+        $<TARGET_OBJECTS:CangjieMangle>
+        $<TARGET_OBJECTS:CangjieConditionalCompilation>
+        $<TARGET_OBJECTS:CangjieProfileUtils>
         $<TARGET_OBJECTS:CangjieUnicodeUtils>
         $<TARGET_OBJECTS:CangjieTempFilesUtil>)
     add_library(cangjie-ast-support STATIC ${AST_FFI_OBJECTS})

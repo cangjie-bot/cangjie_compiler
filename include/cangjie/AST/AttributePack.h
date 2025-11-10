@@ -661,6 +661,12 @@ enum class Attribute {
      * R: Sema.
      */
     CJ_MIRROR_JAVA_INTERFACE_DEFAULT,
+    /**
+     * Mark whether a function in interface-forward class is a default implementation of cj-mapping interface.
+     * W: Parse.
+     * R: MacroExpand, Sema.
+     */
+    LATE_MACRO,
 
     /**
      * Mark whether a class decl is an interface-forward class.
@@ -766,6 +772,7 @@ static const std::unordered_map<AST::Attribute, std::string> ATTR2STR{
     {AST::Attribute::OBJ_C_MIRROR_SYNTHETIC_WRAPPER, "OBJ_C_MIRROR_SYNTHETIC_WRAPPER"},
     {AST::Attribute::CJ_MIRROR_JAVA_INTERFACE_DEFAULT, "CJ_MIRROR_JAVA_INTERFACE_DEFAULT"},
     {AST::Attribute::CJ_MIRROR_OBJC_INTERFACE_FWD, "CJ_MIRROR_OBJC_INTERFACE_FWD"},
+    {AST::Attribute::LATE_MACRO, "LATE_MACRO"},
     {AST::Attribute::AST_ATTR_END, "AST_ATTR_END"},
 };
 
@@ -807,12 +814,14 @@ public:
     {
         std::vector<AttrSizeType> enableAttrIdxs;
         for (auto attr : attributes) {
+            size_t attrIdx = 0;
             for (AttrSizeType i = 0; i < ATTR_SIZE; ++i) {
                 if (!attr[i]) {
                     continue;
                 }
-                enableAttrIdxs.emplace_back(i);
+                enableAttrIdxs.emplace_back(attrIdx + i);
             }
+            attrIdx++;
         }
         return enableAttrIdxs;
     }

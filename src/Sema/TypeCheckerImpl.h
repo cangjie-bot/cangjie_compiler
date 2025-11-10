@@ -100,7 +100,7 @@ enum class MatchResult {
 class TypeChecker::TypeCheckerImpl {
 public:
     explicit TypeCheckerImpl(CompilerInstance* ci);
-
+    void Clear();
     ~TypeCheckerImpl();
 
     /**

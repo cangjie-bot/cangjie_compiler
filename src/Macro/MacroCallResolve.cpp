@@ -120,7 +120,11 @@ bool MacroCall::GetValidFuncDecl(std::vector<Ptr<Decl>>& decls)
         }
         return false;
     }
+    return GetMatchingFuncDecl(fds);
+}
 
+bool MacroCall::GetMatchingFuncDecl(const std::vector<Ptr<FuncDecl>>& fds)
+{
     if (fds.size() == 1 && fds[0]->funcBody->paramLists.size() > 0) {
         auto argsSize = fds[0]->funcBody->paramLists[0]->params.size(); // FuncParam
         if (HasAttribute()) {
@@ -138,22 +142,8 @@ bool MacroCall::GetValidFuncDecl(std::vector<Ptr<Decl>>& decls)
         this->BindDefinition(fds[0]);
         return true;
     }
-    if (fds.size() == MACRO_DEF_NUM &&
-        fds[0]->funcBody->paramLists.size() > 0 && fds[1]->funcBody->paramLists.size() > 0) {
-        auto argsSize1 = fds[0]->funcBody->paramLists[0]->params.size();
-        auto argsSize2 = fds[1]->funcBody->paramLists[0]->params.size();
-        if (argsSize1 == argsSize2) { // args should have the size of {1, 2}
-            (void)ci->diag.Diagnose(begin, DiagKind::macro_ambiguous_match, invocation->identifier);
-            return false;
-        }
-        if (HasAttribute()) {
-            this->BindDefinition(argsSize1 == MACRO_ATTR_ARGS ? fds[0] : fds[1]);
-        } else {
-            this->BindDefinition(argsSize1 == MACRO_COMMON_ARGS ? fds[0] : fds[1]);
-        }
-        return true;
-    }
-    return true;
+    // to be impletement, support multi-macro-overload
+    CJC_ASSERT(false);
 }
 
 bool MacroCall::BindDefinition(const std::string &macroName)
@@ -211,8 +201,12 @@ bool MacroCall::FindMacroDefMethod(CompilerInstance* instance)
 bool MacroCall::BindInvokeFunc()
 {
     CJC_ASSERT(definition);
-    this->methodName = Utils::GetMacroFuncName(definition->fullPackageName,
-        invocation->HasAttr(), definition->identifier);
+    auto inputTyName = MC_INPUT_TOKENS;
+    if (node->TestAttr(Attribute::LATE_MACRO)) {
+        inputTyName = invocation->hasParenthesis ? MC_INPUT_EXPR : MC_INPUT_DECL;
+    }
+    this->methodName = Utils::GetMacroFuncName(
+        definition->fullPackageName, invocation->HasAttr(), definition->identifier, inputTyName);
     this->packageName = definition->fullPackageName;
 
     if (ci->invocation.globalOptions.macroLib.empty()) {

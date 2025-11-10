@@ -112,11 +112,15 @@ std::optional<int> TryParseInt(const std::string& str)
 }
 
 /* Get Mangled name for wrapper function of macro. */
-std::string GetMacroFuncName(const std::string& fullPackageName, bool isAttr, const std::string& ident)
+std::string GetMacroFuncName(const std::string& fullPackageName, bool isAttr, const std::string& ident, const std::string& externPrefix)
 {
-    const std::string prefixForAttrMacro = "macroCall_a_";
-    const std::string prefixForPlainMacro = "macroCall_c_";
-    auto macroFuncName = (isAttr ? prefixForAttrMacro : prefixForPlainMacro) + ident + "_" + fullPackageName;
+    const std::string prefixAttr = isAttr ? "a_" : "c_";
+
+    std::string prefixMacro = "macroCall_";
+    if (externPrefix != MC_INPUT_TOKENS) {
+        prefixMacro = prefixMacro + externPrefix + "_";
+    }
+    auto macroFuncName = prefixMacro + prefixAttr + ident + "_" + fullPackageName;
     /* '.' is not allowed in cangjie function name, so replace '.' to '_' */
     std::replace(macroFuncName.begin(), macroFuncName.end(), '.', '_');
 
