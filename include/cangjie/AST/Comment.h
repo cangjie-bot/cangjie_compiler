@@ -13,6 +13,7 @@
 #define CANGJIE_AST_COMMENT_H
 
 #include <unordered_map>
+#include <stdint.h>
 #include "cangjie/Lex/Token.h"
 namespace Cangjie::AST {
 

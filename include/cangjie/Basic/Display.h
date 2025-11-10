@@ -36,6 +36,7 @@
 #include <vector>
 #include <bitset>
 #include <unordered_map>
+#include <stdint.h>
 
 namespace Cangjie {
 static const size_t NORMAL_CODEPOINT_LEN = 4;
