@@ -70,6 +70,7 @@ enum class MacroEvalStatus : uint8_t {
     FINISH = 6,     // No need to reEvaluate, because there are no macrocalls left After macro evaluated.
     ANNOTATION = 7, // Need change macrocall to decl with annotation.
     REEVALFAILED = 8,
+    LATE = 9,        // Late macrocall, do not evaluate in early macro expandsition now.
 };
 
 enum class ItemKind {
@@ -217,6 +218,7 @@ public:
     std::vector<std::vector<void*>> macroInfoVec{};
 
     bool hasSend{false};
+    bool genLateMacro{false};
     std::string methodName;     // macrodef method
     std::string packageName;    // macrodef package
     std::string libPath;        // macrodef lib path
@@ -224,11 +226,11 @@ public:
     std::vector<ItemInfo> items;                // MacroContext: setItem.
     std::vector<ChildMessage> childMessages;    // MacroContext: getChildMessages.
     std::vector<std::string> assertParents;     // MacroContext: assertParentContext failed parentName.
+    Ptr<AST::FuncDecl> definition{nullptr};     // The macro function definition.
 private:
     MacroKind kind;
     Ptr<AST::MacroInvocation> invocation{nullptr};
     Ptr<AST::Node> node{nullptr};
-    Ptr<AST::FuncDecl> definition{nullptr};
     Position begin;
     Position end;
     std::set<AST::Modifier>* modifiers{nullptr};
@@ -239,9 +241,13 @@ private:
     inline void BindDefinition(const Ptr<AST::FuncDecl> fd)
     {
         definition = fd;
+        if (fd->TestAttr(AST::AttrKind::LATE_MACRO)) {
+            node->EnableAttr(AST::AttrKind::LATE_MACRO);
+        }
     }
 
     bool BindInvokeFunc();
+    bool GetMatchFuncDecl(const std::vector<Ptr<AST::FuncDecl>>& funcDecls);
 
     /*
      * Recursive function to set recordMacroInfo info.
