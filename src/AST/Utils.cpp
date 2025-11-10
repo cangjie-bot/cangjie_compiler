@@ -745,8 +745,9 @@ void InsertMirrorVarProp(ClassDecl& decl, Attribute attrToBeSet)
     // Collect the original field
     std::vector<VarDecl*> oldVars;
     for (auto& member : members) {
-        if (member->astKind == ASTKind::VAR_DECL) {
-            oldVars.emplace_back(StaticAs<ASTKind::VAR_DECL>(member.get()));
+        if (auto field = As<ASTKind::VAR_DECL>(member.get()); field && field->type) {
+            // fields without syntactic type specified are invalid and should be skipped here
+            oldVars.emplace_back(field);
         }
     }
     // Generate and insert the new prop
