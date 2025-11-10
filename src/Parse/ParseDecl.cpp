@@ -551,7 +551,7 @@ void ParserImpl::CheckObjCInteropMember(Decl& member)
             ffiParser->ObjC().DiagObjCImplCannotBeGeneric(member);
             return;
         }
-        if (member.astKind == ASTKind::FUNC_DECL && member.TestAttr(Attribute::CONSTRUCTOR, Attribute::STATIC)) {      
+        if (member.astKind == ASTKind::FUNC_DECL && member.TestAttr(Attribute::CONSTRUCTOR, Attribute::STATIC)) {
             member.outerDecl->EnableAttr(Attribute::IS_BROKEN);
             member.EnableAttr(Attribute::IS_BROKEN);
             ffiParser->ObjC().DiagObjCImplCannotHaveStaticInit(member);
@@ -807,6 +807,7 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 }
 
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
+
 {
     if (!enableInteropCJMapping) {
         return;
@@ -829,11 +830,12 @@ void ParserImpl::CheckCJMappingAttr(Decl& decl) const
             decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
         }
     }
+
     // support objc type
-    if (decl.astKind == ASTKind::STRUCT_DECL) {
-        if (decl.TestAttr(Attribute::PUBLIC) && targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
+    if (targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
+        if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL) {
             decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
-        } 
+        }
     }
 }
 
