@@ -148,9 +148,9 @@ OwnedPtr<VarDecl> CreateReadingVarDecl(
  * @param declArgs
  * @return
  */
-OwnedPtr<VarDecl> CreateTokensParamDecl(const std::string argName, const Position& pos)
+OwnedPtr<VarDecl> CreateMacroParamDecl(const std::string argName, const Position& pos, std::string inputTyName = MC_INPUT_TOKENS)
 {
-    auto refExpr = CreateRefExprInAST("Tokens");
+    auto refExpr = CreateRefExprInAST(inputTyName);
     refExpr->begin = pos;
     refExpr->end = pos;
     auto tokensAttrCall = CreateCallExpr(std::move(refExpr), {});
@@ -476,7 +476,7 @@ OwnedPtr<TryExpr> CreateWrapperTryExpr(OwnedPtr<Block> tryBlock)
  * @return
  */
 OwnedPtr<IfExpr> CreateWrapperIfExpr(
-    const std::tuple<std::string, std::string, std::string>& declArgs, const Position& pos)
+    const std::tuple<std::string, std::string, std::string>& declArgs, const Position& pos, const std::string& inputTyName = MC_INPUT_TOKENS)
 {
     // Create condition expr, like: paramSize > 0
     auto [argName, argBuf, argSize] = declArgs;
@@ -489,7 +489,13 @@ OwnedPtr<IfExpr> CreateWrapperIfExpr(
     auto bufAttr = CreateFuncArg(CreateRefExpr(argBuf));
     std::vector<OwnedPtr<FuncArg>> tokensAttrArgs;
     tokensAttrArgs.emplace_back(std::move(bufAttr));
-    auto refExpr = CreateRefExprInAST("Tokens");
+    std::string exprName = inputTyName;
+    if (inputTyName == MC_INPUT_DECL) {
+        exprName = MC_GEN_DECL;
+    } else if (inputTyName == MC_INPUT_EXPR) {
+        exprName = MC_GEN_EXPR;
+    }
+    auto refExpr = CreateRefExprInAST(exprName);
     refExpr->begin = pos;
     refExpr->end = pos;
     auto callExpr = CreateCallExpr(std::move(refExpr), std::move(tokensAttrArgs));
@@ -521,7 +527,7 @@ OwnedPtr<IfExpr> CreateWrapperIfExpr(
  * }
  * @return
  */
-OwnedPtr<Block> CreateWrapperTryBlock(const Position& pos, const std::string& ident, bool isAttr)
+OwnedPtr<Block> CreateWrapperTryBlock(const Position& pos, const std::string& ident, bool isAttr, const std::string& inputTyName)
 {
     // Pos after 'pos' to lookup field.
     auto newPos = pos + BEGIN_POSITION;
@@ -533,12 +539,12 @@ OwnedPtr<Block> CreateWrapperTryBlock(const Position& pos, const std::string& id
     auto bufParamVar = CreateReadingVarDecl(newPos, {"bufParam", "paramSize"});
     auto bufParamForIn = CreateReadingForInExpr({"bufParam", "paramPtr", "paramSize"});
 
-    auto attrVar = CreateTokensParamDecl("attr", pos);
+    auto attrVar = CreateMacroParamDecl("attr", pos);
     attrVar->isVar = true;
     auto attrIfExpr = CreateWrapperIfExpr({"attr", "bufAttr", "attrSize"}, pos);
-    auto paramsVar = CreateTokensParamDecl("params", pos);
+    auto paramsVar = CreateMacroParamDecl("params", pos, inputTyName);
     paramsVar->isVar = true;
-    auto argsIfExpr = CreateWrapperIfExpr({"params", "bufParam", "paramSize"}, pos);
+    auto argsIfExpr = CreateWrapperIfExpr({"params", "bufParam", "paramSize"}, pos, inputTyName);
 
     auto callExpr = isAttr ? CreateAttrCall(ident, newPos) : CreateCommonCall(ident, newPos);
     callExpr->baseFunc->EnableAttr(Attribute::MACRO_INVOKE_BODY);
@@ -566,9 +572,9 @@ OwnedPtr<Block> CreateWrapperTryBlock(const Position& pos, const std::string& id
     return CreateBlock(std::move(nodes));
 }
 
-void AddMacroFuncDecl(File& curFile, const Position& pos, const std::string& ident, bool isAttr)
+void AddMacroFuncDecl(File& curFile, const Position& pos, const std::string& ident, bool isAttr, const std::string& inputTyName)
 {
-    auto tryBlock = CreateWrapperTryBlock(pos, ident, isAttr);
+    auto tryBlock = CreateWrapperTryBlock(pos, ident, isAttr, inputTyName);
     tryBlock->begin = pos;
     tryBlock->end = pos;
     auto tryExpr = CreateWrapperTryExpr(std::move(tryBlock));
@@ -605,7 +611,7 @@ void AddMacroFuncDecl(File& curFile, const Position& pos, const std::string& ide
     if (curFile.curPackage != nullptr) {
         packageName = curFile.curPackage->fullPackageName;
     }
-    auto funcName = Utils::GetMacroFuncName(packageName, isAttr, ident);
+    auto funcName = Utils::GetMacroFuncName(packageName, isAttr, ident, inputTyName);
     auto funcDecl = CreateWrapperFuncDecl(funcName, pos, std::move(body), params, std::move(unsafePtrType));
     funcDecl->EnableAttr(Attribute::GLOBAL);
     curFile.decls.emplace_back(std::move(funcDecl));
@@ -717,6 +723,7 @@ void DesugarMacroDecl(File& file)
             if (macroDecl->desugarDecl) {
                 continue; // NOTE: During incremental compilation, this may be set.
             }
+            auto inputTyName = macroDecl->GetInputTypeName();
             auto funcDecl = MakeOwnedNode<FuncDecl>();
             funcDecl->curFile = macroDecl->curFile;
             funcDecl->fullPackageName = macroDecl->curFile->curPackage->fullPackageName;
@@ -737,7 +744,7 @@ void DesugarMacroDecl(File& file)
                 }
             }
             macroDecl->desugarDecl = std::move(funcDecl);
-            AddMacroFuncDecl(file, macroDecl->end, macroDecl->identifier, isAttr);
+            AddMacroFuncDecl(file, macroDecl->end, macroDecl->identifier, isAttr, inputTyName);
         }
     }
 }
