@@ -25,34 +25,6 @@ using namespace Cangjie;
 using namespace AST;
 
 namespace {
-
-bool HasNoMacros(const MacroCollector& mc)
-{
-    return mc.macroDefFuncs.empty() && mc.macCalls.empty();
-}
-
-bool HasNoMacroCalls(const std::vector<MacroCall>& macCalls)
-{
-    return macCalls.empty();
-}
-
-bool HasDefAndCallInSamePkg(const MacroCollector& macroCollector, DiagnosticEngine& diag)
-{
-    // macro-def and macro-call can't be in the same package.
-    bool ret = false;
-    std::unordered_set<std::string> s1;
-    for (auto fd : macroCollector.macroDefFuncs) {
-        (void)s1.insert(fd->identifier);
-    }
-    for (auto call : macroCollector.macCalls) {
-        if (s1.find(call.GetFullName()) != s1.end()) {
-            ret = true;
-            (void)diag.Diagnose(call.GetBeginPos(), DiagKind::macro_unexpect_def_and_call_in_same_pkg);
-        }
-    }
-    return ret;
-}
-
 bool HasMacroCallInNode(const OwnedPtr<Node>& node, DiagnosticEngine& diag)
 {
     bool hasMacroCall = false;
@@ -99,6 +71,9 @@ void CheckUnhandledMacroCall(Package& package, DiagnosticEngine& diag)
         }
         // Check whether there are unhandled macrocalls.
         auto checkMacroCall = [&diag](Ptr<const Node> curNode) -> VisitAction {
+            if (curNode->TestAttr(Attribute::LATE_MACRO) {
+                return VisitAction::SKIP_CHILDREN;
+            }
             // do not report on @IfAvailable, to be dealt with later
             if (auto me = DynamicCast<MacroExpandExpr>(curNode); me && me->invocation.IsIfAvailable()) {
                 return VisitAction::WALK_CHILDREN;
@@ -352,13 +327,19 @@ void MacroExpansion::ReplaceEachMacro(MacroCall& macCall)
     Parser parser{pInvocation->newTokens, ci->diag, ci->diag.GetSourceManager(),
         ci->invocation.globalOptions.enableAddCommentToAst, ci->invocation.globalOptions.compileCjd};
     parser.SetCompileOptions(ci->invocation.globalOptions);
-    (void)parser.SetPrimaryDecl(pInvocation->outerDeclIdent).EnableCustomAnno();
+    if (!macCall.genLateMacro) {
+        (void)parser.SetPrimaryDecl(pInvocation->outerDeclIdent).EnableCustomAnno();
+    }
     // Reparsing newTokens to get macro-generate ASTs.
     auto nodes = parser.ParseNodes(
         pInvocation->scope, *macCall.GetNode(), macCall.GetModifiers(), macCall.GetAnnotations());
     for (auto& node : nodes) {
         if (!node || node->IsInvalid()) {
             return;
+        }
+        if (macCall.genLateMacro && node->IsMacroCallNode()) {
+            node->EnableAttr(AST::Attribute::LATE_MACRO);
+            continue;
         }
         // Make sure no macro calls exist after macro expansion.
         if (HasMacroCallInNode(node, ci->diag)) {
@@ -388,42 +369,6 @@ void MacroExpansion::ReplaceAST(Package& package)
     }
 }
 
-void MacroExpansion::EvaluateMacros()
-{
-    // Notice: When interpreter-based evaluation strategy is introduced, just modify the
-    // implementation of class MacroEvaluation. Make sure the key data structure to
-    // communicate between Expansion and Evaluation.
-    bool useChildProcess = ci->invocation.globalOptions.enableMacroInLSP;
-    MacroEvaluation evaluator(ci, &macroCollector, useChildProcess);
-    evaluator.Evaluate();
-    tokensEvalInMacro = evaluator.GetVecOfGeneratedCodes();
-    return;
-}
-
-// In the LSP scenario, there may be concurrent calls to macro expansion when process cjd file. If Execute is executed
-// concurrently with the same macro declaration, it will cause a problem. The global lock is used to protect macro
-// expansion calls in different CompilerInstances.
-std::mutex globalMacroExpandLock;
-
-void MacroExpansion::Execute(Package& package)
-{
-    std::lock_guard<std::mutex> guard(globalMacroExpandLock);
-    curPackage = &package;
-    // Step 1: Collect macro-defs, macro-calls.
-    CollectMacros(package);
-    if (HasNoMacros(this->macroCollector) || HasNoMacroCalls(this->macroCollector.macCalls) ||
-        HasDefAndCallInSamePkg(this->macroCollector, ci->diag) ||
-        (ci->diag.GetErrorCount() > 0 && !ci->invocation.globalOptions.enableMacroInLSP)) {
-        return;
-    }
-    // Step 2: Evaluate macros. Generate new tokens for further AST replacement.
-    EvaluateMacros();
-    // Step 3: Map macro information and save the expanded macro contents to a file.
-    ProcessMacros(package);
-    // Step 4: Replace MacroCall AST with new generated AST.
-    ReplaceAST(package);
-}
-
 void MacroExpansion::Execute(std::vector<OwnedPtr<AST::Package>>& packages)
 {
     if (ci->invocation.globalOptions.enableCompileTest) {
@@ -432,7 +377,7 @@ void MacroExpansion::Execute(std::vector<OwnedPtr<AST::Package>>& packages)
     }
     for (auto& package : packages) {
         if (package) {
-            Execute(*package);
+            ExecutePkg(*package);
         }
     }
     if (ci->invocation.globalOptions.enableCompileTest &&
