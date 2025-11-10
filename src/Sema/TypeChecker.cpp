@@ -72,6 +72,12 @@ TypeChecker::TypeCheckerImpl::~TypeCheckerImpl()
     }
 }
 
+void TypeChecker::TypeCheckerImpl::Clear()
+{
+    mainFunctionMap.clear();
+    inoutCache.clear();
+}
+
 bool TypeChecker::TypeCheckerImpl::CheckThisTypeOfFuncBody(const FuncBody& fb) const
 {
     CJC_ASSERT(fb.retType);
@@ -2003,7 +2009,7 @@ void MarkImplicitUsedFunctions(const Package& pkg)
             {"arrayInitByCollection", "arrayInitByFunction", "composition", "handleException",
                 "createOverflowExceptionMsg", "createArithmeticExceptionMsg", "getCommandLineArgs"}},
         {AST_PACKAGE_NAME,
-            {MACRO_OBJECT_NAME, "refreshTokensPosition", "refreshPos", "unsafePointerCastFromUint8Array"}}};
+            {MACRO_OBJECT_NAME, "refreshTokensPosition", "refreshPos", "unsafePointerCastFromUint8Array", MC_GEN_DECL, MC_GEN_EXPR}}};
     auto found = SPECIAL_EXPORTED_FUNCS.find(pkg.fullPackageName);
     if (found == SPECIAL_EXPORTED_FUNCS.end()) {
         return;
@@ -2114,6 +2120,7 @@ std::pair<bool, Ptr<RefExpr>> TypeChecker::TypeCheckerImpl::CheckInvokeTargetHas
 
 void TypeChecker::TypeCheckForPackages(const std::vector<Ptr<Package>>& pkgs) const
 {
+    impl->Clear();
     impl->TypeCheckForPackages(pkgs);
 }
 
@@ -2125,6 +2132,7 @@ std::vector<Ptr<ASTContext>> TypeChecker::TypeCheckerImpl::PreTypeCheck(const st
     std::for_each(pkgs.begin(), pkgs.end(), [this, &contexts](Ptr<Package> pkg) {
         CJC_NULLPTR_CHECK(pkg); // There should not be any nullptr Ptr<Package> in pkgs.
         if (auto ctx = ci->GetASTContextByPackage(pkg)) {
+            ctx->Reset();
             contexts.emplace_back(ctx);
         }
     });
@@ -2189,11 +2197,20 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
     AddDefaultFunction(pkg);
     // Add built-in decls to core package.
     if (pkg.fullPackageName == CORE_PACKAGE_NAME && !pkg.files.empty() && !pkg.TestAttr(Attribute::IMPORTED)) {
-        AddBuiltInArrayDecl(pkg);
-        AddBuiltInVArrayDecl(pkg);
-        AddBuiltInPointerDecl(pkg);
-        AddBuiltinCFuncDecl(pkg);
-        AddBuiltInCStringDecl(pkg);
+        bool hasBuiltinType = false;
+        if (pkg.files[0]->decls.size() > 0) {
+            auto decl = DynamicCast<BuiltInDecl*>(pkg.files[0]->decls[pkg.files[0]->decls.size() - 1].get());
+            if (decl != nullptr) {
+                hasBuiltinType = true;
+            }
+        }
+        if (!hasBuiltinType) {
+            AddBuiltInArrayDecl(pkg);
+            AddBuiltInVArrayDecl(pkg);
+            AddBuiltInPointerDecl(pkg);
+            AddBuiltinCFuncDecl(pkg);
+            AddBuiltInCStringDecl(pkg);
+        }
     }
 
     // Phase: build symbol table.
