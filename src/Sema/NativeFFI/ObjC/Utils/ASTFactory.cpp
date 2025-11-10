@@ -37,7 +37,8 @@ constexpr auto FINALIZER_IDENT = "~init";
 
 OwnedPtr<Expr> ASTFactory::CreateNativeHandleExpr(OwnedPtr<Expr> entity)
 {
-    CJC_ASSERT(typeMapper.IsObjCMirror(*entity->ty) || typeMapper.IsObjCImpl(*entity->ty)|| typeMapper.IsSyntheticWrapper(*entity->ty));
+    CJC_ASSERT(typeMapper.IsObjCMirror(*entity->ty) || typeMapper.IsObjCImpl(*entity->ty) ||
+        typeMapper.IsSyntheticWrapper(*entity->ty));
     auto entityTy = StaticCast<ClassLikeTy>(entity->ty);
     auto curFile = entity->curFile;
     auto getter = GetNativeHandleGetter(*entityTy->commonDecl);
@@ -75,7 +76,9 @@ OwnedPtr<Expr> ASTFactory::UnwrapEntity(OwnedPtr<Expr> expr)
     }
 
     if (typeMapper.IsObjCCJMapping(*expr->ty)) {
-        if (auto structTy = StaticCast<StructTy>(expr->ty.get())) {
+        auto structTy = DynamicCast<StructTy>(expr->ty.get());
+        auto enumTy = DynamicCast<EnumTy>(expr->ty.get());
+        if (structTy || enumTy) {
             return CreatePutToRegistryCall(std::move(expr));
         }
         CJC_ABORT(); // other CJMapping is not supported
@@ -135,8 +138,10 @@ OwnedPtr<Expr> ASTFactory::WrapEntity(OwnedPtr<Expr> expr, Ty& wrapTy)
     }
 
     if (typeMapper.IsObjCCJMapping(wrapTy)) {
-        if (auto structTy = StaticCast<StructTy>(&wrapTy)) {
+        if (auto structTy = DynamicCast<StructTy>(&wrapTy)) {
             return CreateGetFromRegistryByIdCall(std::move(expr), CreateRefType(*(structTy->decl)));
+        } else if (auto enumTy = DynamicCast<EnumTy>(&wrapTy)) {
+            return CreateGetFromRegistryByIdCall(std::move(expr), CreateRefType(*(enumTy->decl)));
         }
         CJC_ABORT(); // other CJMapping is not supported
     }
@@ -327,9 +332,9 @@ OwnedPtr<Expr> ASTFactory::CreateMirrorConstructorCall(OwnedPtr<Expr> entity, Pt
     if (auto decl = classLikeTy->commonDecl; decl && decl->TestAttr(Attribute::OBJ_C_MIRROR)) {
         Ptr<ClassDecl> cld;
         if (decl->astKind == ASTKind::CLASS_DECL) {
-          cld = StaticAs<ASTKind::CLASS_DECL>(decl);
+            cld = StaticAs<ASTKind::CLASS_DECL>(decl);
         } else {
-          cld = GetSyntheticWrapper(*decl);
+            cld = GetSyntheticWrapper(*decl);
         }
         CJC_NULLPTR_CHECK(cld);
         auto mirrorCtor = GetGeneratedBaseCtor(*cld);
@@ -436,6 +441,38 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(const Decl& target, FuncDecl& 
         CreateBlock(Nodes<Node>(std::move(putToRegistryCall)), registryIdTy), wrapperTy);
 
     auto wrapperName = nameGenerator.GenerateInitCjObjectName(ctor);
+
+    auto wrapper = CreateFuncDecl(wrapperName, std::move(wrapperBody), wrapperTy);
+    wrapper->moduleName = ctor.moduleName;
+    wrapper->fullPackageName = ctor.fullPackageName;
+    wrapper->EnableAttr(Attribute::C, Attribute::GLOBAL, Attribute::PUBLIC, Attribute::NO_MANGLE);
+    wrapper->funcBody->funcDecl = wrapper.get();
+    PutDeclToFile(*wrapper, *ctor.curFile);
+
+    return wrapper;
+}
+
+OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObjectForEnumNoParams(AST::EnumDecl& target, AST::VarDecl& ctor)
+{
+    auto curFile = ctor.curFile;
+    CJC_NULLPTR_CHECK(curFile);
+    auto registryIdTy = bridge.GetRegistryIdTy();
+
+    auto wrapperParamList = MakeOwned<FuncParamList>();
+    // auto& wrapperParams = wrapperParamList->params;
+    std::vector<Ptr<Ty>> wrapperParamTys;
+    std::vector<OwnedPtr<FuncParamList>> wrapperParamLists;
+    wrapperParamLists.emplace_back(std::move(wrapperParamList));
+
+    // createMemRef
+    auto enumRef = WithinFile(CreateRefExpr(target), curFile);
+    auto ctorCall = CreateMemberAccess(std::move(enumRef), ctor.identifier);
+    auto putToRegistryCall = CreatePutToRegistryCall(std::move(ctorCall));
+
+    auto wrapperName = nameGenerator.GenerateInitCjObjectName(ctor); // TODO
+    auto wrapperTy = typeManager.GetFunctionTy(wrapperParamTys, registryIdTy, {.isC = true});
+    auto wrapperBody = CreateFuncBody(std::move(wrapperParamLists), CreateType(registryIdTy),
+        CreateBlock(Nodes<Node>(std::move(putToRegistryCall)), registryIdTy), wrapperTy);
 
     auto wrapper = CreateFuncDecl(wrapperName, std::move(wrapperBody), wrapperTy);
     wrapper->moduleName = ctor.moduleName;
