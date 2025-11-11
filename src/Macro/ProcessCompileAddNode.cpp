@@ -5,18 +5,19 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 #include "cangjie/Macro/LateMacroExpansion.h"
+#include "cangjie/AST/Walker.h"
 
 using namespace Cangjie;
 using namespace AST;
 
 namespace {
-using RemoveFunc = std:::function<void(const AST::Node&)>;
+using RemoveFunc = std::function<void(AST::Node&)>;
 
 void RemoveCPAFile(AST::Node& root)
 {
     auto &file = StaticCast<AST::File&>(root);
-    for (auto& it = file.decls.begin(); it != file.decls.end();) {
-        if ((*it).TestAttr(Attribute::COMPILE_ADD)) {
+    for (auto it = file.decls.begin(); it != file.decls.end();) {
+        if ((*it)->TestAttr(Attribute::COMPILER_ADD)) {
             it = file.decls.erase(it);
         } else {
             ++it;
@@ -27,8 +28,8 @@ void RemoveCPAFile(AST::Node& root)
 void RemoveCPAClassDecl(AST::Node& root)
 {
     auto &classDecl = StaticCast<AST::ClassDecl&>(root);
-    for (auto& it = classDecl.inheritedTypes.begin(); it != classDecl.inheritedTypes.end();) {
-        if ((*it).TestAttr(Attribute::COMPILE_ADD)) {
+    for (auto it = classDecl.inheritedTypes.begin(); it != classDecl.inheritedTypes.end();) {
+        if ((*it)->TestAttr(Attribute::COMPILER_ADD)) {
             it = classDecl.inheritedTypes.erase(it);
         } else {
             ++it;
@@ -39,9 +40,9 @@ void RemoveCPAClassDecl(AST::Node& root)
 void RemoveCPAClassBody(AST::Node& root)
 {
     auto &classBody = StaticCast<AST::ClassBody&>(root);
-    for (auto& it = classBody.members.begin(); it != classBody.members.end();) {
-        if ((*it).TestAttr(Attribute::COMPILE_ADD)) {
-            it = classBody.members.erase(it);
+    for (auto it = classBody.decls.begin(); it != classBody.decls.end();) {
+        if ((*it)->TestAttr(Attribute::COMPILER_ADD)) {
+            it = classBody.decls.erase(it);
         } else {
             ++it;
         }
@@ -49,21 +50,21 @@ void RemoveCPAClassBody(AST::Node& root)
 }
 
 void RemoveCPAFuncBody(AST::Node& root) {
-    auto &funcBody = StaticCast<AST::FuncBody&>(root);
-    if (fb.retType && fb.retType->TestAttr(Attribute::COMPILE_ADD)) {
+    auto &fb = StaticCast<AST::FuncBody&>(root);
+    if (fb.retType && fb.retType->TestAttr(Attribute::COMPILER_ADD)) {
         fb.retType = nullptr;
     }
 }
 
-void LateMacroExpansion::ProcessCompileAddNode(AST::Node&)
+void LateMacroExpansion::ProcessCompileAddNode(AST::Node& root)
 {
     std::map<ASTKind, RemoveFunc> funcMap = {
         {ASTKind::FILE, RemoveCPAFile},
         {ASTKind::CLASS_DECL, RemoveCPAClassDecl},
         {ASTKind::CLASS_BODY, RemoveCPAClassBody},
         {ASTKind::FUNC_BODY, RemoveCPAFuncBody}
-    }
-    std::function<VisitAction(Ptr<AST::Node>)> f = [&](Ptr<AST::Node> curNode) {
+    };
+    std::function<VisitAction(Ptr<Node>)> visitor = [&funcMap](Ptr<Node> curNode) -> VisitAction {
         auto found = funcMap.find(curNode->astKind);
         if (found != funcMap.end()) {
             found->second(*curNode);
@@ -73,5 +74,6 @@ void LateMacroExpansion::ProcessCompileAddNode(AST::Node&)
         }
         return VisitAction::WALK_CHILDREN;
     };
+    Walker(&root, visitor).Walk();
     return;
 }
