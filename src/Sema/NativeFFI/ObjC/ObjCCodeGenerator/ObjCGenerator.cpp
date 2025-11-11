@@ -918,10 +918,6 @@ ArgsList ObjCGenerator::ConvertParamsListToArgsList(
         for (size_t i = 0; i < paramLists[0]->params.size(); i++) {
             OwnedPtr<FuncParam>& cur = paramLists[0]->params[i];
             auto name = cur->identifier.Val();
-            if (ctx.typeMapper.IsObjCCJMapping(*cur->ty)) {
-                name += ".";
-                name += SELF_WEAKLINK_NAME;
-            }
             name = GenerateArgumentCast(*cur->ty, std::move(name));
             result.push_back(std::pair<std::string, std::string>(MapCJTypeToObjCType(cur), name));
         }
