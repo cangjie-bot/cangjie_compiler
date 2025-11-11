@@ -18,4 +18,5 @@ ERROR(conditional_compilation_invalid_condition_value,
 ERROR(conditional_compilation_just_support_block,
     "conditional compilation macro '@If' and '@Else' only support used in block")
 ERROR(conditional_compilation_unexpected_after_macro, "unexpected conditional compilation directive")
+ERROR(conditional_compilation_invalid_unary_expr, "conditional compilation not support -debug or -test")
 ERROR(conditional_compilation_diag_end, "")
