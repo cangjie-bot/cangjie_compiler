@@ -16,6 +16,7 @@
 #include "Collector.h"
 #include "Diags.h"
 #include "TypeCheckUtil.h"
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Clone.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Types.h"
@@ -487,7 +488,7 @@ void MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(
         if (hasPlatformCandidates) {
             funcs.erase(
                 std::remove_if(funcs.begin(), funcs.end(),
-                    [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::COMMON); }),
+                    [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::COMMON) && decl->TestAttr(Attribute::FROM_COMMON_PART); }),
                 funcs.end());
         }
     }
@@ -535,9 +536,14 @@ void CollectCJMPDecls(Package& pkg, std::vector<Ptr<Decl>>& commonDecls, std::ve
 }
 
 // Check whether the common decl must be matched with paltform decl.
-bool MustMatchWithPlatform(const Decl& decl)
+bool MustMatchWithPlatform(const Decl& decl, const bool compilingCommon)
 {
     CJC_ASSERT(decl.TestAttr(Attribute::COMMON));
+    
+    if (compilingCommon) {
+      // not compiling to binary, only produce CHIR
+      return false;
+    }
     if (decl.platformImplementation) {
         return false;
     }
@@ -674,13 +680,16 @@ void MPTypeCheckerImpl::CheckCommonSpecificGenericMatch(const AST::Decl& platfor
     CheckGenericRenamed(platformDecl, commonDecl, diag);
 }
 
+// TODO: UPDATE description. NOW it can not match and also return true, so name mbn changed
 // Match common nominal decl with platform for details.
 bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl& commonDecl)
 {
     auto platformDecl = commonDecl.platformImplementation;
-    if (platformDecl == nullptr) {
-        DiagNotMatchedPlatformDecl(diag, commonDecl);
-        return false;
+    if (!platformDecl) {
+        // It's okay if common nominative declaration have no platform,
+        // either all member are implemented in common one
+        // or it's not yet compiling into binary, so it can be matched at later phases.
+        return true;
     }
     // Match attributes (modifiers).
     std::vector<Attribute> matchedAttr = {
@@ -1066,9 +1075,12 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     // Report error for common decl having no matched platform decl.
     for (auto& decl : commonDecls) {
         if (decl->IsNominalDecl() && MatchCommonNominalDeclWithPlatform(*StaticCast<InheritableDecl>(decl))) {
-            matchedIds.insert(decl->platformImplementation->identifier.Val());
+            auto platformMatch = decl->platformImplementation;
+            if (platformMatch) {
+                matchedIds.insert(platformMatch->identifier.Val());
+            }
         }
-        if (!MustMatchWithPlatform(*decl)) {
+        if (!MustMatchWithPlatform(*decl, compileCommon)) {
             continue;
         }
         DiagNotMatchedPlatformDecl(diag, *decl);
@@ -1088,7 +1100,10 @@ void MPTypeCheckerImpl::MatchPlatformWithCommon(Package& pkg)
     CollectCJMPDecls(pkg, commonDecls, platformDecls);
     if (compileCommon) { // check common extensions
         CheckCommonExtensions(commonDecls);
-    } else if (compilePlatform) { // match common decls and platform decls
+    }
+    // This does not contradict to previous check.
+    // A source code can be relatively platform and common at the same time.
+    if (compilePlatform) { // match common decls and platform decls
         MatchCJMPDecls(commonDecls, platformDecls);
     }
 }

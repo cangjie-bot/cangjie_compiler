@@ -13,6 +13,7 @@
 
 #include <queue>
 
+#include "cangjie/AST/AttributePack.h"
 #include "flatbuffers/ModuleFormat_generated.h"
 
 #include "cangjie/AST/Utils.h"
@@ -451,6 +452,11 @@ void ASTWriter::ASTWriterImpl::SetAttributesIfSerializingCommonPartOfPackage(Pac
             }
             case ASTKind::CLASS_DECL: {
                 auto cd = StaticAs<ASTKind::CLASS_DECL>(node);
+                if (cd->platformImplementation) {
+                  // Member of this common class was copied to platform one,
+                  // so common should not be deserialized
+                  cd->doNotExport = true;
+                }
                 for (auto &member : cd->body->decls) {
                     member->EnableAttr(Attribute::FROM_COMMON_PART);
                     Walker(member.get(), visitor).Walk();
@@ -486,6 +492,10 @@ void ASTWriter::ASTWriterImpl::SetAttributesIfSerializingCommonPartOfPackage(Pac
             }
             case ASTKind::FUNC_DECL: {
                 auto fd = StaticAs<ASTKind::FUNC_DECL>(node);
+                if (fd->platformImplementation) {
+                  // This decl was replaced with more platform there must not be serialized
+                  fd->doNotExport = true;
+                }
                 for (auto &param : fd->funcBody->paramLists[0]->params) {
                     if (param->desugarDecl) {
                         param->desugarDecl->EnableAttr(Attribute::FROM_COMMON_PART);
@@ -1563,12 +1573,19 @@ FormattedIndex ASTWriter::ASTWriterImpl::SaveDecl(const Decl& decl, bool isTopLe
     if (decl.TestAttr(Attribute::GENERIC_INSTANTIATED, Attribute::GENERIC)) {
         attrs.SetAttr(Attribute::UNREACHABLE, true); // Set 'UNREACHABLE' for export.
     }
-
+    if (decl.TestAttr(Attribute::PLATFORM)) {
+      // CJMP compilation mid phase. We match some common declaration with current platform,
+      // but this platform will be relatively common in following phases.
+      attrs.SetAttr(Attribute::PLATFORM, false);
+      attrs.SetAttr(Attribute::COMMON, true);
+      // platform provide an implementation, so it's common with default for further compilation phases
+      attrs.SetAttr(Attribute::COMMON_WITH_DEFAULT, true);
+    }
     if (auto varDecl = DynamicCast<VarDecl>(&decl)) {
         if (varDecl->TestAttr(Attribute::FROM_COMMON_PART) && varDecl->outerDecl &&
             varDecl->outerDecl->TestAttr(Attribute::PLATFORM)) {
-            attrs.SetAttr(Attribute::COMMON, false);
-            attrs.SetAttr(Attribute::FROM_COMMON_PART, false);
+            // attrs.SetAttr(Attribute::COMMON, false);
+            // attrs.SetAttr(Attribute::FROM_COMMON_PART, false);
         }
         if (varDecl->outerDecl && varDecl->outerDecl->TestAttr(Attribute::COMMON)) {
             bool hasInitializer = varDecl->initializer;
