@@ -751,6 +751,7 @@ static const std::unordered_map<AST::Attribute, std::string> ATTR2STR{
     {AST::Attribute::OBJ_C_INIT, "OBJ_C_INIT"},
     {AST::Attribute::JAVA_MIRROR_SYNTHETIC_WRAPPER, "JAVA_MIRROR_SYNTHETIC_WRAPPER"},
     {AST::Attribute::JAVA_HAS_DEFAULT, "JAVA_HAS_DEFAULT"},
+    {AST::Attribute::CJ_MIRROR_JAVA_INTERFACE_DEFAULT, "CJ_MIRROR_JAVA_INTERFACE_DEFAULT"},
 };
 
 class AttributePack {
