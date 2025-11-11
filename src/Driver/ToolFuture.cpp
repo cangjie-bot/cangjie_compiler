@@ -22,6 +22,11 @@ ToolFuture::State ThreadFuture::GetState()
     return result.value() ? State::SUCCESS : State::FAILED;
 }
 
+ToolFuture::State ErrorFuture::GetState()
+{
+    return State::FAILED;
+}
+
 #ifdef _WIN32
 ToolFuture::State WindowsProcessFuture::GetState()
 {
@@ -31,7 +36,6 @@ ToolFuture::State WindowsProcessFuture::GetState()
     } else if (state == WAIT_TIMEOUT) {
         return State::RUNNING;
     }
-    DWORD exit_code;
     if (FALSE == GetExitCodeProcess(pi.hProcess, &exit_code)) {
         return State::FAILED;
     }
@@ -44,6 +48,9 @@ ToolFuture::State LinuxProcessFuture::GetState()
 {
     int status = 0;
     int result = waitpid(pid, &status, WNOHANG);
+    if (WIFEXITED(status)) {
+        exit_code = WEXITSTATUS(status);
+    }
     if (result < 0 || status != 0) {
         // If an error occurs because the file is deleted, the error information is not printed.
         return State::FAILED;
