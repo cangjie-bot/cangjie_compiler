@@ -36,6 +36,7 @@ const std::string OS_STR = "os";
 const std::string CJC_VERSION_STR = "cjc_version";
 const std::string DEBUG_STR = "debug";
 const std::string TEST_STR = "test";
+const std::string ENV_STR = "env";
 // Condition value map.
 const std::unordered_set<std::string> TARGET_CONDITION = {
     BACKEND_STR,
@@ -44,6 +45,7 @@ const std::unordered_set<std::string> TARGET_CONDITION = {
     CJC_VERSION_STR,
     DEBUG_STR,
     TEST_STR,
+    ENV_STR,
 };
 // Condition supported op map.
 const std::unordered_map<std::string, std::vector<TokenKind>> CONDITION_OP = {
@@ -87,6 +89,13 @@ const std::unordered_map<std::string, std::vector<TokenKind>> CONDITION_OP = {
         TEST_STR,
         {},
     },
+    {
+        ENV_STR,
+        {
+            TokenKind::EQUAL,
+            TokenKind::NOTEQ,
+        }
+    }
 };
 // Condition supported values map.
 const std::map<std::string, std::vector<std::string>> CONDITION_VALUES = {
@@ -110,8 +119,18 @@ const std::map<std::string, std::vector<std::string>> CONDITION_VALUES = {
             "Linux",
             "macOS",
             "iOS",
-            "HarmonyOS",
         },
+    },
+    {
+        ENV_STR,
+        {
+            "",
+            "gnu",
+            "ohos",
+            "musl",
+            "simulator",
+            "android",
+        }
     },
 };
 } // namespace
@@ -214,7 +233,7 @@ std::string ConditionalCompilationImpl::GetUserDefinedInfoByName(const std::stri
 {
     auto passedValues = GetPassedValues();
     if (passedValues.count(name) == 0) {
-        return "";
+        return "invaild"; // "" is one of env options. 
     }
 
     return passedValues.at(name);
@@ -239,15 +258,13 @@ bool ConditionalCompilationImpl::ConditionCheck(
             DiagKindRefactor::conditional_compilation_not_support_this_condition, begin, conditionStr);
         return false;
     }
-    // Check `backend` and `os` condition value.
+    // Check `arch`, `env`, `backend` and `os` condition value.
     if (CONDITION_VALUES.count(conditionStr) > 0 && !Utils::In(right, CONDITION_VALUES.at(conditionStr))) {
         std::string supportedValues = "";
         for (const auto& it : CONDITION_VALUES.at(conditionStr)) {
             supportedValues += it + " ";
         }
-        if (!supportedValues.empty()) {
-            supportedValues.pop_back();
-        }
+        supportedValues.pop_back();
         (void)ci->diag.DiagnoseRefactor(DiagKindRefactor::conditional_compilation_not_support_builtin_value, begin,
             conditionStr, right, supportedValues);
         return false;
@@ -313,7 +330,7 @@ bool ConditionalCompilationImpl::EvalJudgeBinaryExpr(const BinaryExpr& be)
         return false;
     }
     auto relatedInfo = GetRelatedInfo(conditionStr);
-    if (relatedInfo.empty()) {
+    if (relatedInfo == "invaild") {
         return false;
     }
     // Filter not support op.
@@ -364,10 +381,10 @@ bool ConditionalCompilationImpl::EvalUnaryExpr(const UnaryExpr& ue) const
         return false;
     }
     auto relatedInfo = GetRelatedInfo(conditionExpr->ref.identifier);
-    if (relatedInfo.empty()) {
+    if (relatedInfo == "invaild") {
         return false;
     }
-    return relatedInfo != "1";
+    return relatedInfo != "1"; // !debug or !test
 }
 
 bool ConditionalCompilationImpl::EvalRefExpr(const RefExpr& re) const
@@ -377,7 +394,7 @@ bool ConditionalCompilationImpl::EvalRefExpr(const RefExpr& re) const
         return false;
     }
     auto relatedInfo = GetRelatedInfo(re.ref.identifier);
-    if (relatedInfo.empty()) {
+    if (relatedInfo == "invaild") {
         return false;
     }
     return relatedInfo == "1";
@@ -548,6 +565,8 @@ std::string ConditionalCompilationImpl::GetRelatedInfo(const std::string& target
         return GetDebug();
     } else if (target == TEST_STR) {
         return GetTest();
-    }
+    } else if (target == ENV_STR) {
+        return GetEnv();
+     }
     return GetUserDefinedInfoByName(target);
 }
