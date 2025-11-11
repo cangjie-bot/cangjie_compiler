@@ -48,6 +48,10 @@ private:
     {
         return triple.ArchToString();
     }
+    inline std::string GetEnv() const
+    {
+        return triple.EnvironmentToSimpleString();
+    }
     std::string GetOSType() const;
     inline std::string GetCJCVersion() const
     {
