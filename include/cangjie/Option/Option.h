@@ -1010,8 +1010,10 @@ public:
      * @param notFoundError A reference to the diagnostic kind used to generate the error message.
      * @return std::optional<std::string> The optional valid file path.
      */
-    std::optional<std::string> ValidateInputFilePath(
-        const std::string& path, const DiagKindRefactor notFoundError) const;
+    static std::optional<std::string> ValidateInputFilePath(
+        const std::string& path, const DiagKindRefactor notFoundError);
+    static std::optional<std::string> ValidateInputFilePath(
+        const std::string& path, const DiagKindRefactor notFoundError, DiagnosticEngine& diag);
 
     /**
      * @brief Sets the frontend mode.
