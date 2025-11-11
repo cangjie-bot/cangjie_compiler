@@ -16,3 +16,7 @@ endif()
 target_include_directories(CangjieFrontendTool PRIVATE ${BOUNDSCHECK}/include)
 target_include_directories(CangjieFrontendTool PRIVATE ${LLVM_INCLUDE_DIRS})
 target_compile_options(CangjieFrontendTool PRIVATE ${CJC_WITH_LLVM_EXTRA_WARNINGS})
+
+add_library(CangjieCjdCheck OBJECT CjdCheck.cpp)
+target_include_directories(CangjieCjdCheck PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_options(CangjieCjdCheck PRIVATE ${CJC_WITH_LLVM_EXTRA_WARNINGS})
