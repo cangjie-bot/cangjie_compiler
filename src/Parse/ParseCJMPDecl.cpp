@@ -181,9 +181,6 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         // Check that the member of platform interface must have the body
         CheckPlatformInterface(StaticCast<AST::InterfaceDecl&>(decl));
-    } else if ((decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::STRUCT_DECL) && 
-        decl.TestAttr(Attribute::COMMON)) {
-        CheckCJMPCtorPresence(decl);
     }
 }
 

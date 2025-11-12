@@ -35,7 +35,6 @@
 #include "TypeCheckUtil.h"
 #include "TypeCheckerImpl.h"
 #include "NativeFFI/Java/TypeCheck/InheritanceChecker.h"
-#include "NativeFFI/ObjC/Utils/OCStructInheritanceCheckerImpl.h"
 #include "CJMP/MPTypeCheckerImpl.h"
 
 using namespace Cangjie;
