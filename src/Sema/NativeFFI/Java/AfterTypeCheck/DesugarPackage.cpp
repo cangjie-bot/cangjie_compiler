@@ -64,12 +64,22 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
     generatedDecls.clear();
 }
 
-void JavaInteropManager::DesugarPackage(Package& pkg)
+/**
+ * DesugarPackage is responsible for coordinating the desugaring process of Java interop features within a package.
+ * It processes Java mirror and impl stubs, actual desugaring, and typechecks for both Java mirrors and CJMappings
+ * depending on the compilation configuration and presence of Java interop entities.
+ *
+ * @param pkg The package that contains files to be desugared.
+ * @param memberMap A reference to a collection containing member signature metadata,
+ *        used for generating method stubs in synthetic classes.
+ *        This collection contains method signatures of all structs.
+ */
+void JavaInteropManager::DesugarPackage(Package& pkg, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
 {
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
-    JavaDesugarManager desugarer{importManager, typeManager, diag, mangler, javagenOutputPath, outputPath};
+    JavaDesugarManager desugarer{importManager, typeManager, diag, mangler, javagenOutputPath, outputPath, memberMap};
 
     if (hasMirrorOrImpl) {
         auto nbegin = static_cast<uint8_t>(DesugarJavaMirrorImplStage::BEGIN);
