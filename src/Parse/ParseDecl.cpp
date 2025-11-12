@@ -819,15 +819,15 @@ void ParserImpl::CheckPrimaryCtorDeclObjCMirror(PrimaryCtorDecl& ctor)
 
 void ParserImpl::CheckCJMappingAttr(Decl& decl) const
 {
-    if (!enableInteropCJMapping) {
+    if (!enableInteropCJMapping || decl.generic != nullptr) {
         return;
     }
-    if (decl.TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
+    if (decl.TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE,
+        Attribute::OBJ_C_MIRROR, Attribute::OBJ_C_MIRROR_SUBTYPE)) {
         return;
     }
     // currently only support struct decl, enum decl, class decl interface decl, extend decl.
-    bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT) &&
-        !decl.TestAttr(Attribute::JAVA_MIRROR) && !decl.TestAttr(Attribute::JAVA_MIRROR_SUBTYPE);
+    bool isCJMappingClass = decl.astKind == ASTKind::CLASS_DECL && !decl.TestAttr(Attribute::ABSTRACT);
     // support java type
     if (decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL || isCJMappingClass ||
         decl.astKind == ASTKind::INTERFACE_DECL) {
@@ -840,8 +840,8 @@ void ParserImpl::CheckCJMappingAttr(Decl& decl) const
             decl.EnableAttr(Attribute::JAVA_CJ_MAPPING);
         }
     }
-    // support objc type
-    if (decl.astKind == ASTKind::STRUCT_DECL) {
+    // ObjC: currently only support struct, non-open class without generic
+    if (decl.astKind == ASTKind::STRUCT_DECL || (isCJMappingClass && !decl.IsOpen())) {
         if (decl.TestAttr(Attribute::PUBLIC) && targetInteropLanguage == GlobalOptions::InteropLanguage::ObjC) {
             decl.EnableAttr(Attribute::OBJ_C_CJ_MAPPING);
         } 
