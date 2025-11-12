@@ -602,6 +602,10 @@ void PrintTryExpr(unsigned indent, const TryExpr& expr, std::ostream& stream = s
         PrintIndent(stream, indent + TWO_INDENT, "HandlePattern", "{");
         PrintIndent(stream, indent + THREE_INDENT, "CommandTypePattern:");
         PrintNode(handler.commandPattern.get(), indent + THREE_INDENT, "", stream);
+        if (handler.resumptionPattern) {
+            PrintIndent(stream, indent + THREE_INDENT, "ResumptionTypePattern:");
+            PrintNode(handler.resumptionPattern.get(), indent + THREE_INDENT, "", stream);
+        }
         PrintIndent(stream, indent + TWO_INDENT, "}");
         PrintIndent(stream, indent + TWO_INDENT, "HandleBlock", "{");
         PrintNode(handler.block.get(), indent + THREE_INDENT, "", stream);
@@ -645,6 +649,7 @@ void PrintResumeExpr(unsigned indent, const ResumeExpr& expr, std::ostream& stre
 {
     PrintIndent(stream, indent, "ResumeExpr", "{");
     PrintBasic(indent + ONE_INDENT, expr, stream);
+    PrintNode(expr.expr.get(), indent + ONE_INDENT, "ResumeExpr", stream);
     PrintNode(expr.withExpr.get(), indent + ONE_INDENT, "WithExpr", stream);
     PrintNode(expr.throwingExpr.get(), indent + ONE_INDENT, "ThrowingExpr", stream);
     PrintIndent(stream, indent, "}");
@@ -1332,6 +1337,14 @@ void PrintCommandTypePattern(
     }
 }
 
+void PrintResumptionTypePattern(unsigned indent, const ResumptionTypePattern& resumptionTypePattern, std::ostream &stream = std::cout)
+{
+    PrintNode(resumptionTypePattern.pattern.get(), indent + ONE_INDENT, "", stream);
+    for (auto& type : resumptionTypePattern.types) {
+        PrintNode(type.get(), indent + ONE_INDENT, "", stream);
+    }
+}
+
 void PrintFeaturesDirective(
     unsigned indent, const FeaturesDirective& featuresDirective, std::ostream& stream = std::cout)
 {
@@ -1512,6 +1525,7 @@ void PrintNode(Ptr<const Node> node, unsigned indent, const std::string& additio
             const ExceptTypePattern& exceptTypePattern) { PrintExceptTypePattern(indent, exceptTypePattern, stream); },
         [&indent, &stream](
             const CommandTypePattern& cmdTypePattern) { PrintCommandTypePattern(indent, cmdTypePattern, stream); },
+        [&indent, &stream](const ResumptionTypePattern& resTypePattern) { PrintResumptionTypePattern(indent, resTypePattern, stream); },
         [indent, &stream](const VarOrEnumPattern& ve) { PrintVarOrEnumPattern(indent, ve, stream); },
         // ----------- package----------------------
         [&indent, &stream](const FeaturesDirective& feature) { PrintFeaturesDirective(indent, feature, stream); },
