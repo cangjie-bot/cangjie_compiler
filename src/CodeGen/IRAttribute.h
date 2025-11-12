@@ -162,6 +162,15 @@ inline void SetSRetAttrForStructReturnType(const CHIR::FuncType& chirFuncTy, llv
         AddSRetAttribute(llvmFunc.arg_begin());
     }
 }
+
+inline void AddStackTraceOmitAttr(llvm::Function& llvmFunc) 
+{
+    const std::string& funcName = llvmFunc.getName().str();
+    if(funcName.find(CJ_MANGLED_NAME_PREFIX) == 0 || funcName.find(RT_FUNC_NAME_PREFIX) == 0)
+    {
+        llvmFunc.addFnAttr(CJ_STACK_TRACE_OMIT_ATTR);
+    }
+}
 } // namespace CodeGen
 } // namespace Cangjie
 

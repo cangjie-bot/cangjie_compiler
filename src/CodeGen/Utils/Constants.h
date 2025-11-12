@@ -49,6 +49,8 @@ const std::string PREFIX_OF_BACKEND_SYMS = PREFIX_OF_BUILT_IN_SYMS + "MCC_";
 const std::string FOR_KEEPING_SOME_TYPES_FUNC_NAME = "0_for_keeping_some_types";
 const std::string USER_MAIN_MANGLED_NAME = "user.main";
 const std::string CJ_ENTRY_FUNC_NAME = "cj_entry$";
+const std::string CJ_MANGLED_NAME_PREFIX = "_CNat";
+const std::string RT_FUNC_NAME_PREFIX = "rt$";
 const std::string CONST_TUPLE_PREFIX = "$const_tuple.";
 const std::string CONST_ARRAY_PREFIX = "$const_array.";
 const std::string FUNC_USED_BY_CLOSURE = "UsedByClosure";
@@ -85,6 +87,7 @@ const std::string GENERIC_PREFIX = "$G_";
 const std::string HAS_WITH_TI_WRAPPER_ATTR = "hasWithTIWrapper";
 const std::string PKG_GV_INIT_PREFIX = "_CGP";
 const std::string FILE_GV_INIT_PREFIX = "_CGF";
+const std::string CJ_STACK_TRACE_OMIT_ATTR = "cj_stack_trace_omit";
 } // namespace CodeGen
 } // namespace Cangjie
 #endif // CANGJIE_CODEGENCONSTANTS_H
