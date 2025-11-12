@@ -710,7 +710,9 @@ def check_compiler(args):
     # If cross-compiling cjc, a native compiler is also needed by cross-building LLVM,
     # because it needs some native tools like llvm-tblgen to generate codes.
     # In this case, CMake will use the value in $CC as the native compiler.
-    if args.target and args.product == "cjc":
+    LOG.info(f"c_compiler={c_compiler}")
+    LOG.info(f"cxx_compiler={cxx_compiler}")
+    if args.target and args.product == "cjc" and not c_compiler.endswith("clang"):
         os.environ["CC"] = shutil.which("clang") + (" --gcc-toolchain={}".format(args.gcc_toolchain) if args.gcc_toolchain else "")
         os.environ["CXX"] = shutil.which("clang++") + (" --gcc-toolchain={}".format(args.gcc_toolchain) if args.gcc_toolchain else "")
     else:

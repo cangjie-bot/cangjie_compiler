@@ -208,6 +208,12 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
             -DCMAKE_AR=${CMAKE_AR}
             -DCMAKE_RANLIB=${CMAKE_RANLIB}
             -DCMAKE_CXX_STANDARD=17)
+        if(OHOS)
+            list(APPEND LLVM_CMAKE_ARGS
+                -DOHOS=ON
+                -DLLVM_HOST_TRIPLE=${TRIPLE}
+                -DCMAKE_TOOLCHAIN_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/${TRIPLE}_toolchain.cmake)
+        endif()
         if(CANGJIE_BUILD_CJDB)
             if(NOT WIN32)
                 list(APPEND LLVM_CMAKE_ARGS ${LLVM_BUILD_ARG}
@@ -282,6 +288,8 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/demangle
                     COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/boundscheck/include
                     COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}
+                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cangjie-demangler/include/Cangjie.h
+                            <SOURCE_DIR>/utils/demangle
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cangjie-demangler/include/CangjieDemangle.h
                             <SOURCE_DIR>/utils/demangle
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cangjie-demangler/lib/libcangjie-demangle.a
@@ -366,15 +374,15 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
         endif()
         set(CLANG_RT_LIBS)
         # copy the builtin and profile library
-        if(NOT OHOS)
-            if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR DARWIN)
-                list(APPEND CLANG_RT_LIBS ${LIB_BUILTINS_PATH})
-            endif()
-            list(APPEND CLANG_RT_LIBS ${LIB_PROFILE_PATH})
-            if(NOT WIN32 AND NOT IOS)
-                list(APPEND CLANG_RT_LIBS ${LIB_FUZZER_NOMAIN_PATH})
-            endif()
+        # if(NOT OHOS)
+        if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR DARWIN)
+            list(APPEND CLANG_RT_LIBS ${LIB_BUILTINS_PATH})
         endif()
+        list(APPEND CLANG_RT_LIBS ${LIB_PROFILE_PATH})
+        if(NOT WIN32 AND NOT IOS)
+            list(APPEND CLANG_RT_LIBS ${LIB_FUZZER_NOMAIN_PATH})
+        endif()
+        # endif()
         set(CLANG_RT_TARGET_SUFFIX ${CMAKE_SYSTEM_PROCESSOR}$<$<BOOL:${ANDROID}>:-android>)
         if(CANGJIE_ASAN_SUPPORT)
             list(APPEND CLANG_RT_LIBS ${LIB_RTLIB_ROOT_PATH}/libclang_rt-asan.a)
@@ -511,6 +519,11 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                 FILES_MATCHING
                 ${LLVM_BIN_INSTALL_PATTERN}
                 )
+            if(OHOS)
+                install(
+                    DIRECTORY ${CANGJIE_TARGET_SYSROOT}/usr/lib/aarch64-linux-ohos
+                    DESTINATION ${THIRD_PARTY_LLVM}/../ohos_sdk_crt)
+            endif()
         endif()
         install(FILES ${CLANG_RT_LIBS} DESTINATION lib/${output_lib_dir}${SANITIZER_SUBPATH})
 
