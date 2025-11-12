@@ -483,7 +483,14 @@ void TypeChecker::TypeCheckerImpl::EncloseTryLambda(ASTContext& ctx, OwnedPtr<AS
 */
 VarDecl& TypeChecker::TypeCheckerImpl::CreateFrame(ASTContext& ctx, TryExpr& te, std::vector<OwnedPtr<Node>>& block)
 {
+    // If no handlers use a resumption, we don't need to install a full frame
     auto frameClassName = CLASS_IMMEDIATE_FRAME;
+    for (auto& h : te.handlers) {
+        if (!h.IsImmediate()) {
+            frameClassName = CLASS_DEFERRED_FRAME;
+            break;
+        }
+    }
     // To: Frame({=> try{...} catch{...}})
     auto lambdaTy = DynamicCast<FuncTy*>(te.tryLambda->ty);
     CJC_NULLPTR_CHECK(lambdaTy);
@@ -501,19 +508,19 @@ VarDecl& TypeChecker::TypeCheckerImpl::CreateFrame(ASTContext& ctx, TryExpr& te,
     re->ty = frameClassTy;
     re->instTys.push_back(tryExprTy);
 
+    auto frameInit = CreateMemberAccess(std::move(re), "init");
+    CJC_ASSERT(frameInit->target);
+    frameInit->targets.emplace_back(StaticCast<FuncDecl*>(frameInit->target));
+
     EncloseTryLambda(ctx, te.tryLambda);
 
     // We cannot just pass the lambda directly to the constructor, because then the call
     // to ChkCallExpr would delete the desugaring information, so we bind the lambda to
     // a variable before calling the constructor
     auto lambdaVarDecl = CreateVarDecl("$frameLambda", std::move(te.tryLambda));
-    ctx.AddDeclName(std::make_pair("$frameLambda", lambdaVarDecl->scopeName), *lambdaVarDecl);
+    AST::CopyNodeScopeInfo(re, lambdaVarDecl);
     auto lambdaVar = CreateRefExpr(*lambdaVarDecl);
-    AST::CopyNodeScopeInfo(lambdaVar, re);
-
-    auto frameInit = CreateMemberAccess(std::move(re), "init");
-    CJC_ASSERT(frameInit->target);
-    frameInit->targets.emplace_back(StaticCast<FuncDecl*>(frameInit->target));
+    AST::CopyNodeScopeInfo(re, lambdaVar);
 
     std::vector<OwnedPtr<FuncArg>> args;
     args.emplace_back(CreateFuncArg(std::move(lambdaVar)));
@@ -567,8 +574,11 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             auto re = CreateRefExpr(frame);
             AST::CopyNodeScopeInfo(re, handler.block);
             OwnedPtr<MemberAccess> ma;
+            if (handler.IsImmediate()) {
             ma = CreateMemberAccess(std::move(re), "setImmediateHandler");
-
+            } else {
+                ma = CreateMemberAccess(std::move(re), "setDeferredHandler");
+            }
             // Function `CreateMemberAccess` will not initialise `ma.targets`,
             // so we need to assign `targets` by calling `ChkCallExpr` later
             OwnedPtr<Type> effectTypeArgument = ASTCloner::Clone(commandPattern->types[j].get());
@@ -581,19 +591,29 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             ma->typeArguments.emplace_back(std::move(resumptionTypeArgument));
             ma->instTys.emplace_back(handler.commandResultTy);
 
+            if (handler.IsImmediate()) {
             // setImmediateHandler lives in HandlerFrame, which is not parameterized
             // by return type, so it takes the return type as an extra type parameter
             OwnedPtr<Type> resultTypeArgument = MakeOwned<Type>();
             resultTypeArgument->ty = te.ty;
             ma->typeArguments.emplace_back(std::move(resultTypeArgument));
             ma->instTys.emplace_back(te.ty);
-
+            } else {
+                // We need to reconstruct the type of the parameter because the user has provided
+                // a function of type (Cmd, stdx.effect.Resumption<Res, Ret>) -> Ret, but in fact
+                // we want (Cmd, std.effect.Resumption<Res, Ret>) -> Ret. This is safe because at
+                // runtime stdx.effect.Resumption is a "fake" type and all of its instances are
+                // in fact instances of std.effect.Resumption
+                auto surfaceHandlerTy = StaticCast<FuncTy*>(handler.desugaredLambda->ty);
+                handler.desugaredLambda->ty = CastDeferredHandlerFn(surfaceHandlerTy);
+            }
             // We need to set the targets by hand, because the call to ChkCallExpr
             // below expects targets to be nonempty
             CJC_ASSERT(ma->target);
             ma->targets.emplace_back(StaticCast<FuncDecl*>(ma->target));
 
             OwnedPtr<AST::LambdaExpr> handlerLambda = std::move(handler.desugaredLambda);
+            if (handler.IsImmediate()) {
             /**
              * When a handler is immediate we need to treat exceptions in the handler
              * and results of the desugaredLambda differently, since the stack of the
@@ -874,12 +894,13 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             handlerLambda->funcBody->ty =
                 typeManager.GetFunctionTy(DynamicCast<FuncTy*>(handlerLambda->ty)->paramTys, resultDeclTy);
             handlerLambda->funcBody->retType = CreateRefType(*resultDeclTy->decl);
+            }
 
             // Like in createFrame, we can't just pass the lambda to `setHandler`
             OwnedPtr<AST::VarDecl> handlerLambdaVarDecl = CreateVarDecl("$handlerLambda", std::move(handlerLambda));
-            ctx.AddDeclName(std::make_pair("$handlerLambda", handlerLambdaVarDecl->scopeName), *handlerLambdaVarDecl);
+            AST::CopyNodeScopeInfo(re, handlerLambdaVarDecl);
             auto handlerLambdaVar = CreateRefExpr(*handlerLambdaVarDecl);
-            AST::CopyNodeScopeInfo(handlerLambdaVar, handlerLambdaVarDecl);
+            AST::CopyNodeScopeInfo(re, handlerLambdaVar);
 
             std::vector<OwnedPtr<FuncArg>> args;
             args.emplace_back(CreateFuncArg(std::move(handlerLambdaVar)));
@@ -892,6 +913,20 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             block.emplace_back(std::move(setHandlerCall));
         }
     }
+}
+
+Ptr<FuncTy> TypeChecker::TypeCheckerImpl::CastDeferredHandlerFn(Ptr<FuncTy> stdxFuncTy)
+{
+    auto commandTy = stdxFuncTy->paramTys[0];
+    auto stdResumptionTy = ResumptionToInternalResumptionTy(stdxFuncTy->paramTys[1]);
+    return typeManager.GetFunctionTy({commandTy, stdResumptionTy}, stdxFuncTy->retTy);
+}
+
+Ptr<Ty> TypeChecker::TypeCheckerImpl::ResumptionToInternalResumptionTy(Ptr<Ty> stdxResumptionTy)
+{
+    auto stdResumptionDecl = RawStaticCast<ClassDecl*>(
+        importManager.GetImportedDecl(EFFECT_INTERNALS_PACKAGE_NAME, CLASS_RESUMPTION_INTERNAL));
+    return typeManager.GetClassTy(*stdResumptionDecl, stdxResumptionTy->typeArgs);
 }
 
 /*
@@ -1039,7 +1074,73 @@ void TypeChecker::TypeCheckerImpl::DesugarResume(ASTContext& ctx, AST::ResumeExp
         // has not been run
         return;
     }
+    if (re.expr) {
+        DesugarDeferredResume(ctx, re);
+    } else {
     DesugarImmediateResume(ctx, re);
+}
+}
+
+/*
+    From: resume res with val
+    To: res.proceed(val)
+    (And similar for resume throwing)
+
+    Note that the resumption variable needs to be casted to an InternalResumption
+*/
+void TypeChecker::TypeCheckerImpl::DesugarDeferredResume([[maybe_unused]] ASTContext& ctx, AST::ResumeExpr& re)
+{
+    auto argTy = re.withExpr ? re.withExpr->ty : TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    auto resumeFnName = "proceed";
+    if (re.throwingExpr) {
+        // Check whether we're throwing an error or an exception -- the base type
+        // is different, so we need to call a different method
+        auto exception = importManager.GetCoreDecl<ClassDecl>(CLASS_EXCEPTION);
+        CJC_NULLPTR_CHECK(exception);
+        if (typeManager.IsSubtype(re.throwingExpr->ty, exception->ty)) {
+            resumeFnName = "failExn";
+        } else {
+            resumeFnName = "failErr";
+        }
+    }
+    OwnedPtr<Expr> resumeFn = GetHelperFrameMethod(re, resumeFnName, {argTy});
+
+    auto outerBlock = MakeOwnedNode<Block>();
+    CopyNodeScopeInfo(outerBlock, &re);
+    outerBlock->ty = re.ty;
+
+    // Create `let $tmp = resumption`
+    {
+        auto resVarDecl = CreateVarDecl("$resumption", std::move(re.expr));
+        CopyNodeScopeInfo(resVarDecl, &re);
+        resVarDecl->ty = ResumptionToInternalResumptionTy(resVarDecl->initializer->ty);
+        outerBlock->body.emplace_back(std::move(resVarDecl));
+    }
+    auto& resVarDecl = *RawStaticCast<VarDecl*>(outerBlock->body.back().get());
+    auto resRef = CreateRefExpr(resVarDecl);
+    CopyNodeScopeInfo(resRef, &re);
+
+    // create function call of Frame
+    std::vector<OwnedPtr<FuncArg>> args;
+    args.emplace_back(CreateFuncArg(std::move(resRef)));
+    if (re.withExpr) {
+        args.emplace_back(CreateFuncArg(std::move(re.withExpr)));
+    } else if (re.throwingExpr) {
+        args.emplace_back(CreateFuncArg(std::move(re.throwingExpr)));
+    } else {
+        // Create a Unit argument if one is not explicitly provided, i.e. `resume r`
+        args.emplace_back(CreateFuncArg(AST::CreateUnitExpr(argTy)));
+    }
+
+    auto resumeCall = AST::CreateCallExpr(std::move(resumeFn), std::move(args));
+    auto typecheckOk = ChkCallExpr(ctx, re.ty, *resumeCall);
+    CJC_ASSERT(typecheckOk);
+    // Checking for a call expr may get rid of some desugarings
+    DesugarForPropDecl(*resumeCall);
+
+    outerBlock->body.emplace_back(std::move(resumeCall));
+
+    re.desugarExpr = std::move(outerBlock);
 }
 
 /**
