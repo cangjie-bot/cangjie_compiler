@@ -193,6 +193,13 @@ bool TypeChecker::TypeCheckerImpl::ChkHandler(ASTContext& ctx, Handler& handler,
     }
     std::vector<Ptr<Ty>> args;
     args.emplace_back(cmdTy);
+    if (!handler.IsImmediate()) {
+        auto resTy = StaticAs<ASTKind::RESUMPTION_TYPE_PATTERN>(handler.resumptionPattern.get())->pattern->ty;
+        if (resTy->IsInvalid()) {
+            return false;
+        }
+        args.emplace_back(resTy);
+    }
     Ptr<Ty> handleLambdaTy = typeManager.GetFunctionTy(args, &tgtTy);
     if (!Check(ctx, handleLambdaTy, handler.desugaredLambda)) {
         DiagMismatchedTypes(diag, *handler.desugaredLambda->funcBody->body, tgtTy);
@@ -313,11 +320,12 @@ bool TypeChecker::TypeCheckerImpl::ChkTryExprHandlePatterns(ASTContext& ctx, Try
     std::vector<Ptr<Ty>> included{};
     for (auto& handler : te.handlers) {
         if (handler.commandPattern.get()->astKind != ASTKind::COMMAND_TYPE_PATTERN ||
+            (!handler.IsImmediate() && handler.resumptionPattern.get()->astKind != ASTKind::RESUMPTION_TYPE_PATTERN) ||
             !handler.desugaredLambda) {
             // Parse error has already been reported.
             continue;
         }
-        if (!ChkHandlePatterns(ctx, handler, included)) {
+        if (!ChkHandlePatterns(ctx, te, handler, included)) {
             return false;
         }
     }
@@ -328,7 +336,7 @@ bool TypeChecker::TypeCheckerImpl::ValidateHandler(Handler& h)
 {
     bool valid = ValidateBlockInTryHandle(*h.block);
     std::vector<Ptr<Node>> scopeChanges;
-    if (valid) {
+    if (valid && h.IsImmediate()) {
         // If the handler is immediate, then we need to walk the body of the handle blocks
         // and bind any implicit `resume` to it.
         if (!h.desugaredLambda) {
@@ -339,7 +347,9 @@ bool TypeChecker::TypeCheckerImpl::ValidateHandler(Handler& h)
             switch (node->astKind) {
                 case ASTKind::RESUME_EXPR: {
                     auto re = StaticAs<ASTKind::RESUME_EXPR>(node);
+                    if (!re->expr) {
                     re->enclosing = &h;
+                    }
                     return VisitAction::WALK_CHILDREN;
                 }
                 case ASTKind::FUNC_BODY:
