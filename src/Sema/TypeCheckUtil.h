@@ -285,14 +285,14 @@ OwnedPtr<AST::CallExpr> CreateInitCall(
     AST::File& curFile, const std::vector<Ptr<AST::Ty>> instTys = {});
 
 Ptr<AST::FuncDecl> GenerateGetTypeForTypeParamIntrinsic(
-    AST::Package& pkg, TypeManager& typeManager, Ptr<AST::Ty> strTy);
+    AST::Package& pkg, TypeManager& typeManager, ImportManager& importManager, Ptr<AST::Ty> strTy);
 
 // Generates declaration of intrinsic that is roughly eqivalent to expression `TypeLeft is TypeRight`,
 // where `TypeLeft` and `TypeRight` are types and the result is true iff TypeLeft is subtype of TypeRight:
 // func isSubtypeTypes<T, E>() {
 //   return T is E
 // }
-Ptr<AST::FuncDecl> GenerateIsSubtypeTypesIntrinsic(AST::Package& pkg, TypeManager& typeManager);
+Ptr<AST::FuncDecl> GenerateIsSubtypeTypesIntrinsic(AST::Package& pkg, TypeManager& typeManager, ImportManager& importManager);
 
 OwnedPtr<AST::GenericParamDecl> CreateGenericParamDecl(
     AST::Decl& decl, const std::string& name, TypeManager& typeManager);

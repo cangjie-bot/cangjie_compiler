@@ -680,7 +680,7 @@ void JavaDesugarManager::GenerateInMirrors(File& file, bool doStub)
         std::once_flag flag;
         std::call_once(flag, [this, &pkg]() {
             TypeCheckUtil::GenerateGetTypeForTypeParamIntrinsic(
-                *pkg, typeManager, importManager.GetCoreDecl<StructDecl>(STD_LIB_STRING)->ty);
+                *pkg, typeManager, importManager, importManager.GetCoreDecl<StructDecl>(STD_LIB_STRING)->ty);
         });
     }
 
