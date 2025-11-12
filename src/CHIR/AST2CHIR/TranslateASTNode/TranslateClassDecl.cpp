@@ -257,10 +257,16 @@ Func* Translator::TranslateVarsInit(const AST::Decl& decl)
     return funcDef;
 }
 
+inline bool DeclaredInDifferentFiles(const AST::Decl& d1, const AST::Decl& d2)
+{
+    return d1.curFile && d2.curFile && d1.curFile->fileHash != d2.curFile->fileHash;
+}
+
 bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& member) const
 {
     if (mergingPlatform && !decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::PLATFORM) &&
-        member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
+      DeclaredInDifferentFiles(decl, member)) {
+        // member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
         // Skip decls from common part when compiling platform
         return false;
     }
