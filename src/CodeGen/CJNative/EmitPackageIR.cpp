@@ -208,6 +208,7 @@ llvm::Function* GenerateEntryFunction(CGModule& cgMod, llvm::Function& userMain)
     auto cjEntryFunc = llvm::cast<llvm::Function>(
         cgMod.GetLLVMModule()->getOrInsertFunction(CJ_ENTRY_FUNC_NAME, cjEntryFuncType).getCallee());
     cjEntryFunc->setPersonalityFn(cgMod.GetExceptionIntrinsicPersonality());
+    cjEntryFunc->addFnAttr(CJ_STACK_TRACE_OMIT_ATTR);
     SetGCCangjie(cjEntryFunc);
 
     auto entryBB = llvm::BasicBlock::Create(cgMod.GetLLVMContext(), "entry", cjEntryFunc);
@@ -828,9 +829,11 @@ void GenerateBinarySectionInfo(const CGModule& cgMod)
         }
     }
     // Add `cjinit` attr to `user.main` and functions that are directly called by `user.main`
+    // Add `cj_stack_trace_omit` attr to `user.main`
     if (auto userMainFunc = module->getFunction(USER_MAIN_MANGLED_NAME);
         userMainFunc && userMainFunc->getSection().empty()) {
         userMainFunc->addFnAttr(llvm::Attribute::get(userMainFunc->getContext(), cjInitAttrStr));
+        userMainFunc->addFnAttr(CJ_STACK_TRACE_OMIT_ATTR);
         auto userMainNode = callGraph[userMainFunc];
         for (auto callee = userMainNode->begin(); callee != userMainNode->end(); ++callee) {
             if (auto calleeFunc = callee->second->getFunction(); calleeFunc && calleeFunc->getSection().empty()) {

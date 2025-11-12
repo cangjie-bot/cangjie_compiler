@@ -191,6 +191,7 @@ void FunctionGeneratorImpl::EmitIR()
     cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
     auto chirFuncTy = chirFunc.GetFuncType();
     CJC_NULLPTR_CHECK(chirFuncTy);
+    AddStackTraceOmitAttr(*rawFunction);
     if (chirFuncTy->IsCFunc()) {
         CJC_ASSERT(!chirFunc.TestAttr(CHIR::Attribute::FOREIGN));
         BuildCFunc(cgMod, chirFunc, *cgFunc, builder);
