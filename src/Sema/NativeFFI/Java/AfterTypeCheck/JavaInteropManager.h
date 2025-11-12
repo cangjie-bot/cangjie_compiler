@@ -15,6 +15,7 @@
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Modules/ImportManager.h"
 #include "cangjie/Sema/TypeManager.h"
+#include "InheritanceChecker/TypeAliases.h"
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
@@ -42,7 +43,7 @@ public:
     void CheckJavaImplTypes(ClassLikeDecl& decl);
     void CheckCJMappingType(Decl& decl);
     void CheckCJMappingDeclSupportRange(Decl& decl);
-    void DesugarPackage(Package& pkg);
+    void DesugarPackage(Package& pkg, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap);
 
 private:
     void CheckUsageOfJavaTypes(Decl& decl);
