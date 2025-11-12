@@ -10,7 +10,7 @@ project(cangjie-demangler)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(BUILD_GCC_TOOLCHAIN AND (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")))
+if(BUILD_GCC_TOOLCHAIN AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")))
     add_compile_options(--gcc-toolchain=${BUILD_GCC_TOOLCHAIN})
     add_link_options(--gcc-toolchain=${BUILD_GCC_TOOLCHAIN})
 endif()
