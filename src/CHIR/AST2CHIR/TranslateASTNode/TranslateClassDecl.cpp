@@ -153,8 +153,7 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
         CJC_ASSERT(params.size() == 1);
         func->ReplaceBody(*body);
         func->AddParam(*params[0]);
-        const auto& loc = DebugLocation(TranslateLocationWithoutScope(builder.GetChirContext(), decl.begin, decl.end));
-        func->SetDebugLocation(loc);
+        func->SetDebugLocation(DebugLocation());
     } else {
         auto identifier = decl.identifier + POSTFIX;
         auto rawMangledName = decl.rawMangleName + POSTFIX;
@@ -173,7 +172,6 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
         auto funcType = builder.GetType<FuncType>(params, returnType);
         funcType = AdjustVarInitType(*funcType, outerDecl, builder, chirTy);
         auto loc = DebugLocation(TranslateLocationWithoutScope(builder.GetChirContext(), decl.begin, decl.end));
-
         auto customTypeDef = chirTy.GetGlobalNominalCache(outerDecl);
         func = builder.CreateFunc(loc, funcType, mangledName, identifier, rawMangledName, pkgName);
         customTypeDef->AddMethod(func);
