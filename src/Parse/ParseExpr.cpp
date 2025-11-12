@@ -713,19 +713,6 @@ static ExprKind RemoveParsingIfCondExpr(ExprKind ek)
     }
 }
 
-static ExprKind RemoveParsingIfCondExpr(ExprKind ek)
-{
-    switch (ek) {
-        case ExprKind::EXPR_IN_IF_COND_TUPLE:
-        case ExprKind::EXPR_IN_WHILE_COND_TUPLE:
-        case ExprKind::IF_COND_EXPR:
-        case ExprKind::WHILE_COND_EXPR:
-            return ExprKind::ALL;
-        default:
-            return ek;
-    }
-}
-
 OwnedPtr<Expr> ParserImpl::ParseUnaryExpr(ExprKind ek)
 {
     // For prefixUnaryExpression check: No newline between prefix token and expression.
