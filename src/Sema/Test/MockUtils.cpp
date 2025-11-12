@@ -741,12 +741,12 @@ std::vector<Ptr<Ty>> MockUtils::AddGenericIfNeeded(Decl& originalDecl, Decl& moc
 
 void MockUtils::SetGetTypeForTypeParamDecl(Package& pkg)
 {
-    getTypeForTypeParamDecl = GenerateGetTypeForTypeParamIntrinsic(pkg, typeManager, stringDecl->ty);
+    getTypeForTypeParamDecl = GenerateGetTypeForTypeParamIntrinsic(pkg, typeManager, importManager, stringDecl->ty);
 }
 
 void MockUtils::SetIsSubtypeTypes(Package& pkg)
 {
-    isSubtypeTypesDecl = GenerateIsSubtypeTypesIntrinsic(pkg, typeManager);
+    isSubtypeTypesDecl = GenerateIsSubtypeTypesIntrinsic(pkg, typeManager, importManager);
 }
 
 OwnedPtr<CallExpr> MockUtils::CreateZeroValue(Ptr<Ty> ty, File& curFile) const

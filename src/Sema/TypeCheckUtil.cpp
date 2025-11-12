@@ -1080,8 +1080,13 @@ OwnedPtr<GenericParamDecl> CreateGenericParamDecl(Decl& decl, TypeManager& typeM
     return CreateGenericParamDecl(decl, "T", typeManager);
 }
 
-Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& typeManager, Ptr<Ty> strTy)
+Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& typeManager, ImportManager& importManager, Ptr<Ty> strTy)
 {
+    // Do not generate headless intrinsic stub if it already exists in core
+    auto existingDecl = importManager.GetCoreDecl<FuncDecl>(GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME);
+    if (existingDecl) {
+        return existingDecl;
+    }
     auto file = pkg.files[0].get();
     auto retTy = IS_GENERIC_INSTANTIATION_ENABLED ? strTy : typeManager.GetCStringTy();
     auto funcTy = typeManager.GetFunctionTy({}, retTy);
@@ -1110,8 +1115,13 @@ Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& ty
     return declPtr;
 }
 
-Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeManager)
+Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeManager, ImportManager& importManager)
 {
+    // Do not generate headless intrinsic stub if it already exists in core
+    auto existingDecl = importManager.GetCoreDecl<FuncDecl>(IS_SUBTYPE_TYPES_FUNC_NAME);
+    if (existingDecl) {
+        return existingDecl;
+    }
     auto file = pkg.files[0].get();
     auto retTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
     auto funcTy = typeManager.GetFunctionTy({}, retTy);
