@@ -148,9 +148,9 @@ OwnedPtr<VarDecl> CreateReadingVarDecl(
  * @param declArgs
  * @return
  */
-OwnedPtr<VarDecl> CreateMacroParamDecl(const std::string argName, const Position& pos, std::string inputTyName = MC_INPUT_TOKENS)
+OwnedPtr<VarDecl> CreateMacroParamDecl(const std::string argName, const Position& pos)
 {
-    auto refExpr = CreateRefExprInAST(inputTyName);
+    auto refExpr = CreateRefExprInAST(MC_INPUT_TOKENS);
     refExpr->begin = pos;
     refExpr->end = pos;
     auto tokensAttrCall = CreateCallExpr(std::move(refExpr), {});
@@ -201,10 +201,25 @@ OwnedPtr<AssignExpr> CreateIllegalTokensDecl(const std::string argName, const Po
  * @param ident
  * @return
  */
-OwnedPtr<CallExpr> CreateAttrCall(const std::string& ident, const Position& pos)
+OwnedPtr<CallExpr> CreateAttrCall(const std::string& ident, const Position& pos, const std::string& inputTyName)
 {
     auto attr = CreateFuncArg(CreateRefExpr("attr", pos));
-    auto param = CreateFuncArg(CreateRefExpr("params", pos));
+    OwnedPtr<FuncArg> param = nullptr;
+    if (inputTyName == MC_INPUT_DECL) {
+        auto refExpr = CreateRefExpr(MC_GEN_DECL, pos);
+        std::vector<OwnedPtr<FuncArg>> genDeclArgs;
+        (void)genDeclArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
+        auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genDeclArgs));
+        param = CreateFuncArg(std::move(callExpr));
+    } else if (inputTyName == MC_INPUT_EXPR) {
+        auto refExpr = CreateRefExpr(MC_GEN_EXPR, pos);
+        std::vector<OwnedPtr<FuncArg>> genExprArgs;
+        (void)genExprArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
+        auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genExprArgs));
+        param = CreateFuncArg(std::move(callExpr));
+    } else {
+         param = CreateFuncArg(CreateRefExpr("params", pos));
+    }
     std::vector<OwnedPtr<FuncArg>> retAttrArgs;
     (void)retAttrArgs.emplace_back(std::move(attr));
     (void)retAttrArgs.emplace_back(std::move(param));
@@ -218,9 +233,24 @@ OwnedPtr<CallExpr> CreateAttrCall(const std::string& ident, const Position& pos)
  * @param ident
  * @return
  */
-OwnedPtr<CallExpr> CreateCommonCall(const std::string& ident, const Position& pos)
+OwnedPtr<CallExpr> CreateCommonCall(const std::string& ident, const Position& pos, const std::string& inputTyName)
 {
-    auto param = CreateFuncArg(CreateRefExpr("params", pos));
+    OwnedPtr<FuncArg> param = nullptr;
+    if (inputTyName == MC_INPUT_DECL) {
+        auto refExpr = CreateRefExpr(MC_GEN_DECL, pos);
+        std::vector<OwnedPtr<FuncArg>> genDeclArgs;
+        (void)genDeclArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
+        auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genDeclArgs));
+        param = CreateFuncArg(std::move(callExpr));
+    } else if (inputTyName == MC_INPUT_EXPR) {
+        auto refExpr = CreateRefExpr(MC_GEN_EXPR, pos);
+        std::vector<OwnedPtr<FuncArg>> genExprArgs;
+        (void)genExprArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
+        auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genExprArgs));
+        param = CreateFuncArg(std::move(callExpr));
+    } else {
+        param = CreateFuncArg(CreateRefExpr("params", pos));
+    }
     std::vector<OwnedPtr<FuncArg>> retCommonArgs;
     (void)retCommonArgs.emplace_back(std::move(param));
     auto baseExpr = CreateRefExpr(ident, pos);
@@ -232,10 +262,18 @@ OwnedPtr<CallExpr> CreateCommonCall(const std::string& ident, const Position& po
  * Create var decl, like : let tBuffer = ret.toBytes()
  * @return
  */
-OwnedPtr<VarDecl> CreateToBytesVar(const std::string& refName, const Position& pos)
+OwnedPtr<VarDecl> CreateToBytesVar(const std::string& refName, const Position& pos, bool needToTokens = false)
 {
-    auto toBytesCall = CreateCallExpr(CreateMemberAccess(CreateRefExpr(refName, pos), "toBytes"), {});
-    return CreateVarDecl("tBuffer", std::move(toBytesCall));
+    if (needToTokens) {
+        auto toBytesCall = CreateCallExpr(
+            CreateMemberAccess(
+                CreateCallExpr(CreateMemberAccess(CreateRefExpr(refName, pos), "toTokens"), {}), "toBytes"),
+            {});
+        return CreateVarDecl("tBuffer", std::move(toBytesCall));
+    } else {
+        auto toBytesCall = CreateCallExpr(CreateMemberAccess(CreateRefExpr(refName, pos), "toBytes"), {});
+        return CreateVarDecl("tBuffer", std::move(toBytesCall));
+    }
 }
 
 /**
@@ -476,7 +514,7 @@ OwnedPtr<TryExpr> CreateWrapperTryExpr(OwnedPtr<Block> tryBlock)
  * @return
  */
 OwnedPtr<IfExpr> CreateWrapperIfExpr(
-    const std::tuple<std::string, std::string, std::string>& declArgs, const Position& pos, const std::string& inputTyName = MC_INPUT_TOKENS)
+    const std::tuple<std::string, std::string, std::string>& declArgs, const Position& pos)
 {
     // Create condition expr, like: paramSize > 0
     auto [argName, argBuf, argSize] = declArgs;
@@ -489,13 +527,7 @@ OwnedPtr<IfExpr> CreateWrapperIfExpr(
     auto bufAttr = CreateFuncArg(CreateRefExpr(argBuf));
     std::vector<OwnedPtr<FuncArg>> tokensAttrArgs;
     tokensAttrArgs.emplace_back(std::move(bufAttr));
-    std::string exprName = inputTyName;
-    if (inputTyName == MC_INPUT_DECL) {
-        exprName = MC_GEN_DECL;
-    } else if (inputTyName == MC_INPUT_EXPR) {
-        exprName = MC_GEN_EXPR;
-    }
-    auto refExpr = CreateRefExprInAST(exprName);
+    auto refExpr = CreateRefExprInAST(MC_INPUT_TOKENS);
     refExpr->begin = pos;
     refExpr->end = pos;
     auto callExpr = CreateCallExpr(std::move(refExpr), std::move(tokensAttrArgs));
@@ -542,16 +574,21 @@ OwnedPtr<Block> CreateWrapperTryBlock(const Position& pos, const std::string& id
     auto attrVar = CreateMacroParamDecl("attr", pos);
     attrVar->isVar = true;
     auto attrIfExpr = CreateWrapperIfExpr({"attr", "bufAttr", "attrSize"}, pos);
-    auto paramsVar = CreateMacroParamDecl("params", pos, inputTyName);
+    auto paramsVar = CreateMacroParamDecl("params", pos);
     paramsVar->isVar = true;
-    auto argsIfExpr = CreateWrapperIfExpr({"params", "bufParam", "paramSize"}, pos, inputTyName);
+    auto argsIfExpr = CreateWrapperIfExpr({"params", "bufParam", "paramSize"}, pos);
 
-    auto callExpr = isAttr ? CreateAttrCall(ident, newPos) : CreateCommonCall(ident, newPos);
+    auto callExpr = isAttr ? CreateAttrCall(ident, newPos, inputTyName) : CreateCommonCall(ident, newPos, inputTyName);
     callExpr->baseFunc->EnableAttr(Attribute::MACRO_INVOKE_BODY);
     callExpr->EnableAttr(Attribute::MACRO_INVOKE_BODY);
     auto retVar = CreateVarDecl("ret", std::move(callExpr));
     retVar->isVar = true;
-    auto tBufferVar = CreateToBytesVar("ret", newPos);
+    OwnedPtr<VarDecl> tBufferVar = nullptr;
+    if (inputTyName == MC_INPUT_TOKENS) {
+        tBufferVar = CreateToBytesVar("ret", newPos);
+    } else {
+        tBufferVar = CreateToBytesVar("ret", newPos, true);
+    }
     auto retExpr = CreateReturnExpr(newPos);
     std::vector<OwnedPtr<Node>> nodes;
     nodes.emplace_back(std::move(tlAssignCall));
