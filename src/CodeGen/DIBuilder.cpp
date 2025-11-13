@@ -165,9 +165,7 @@ void DIBuilder::CreateGlobalVar(const CHIR::GlobalVar& variable)
     std::vector<uint64_t> expr;
     // To add the deref flag, need to guarantee the refType is not nullptr, which corresponds to Option<Ref>.None.
     if (IsReferenceType(*ty, cgMod)) {
-        if (IsOptionOrOptionLike(*ty)) {
-            type = CreatePointerType(type);
-        } else {
+        if (!IsOptionOrOptionLike(*ty)) {
             expr.emplace_back(llvm::dwarf::DW_OP_deref);
         }
     }
@@ -315,9 +313,7 @@ void DIBuilder::EmitDeclare(const CHIR::Debug& debugNode, llvm::BasicBlock& curB
     auto hasSize = CGType::GetOrCreate(cgMod, ty)->GetSize();
     if (IsReferenceType(*ty, cgMod) || ty->IsGeneric() || !hasSize) {
         // for the generic option(does not have size), does not need wrap a pointer, because it has typeInfo.
-        if (IsOptionOrOptionLike(*ty) && hasSize) {
-            type = CreatePointerType(type);
-        } else {
+        if (!(IsOptionOrOptionLike(*ty) && hasSize)) {
             flags |= llvm::DINode::FlagObjectPointer;
             expr.emplace_back(llvm::dwarf::DW_OP_deref);
         }
@@ -409,10 +405,7 @@ void DIBuilder::CreateParameter(const CHIR::Debug& debugNode, llvm::BasicBlock& 
         bool isPointerType = IsReferenceType(*paraTy, cgMod) || paraTy->IsStruct() || isRefEnum || paraTy->IsVArray() ||
             paraTy->IsTuple() || paraTy->IsGeneric();
         if (!isTrivialEnum && !isSizeableGenericStruct && isPointerType) {
-            auto cgType = CGType::GetOrCreate(cgMod, paraTy);
-            bool isRefOption =
-                paraTy->IsEnum() && (cgType->IsOptionLikeRef() || StaticCast<CGEnumType*>(cgType)->IsOptionLikeT());
-            if (isRefOption || isEnv) {
+            if (isEnv) {
                 type = CreatePointerType(type);
             } else {
                 expr.emplace_back(llvm::dwarf::DW_OP_deref);
@@ -778,7 +771,7 @@ llvm::DIType* DIBuilder::CreateTupleType(const CHIR::TupleType& tupleTy, const C
         auto elemType = GetOrCreateType(*ty);
         auto bitInSize = GetTypeSize(llvmType->getStructElementType(i));
         auto offset = layOut->getElementOffsetInBits(i) + boxOffset;
-        if (IsReferenceType(*ty, cgMod) || ty->IsRawArray()) {
+        if (IsReferenceType(*ty, cgMod)) {
             elemType = CreatePointerType(elemType, CreateRefType()->getSizeInBits());
         }
         auto memberType = createMemberType(fwdDecl, "_" + std::to_string(i), diFile, 0u, bitInSize,
@@ -1129,9 +1122,8 @@ void DIBuilder::CreateStructMemberType(const CHIR::StructType& structTy, llvm::T
     for (auto& it : structDef->GetAllInstanceVars()) {
         auto elementTy = nonConstStructTy.GetInstantiatedMemberTys(chirBuilder)[i];
         auto elemTy = DeRef(*elementTy);
-        bool isRef = IsReferenceType(*elemTy, cgMod);
         auto elemType = GetOrCreateType(*elemTy, it.TestAttr(CHIR::Attribute::READONLY));
-        if (isRef) {
+        if (IsReferenceType(*elemTy, cgMod)) {
             elemType = CreatePointerType(elemType);
         }
         auto cgElemType = cgType->getStructElementType(i);
@@ -1310,7 +1302,7 @@ llvm::DICompositeType* DIBuilder::CreateEnumWithNonRefArgsType(
         for (uint32_t argIndex = 0; argIndex < ctor.funcType->GetParamTypes().size(); ++argIndex) {
             auto arg = ctor.funcType->GetParamTypes()[argIndex];
             auto argTy = GetOrCreateType(*arg);
-            if (IsReferenceType(*arg, cgMod) || arg->IsRawArray()) {
+            if (IsReferenceType(*arg, cgMod)) {
                 argTy = CreatePointerType(argTy, CreateRefType()->getSizeInBits());
             }
             auto argSize = GetSizeInBits(argTy);
@@ -1327,7 +1319,7 @@ llvm::DICompositeType* DIBuilder::CreateEnumWithNonRefArgsType(
         for (uint32_t argIndex = 0; argIndex < ctor.funcType->GetParamTypes().size(); ++argIndex) {
             auto arg = ctor.funcType->GetParamTypes()[argIndex];
             auto argTy = GetOrCreateType(*arg);
-            if (IsReferenceType(*arg, cgMod) || arg->IsRawArray()) {
+            if (IsReferenceType(*arg, cgMod)) {
                 argTy = CreatePointerType(argTy, CreateRefType()->getSizeInBits());
             }
             offset += sizeOfCtors[argIndex];
