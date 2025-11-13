@@ -246,10 +246,12 @@ void TypeChecker::TypeCheckerImpl::CollectDeclMapAndCheckRedefinitionForOneSymbo
         bool privateGlobalInDifferentFile = sym.node->TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
             found.front()->TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
             sym.node->curFile != found.front()->curFile;
-        bool multiPlat =
+        bool oneIsFromCommonPart = 
+            sym.node->TestAttr(Cangjie::AST::Attribute::FROM_COMMON_PART) != found.front()->TestAttr(Attribute::FROM_COMMON_PART);
+        bool multiPlat = oneIsFromCommonPart &&
             sym.node->TestAttr(Cangjie::AST::Attribute::COMMON) && found.front()->TestAttr(Attribute::PLATFORM);
-        multiPlat =
-            multiPlat || (sym.node->TestAttr(Attribute::PLATFORM) && found.front()->TestAttr(Attribute::COMMON));
+        multiPlat = multiPlat || (oneIsFromCommonPart &&
+          sym.node->TestAttr(Attribute::PLATFORM) && found.front()->TestAttr(Attribute::COMMON));
         if (!privateGlobalInDifferentFile && !multiPlat) {
             DiagRedefinitionWithFoundNode(diag, StaticCast<Decl>(*sym.node), *found.front());
         }
