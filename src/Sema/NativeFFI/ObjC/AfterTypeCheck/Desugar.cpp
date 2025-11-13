@@ -15,7 +15,15 @@
 
 void Cangjie::Interop::ObjC::Desugar(InteropContext&& ctx)
 {
+    HandlerFactory<InteropContext>::Start<FindCJMapping>()
+        .Use<GenerateInitCJObjectMethods>(InteropType::CJ_Mapping)
+        .Use<GenerateDeleteCJObjectMethod>(InteropType::CJ_Mapping)
+        .Use<GenerateWrappers>(InteropType::CJ_Mapping)
+        .Use<GenerateGlueCode>(InteropType::CJ_Mapping)
+        .Handle(ctx);
+
     HandlerFactory<InteropContext>::Start<FindMirrors>()
+        .Use<FindCJMapping>()
         .Use<CheckMirrorTypes>()
         .Use<CheckImplTypes>()
         .Use<InsertNativeHandleField>()
@@ -32,18 +40,6 @@ void Cangjie::Interop::ObjC::Desugar(InteropContext&& ctx)
         .Use<DesugarImpls>()
         .Use<GenerateWrappers>(InteropType::ObjC_Mirror)
         .Use<GenerateGlueCode>(InteropType::ObjC_Mirror)
-        .Use<CheckObjCPointerTypeArguments>()
-        .Use<RewriteObjCPointerAccess>()
-        .Use<RewriteObjCFuncCall>()
-        .Use<DrainGeneratedDecls>()
-        .Handle(ctx);
-
-    HandlerFactory<InteropContext>::Start<FindCJMapping>()
-        .Use<CheckCJMappingTypes>()
-        .Use<GenerateInitCJObjectMethods>(InteropType::CJ_Mapping)
-        .Use<GenerateDeleteCJObjectMethod>(InteropType::CJ_Mapping)
-        .Use<GenerateWrappers>(InteropType::CJ_Mapping)
-        .Use<GenerateGlueCode>(InteropType::CJ_Mapping)
         .Use<CheckObjCPointerTypeArguments>()
         .Use<RewriteObjCPointerAccess>()
         .Use<CheckObjCFuncTypeArguments>()
