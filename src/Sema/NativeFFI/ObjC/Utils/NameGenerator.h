@@ -36,7 +36,7 @@ public:
 
     std::string GetObjCGetterName(const AST::Decl& arget);
     std::string GetObjCSetterName(const AST::Decl& target);
-    std::string MakeSetterName(std::string propName);
+    static std::string MakeSetterName(std::string propName);
 
     /**
      * Returns name declared in @ForeignName split by ':'
@@ -54,8 +54,6 @@ public:
      * Gets the pointer to value of @ForeignName anno or @ObjCMirror/@ObjCImpl annos or returns nullptr.
      */
     Ptr<std::string> GetUserDefinedObjCName(const AST::Decl& target);
-
-    Ptr<std::string> GetSingleArgumentAnnotationValue(const AST::Decl& target, AST::AnnotationKind annotationKind);
 
 private:
     const BaseMangler& mangler;

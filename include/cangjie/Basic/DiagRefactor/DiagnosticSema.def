@@ -367,9 +367,9 @@ ERROR(sema_objc_setter_name_on_immutable_prop, "@ForeignSetterName cannot be spe
 ERROR(sema_objc_cjmapping_inheritance_interface_not_supported, "cangjie mirror decl type inheritance interface is not supported")
 ERROR(sema_objc_cjmapping_generic_not_supported, "cangjie mirror decl type generic %s is not supported")
 
-ERROR(sema_foreign_name_appeared_in_child, "@ForeignName could not appear on overridden declaration")
-ERROR(sema_foreign_name_conflicting_annotation, "Declaration '%s' has a conflicting @ForeignName annotation")
-ERROR(sema_foreign_name_conflicting_derived_annotation, "Declaration '%s' has a conflicting derived @ForeignName '%s'")
+ERROR(sema_foreign_name_appeared_in_child, "@%s could not appear on overridden declaration")
+ERROR(sema_foreign_name_conflicting_annotation, "Declaration '%s' has a conflicting @%s annotation")
+ERROR(sema_foreign_name_conflicting_derived_annotation, "Declaration '%s' has a conflicting derived @%s '%s'")
 
 // @IfAvailable
 ERROR(sema_ifavailable_arg_no_name, "the first argument of @IfAvailable expression must have a name")

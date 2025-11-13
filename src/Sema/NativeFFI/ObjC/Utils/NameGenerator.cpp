@@ -255,25 +255,3 @@ std::string NameGenerator::GetObjCFullDeclName(const Decl& target)
 
     return ret;
 }
-
-Ptr<std::string> NameGenerator::GetSingleArgumentAnnotationValue(const Decl& target, AnnotationKind annotationKind)
-{
-    for (auto& anno : target.annotations) {
-        if (anno->kind != annotationKind) {
-            continue;
-        }
-
-        CJC_ASSERT(anno->args.size() < 2);
-        if (anno->args.empty()) {
-            break;
-        }
-
-        CJC_ASSERT(anno->args[0]->expr->astKind == ASTKind::LIT_CONST_EXPR);
-        auto lce = As<ASTKind::LIT_CONST_EXPR>(anno->args[0]->expr.get());
-        CJC_ASSERT(lce);
-
-        return &lce->stringValue;
-    }
-
-    return nullptr;
-}
