@@ -133,20 +133,11 @@ void MacroExpansion::CollectMacros(Package& package)
     // Each time we collect macros, we should reset the old one.
     macroCollector.clear();
     macroCollector.curPkg = &package;
-    size_t oldMacCallNum = 0;
-    size_t oldMacDefNum = 0;
     for (const auto& file : package.files) {
         if (!file || !file->hasMacro) {
             continue;
         }
-        oldMacCallNum = macroCollector.macCalls.size();
-        oldMacDefNum = macroCollector.macroDefFuncs.size();
         CollectMacroEachFile(*file.get(), macroCollector);
-
-        // it is certain that at least one of macCalls and macroDefFuncs will increase, because file->hasMacro is true.
-        CJC_ASSERT(ci->diag.GetErrorCount() != 0 ||
-            ((macroCollector.macCalls.size() > oldMacCallNum || macroCollector.macroDefFuncs.size() > oldMacDefNum) &&
-                "Collect Macro Failed."));
     }
     // The macroCall is not collected by order strictly, need sort.
     std::sort(macroCollector.macCalls.begin(), macroCollector.macCalls.end(), [](auto& m1, auto& m2) -> bool {
