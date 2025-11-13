@@ -114,12 +114,8 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
 {
     auto currentFile = ref->currentFile;
     if (ref->HasModifier(modifiers, TokenKind::PLATFORM)) {
-        if (!compilePlatform) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_platform_in_non_platform_file, *currentFile);
-            return false;
-        }
-        if (currentFile->isCommon) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_platform_in_the_same_file, *currentFile);
+        if (!compilePlatform && !compileCommon) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_unexpected_cjmp_decl, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
@@ -128,12 +124,8 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
         currentFile->isPlatform = true;
     }
     if (ref->HasModifier(modifiers, TokenKind::COMMON)) {
-        if (!compileCommon) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_in_non_common_file, *currentFile);
-            return false;
-        }
-        if (currentFile->isPlatform) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_platform_in_the_same_file, *currentFile);
+        if (!compilePlatform && !compileCommon) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_unexpected_cjmp_decl, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
@@ -235,11 +227,11 @@ bool MPParserImpl::CheckCJMPModifiersOf(const AST::Decl& decl) const
 bool MPParserImpl::CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::Decl& outer) const
 {
     auto p0 = GetDiagKind(inner) + " " + inner.identifier.Val();
-    if (inner.TestAttr(Attribute::COMMON) && !outer.TestAttr(Attribute::COMMON)) {
+    if (inner.TestAttr(Attribute::COMMON) && !outer.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
         DiagOuterDeclMissMatch(inner, p0, "common", GetDiagKind(outer), "common");
         return false;
     }
-    if (inner.TestAttr(Attribute::PLATFORM) && !outer.TestAttr(Attribute::PLATFORM)) {
+    if (inner.TestAttr(Attribute::PLATFORM) && !outer.TestAnyAttr(Attribute::PLATFORM)) {
         DiagOuterDeclMissMatch(inner, p0, "platform", GetDiagKind(outer), "platform");
         return false;
     }

@@ -66,6 +66,8 @@ private:
         const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, const AST::Decl& platform) const;
 
     bool TrySetPlatformImpl(AST::Decl& platformDecl, AST::Decl& commonDecl, const std::string& kind);
+    /// Returns `true` if there is not platform declaration,
+    /// in other cases check that common can me matched with platform(e.g. modifiers conform)
     bool MatchCommonNominalDeclWithPlatform(const AST::InheritableDecl& commonDecl);
     void CheckCommonSpecificGenericMatch(const AST::Decl& platformDecl, const AST::Decl& commonDecl);
 
