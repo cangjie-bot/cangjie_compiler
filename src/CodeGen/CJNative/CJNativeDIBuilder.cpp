@@ -127,7 +127,7 @@ void DIBuilder::CreateClassMemberType(const CHIR::ClassType& classTy, llvm::Type
         auto elementTy = nonConstClassType.GetInstantiatedMemberTys(chirBuilder)[i];
         auto elemType = GetOrCreateType(*elementTy);
         auto cgElemType = classLayout->getStructElementType(elementIndex);
-        if (IsReferenceType(*elementTy, cgMod)) {
+        if (IsReferenceType(*elementTy, cgMod) && !(elementTy->IsEnum() && !StaticCast<CHIR::EnumType*>(elementTy)->IsOption())) {
             elemType = CreatePointerType(elemType, CreateRefType()->getSizeInBits());
         }
         auto bitInSize = GetTypeSize(cgElemType);
