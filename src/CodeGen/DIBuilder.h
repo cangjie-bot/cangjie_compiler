@@ -153,11 +153,12 @@ private:
         return StaticCast<const CGEnumType*>(CGType::GetOrCreate(cgMod, &ty))->IsOptionLike();
     }
 
-    static std::string RemoveCustomTypePrefix(const std::string& typeName)
+    bool IsOption(const CHIR::Type& ty)
     {
-        std::string prefix = "::";
-        auto prefixPos = typeName.find(prefix);
-        return typeName.substr(prefixPos + prefix.length());
+        if (!ty.IsEnum()) {
+            return false;
+        }
+        return StaticCast<const CHIR::EnumType&>(ty).IsOption();
     }
 
     static std::string GenerateGenericFuncName(
