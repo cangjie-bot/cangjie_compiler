@@ -4,6 +4,8 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
+// test info.
+
 #include "Utils.h"
 #include "TypeCheckUtil.h"
 
