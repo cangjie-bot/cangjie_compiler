@@ -860,6 +860,7 @@ void ParserImpl::DiagCannotHaveAssignmentInInit(const Expr& expr)
     ParseDiagnoseRefactor(DiagKindRefactor::parse_cannot_have_assi_in_init, expr);
 }
 
+
 void ParserImpl::DiagOrPattern()
 {
     ParseDiagnoseRefactor(DiagKindRefactor::parse_illegal_or_pattern, lookahead.Begin());
