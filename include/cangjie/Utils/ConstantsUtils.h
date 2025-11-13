@@ -169,6 +169,7 @@ inline const std::string SYNTHETIC_CLASS_SUFFIX = "$impl";
 inline const std::string NATIVE_HANDLE_GETTER_IDENT = "$getObj";
 } // namespace Interop::ObjC
 
+// cannot assign the variable from other headers, variable may not be assigned yet on windows.
 // Headless instrinsics
 inline const std::string GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME = "getTypeForTypeParameter";
 inline const std::string IS_SUBTYPE_TYPES_FUNC_NAME = "isSubtypeTypes";
