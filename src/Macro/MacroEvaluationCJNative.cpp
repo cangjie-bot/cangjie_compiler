@@ -60,7 +60,7 @@ HANDLE InvokeMacroFunc(HANDLE mc)
     auto pInvocation = pMacCall->GetInvocation();
     auto attrTksBytes = TokenSerialization::GetTokensBytes(pInvocation->attrs);
     std::vector<uint8_t> inputTksBytes;
-    if (pMacCall->definition->TestAttr(Attribute::LATE_MACRO)) {
+    /* if (pMacCall->definition->TestAttr(Attribute::LATE_MACRO)) {
         CJC_ASSERT(pInvocation->decl != nullptr || pInvocation->expr != nullptr);
         if (pInvocation->decl != nullptr) {
             NodeSerialization::NodeWriter nodeWriter(pInvocation->decl);
@@ -71,8 +71,8 @@ HANDLE InvokeMacroFunc(HANDLE mc)
         }
     } else {
         inputTksBytes = TokenSerialization::GetTokensBytes(pInvocation->args);
-    }
-
+    } */
+    inputTksBytes = TokenSerialization::GetTokensBytes(pInvocation->args);
     uint8_t* retBuffer{nullptr};
     if (pInvocation->hasAttr) {
         auto attrMacroFunc = reinterpret_cast<AttrFuncPtrT>(pMacCall->invokeFunc);

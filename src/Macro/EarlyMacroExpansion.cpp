@@ -89,7 +89,9 @@ void EarlyMacroExpansion::TransLateMacroInput(Package& package)
     CollectMacros(package);
     for (auto &macroCall : macroCollector.macCalls) {
         auto pInvocation = macroCall.GetInvocation();
-        CJC_ASSERT(macroCall.GetNode()->TestAttr(Attribute::LATE_MACRO));
+        if (!macroCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
+            continue;
+        }
         if (pInvocation->hasParenthesis) {
             std::vector<Token> newTokens = pInvocation->args;
             Parser parser(newTokens, ci->diag, ci->diag.GetSourceManager());
