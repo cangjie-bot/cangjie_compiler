@@ -4,7 +4,7 @@
 #
 # See https://cangjie-lang.cn/pages/LICENSE for license information.
 
-add_executable(ParserTest ParserTest.cpp)
+add_executable(ParserTest ParserTest.cpp ParseEnd.cpp)
 target_link_libraries(
     ParserTest
     cangjie-lsp

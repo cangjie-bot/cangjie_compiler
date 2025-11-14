@@ -87,8 +87,6 @@ std::string CNodeToString(const std::vector<CNode>& nodes)
 
 struct CNodeWalker {
     std::function<void(CNode)> enterFunc;
-    std::function<void(CNode)> exitFunc;
-
     void Visit(CNode node)
     {
         if (auto n = std::get_if<Node*>(&node)) {
@@ -96,14 +94,9 @@ struct CNodeWalker {
                 return;
             }
         }
-        if (enterFunc) {
-            enterFunc(node);
-        }
+        enterFunc(node);
         if (auto n = std::get_if<Node*>(&node)) {
             VisitChildren(*n);
-        }
-        if (exitFunc) {
-            exitFunc(node);
         }
     }
 
@@ -1203,7 +1196,7 @@ std::vector<CNode> CollectPtrsOfASTNodes(Ptr<File> node)
             ptrs.push_back(cnode);
         }
     };
-    CNodeWalker w{collect, {}};
+    CNodeWalker w{collect};
     w.Visit(node);
     return ptrs;
 }
@@ -1528,6 +1521,7 @@ size_t AttachCommentToNode(const std::vector<CNode>& nodes, size_t curNodeIdx,
             }
         }
 
+        // move this after trailing comment because that has a higher priority
         if (curCgBegin >= curNodeBegin && curCgBegin < curNodeEnd) {
             if (!node) {
                 if (nodeStack.empty()) {
