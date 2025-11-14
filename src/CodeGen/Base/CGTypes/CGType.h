@@ -289,16 +289,18 @@ public:
         bool allowBasePtr = true;
         bool forWrapper = false;
         std::vector<CHIR::Type*> instantiatedParamTypes;
+        CHIR::Type* overrideSrcFuncType;
         TypeExtraInfo()
         {
         }
         TypeExtraInfo(size_t addrspace, bool isMethod, bool isStaticMethod, bool allowBasePtr,
-            const std::vector<CHIR::Type*>& instantiatedParamTypes)
+            const std::vector<CHIR::Type*>& instantiatedParamTypes, CHIR::Type* overrideSrcFuncType = nullptr)
             : addrspace(addrspace),
               isMethod(isMethod),
               isStaticMethod(isStaticMethod),
               allowBasePtr(allowBasePtr),
-              instantiatedParamTypes(instantiatedParamTypes)
+              instantiatedParamTypes(instantiatedParamTypes),
+              overrideSrcFuncType(overrideSrcFuncType)
         {
         }
         TypeExtraInfo(size_t addrspace) : addrspace(addrspace)

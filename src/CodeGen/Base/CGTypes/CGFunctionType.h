@@ -49,6 +49,11 @@ public:
         return thisTypeInfoIndex;
     }
 
+    const CHIR::Type* GetOverrideSrcFuncType() const 
+    {
+        return overrideSrcFuncType;
+    }
+
     CGType* GetParamType(size_t idx) const
     {
         auto tmp = GetContainedTypes();
@@ -130,6 +135,7 @@ private:
     std::unordered_map<CHIR::GenericType*, size_t> genericParamIndicesMap;
     std::optional<size_t> outerTypeInfoIndex{std::nullopt};
     std::optional<size_t> thisTypeInfoIndex{std::nullopt};
+    const CHIR::Type* overrideSrcFuncType{nullptr};
 };
 } // namespace CodeGen
 } // namespace Cangjie

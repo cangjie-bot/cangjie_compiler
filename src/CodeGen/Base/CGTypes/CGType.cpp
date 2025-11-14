@@ -196,13 +196,12 @@ CGType* CGType::GetOrCreate(CGModule& cgModule, const Cangjie::CHIR::Type* chirT
 CGType* CGType::GetOrCreateWithNode(CGModule& cgModule, const CHIR::Value* chirNode, bool allowBasePtr,
     bool forWrapper)
 {
-    bool flag = chirNode->IsFunc() && chirNode->Get<CHIR::OverrideSrcFuncType>();
-    auto chirTy = flag ? chirNode->Get<CHIR::OverrideSrcFuncType>() : chirNode->GetType();
+    auto chirTy = chirNode->GetType();
     CGType* cgType = nullptr;
     if (DynamicCast<const CHIR::LocalVar*>(chirNode)) {
         cgType = CGTypeMgr::GetConcreteCGTypeFor(cgModule, *chirTy, TypeExtraInfo{0, true, false, false, {}});
     } else if (auto fb = DynamicCast<const CHIR::FuncBase*>(chirNode)) {
-        TypeExtraInfo typeExtraInfo(0, false, false, allowBasePtr, {});
+        TypeExtraInfo typeExtraInfo(0, false, false, allowBasePtr, {}, chirNode->Get<CHIR::OverrideSrcFuncType>());
         typeExtraInfo.forWrapper = forWrapper;
         for (auto gt : fb->GetGenericTypeParams()) {
             typeExtraInfo.instantiatedParamTypes.emplace_back(gt);

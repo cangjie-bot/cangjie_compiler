@@ -123,6 +123,9 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
     // Determine whether we need to add an extra argument at the beginning to store the result.
     auto& chirFuncType = StaticCast<const CHIR::FuncType&>(calleeType.GetOriginal());
     auto returnCHIRType = chirFuncType.GetReturnType();
+    if (DeRef(*returnCHIRType)->IsBox() && calleeType.GetOverrideSrcFuncType() != nullptr) {
+        returnCHIRType = StaticCast<const CHIR::FuncType*>(calleeType.GetOverrideSrcFuncType())->GetReturnType();
+    }
     auto returnCGType = CGType::GetOrCreate(cgMod, returnCHIRType);
     if (calleeType.HasSRet()) {
         llvm::Value* allocaForRetVal = nullptr;
@@ -277,7 +280,7 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
                 rstType = this->chirExpr->GetResult()->GetType();
             }
             auto rstCGType = CGType::GetOrCreate(cgMod, rstType);
-            if (chirFuncType.GetReturnType()->IsGeneric()) {
+            if (returnCHIRType->IsGeneric()) {
                 ret = CreateLoad(returnCGType->GetLLVMType(), ret);
             }
             if (!rstCGType->GetSize() && !rstType->IsGeneric()) {
@@ -292,7 +295,7 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
                 return CreateLoad(elementType, srcPayload);
             }
         }
-    } else if (chirFuncType.GetReturnType()->IsGeneric()) {
+    } else if (returnCHIRType->IsGeneric()) {
         CJC_ASSERT(false);
         auto rstType = chirExpr->GetResult()->GetType();
         auto rstCGType = CGType::GetOrCreate(cgMod, rstType);
@@ -312,7 +315,7 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
         const std::string closureMeta = "IsClosureCall";
         callBaseInst->setMetadata(closureMeta, llvm::MDTuple::get(ctx, {llvm::MDString::get(ctx, closureMeta)}));
     }
-    if (chirFuncType.GetReturnType()->IsUnit()) {
+    if (returnCHIRType->IsUnit()) {
         ret = cgMod.GenerateUnitTypeValue();
     }
     return ret;

@@ -26,13 +26,12 @@ CGFunctionType::CGFunctionType(
     isStaticMethod = extraInfo.isStaticMethod;
     instantiatedParamTypes = extraInfo.instantiatedParamTypes;
     CJC_ASSERT(!forWrapper && !extraInfo.forWrapper);
+    this->overrideSrcFuncType = extraInfo.overrideSrcFuncType;
 }
 
 CGFunctionType::CGFunctionType(
     CGModule& cgMod, CGContext& cgCtx, const CHIR::FuncBase& chirFunc, const TypeExtraInfo& extraInfo)
-    : CGType(cgMod, cgCtx,
-          chirFunc.Get<CHIR::OverrideSrcFuncType>() ? *chirFunc.Get<CHIR::OverrideSrcFuncType>() : *chirFunc.GetType(),
-          CGTypeKind::CG_FUNCTION)
+    : CGType(cgMod, cgCtx, *chirFunc.GetType(), CGTypeKind::CG_FUNCTION)
 {
     this->chirFunc = &chirFunc;
     this->isStaticMethod = chirFunc.TestAttr(CHIR::Attribute::STATIC);
@@ -46,6 +45,7 @@ CGFunctionType::CGFunctionType(
     for (auto gt : chirFunc.GetGenericTypeParams()) {
         this->instantiatedParamTypes.emplace_back(gt);
     }
+    this->overrideSrcFuncType = chirFunc.Get<CHIR::OverrideSrcFuncType>();
 }
 
 llvm::Type* CGFunctionType::GenLLVMType()
@@ -72,11 +72,14 @@ llvm::Type* CGFunctionType::GenLLVMType()
 
     std::vector<llvm::Type*> paramTypes;
     size_t realArgIdx = 0;
-    auto retCGType = CGType::GetOrCreate(cgMod, funcTy.GetReturnType());
+    auto retCHIRType = DeRef(*funcTy.GetReturnType())->IsBox() && this->overrideSrcFuncType
+        ? StaticCast<const CHIR::FuncType&>(*this->overrideSrcFuncType).GetReturnType()
+        : funcTy.GetReturnType();
+    auto retCGType = CGType::GetOrCreate(cgMod, retCHIRType);
     llvm::Type* retType = retCGType->GetLLVMType();
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     if (retType->isStructTy() || retType->isArrayTy() || !retCGType->GetSize()) {
-        if (!retCGType->GetSize() && !funcTy.GetReturnType()->IsGeneric()) {
+        if (!retCGType->GetSize() && !retCHIRType->IsGeneric()) {
             (void)paramTypes.emplace_back(retType->getPointerTo(1));
         } else {
             (void)paramTypes.emplace_back(retType->getPointerTo());
@@ -87,7 +90,11 @@ llvm::Type* CGFunctionType::GenLLVMType()
     }
     size_t containedCGTypeIndex = 1;
 #endif
-    for (auto paramType : funcTy.GetParamTypes()) {
+    for (size_t idx = 0; idx < funcTy.GetNumOfParams(); idx++) {
+        auto paramType = funcTy.GetParamType(idx);
+        if (DeRef(*paramType)->IsBox() && this->overrideSrcFuncType) {
+            paramType = StaticCast<const CHIR::FuncType&>(*this->overrideSrcFuncType).GetParamType(idx);
+        }
         auto cgType = CGType::GetOrCreate(cgMod, paramType);
         auto llvmType = cgType->GetLLVMType();
 
