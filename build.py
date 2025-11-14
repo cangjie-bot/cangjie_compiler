@@ -25,6 +25,8 @@ from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from subprocess import DEVNULL, PIPE
 
+println("test")
+
 HOME_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(HOME_DIR, "build")
 CMAKE_BUILD_DIR = os.path.join(BUILD_DIR, "build")
