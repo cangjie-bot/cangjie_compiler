@@ -253,3 +253,18 @@ TEST_F(ParseCommentTest, Enum2)
     ASSERT_EQ(r.comments.leadingComments.size(), 1);
     EXPECT_EQ(r.comments.leadingComments[0].cms[0].info.Value(), "/* comment 2 */");
 }
+
+TEST_F(ParseCommentTest, CommentKind)
+{
+    code = R"(/*** block comment1 */ /**/ /** /** */ document*/ func foo() {})";
+    Parser parser(code, diag, sm, {0, 1, 1}, true);
+    OwnedPtr<File> file = parser.ParseTopLevel();
+    auto& foo = StaticCast<FuncDecl>(*file->decls[0]);
+    ASSERT_EQ(foo.comments.innerComments.size(), 1);
+    EXPECT_EQ(foo.comments.innerComments[0].cms[0].info.Value(), "/*** block comment1 */");
+    EXPECT_EQ(foo.comments.innerComments[0].cms[0].kind, CommentKind::BLOCK);
+    EXPECT_EQ(foo.comments.innerComments[1].cms[0].info.Value(), "/**/");
+    EXPECT_EQ(foo.comments.innerComments[1].cms[0].kind, CommentKind::BLOCK);
+    EXPECT_EQ(foo.comments.innerComments[2].cms[0].info.Value(), "/** /** */ document*/");
+    EXPECT_EQ(foo.comments.innerComments[2].cms[0].kind, CommentKind::DOCUMENT);
+}
