@@ -269,6 +269,10 @@ void Devirtualization::InstantiateFuncIfPossible(CHIRBuilder& builder, std::vect
         for (auto param : apply->GetArgs()) {
             parameterType.emplace_back(param->GetType());
         }
+        if (parameterType[0]->IsRef()) {
+            parameterType[0] = builder.GetType<RefType>(GetInstParentType(
+                *parameterType[0]->StripAllRefs(), *apply->GetThisType()->StripAllRefs(), builder));
+        }
         auto retType = apply->GetResultType();
         auto instFuncType = builder.GetType<FuncType>(parameterType, retType);
 
