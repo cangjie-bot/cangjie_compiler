@@ -359,8 +359,10 @@ bool TypeMapper::IsObjCObjectType(const Ty& ty)
 
 bool TypeMapper::IsObjCFwdClass(const Ty& ty)
 {
-    auto classLikeTy = DynamicCast<ClassLikeTy*>(&ty);
-    return classLikeTy && classLikeTy->commonDecl && IsObjCFwdClass(*classLikeTy->commonDecl);
+    if (auto decl = Ty::GetDeclOfTy(&ty); decl) {
+        return IsObjCFwdClass(*decl);
+    }
+    return false;
 }
 
 namespace {
@@ -464,8 +466,8 @@ bool TypeMapper::IsObjCCJMapping(const Decl& decl)
     bool isGeneric = decl.generic != nullptr;
     bool isStruct = decl.astKind == ASTKind::STRUCT_DECL;
     bool isEnum = decl.astKind == ASTKind::ENUM_DECL;
-    bool isNonOpenClass = decl.astKind == ASTKind::CLASS_DECL && !decl.IsOpen();
-    bool isSupportedType = isStruct || isEnum ||isNonOpenClass;
+    bool isClass = decl.astKind == ASTKind::CLASS_DECL;
+    bool isSupportedType = isStruct || isEnum || isClass;
     return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING) && !isGeneric && isSupportedType;
 }
 
@@ -478,7 +480,8 @@ bool TypeMapper::IsObjCCJMappingInterface(const Decl& decl)
 
 bool TypeMapper::IsObjCFwdClass(const Decl& decl)
 {
-    return decl.TestAttr(Attribute::CJ_MIRROR_OBJC_INTERFACE_FWD);
+    return decl.TestAttr(Attribute::CJ_MIRROR_OBJC_INTERFACE_FWD) ||
+        decl.identifier.Val().find(OBJ_C_FWD_CLASS_SUFFIX) != std::string::npos;
 }
 
 bool TypeMapper::IsObjCId(const Ty& ty)
@@ -516,9 +519,9 @@ bool TypeMapper::IsObjCCJMappingInterface(const Ty& ty)
 
 bool TypeMapper::IsOneWayMapping(const Decl& decl)
 {
-    // struct, enum, non-open class
+    // struct, enum, class
     return decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL ||
-        (decl.astKind == ASTKind::CLASS_DECL && !decl.IsOpen());
+        decl.astKind == ASTKind::CLASS_DECL;
 }
 
 namespace {
@@ -530,6 +533,23 @@ bool SupportMembers(const Decl& decl, const std::vector<ASTKind>& kinds) {
     }
     return false;
 }
+
+bool IsOpenClassTy(const Ty& ty)
+{
+    if (auto decl = Ty::GetDeclOfTy(&ty)) {
+        return decl->astKind == ASTKind::CLASS_DECL && decl->IsOpen();
+    }
+    return false;
+}
+
+inline bool SupportMemberFunc(const AST::Decl& decl, std::function<bool(Ptr<Ty>)> validTy)
+{
+    auto fnTy = Cangjie::DynamicCast<FuncTy>(decl.ty);
+    // Constructor do not check return type.
+    CJC_ASSERT(fnTy && fnTy->retTy);
+    bool isValid = decl.TestAttr(Attribute::CONSTRUCTOR) ? true : validTy(fnTy->retTy);
+    return isValid && std::all_of(std::begin(fnTy->paramTys), std::end(fnTy->paramTys), validTy);
+}
 }
 
 bool TypeMapper::IsObjCCJMappingMember(const AST::Decl& decl)
@@ -537,19 +557,29 @@ bool TypeMapper::IsObjCCJMappingMember(const AST::Decl& decl)
     CJC_ASSERT(decl.IsMemberDecl());
     auto& outerDecl = *decl.outerDecl;
     CJC_ASSERT(IsObjCCJMapping(outerDecl));
-    // Non-open class
+    if (!decl.IsOpen() && !decl.TestAttr(Attribute::PUBLIC)) {
+        return false;
+    }
+    if (decl.IsOpen() && !decl.TestAnyAttr(Attribute::PUBLIC, Attribute::PROTECTED)) {
+        return false;
+    }
+    // class
     if (outerDecl.astKind == ASTKind::CLASS_DECL) {
-        if (!outerDecl.IsOpen() && !SupportMembers(decl, {ASTKind::FUNC_DECL})) {
+        // Only maping member function (including constructors)
+        if (!SupportMembers(decl, {ASTKind::FUNC_DECL})) {
+            return false;
+        }
+        // No need map for constructors in open class.
+        if (outerDecl.IsOpen() && decl.TestAttr(Attribute::CONSTRUCTOR)) {
             return false;
         }
     }
     if (decl.astKind == ASTKind::FUNC_DECL) {
-        if (auto fnTy = DynamicCast<FuncTy>(decl.ty)) {
-            // Constructor do not check return type.
-            bool isValid = decl.TestAttr(Attribute::CONSTRUCTOR) ? true : IsValidCJMapping(*fnTy->retTy);
-            return isValid && std::all_of(std::begin(fnTy->paramTys), std::end(fnTy->paramTys),
-                [](auto ty) { return IsValidCJMapping(*ty); });
+        std::function<bool(Ptr<Ty>)> validTy = [](auto ty) { return IsValidCJMapping(*ty) && !IsOpenClassTy(*ty); };
+        if (decl.IsOpen()) {
+            validTy = [](auto ty) { return IsPrimitiveMapping(*ty); };
         }
+        return SupportMemberFunc(decl, validTy);
     } else if (decl.astKind == ASTKind::PROP_DECL || decl.astKind == ASTKind::VAR_DECL) {
         return IsValidCJMapping(*decl.ty);
     }
