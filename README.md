@@ -8,7 +8,7 @@ This repository provides the source code for the Cangjie compiler, which consist
 
 ## Architecture
 
-The overall architecture is shown below:
+The overall architecture is shown below: 
 
 ![Architecture Diagram](figures/Compiler_Architecture_Diagram.png)
 
