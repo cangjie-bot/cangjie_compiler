@@ -35,7 +35,7 @@ IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
 IS_ARM = platform.uname().processor in ["aarch64", "arm", "arm64"]
 CJ_OS_NAME = platform.system().lower()
-CJ_ARCH_NAME = platform.machine().replace("AMD64", "x86_64").lower() # normalize AMD64 in Windows to x86_64
+CJ_ARCH_NAME = platform.machine().replace("AMD64", "x86_64").lower() # normalize AMD64 in Windows to x86_64 he
 CAN_RUN_CJNATIVE = (platform.system(), platform.machine()) in [
     ("Linux", "x86_64"),
     ("Linux", "aarch64"),
