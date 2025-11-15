@@ -570,7 +570,8 @@ protected:
         if (e->sugarKind == AST::Expr::SugarKind::FOR_IN_EXPR) {
             conditionBlock->Set<SkipCheck>(SkipKind::SKIP_DCE_WARNING);
         }
-        CreateGoto(*conditionBlock, *tr.GetCurrentBlock());
+        auto gotoBr = CreateGoto(*conditionBlock, *tr.GetCurrentBlock());
+        gotoBr->SetDebugLocation(tr.TranslateLocation(*e));
         tr.SetCurrentBlock(*conditionBlock);
     }
 
