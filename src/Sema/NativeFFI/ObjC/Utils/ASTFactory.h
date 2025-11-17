@@ -215,6 +215,9 @@ public:
     static OwnedPtr<AST::FuncDecl> CreateFunc(const std::string& name, Ptr<AST::FuncTy> fnTy, std::vector<OwnedPtr<AST::FuncParam>>&& params, std::vector<OwnedPtr<AST::Node>>&& nodes);
     static OwnedPtr<AST::ParenExpr> CreateParenExpr(OwnedPtr<AST::Expr> expr);
 
+    OwnedPtr<AST::Expr> CreateNativeLambdaForBlockType(AST::Ty& ty, Ptr<AST::File> curFile);
+    OwnedPtr<AST::Expr> CreateObjCBlockFromLambdaCall(OwnedPtr<AST::Expr> funcExpr);
+
 private:
     void PutDeclToClassLikeBody(AST::Decl& decl, AST::ClassLikeDecl& target);
     void PutDeclToClassBody(AST::Decl& decl, AST::ClassDecl& target);

@@ -233,7 +233,7 @@ OwnedPtr<Expr> ASTFactory::WrapEntity(OwnedPtr<Expr> expr, Ty& wrapTy)
     if (typeMapper.IsObjCBlock(wrapTy)) {
         CJC_ASSERT(expr->ty->IsPointer());
         CJC_ASSERT(wrapTy.typeArgs.size() == 1);
-        auto ctor = bridge.GetObjCBlockConstructor();
+        auto ctor = bridge.GetObjCBlockConstructorFromObjC();
         CJC_ASSERT(ctor);
         auto ctorRef = CreateRefExpr(*ctor, *expr);
         ctorRef->instTys.push_back(wrapTy.typeArgs[0]);
@@ -1305,6 +1305,110 @@ OwnedPtr<CallExpr> ASTFactory::CreatePutToRegistryCall(OwnedPtr<Expr> nativeHand
         putToRegistryDecl->funcBody->retType->ty, CallKind::CALL_DECLARED_FUNCTION);
 }
 
+OwnedPtr<Expr> ASTFactory::CreateNativeLambdaForBlockType(Ty& ty, Ptr<File> curFile)
+{
+    const auto fty = DynamicCast<FuncTy>(&ty);
+    CJC_NULLPTR_CHECK(fty);
+
+    std::vector<Ptr<Ty>> cArgTys { typeManager.GetPointerTy(bridge.GetNativeBlockABIDecl()->ty) };
+    for (auto aty : fty->paramTys) {
+        cArgTys.push_back(typeMapper.Cj2CType(aty));
+    }
+    Ptr<Ty> cResTy = typeMapper.Cj2CType(fty->retTy);
+
+    auto cFuncTy = typeManager.GetFunctionTy(
+        std::move(cArgTys),
+        cResTy,
+        { .isC = true }
+    );
+    std::vector<OwnedPtr<FuncParam>> lambdaParams;
+    auto varIndex = 0;
+    for (auto cty : cArgTys) {
+        lambdaParams.push_back(
+            CreateFuncParam(
+                "arg" + std::to_string(varIndex++), nullptr, nullptr, cty));
+    }
+    auto getLambdaFromBlockDecl = bridge.GetObjCGetLambdaFromBlockDecl();
+    auto getLambdaFromBlockRef = WithinFile(CreateRefExpr(*getLambdaFromBlockDecl), curFile);
+    getLambdaFromBlockRef->instTys = { &ty };
+    getLambdaFromBlockRef->ty =
+        typeManager.GetFunctionTy(StaticCast<FuncTy>(getLambdaFromBlockRef->ty)->paramTys, &ty);
+    std::vector<OwnedPtr<FuncArg>> getLambdaFromBlockArgs;
+    getLambdaFromBlockArgs.push_back(CreateFuncArg(WithinFile(CreateRefExpr(*lambdaParams[0]), curFile)));
+    auto cangjieFuncExpr = CreateCallExpr(
+        std::move(getLambdaFromBlockRef),
+        std::move(getLambdaFromBlockArgs),
+        getLambdaFromBlockDecl, &ty);
+    std::vector<OwnedPtr<FuncArg>> cangjieFuncArgs;
+    for (size_t i = 1; i < lambdaParams.size(); ++i) {
+        cangjieFuncArgs.push_back(
+            CreateFuncArg(
+                WrapEntity(
+                    WithinFile(CreateRefExpr(*lambdaParams[i]), curFile),
+                    *fty->paramTys[i - 1])));
+    }
+    auto resultCangjie = CreateCallExpr(
+        std::move(cangjieFuncExpr),
+        std::move(cangjieFuncArgs),
+        nullptr, cResTy);
+    std::vector<OwnedPtr<Node>> body;
+    body.push_back(UnwrapEntity(std::move(resultCangjie)));
+    auto lambda = WrapReturningLambdaExpr(
+        typeManager,
+        std::move(body),
+        std::move(lambdaParams)
+    );
+    lambda->ty = cFuncTy;
+
+    return lambda;
+}
+
+OwnedPtr<Expr> ASTFactory::CreateObjCBlockFromLambdaCall(OwnedPtr<Expr> funcExpr)
+{
+    auto curFile = funcExpr->curFile;
+    auto funcTy = DynamicCast<FuncTy>(funcExpr->ty);
+    CJC_NULLPTR_CHECK(funcTy);
+    auto creatorFunc = bridge.GetObjCStoreLambdaAsBlockDecl();
+    auto cfuncLambda = CreateNativeLambdaForBlockType(*funcTy, curFile);
+    std::vector<OwnedPtr<FuncArg>> creatorFuncArgs;
+    creatorFuncArgs.push_back(CreateFuncArg(std::move(funcExpr), "", typeManager.GetAnyTy()));
+    auto nativeAbiErasedFuncTy = typeManager.GetFunctionTy(
+        { bridge.GetNativeBlockABIDecl()->ty },
+        typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT),
+        { .isC = true });
+    creatorFuncArgs.push_back(CreateFuncArg(
+        CreateUnsafePointerCast(
+            std::move(cfuncLambda), nativeAbiErasedFuncTy)));
+    auto pointerToAbiTy = typeManager.GetPointerTy(bridge.GetCangjieBlockABIDecl()->ty);
+    auto objcBlockDecl = bridge.GetObjCBlockDecl();
+    CJC_NULLPTR_CHECK(objcBlockDecl);
+    auto objcBlockTy = typeManager.GetInstantiatedTy(
+        objcBlockDecl->ty, 
+        GenerateTypeMapping(*objcBlockDecl, { funcTy }));
+    
+    auto nativeBlockExpr = CreateCallExpr(
+        WithinFile(CreateRefExpr(*creatorFunc), curFile),
+        std::move(creatorFuncArgs),
+        creatorFunc,
+        pointerToAbiTy,
+        CallKind::CALL_DECLARED_FUNCTION);
+    auto blockConstructor = bridge.GetObjCBlockConstructorFromCangjie();
+    auto blockConstructorRef = WithinFile(CreateRefExpr(*blockConstructor), curFile);
+    blockConstructorRef->instTys = {funcTy};
+    blockConstructorRef->ty =
+        typeManager.GetFunctionTy({pointerToAbiTy}, objcBlockTy);
+    std::vector<OwnedPtr<FuncArg>> constructorArgs;
+    constructorArgs.push_back(CreateFuncArg(std::move(nativeBlockExpr)));
+    auto result = CreateCallExpr(
+        std::move(blockConstructorRef),
+        std::move(constructorArgs),
+        blockConstructor,
+        objcBlockTy,
+        CallKind::CALL_OBJECT_CREATION);
+
+    return result;
+}
+
 OwnedPtr<CallExpr> ASTFactory::CreateGetFromRegistryByNativeHandleCall(
     OwnedPtr<Expr> nativeHandle, OwnedPtr<Type> typeArg)
 {
@@ -1688,7 +1792,7 @@ OwnedPtr<CallExpr> ASTFactory::CreateSetInstanceVariableCall(
 
 OwnedPtr<Expr> ASTFactory::CreateUnsafePointerCast(OwnedPtr<Expr> expr, Ptr<Ty> elementType)
 {
-    CJC_ASSERT(expr->ty->IsPointer());
+    CJC_ASSERT(expr->ty->IsPointer() || expr->ty->IsCFunc());
     CJC_ASSERT(Ty::IsMetCType(*elementType));
     auto ptrExpr = MakeOwned<PointerExpr>();
     auto pointerType = typeManager.GetPointerTy(elementType);

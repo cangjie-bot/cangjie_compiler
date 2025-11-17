@@ -365,6 +365,15 @@ public:
 };
 
 /**
+ * Rewrite constructor call of ObjCBlock from lambda expression
+ */
+class RewriteObjCBlockConstruction : public Handler<RewriteObjCBlockConstruction, InteropContext> {
+public:
+    void HandleImpl(InteropContext& ctx);
+};
+
+
+/**
  * Drains all declarations generated on the previous step to their corresponding files which finishes the desugaring.
  */
 class DrainGeneratedDecls : public Handler<DrainGeneratedDecls, InteropContext> {

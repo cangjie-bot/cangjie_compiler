@@ -14,6 +14,7 @@
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Node.h"
 
+using namespace Cangjie;
 using namespace Cangjie::AST;
 using namespace Cangjie::Interop::ObjC;
 
@@ -25,6 +26,8 @@ constexpr auto INTEROPLIB_NATIVE_OBJ_C_SUPER_PTR = "NativeObjCSuperPtr";
 constexpr auto INTEROPLIB_REGISTRY_ID = "RegistryId";
 constexpr auto INTEROPLIB_OBJ_C_UNREACHABLE_CODE_EXCEPTION = "ObjCUnreachableCodeException";
 constexpr auto INTEROPLIB_OBJ_C_OPTIONAL_METHOD_UNIMPLEMENTED_EXCEPTION = "ObjCOptionalMethodUnimplementedException";
+constexpr auto INTEROPLIB_NATIVE_BLOCK_ABI = "NativeBlockABI";
+constexpr auto INTEROPLIB_CANGJIE_BLOCK_ABI = "CangjieBlockABI";
 constexpr auto INTEROPLIB_OBJ_C_GET_FROM_REGISTRY_BY_NATIVE_HANDLE = "getFromRegistryByNativeHandle";
 constexpr auto INTEROPLIB_OBJ_C_GET_FROM_REGISTRY_BY_ID = "getFromRegistryById";
 constexpr auto INTEROPLIB_OBJ_C_PUT_TO_REGISTRY = "putToRegistry";
@@ -49,6 +52,8 @@ constexpr auto INTEROPLIB_OBJ_C_RETAIN = "objCRetain";
 constexpr auto INTEROPLIB_FORWARDER_MUTEX = "ForwarderMutex";
 constexpr auto MUTEX_LOCK_IDENT = "lock";
 constexpr auto MUTEX_UNLOCK_IDENT = "unlock";
+constexpr auto INTEROPLIB_OBJC_STORE_LAMBDA_AS_BLOCK = "registerCangjieLambdaAsBlock";
+constexpr auto INTEROPLIB_OBJC_GET_LAMBDA_FROM_BLOCK = "getCangjieLambdaFromBlock";
 
 // objc.lang
 constexpr auto OBJ_C_FUNC_GET_FPOINTER = "unsafeGetFunctionPointer";
@@ -411,26 +416,46 @@ Ptr<FuncDecl> InteropLibBridge::GetObjCFuncFPointerAccessor()
     return result;
 }
 
+namespace {
 
-Ptr<FuncDecl> InteropLibBridge::GetObjCBlockConstructor() {
-    static Ptr<FuncDecl> result = nullptr;
-    if (result) {
-        return result;
-    }
-    auto outer = GetObjCBlockDecl();
+Ptr<FuncDecl> GetObjCBlockConstructorByABIName(InteropLibBridge& bridge, const std::string& abiTypeName) {
+    auto outer = bridge.GetObjCBlockDecl();
     for (auto& member : outer->body->decls) {
         if (auto funcDecl = DynamicCast<FuncDecl*>(member.get())) {
-            if (funcDecl->TestAttr(Attribute::CONSTRUCTOR)
-                && funcDecl->funcBody
-                && funcDecl->funcBody->paramLists[0]
-                && funcDecl->funcBody->paramLists[0]->params.size() == 1) {
-                result = funcDecl;
-                break;
+            if (!funcDecl->TestAttr(Attribute::CONSTRUCTOR)) {
+                continue;
+            }
+            if (funcDecl->funcBody == nullptr
+                || funcDecl->funcBody->paramLists.size() != 1
+                || funcDecl->funcBody->paramLists[0] == nullptr
+                || funcDecl->funcBody->paramLists[0]->params.size() != 1) {
+                continue;
+            }
+            Ptr<Ty> paramTy = funcDecl->funcBody->paramLists[0]->params[0]->ty;
+            if (!paramTy->IsPointer()) {
+                continue;
+            }
+            if (Ty::GetDeclOfTy(paramTy->typeArgs[0])->identifier == abiTypeName) {
+                return funcDecl;
             }
         }
     }
+    CJC_ABORT();
+    return nullptr;
+}
+
+} // empty namespace
+
+Ptr<FuncDecl> InteropLibBridge::GetObjCBlockConstructorFromObjC() {
+    static Ptr<FuncDecl> result = GetObjCBlockConstructorByABIName(*this, INTEROPLIB_NATIVE_BLOCK_ABI);
     return result;
 }
+
+Ptr<FuncDecl> InteropLibBridge::GetObjCBlockConstructorFromCangjie() {
+    static Ptr<FuncDecl> result = GetObjCBlockConstructorByABIName(*this, INTEROPLIB_CANGJIE_BLOCK_ABI);
+    return result;
+}
+
 Ptr<FuncDecl> InteropLibBridge::GetObjCBlockFPointerAccessor()
 {
     static Ptr<FuncDecl> result = nullptr;
@@ -465,4 +490,24 @@ Ptr<FuncDecl> InteropLibBridge::GetObjCBlockAbiPointerAccessor()
         }
     }
     return result;
+}
+
+Ptr<StructDecl> InteropLibBridge::GetNativeBlockABIDecl()
+{
+    return GetInteropLibDecl<ASTKind::STRUCT_DECL>(INTEROPLIB_NATIVE_BLOCK_ABI);
+}
+
+Ptr<StructDecl> InteropLibBridge::GetCangjieBlockABIDecl()
+{
+    return GetInteropLibDecl<ASTKind::STRUCT_DECL>(INTEROPLIB_CANGJIE_BLOCK_ABI);
+}
+
+Ptr<FuncDecl> InteropLibBridge::GetObjCStoreLambdaAsBlockDecl()
+{
+    return GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJC_STORE_LAMBDA_AS_BLOCK);
+}
+
+Ptr<FuncDecl> InteropLibBridge::GetObjCGetLambdaFromBlockDecl()
+{
+    return GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJC_GET_LAMBDA_FROM_BLOCK);
 }

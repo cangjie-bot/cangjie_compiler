@@ -153,9 +153,18 @@ public:
      * Get objc.lang.ObjCBlock declaration
     */
     Ptr<AST::ClassDecl> GetObjCBlockDecl();
-    Ptr<AST::FuncDecl> GetObjCBlockConstructor();
+    Ptr<AST::FuncDecl> GetObjCBlockConstructorFromObjC();
+    Ptr<AST::FuncDecl> GetObjCBlockConstructorFromCangjie();
     Ptr<AST::FuncDecl> GetObjCBlockAbiPointerAccessor();
     Ptr<AST::FuncDecl> GetObjCBlockFPointerAccessor();
+    /**
+    * Get interoplib.objc.NativeBlockABI declaration
+    */
+    Ptr<AST::StructDecl> GetNativeBlockABIDecl();
+    Ptr<AST::StructDecl> GetCangjieBlockABIDecl();
+
+    Ptr<AST::FuncDecl> GetObjCStoreLambdaAsBlockDecl();
+    Ptr<AST::FuncDecl> GetObjCGetLambdaFromBlockDecl();
 
 private:
     template <AST::ASTKind K = AST::ASTKind::DECL> auto GetInteropLibDecl(const std::string& ident)
