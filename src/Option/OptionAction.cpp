@@ -89,9 +89,8 @@ const std::unordered_map<std::string, Environment> STRING_ENVIRONMENT_MAP = {
 const std::unordered_map<Environment, std::string> ENVIRONMENT_STRING_MAP = {
     {Environment::OHOS, "ohos"},
     {Environment::GNU, "gnu"},
-    {Environment::GNU, "mingw32"},
     {Environment::ANDROID, "android"},
-    {Environment::SIMULATOR, "simulator"}, 
+    {Environment::SIMULATOR, "simulator"},
     {Environment::NOT_AVAILABLE, ""},
 };
 
@@ -230,13 +229,31 @@ bool ParseTargetTriple(GlobalOptions& opts, const std::string& triple)
         opts.target.env = env->second;
         if (opts.target.env == Environment::ANDROID) {
             opts.target.apiLevel = "31";
-            Infoln("ANDROID API level is not suggested in the target. Use API level " +
+            Infoln("The Android API level has no display settings in the target. Please use API level " +
                 opts.target.apiLevel + " by default.");
         }
     // If targeting Android, the env field may contains the API level like "android31"
     } else if (envStr.rfind(ENVIRONMENT_STRING_MAP.at(Environment::ANDROID), 0) == 0) {
         opts.target.env = Environment::ANDROID;
-        opts.target.apiLevel = envStr.substr(7); // 7 is the length of "android"
+        for (size_t i = 0; i < envStr.size(); ++i) {
+            if (envStr[i] >= '0' && envStr[i] <= '9') {
+                opts.target.apiLevel = envStr.substr(i);
+                break;
+            }
+        }
+        if (!opts.target.apiLevel.empty()) {
+            try {
+                const int num{std::stoi(opts.target.apiLevel)};
+                // The default Android magic version number is 10000.
+                // The minimum Android API level that cangjie supports.
+                if (num < 31 || num > 10000) {
+                    Errorln("The Android API level is not supported in the target."
+                        " Please use a valid API level which is larger than 31.");
+                }
+            } catch (std::exception const&) {
+                Errorln("The Android API level is illegal. Please use a valid API level which is larger than 31.");
+            }
+        }
     } else {
         Errorln("The environment \"" + envStr + "\" is not found or supported!");
         return false;
