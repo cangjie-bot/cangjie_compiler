@@ -221,9 +221,6 @@ OwnedPtr<Expr> ParserImpl::ParseInterpolationExpr(const std::string& value, cons
     auto hasSkipNewline = newlineSkipped;
     std::unique_ptr<Lexer> curlexer = std::move(lexer);
     lexer = std::make_unique<Lexer>(wrapInBracket, diag, diag.GetSourceManager(), basePos);
-    if (enableEH) {
-        lexer->SetEHEnabled(true);
-    }
     ret->block = ParseBlock(ScopeKind::FUNC_BODY);
     if (!ret->block || ret->block->body.empty() || Peek().kind != TokenKind::END) {
         lexer = std::move(curlexer);
@@ -425,23 +422,6 @@ OwnedPtr<Block> ParserImpl::ParseExprOrDeclsInMatchCase()
     }
     exprOrDecls->end = lastToken.End();
     return exprOrDecls;
-}
-
-static OwnedPtr<LambdaExpr> CreateLambdaFromBlock(
-    OwnedPtr<Block> block, const Expr& expr, OwnedPtr<FuncParamList> paramList)
-{
-    std::vector<OwnedPtr<FuncParamList>> paramLists;
-    paramList->begin = expr.begin;
-    paramList->end = expr.end;
-    paramLists.emplace_back(std::move(paramList));
-    auto fb = CreateFuncBody(std::move(paramLists), nullptr, std::move(block));
-
-    // create the lambda expression
-    auto le = CreateLambdaExpr(std::move(fb));
-    le->begin = expr.begin;
-    le->end = expr.end;
-
-    return le;
 }
 
 void ParserImpl::ParseCatchBlock(TryExpr& tryExpr)
