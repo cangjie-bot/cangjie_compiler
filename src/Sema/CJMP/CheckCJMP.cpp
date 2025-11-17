@@ -291,6 +291,10 @@ void MPTypeCheckerImpl::MergeCJMPNominalsExceptExtension(Package& pkg)
         if (decl->IsNominalDecl() && decl->astKind != ASTKind::EXTEND_DECL) {
             if (auto it = matchedDecls.find(decl->identifier); it != matchedDecls.end()) {
                 auto matchedDecl = it->second;
+                Print("[ DECL ]:\t");
+                Println(decl->identifier.GetRawText());
+                Print("[ MATCHED DECL ]:\t");
+                Println(matchedDecl->identifier.GetRawText());
                 bool hasGenericMismatch =
                     (decl->generic && !matchedDecl->generic) || (!decl->generic && matchedDecl->generic);
                 if (hasGenericMismatch) {

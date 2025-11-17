@@ -108,6 +108,9 @@ public:
      * @see PrepareTypeCheck
      * @see TypeCheck
      */
+    /*
+        main logic for sema stage
+    */
     void TypeCheckForPackages(const std::vector<Ptr<AST::Package>>& pkgs)
     {
         auto contexts = PreTypeCheck(pkgs);

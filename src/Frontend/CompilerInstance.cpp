@@ -102,7 +102,10 @@ CompilerInstance::~CompilerInstance()
     delete packageManager;
     packageManager = nullptr;
 }
+/*
 
+
+*/
 bool CompilerInstance::InitCompilerInstance()
 {
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
@@ -903,7 +906,7 @@ bool CompilerInstance::GenerateCHIRForPkg(AST::Package& pkg)
 }
 
 bool CompilerInstance::PerformCHIRCompilation()
-{
+{   
     bool ret = true;
     auto sourcePackagesCHIR = GetSourcePackages();
     auto pkgsOrderedCHIR = packageManager->GetBuildOrders();

@@ -2933,6 +2933,7 @@ struct Package : Node {
     bool isMacroPackage{false};
     bool noSubPkg{false};
     bool needExported{true}; /**< Parent path of package path is "src", there is no need to export this package. */
+    bool isProduct{true};
 
     // ===--------------------------------------------------------------------===//
     // Interop CJ Package Level Symbol Config

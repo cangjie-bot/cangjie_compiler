@@ -50,6 +50,32 @@ void DiagForNullPackageFeature(DiagnosticEngine& diag, const Range& current, con
         "perhapse you meant these features");
 }
 
+void DiagForNonProductTerminalSourceSet(DiagnosticEngine& diag, const Package& pkg, GlobalOptions::OutputMode outputmode)
+{   
+    std::string mode = "";
+    switch (outputmode) {
+    case GlobalOptions::OutputMode::EXECUTABLE:
+        mode = "--output-type=exe";
+        break;
+    case GlobalOptions::OutputMode::SHARED_LIB:
+        mode = "--output-type=dylib";
+        break;
+    case GlobalOptions::OutputMode::STATIC_LIB:
+        mode = "--output-type=staticlib";
+        break;
+    default:
+        CJC_ABORT();
+        return;
+    }
+    for (const auto& file : pkg.files) {
+        if (file->feature && !file->feature->annotations.empty()) {
+            auto annoRange = MakeRange(file->feature->annotations[0]->begin, file->feature->annotations[0]->end);
+            auto builder = diag.DiagnoseRefactor(DiagKindRefactor::feature_non_product_with_invalid_output_type,
+                annoRange, "@NonProduct", mode);
+        }
+    }
+}
+
 void DiagForDifferentPackageFeatureConsistency(DiagnosticEngine& diag, const Ptr<FeaturesDirective> feature,
     const Ptr<FeaturesDirective> refFeature, bool hasAnno)
 {

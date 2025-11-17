@@ -214,7 +214,7 @@ bool DefaultCIImpl::CodegenOnePackage(Package& pkg, bool enableIncrement)
     if (pkg.IsEmpty()) {
         return true;
     }
-    if (ci.invocation.globalOptions.disableCodeGen) {
+    if (ci.invocation.globalOptions.disableCodeGen || !pkg.isProduct) { // good place to stop generation if source-set has @NonProduct
         return true;
     }
 
@@ -300,7 +300,7 @@ bool DefaultCIImpl::PerformCodeGen()
     RearrangeImportedPackageDependence();
     bool ret = true;
     for (auto& srcPkg : ci.GetSourcePackages()) {
-        ret = ret && CodegenOnePackage(*srcPkg, false);
+        ret = ret && CodegenOnePackage(*srcPkg, false); // code get mark here to be accurate
     }
     return ret;
 }

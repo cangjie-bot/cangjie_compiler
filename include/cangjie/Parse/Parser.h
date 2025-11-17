@@ -121,6 +121,7 @@ public:
     Parser& SetCurFile(Ptr<AST::File> curFile);
 
     void SetCompileOptions(const GlobalOptions& opts);
+    void SetSourceSetOptions(bool isProduct);
 
     DiagnosticEngine& GetDiagnosticEngine() const;
     TokenVecMap GetCommentsMap() const;

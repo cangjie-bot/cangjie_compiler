@@ -130,6 +130,11 @@ void Parser::SetCompileOptions(const GlobalOptions& opts)
     SetEHEnabled(opts.enableEH);
 }
 
+void Parser::SetSourceSetOptions(bool isProduct)
+{
+    impl->mpImpl->SetSourceSetOptions(isProduct);
+}
+
 bool Parser::Skip(TokenKind kind)
 {
     return impl->Skip(kind);

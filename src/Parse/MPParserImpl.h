@@ -26,6 +26,8 @@ public:
 
     // set compile options for cjmp.
     void SetCompileOptions(const GlobalOptions& opts);
+    // set source-set option that it's product or not
+    void SetSourceSetOptions(bool isProduct);
     // Check CJMP modifier rules.
     bool CheckCJMPModifiers(const std::set<AST::Modifier> &modifiers) const;
     // The entry of checking CJMP decl rules.
@@ -43,8 +45,9 @@ private:
         const std::string& p0, const std::string& p1, const std::string& p2, const std::string& p3) const;
 private:
     const ParserImpl* ref;
-    bool compileCommon{false}; // true if compiling common part
+    bool compileCommon{false};   // true if compiling common part
     bool compilePlatform{false}; // true if compiling platform part
+    bool isProduct{true};        // true if it's product source-set
 };
 
 } // namespace Cangjie

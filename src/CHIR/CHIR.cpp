@@ -1183,11 +1183,15 @@ bool ToCHIR::Run()
     if (!TranslateToCHIR({})) {
         return false;
     }
+    bool isFeatureProductSet {pkg.HasFtrDirective() && pkg.isProduct};
+    
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    if (opts.outputMode == GlobalOptions::OutputMode::CHIR) {
+    if (opts.outputMode == GlobalOptions::OutputMode::CHIR || isFeatureProductSet) {
         auto fileName = FileUtil::JoinPath(opts.output, chirPkg->GetName()) + CHIR_SERIALIZATION_FILE_EXTENSION;
         CHIRSerializer::Serialize(*chirPkg, fileName, CHIR::ToCHIR::RAW);
-        return true;
+        if (!isFeatureProductSet) {
+            return true;
+        }
     }
 #endif
     CreateVTableAndUpdateFuncCall();

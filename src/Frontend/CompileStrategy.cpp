@@ -270,6 +270,10 @@ public:
                     auto parser = CreateParser(curFile);
                     parser->SetCompileOptions(s.ci->invocation.globalOptions);
                     auto file = parser->ParseTopLevel();
+                    if (file->feature) {
+                        parser->SetSourceSetOptions(file->feature->annotations.empty());
+                    }
+
 #ifdef SIGNAL_TEST
                     // The interrupt signal triggers the function. In normal cases, this function does not take effect.
                     Cangjie::SignalTest::ExecuteSignalTestCallbackFunc(

@@ -110,6 +110,11 @@ void MPParserImpl::SetCompileOptions(const GlobalOptions& opts)
     this->compilePlatform = (opts.commonPartCjo != std::nullopt);
 }
 
+void MPParserImpl::SetSourceSetOptions(bool product)
+{
+    this->isProduct = product;
+}
+
 bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) const
 {
     auto currentFile = ref->currentFile;
@@ -144,8 +149,13 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
     return true;
 }
 
+// Entrance
 void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
-{
+{   
+    if (compileCommon || compilePlatform) {
+        Print("decl\t=>\t");
+        Println(isProduct ? "PRODUCT" : "NON_PRODUCT");
+    }
     if (!compileCommon && !compilePlatform) {
         return;
     }
@@ -155,8 +165,8 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     // Enable COMMON_WITH_DEFAULT attr for func/constructor/var
     SetCJMPAttrs(decl);
     // Check sema rules
-    if (decl.astKind == ASTKind::INTERFACE_DECL) {
-        // Check that the member of platform interface must have the body
+    if (decl.astKind == ASTKind::INTERFACE_DECL && isProduct) { 
+        // Check that the member of platform interface must have the body, except @NonProducr - body can be omited
         CheckPlatformInterface(StaticCast<AST::InterfaceDecl&>(decl));
     } else if (decl.astKind == ASTKind::PRIMARY_CTOR_DECL) {
         auto& fn = StaticCast<AST::PrimaryCtorDecl&>(decl);

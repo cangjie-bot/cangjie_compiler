@@ -24,6 +24,7 @@ void WarnUselessImport(DiagnosticEngine& diag, const Range& importRange, const D
 void WarnConflictImport(DiagnosticEngine& diag, const std::string& name, const Range& current, const Range& previous);
 void WarnRepeatedFeatureName(DiagnosticEngine& diag, std::string& name, const Range& current, const Range& previous);
 void DiagForNullPackageFeature(DiagnosticEngine& diag, const Range& current, const Ptr<FeaturesDirective> refFeature);
+void DiagForNonProductTerminalSourceSet(DiagnosticEngine& diag, const Package& pkg, GlobalOptions::OutputMode outputmode);
 void DiagForDifferentPackageFeatureConsistency(DiagnosticEngine& diag,
     const Ptr<FeaturesDirective> feature, const Ptr<FeaturesDirective> refFeature, bool hasAnno);
 void DiagForDifferentPackageNames(DiagnosticEngine& diag,

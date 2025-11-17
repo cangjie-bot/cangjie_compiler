@@ -28,5 +28,6 @@ ERROR(packages_visibility_inconsistent, "package must have one visibility level 
 ERROR(packages_macro_inconsistent, "package must be either macro or not")
 WARNING(feature_already_seen_name, PACKAGE_IMPORT, "feature is already declared")
 ERROR(feature_null_declaration, "features declaration must be included in every file within the source set where it is used")
+ERROR(feature_non_product_with_invalid_output_type, "annotation '%s' is not compatible with '%s' output type")
 ERROR(feature_different_consistency, "feature names must be consistent across all files within a source set")
 ERROR(import_package_diag_end, "")
