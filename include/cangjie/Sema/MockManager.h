@@ -136,11 +136,11 @@ private:
     OwnedPtr<AST::CallExpr> CreateDeclKind(const AST::FuncDecl& decl) const;
     OwnedPtr<AST::CallExpr> CreateCallInfo(
         AST::FuncDecl& originalFunction, OwnedPtr<AST::Expr> mockedArgsArray, OwnedPtr<AST::Expr> typeArgsArray,
-        const Ptr<AST::File> curFile, OwnedPtr<AST::RefExpr> objRef
+        const Ptr<AST::File> curFile, const Ptr<AST::ClassDecl> outerDecl
     );
     OwnedPtr<AST::CallExpr> CreateOnCallInvocation(
         OwnedPtr<AST::Expr> mockedArgsArray, OwnedPtr<AST::Expr> typeArgsArray, AST::FuncDecl& originalFunc,
-        OwnedPtr<AST::RefExpr> objRef, OwnedPtr<AST::Expr> handler
+        const Ptr<AST::ClassDecl> mockedDecl, OwnedPtr<AST::Expr> handler
     );
 
     OwnedPtr<AST::FuncDecl> CreateStaticMethodStub(
@@ -162,8 +162,6 @@ private:
     void HandleMockAnnotatedLambdaWithRefExpr(const AST::RefExpr& refExpr, AST::Expr& injectTo);
     void HandleMockAnnotatedLambdaWithAssignExpr(AST::AssignExpr& assignExpr);
 
-    OwnedPtr<AST::Expr> GetCurrentStaticHandler(const Ptr<AST::File> curFile);
-    OwnedPtr<AST::Expr> GetMockedObjectHandler(OwnedPtr<AST::RefExpr> objRef, const Ptr<AST::File> curFile);
     OwnedPtr<AST::LambdaExpr> GenerateCallHandlerLambda(
         AST::FuncDecl& decl, const AST::Expr& injectTo, Ptr<AST::FuncDecl> declForInfo = nullptr);
     std::vector<OwnedPtr<AST::MatchCase>> GenerateCallHandlerCases(

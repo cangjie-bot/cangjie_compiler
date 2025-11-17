@@ -206,12 +206,11 @@ namespace {
 
 bool ShouldHandleMockAnnotatedLambdaValue(Ptr<Decl> target)
 {
-    bool isInExtend = target->TestAttr(Attribute::IN_EXTEND);
     bool isInInterfaceWithDefault =
         target->outerDecl && target->outerDecl->astKind == ASTKind::INTERFACE_DECL &&
-        target->TestAttr(Attribute::DEFAULT);
+        target->TestAttr(Attribute::DEFAULT) && target->TestAttr(Attribute::STATIC);
 
-    return isInExtend || isInInterfaceWithDefault || target->IsStaticOrGlobal();
+    return isInInterfaceWithDefault || target->IsStaticOrGlobal();
 }
 
 } // namespace
@@ -393,8 +392,7 @@ void TestManager::PrepareDecls(Package& pkg)
         if (!node->curFile) {
             return VisitAction::WALK_CHILDREN;
         }
-
-        if (!ShouldPrepareDecl(*node, pkg)) {
+        if (!ShouldPrepareDecl(*node, pkg) || Is<ExtendDecl>(node)) {
             return VisitAction::SKIP_CHILDREN;
         }
 

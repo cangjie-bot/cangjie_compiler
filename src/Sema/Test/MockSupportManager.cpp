@@ -97,28 +97,8 @@ void MockSupportManager::MakeOpenToMockIfNeeded(Decl& decl)
     }
 }
 
-namespace {
-
-bool IsMemberOfGenericDecl(const Decl& decl)
-{
-    return decl.outerDecl && (decl.outerDecl->TestAttr(Attribute::GENERIC) || decl.outerDecl->genericDecl);
-}
-
-void MarkFuncMockSupportedIfNeeded(FuncDecl& decl)
-{
-    if (decl.IsStaticOrGlobal() && decl.TestAttr(AST::Attribute::GENERIC)) {
-        if (!IsMemberOfGenericDecl(decl)) {
-            decl.EnableAttr(Attribute::MOCK_SUPPORTED);
-        }
-    } else if (decl.TestAttr(AST::Attribute::IN_EXTEND) && decl.TestAttr(AST::Attribute::GENERIC)) {
-        if (!IsMemberOfGenericDecl(decl)) {
-            decl.EnableAttr(Attribute::MOCK_SUPPORTED);
-        }
-    }
-}
-
-} // namespace
-
+// Here we mark only generic decls and package decl because they are exported early,
+// before type instantiation stage where we do all mocking preparations
 void MockSupportManager::MarkNodeMockSupportedIfNeeded(Node& node)
 {
     auto decl = As<ASTKind::DECL>(&node);
@@ -145,8 +125,10 @@ void MockSupportManager::MarkNodeMockSupportedIfNeeded(Node& node)
                 MakeOpenToMockIfNeeded(*GetUsableSetterForProperty(*propMember));
             }
         }
-    } else if (auto funcDecl = As<ASTKind::FUNC_DECL>(decl)) {
-        MarkFuncMockSupportedIfNeeded(*funcDecl);
+    } else if (Is<FuncDecl>(decl) && decl->IsStaticOrGlobal() && decl->TestAttr(AST::Attribute::GENERIC)) {
+        if (!(decl->outerDecl && (decl->outerDecl->TestAttr(Attribute::GENERIC) || decl->outerDecl->genericDecl))) {
+            decl->EnableAttr(Attribute::MOCK_SUPPORTED);
+        }
     }
 }
 
@@ -254,7 +236,7 @@ void MockSupportManager::CollectDeclsToPrepare(Decl& decl, DeclsToPrepare& decls
         return;
     }
 
-    if (decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::EXTEND_DECL) {
+    if (decl.astKind == ASTKind::CLASS_DECL) {
         Ptr<ClassDecl> classDecl = DynamicCast<ClassDecl>(&decl);
         if (!classDecl) {
             auto extendDecl = As<ASTKind::EXTEND_DECL>(&decl);
@@ -272,24 +254,12 @@ void MockSupportManager::CollectDeclsToPrepare(Decl& decl, DeclsToPrepare& decls
         return;
     }
 
-    if (auto extendDecl = As<ASTKind::EXTEND_DECL>(&decl)) {
-        auto classDecl = As<ASTKind::CLASS_DECL>(Ty::GetDeclOfTy(extendDecl->extendedType->ty));
-        if (!classDecl) {
-            return;
-        }
-
-        for (auto interfaceDecl : FindInterfacesWithDefaults(extendDecl)) {
-            decls.classWithInterfaceDefaults.emplace_back(classDecl, interfaceDecl);
-        }
-        return;
-    }
-
     auto funcDecl = As<ASTKind::FUNC_DECL>(&decl);
     if (!funcDecl) {
         return;
     }
 
-    if (!decl.IsStaticOrGlobal() && !funcDecl->TestAttr(Attribute::IN_EXTEND)) {
+    if (!decl.IsStaticOrGlobal()) {
         return;
     }
 
@@ -301,15 +271,19 @@ void MockSupportManager::CollectDeclsToPrepare(Decl& decl, DeclsToPrepare& decls
 }
 
 std::vector<OwnedPtr<MatchCase>> MockSupportManager::GenerateHandlerMatchCases(
-    const FuncDecl& funcDecl,
-    OwnedPtr<EnumPattern> optionFuncTyPattern,
-    OwnedPtr<CallExpr> handlerCallExpr)
+    const FuncDecl& funcDecl, OwnedPtr<EnumPattern> optionFuncTyPattern, OwnedPtr<RefExpr> varPatternRef)
 {
     static const auto NOTHING_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_NOTHING);
     static const auto UNIT_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
 
     auto handlerRetTy = typeManager.GetAnyTy();
     auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
+    std::vector<OwnedPtr<FuncArg>> handlerCallArgs {};
+    handlerCallArgs.emplace_back(CreateFuncArg(mockUtils->WrapCallArgsIntoArray(funcDecl)));
+    handlerCallArgs.emplace_back(CreateFuncArg(mockUtils->WrapCallTypeArgsIntoArray(funcDecl)));
+    auto handlerCallExpr = CreateCallExpr(
+        std::move(varPatternRef), std::move(handlerCallArgs), nullptr, optionFuncRetTy);
+    handlerCallExpr->callKind = CallKind::CALL_FUNCTION_PTR;
 
     std::vector<OwnedPtr<MatchCase>> handlerResultCases;
     auto handlerResultPattern = MakeOwned<EnumPattern>();
@@ -381,16 +355,11 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
         return;
     }
 
-    auto isMethod = !decl.IsStaticOrGlobal();
-
     auto handlerRetTy = typeManager.GetAnyTy();
     auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
     auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { typeManager.GetAnyTy() });
     auto toStrArrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { mockUtils->toStringDecl->ty });
-    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {});
-    auto funcTy = isMethod
-        ? typeManager.GetFunctionTy({objectTy, arrayTy, toStrArrayTy}, optionFuncRetTy)
-        : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
+    auto funcTy = typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
     auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { funcTy });
 
     auto noneFuncTy = CreateRefExpr(
@@ -439,18 +408,8 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
     varPatternRef->ty = funcTy;
     optionFuncTyPattern->patterns.emplace_back(std::move(optionFuncTyVarPattern));
 
-    std::vector<OwnedPtr<FuncArg>> handlerCallArgs {};
-    if (isMethod) {
-        handlerCallArgs.emplace_back(CreateFuncArg(CreateThisRef(*objectTy->decl)));
-    }
-    handlerCallArgs.emplace_back(CreateFuncArg(mockUtils->WrapCallArgsIntoArray(*funcDecl)));
-    handlerCallArgs.emplace_back(CreateFuncArg(mockUtils->WrapCallTypeArgsIntoArray(*funcDecl)));
-    auto handlerCallExpr = CreateCallExpr(
-        std::move(varPatternRef), std::move(handlerCallArgs), nullptr, optionFuncRetTy);
-    handlerCallExpr->callKind = CallKind::CALL_FUNCTION_PTR;
-
     auto handlerCases = GenerateHandlerMatchCases(
-        *funcDecl, std::move(optionFuncTyPattern), std::move(handlerCallExpr));
+        *funcDecl, std::move(optionFuncTyPattern), std::move(varPatternRef));
     auto handlerMatch = CreateMatchExpr(std::move(varDeclRef), std::move(handlerCases), UNIT_TY);
     handlerMatch->curFile = funcDecl->curFile;
     mockUtils->instantiate(*handlerMatch);
@@ -665,7 +624,7 @@ void MockSupportManager::PrepareToSpy(Decl& decl)
     auto spiedObjectDecl = GenerateSpiedObjectVar(decl);
 
     for (auto& member : classLikeDecl->GetMemberDecls()) {
-        if (auto funcDecl = As<ASTKind::FUNC_DECL>(member); funcDecl) {
+        if (auto funcDecl = As<ASTKind::FUNC_DECL>(member); funcDecl && !funcDecl->IsFinalizer()) {
             GenerateSpyCallHandler(*funcDecl, *spiedObjectDecl);
         }
     }
@@ -1185,21 +1144,21 @@ bool MockSupportManager::IsMemberAccessOnThis(const MemberAccess& memberAccess) 
  *  }
  */
 void MockSupportManager::TransformAccessorCallForMutOperation(
-    MemberAccess& originalMa, Expr& replacedMa, Expr& topLevelExpr)
+    NameReferenceExpr& originalNre, Expr& replacedNre, Expr& topLevelExpr)
 {
     CJC_ASSERT(Is<AssignExpr>(topLevelExpr) ||
         (Is<CallExpr>(topLevelExpr) &&
             DynamicCast<CallExpr*>(&topLevelExpr)->resolvedFunction->TestAttr(Attribute::MUT)));
 
     auto tmpVarDecl = CreateTmpVarDecl(
-        MockUtils::CreateType<Type>(replacedMa.ty),
-        ASTCloner::Clone(Ptr(&replacedMa)));
+        MockUtils::CreateType<Type>(replacedNre.ty),
+        ASTCloner::Clone(Ptr(&replacedNre)));
     tmpVarDecl->isVar = true;
 
     auto tmpVarRefToMutate = CreateRefExpr(*tmpVarDecl);
     tmpVarRefToMutate->ref.identifier = tmpVarDecl->identifier;
-    tmpVarRefToMutate->curFile = replacedMa.curFile;
-    tmpVarRefToMutate->ty = originalMa.ty;
+    tmpVarRefToMutate->curFile = replacedNre.curFile;
+    tmpVarRefToMutate->ty = originalNre.ty;
 
     OwnedPtr<Expr> newTopLevelExpr = ASTCloner::Clone(Ptr(&topLevelExpr));
     Ptr<Expr> mutBaseExpr;
@@ -1218,11 +1177,11 @@ void MockSupportManager::TransformAccessorCallForMutOperation(
         MockUtils::CreateType<RefType>(newTopLevelExpr->ty), std::move(newTopLevelExpr));
     auto mutResultVarRef = CreateRefExpr(*mutResultVarDecl);
     mutResultVarRef->ref.identifier = mutResultVarDecl->identifier;
-    mutResultVarRef->curFile = replacedMa.curFile;
+    mutResultVarRef->curFile = replacedNre.curFile;
 
     auto ty = topLevelExpr.ty;
 
-    auto newOriginalMa = ASTCloner::Clone(Ptr(&originalMa));
+    auto newOriginalMa = ASTCloner::Clone(Ptr(&originalNre));
     newOriginalMa->desugarExpr = nullptr;
 
     auto backAssignExpr = CreateAssignExpr(std::move(newOriginalMa), std::move(tmpVarRefToAssign));
@@ -1242,7 +1201,7 @@ void MockSupportManager::TransformAccessorCallForMutOperation(
     auto lambda = CreateLambdaExpr(
         CreateFuncBody(
             std::move(paramLists),
-            MockUtils::CreateType<Type>(replacedMa.ty), CreateBlock(std::move(nodes), ty), ty)
+            MockUtils::CreateType<Type>(replacedNre.ty), CreateBlock(std::move(nodes), ty), ty)
     );
     lambda->ty = typeManager.GetFunctionTy({}, ty);
     lambda->funcBody->ty = lambda->ty;
@@ -1253,10 +1212,10 @@ void MockSupportManager::TransformAccessorCallForMutOperation(
 void MockSupportManager::ReplaceSubMemberAccessWithAccessor(
     const MemberAccess& memberAccess, bool isInConstructor, const Ptr<Expr> topLevelMutExpr)
 {
-    if (auto subMa = As<ASTKind::MEMBER_ACCESS>(ExtractLastDesugaredExpr(*memberAccess.baseExpr)); subMa) {
-        auto replacedSubMa = ReplaceExprWithAccessor(*subMa, isInConstructor, true);
-        if (topLevelMutExpr && replacedSubMa) {
-            TransformAccessorCallForMutOperation(*subMa, *replacedSubMa, *topLevelMutExpr);
+    if (auto nre = DynamicCast<NameReferenceExpr*>(ExtractLastDesugaredExpr(*memberAccess.baseExpr)); nre) {
+        auto replacedNre = ReplaceExprWithAccessor(*nre, isInConstructor, true);
+        if (topLevelMutExpr && replacedNre) {
+            TransformAccessorCallForMutOperation(*nre, *replacedNre, *topLevelMutExpr);
         }
     }
 }
@@ -1508,6 +1467,7 @@ std::vector<Ptr<Ty>> MockSupportManager::CloneFuncDecl(Ptr<FuncDecl> fromDecl, P
 void MockSupportManager::PrepareInterfaceDecl(InterfaceDecl& interfaceDecl)
 {
     if (IS_GENERIC_INSTANTIATION_ENABLED) {
+        // Do not support CJVM for now
         return;
     }
 
@@ -1520,6 +1480,12 @@ void MockSupportManager::PrepareInterfaceDecl(InterfaceDecl& interfaceDecl)
     for (auto& decl : interfaceDecl.GetMemberDecls()) {
         auto funcDecl = DynamicCast<FuncDecl>(decl.get());
         if (!funcDecl || !funcDecl->TestAttr(Attribute::DEFAULT)) {
+            continue;
+        }
+
+        if (!funcDecl->TestAttr(Attribute::STATIC)) {
+            // NOTE: Mocking extends not yet supported
+            // Need to only handle static methods
             continue;
         }
 
@@ -1613,6 +1579,13 @@ void MockSupportManager::PrepareClassWithDefaults(ClassDecl& classDecl, Interfac
         CJC_ASSERT(originalDeclIt != originalDecls.end());
         auto originalFunc = DynamicCast<FuncDecl>(originalDeclIt->get());
         if (!originalFunc || !originalFunc->TestAttr(Attribute::DEFAULT)) {
+            originalDeclIt++;
+            continue;
+        }
+
+        if (!originalFunc->TestAttr(Attribute::STATIC)) {
+            // NOTE: Mocking extends not yet supported
+            // Need to only handle static methods
             originalDeclIt++;
             continue;
         }
@@ -1919,8 +1892,9 @@ void MockSupportManager::ReplaceInterfaceDefaultFuncInCall(
                 auto originalCall = ASTCloner::Clone(Ptr(callExpr));
                 originalCall->EnableAttr(Attribute::GENERATED_TO_MOCK);
 
+                auto retTy = StaticCast<FuncTy*>(maExpr->ty)->retTy;
                 auto matchExpr = CreateBoolMatch(
-                    std::move(selector), std::move(buddyCall), std::move(originalCall), callExpr->ty);
+                    std::move(selector), std::move(buddyCall), std::move(originalCall), retTy);
 
                 callExpr->desugarExpr = std::move(matchExpr);
             } else if (HasDefaultInterfaceAccessor(maExpr->baseExpr->ty, buddyInterfaceDecl->ty)) {
@@ -1960,9 +1934,10 @@ void MockSupportManager::ReplaceInterfaceDefaultFuncInCall(
             };
             auto originalCall = ASTCloner::Clone(Ptr(callExpr));
             originalCall->EnableAttr(Attribute::GENERATED_TO_MOCK);
+            auto retTy = StaticCast<FuncTy*>(maExpr->ty)->retTy;
             auto matchExpr = MockUtils::CreateTypeCast(
                 CreateRefExpr(*baseExprVar), buddyInterfaceDecl->ty,
-                std::move(createBuddyCall), std::move(originalCall), callExpr->ty);
+                std::move(createBuddyCall), std::move(originalCall), retTy);
 
             auto blockExpr = CreateBlock({}, callExpr->ty);
             blockExpr->body.emplace_back(std::move(baseExprVar));
@@ -2010,9 +1985,10 @@ void MockSupportManager::ReplaceInterfaceDefaultFuncInCall(
             };
             auto originalCall = ASTCloner::Clone(Ptr(callExpr));
             originalCall->EnableAttr(Attribute::GENERATED_TO_MOCK);
+            auto retTy = StaticCast<FuncTy*>(refExpr->ty)->retTy;
             auto matchExpr = MockUtils::CreateTypeCast(
                 std::move(thisExpr), buddyInterfaceDecl->ty,
-                std::move(createBuddyCall), std::move(originalCall), refExpr->ty);
+                std::move(createBuddyCall), std::move(originalCall), retTy);
 
             callExpr->desugarExpr = std::move(matchExpr);
         }
