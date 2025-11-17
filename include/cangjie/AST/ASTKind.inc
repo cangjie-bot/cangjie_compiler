@@ -37,7 +37,6 @@ ASTKIND(ENUM_PATTERN, "enum_pattern", EnumPattern, 368)
 ASTKIND(VAR_OR_ENUM_PATTERN, "var_or_enum_pattern", VarOrEnumPattern, 352)
 ASTKIND(TYPE_PATTERN, "type_pattern", TypePattern, 328)
 ASTKIND(EXCEPT_TYPE_PATTERN, "except_type_pattern", ExceptTypePattern, 360)
-ASTKIND(COMMAND_TYPE_PATTERN, "effect_type_pattern", CommandTypePattern, 360)
 ASTKIND(WILDCARD_PATTERN, "wildcard_pattern", WildcardPattern, 264)
 ASTKIND(INVALID_PATTERN, "invalid_pattern", InvalidPattern, 264) // end of subtypes of Pattern.
 ASTKIND(TYPE, "*type", Type, 376)                                // begin of subtypes of Type.
