@@ -707,6 +707,7 @@ void JavaDesugarManager::GenerateFwdClassInCJMapping(File& file)
     }
 }
 
+// java test
 void JavaDesugarManager::GenerateInCJMapping(File& file)
 {
     for (auto& decl : file.decls) {
