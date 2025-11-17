@@ -76,7 +76,7 @@ OwnedPtr<Expr> ASTFactory::UnwrapEntity(OwnedPtr<Expr> expr)
     }
 
     if (typeMapper.IsObjCCJMapping(*expr->ty)) {
-        if (auto structTy = StaticCast<StructTy>(expr->ty.get())) {
+        if (Is<StructTy>(expr->ty.get())) {
             return CreatePutToRegistryCall(std::move(expr));
         }
         CJC_ABORT(); // other CJMapping is not supported
