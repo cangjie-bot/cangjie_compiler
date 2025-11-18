@@ -3278,3 +3278,20 @@ TEST(PositionTest, GenericConstraintBegin)
     ASSERT_NE(foo.funcBody->generic, nullptr);
     EXPECT_EQ(foo.funcBody->generic->genericConstraints[0]->begin, Position(1, 25));
 }
+
+TEST_F(ParserTest, RangeLiteral)
+{
+    std::string code = "let a = 0127..11";
+    Parser parser(code, diag, sm);
+    auto file = parser.ParseTopLevel();
+    auto diagnostics = diag.GetCategoryDiagnostic(DiagCategory::LEX);
+    EXPECT_EQ(diagnostics.size(), 0);
+}
+TEST_F(ParserTest, RangeLiteral0x)
+{
+    std::string code = "let a = 0x127..11";
+    Parser parser(code, diag, sm);
+    auto file = parser.ParseTopLevel();
+    auto diagnostics = diag.GetCategoryDiagnostic(DiagCategory::LEX);
+    EXPECT_EQ(diagnostics.size(), 0);
+}

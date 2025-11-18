@@ -655,7 +655,8 @@ Token LexerImpl::ScanNumber(const char* pStart)
             if (!isdigit(GetNextChar(0))) {
                 DiagSmallExpectedDigit(hasDigit, prefix);
                 Back();
-                if (success && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent))) {
+                // the second condition makes sure this is not a range literal
+                if (success && GetNextChar(1) != '.' && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent))) {
                     diag.DiagnoseRefactor(
                         DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{pStart, ptr});
                 }
