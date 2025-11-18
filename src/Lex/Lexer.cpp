@@ -585,7 +585,7 @@ void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat)
 }
 
 // illegal start decimal part,e.g 01、0_1
-const char* LexerImpl::GetIllegalStartDecimalPart(const char* pStart, const char* pEnd) const
+const char* LexerImpl::GetIllegalStartDecimalPart(const char* pStart, const char* pEnd, bool isInteger) const
 {
     if (pStart > pEnd) {
         return nullptr;
@@ -600,6 +600,12 @@ const char* LexerImpl::GetIllegalStartDecimalPart(const char* pStart, const char
         return nullptr;
     }
     if (isdigit(*start)) {
+        while (start <= pEnd && *start == '0') {
+            start++;
+        }
+        if (isInteger) {
+            --start; // integer can be prefixed with one 0, which indicates octal, while float cannot.
+        }
         return start;
     }
     if (*start != '_') {
@@ -645,7 +651,7 @@ Token LexerImpl::ScanNumber(const char* pStart)
             if (!isxdigit(GetNextChar(0))) {
                 DiagSmallExpectedDigit(hasDigit, prefix);
                 Back();
-                if (success && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent))) {
+                if (success && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent, false))) {
                     diag.DiagnoseRefactor(
                         DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{pStart, ptr});
                 }
@@ -655,16 +661,21 @@ Token LexerImpl::ScanNumber(const char* pStart)
             if (!isdigit(GetNextChar(0))) {
                 DiagSmallExpectedDigit(hasDigit, prefix);
                 Back();
-                if (success && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent))) {
+                // 000.a report
+                // 001..2 do not report
+                // 001.3 report
+                auto nextChar = GetNextChar(1);
+                if (success && nextChar != '.' && (ptr = GetIllegalStartDecimalPart(pStart, pCurrent, !isdigit(nextChar)))) {
+                    std::string fori = isdigit(nextChar) ? "float" : "integer";
                     diag.DiagnoseRefactor(
-                        DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{pStart, ptr});
+                        DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), fori, std::string{pStart, ptr});
                 }
                 return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
             }
         }
         hasDigit = false;
         isFloat = true;
-        if (ptr = GetIllegalStartDecimalPart(pStart, pCurrent); ptr) {
+        if (ptr = GetIllegalStartDecimalPart(pStart, pCurrent, false); ptr) {
             diag.DiagnoseRefactor(
                 DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{pStart, ptr});
         }
