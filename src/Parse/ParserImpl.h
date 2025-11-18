@@ -82,6 +82,7 @@ public:
         const std::set<AST::Modifier>& modifiers = {}, std::vector<OwnedPtr<AST::Annotation>> annos = {});
 
     Parser& EnableCustomAnno();
+    Parser& SetLateMacroIdents(const std::set<std::string>& idents);
     std::size_t GetProcessedTokens() const;
     std::string GetPrimaryDeclIdentRawValue() const;
 
@@ -145,6 +146,8 @@ private:
     bool deadlocked{false};
     bool inForeignBlock{false};
     bool enableCustomAnno{false}; // parse macrocall as custom annotation.
+
+    std::set<std::string> lateMacroIdents;
 
     std::unique_ptr<Lexer> lexer;
     std::string inputString{};
@@ -817,6 +820,7 @@ private:
     void CheckDeprecatedAnnotation(const AST::Annotation& anno);
     void CheckDeclarationInScope(ScopeKind sk, DefKind dk);
     bool SeeingMacroCall();
+    bool SeeingCustomAnnotation();
     /// Returns true when seeing macro call before a decl.
     /// It can be either @Foo[...] class/func ...
     /// Or @!Foo[...] class/func ...

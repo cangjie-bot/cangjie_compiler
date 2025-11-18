@@ -723,6 +723,7 @@ bool MacroEvaluation::NeedCreateMacroCallTree(MacroCall& macCall, bool reEval)
     if (macCall.ResolveMacroCall(ci)) {
         SaveUsedMacros(macCall);
         if (!isLateMacro && macCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
+            lateMacroIdents.insert(macCall.GetFullName());
             macCall.status = MacroEvalStatus::LATE;
         }
         if (isLateMacro && !macCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {

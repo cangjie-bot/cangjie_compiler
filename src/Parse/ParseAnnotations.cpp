@@ -200,6 +200,18 @@ bool ParserImpl::SeeingMacroCall()
     return !IsBuiltinAnnotation(moduleName, tokens.begin()->Value());
 }
 
+bool ParserImpl::SeeingCustomAnnotation()
+{
+    if(!(this->enableCustomAnno && SeeingMacroCallDecl())) {
+        return false;
+    }
+    auto tokens = lexer->LookAheadSkipNL(1);
+    if (tokens.begin()->kind == TokenKind::IDENTIFIER && lateMacroIdents.count(tokens.begin()->Value())) {
+        return false;
+    }
+    return true;
+}
+
 bool ParserImpl::SeeingMacroCallDecl()
 {
     if (!SeeingAny({TokenKind::AT, TokenKind::AT_EXCL})) {
@@ -216,7 +228,7 @@ bool ParserImpl::SeeingMacroCallDecl()
 
 void ParserImpl::ParseAnnotations(PtrVector<Annotation>& annos)
 {
-    while (SeeingBuiltinAnnotation() || (this->enableCustomAnno && SeeingMacroCallDecl())) {
+    while (SeeingBuiltinAnnotation() || SeeingCustomAnnotation()) {
         auto annotation = ParseAnnotation();
         auto anno = std::find_if(annos.begin(), annos.end(), [&annotation](const auto& anno) {
             return anno->kind != AnnotationKind::CUSTOM && anno->identifier == annotation->identifier;
@@ -317,7 +329,7 @@ void ParserImpl::CheckObjCMirrorAnnotation(const Annotation& anno) const
 
 OwnedPtr<Annotation> ParserImpl::ParseAnnotation()
 {
-    if (this->enableCustomAnno && SeeingMacroCallDecl()) {
+    if (SeeingCustomAnnotation()) {
         // Reparse as a custom annotation after macro expansion if one macrocall can't find it's macrodef.
         return ParseCustomAnnotation();
     }
