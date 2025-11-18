@@ -31,7 +31,7 @@ Ptr<Value> Translator::Visit(const AST::StructDecl& decl)
     // translate func and prop
     const auto& memberDecl = decl.GetMemberDeclPtrs();
     for (auto& member : memberDecl) {
-        if (!ShouldTranslateMember(decl, *member)) {
+        if (member->IsCommonMatchedWithPlatform()) {
             continue;
         }
         if (member->astKind == AST::ASTKind::VAR_DECL) {

@@ -495,12 +495,16 @@ void MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(
 // TypeCheck for CJMP
 void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<FuncDecl>>& candidates) const
 {
-    bool hasPlatformCandidate = std::find_if(
-        candidates.begin(), candidates.end(),
-        [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::PLATFORM); }
-    ) != candidates.end();
-    if (hasPlatformCandidate) {
-        Utils::EraseIf(candidates, [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::COMMON); });
+    std::vector<Ptr<FuncDecl>> platformDecls;
+    for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+        if ((*it)->TestAttr(Attribute::PLATFORM)) {
+            platformDecls.emplace_back(*it);
+        }
+    }
+    for (const auto& platformFunc : platformDecls) {
+        Utils::EraseIf(candidates, [&platformFunc, this](const Ptr<FuncDecl> candidate) {
+            return candidate->TestAttr(Attribute::COMMON) && typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
+        });
     }
 }
 

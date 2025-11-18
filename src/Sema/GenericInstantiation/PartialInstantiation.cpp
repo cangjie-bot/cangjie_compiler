@@ -1331,12 +1331,13 @@ OwnedPtr<ClassBody> PartialInstantiation::InstantiateClassBody(const ClassBody& 
         // 2. function decl need be instantiated by requirement
         // 3. static member var can't be instantiated, it should be regarded as global var decl
         // 4. static init func can't be instantiated, only call once in template
+        // 5. common declaration with platform implementation
         // need to be instantiated:
         // 1. function decl which marked with @Frozen
         // 2. member var decl, maybe we need instantiated class decl's memory info
         if (it->astKind == ASTKind::PRIMARY_CTOR_DECL ||
             (it->astKind != ASTKind::VAR_DECL && !RequireInstantiation(*it)) || IsStaticVar(*it) ||
-            IsStaticInitializer(*it)) {
+            IsStaticInitializer(*it) || it->IsCommonMatchedWithPlatform()) {
             continue;
         }
         ret->decls.push_back(InstantiateDecl(it.get(), visitor));
@@ -1354,7 +1355,7 @@ OwnedPtr<StructBody> PartialInstantiation::InstantiateStructBody(const StructBod
     for (auto& it : sb.decls) {
         if (it->astKind == ASTKind::PRIMARY_CTOR_DECL ||
             (it->astKind != ASTKind::VAR_DECL && !RequireInstantiation(*it)) || IsStaticVar(*it) ||
-            IsStaticInitializer(*it)) {
+            IsStaticInitializer(*it) || it->IsCommonMatchedWithPlatform()) {
             continue;
         }
         ret->decls.push_back(InstantiateDecl(it.get(), visitor));
