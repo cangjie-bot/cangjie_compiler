@@ -59,6 +59,9 @@ bool IsOpenDecl(const Decl& decl)
 
 bool RequireInstantiation(const Decl& decl)
 {
+    // if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+    //     return true;
+    // }
     if (IsCPointerFrozenMember(decl)) {
         return true;
     }
@@ -309,6 +312,9 @@ OwnedPtr<Decl> PartialInstantiation::InstantiateExtendDecl(const ExtendDecl& ed,
         ret->inheritedTypes.push_back(InstantiateType(interface.get(), visitor));
     }
     for (auto& member : ed.members) {
+        if (member->IsCommonMatchedWithPlatform()) {
+            continue;
+        }
         if (RequireInstantiation(*member)) {
             ret->members.push_back(InstantiateDecl(member.get(), visitor));
         }
@@ -389,7 +395,7 @@ OwnedPtr<Decl> PartialInstantiation::InstantiateEnumDecl(const EnumDecl& ed, con
         ret->constructors.push_back(InstantiateDecl(it.get(), visitor));
     }
     for (auto& func : ed.members) {
-        if (!RequireInstantiation(*func)) {
+        if (!RequireInstantiation(*func) || func->IsCommonMatchedWithPlatform()) {
             continue;
         }
         ret->members.push_back(InstantiateDecl(func.get(), visitor));
@@ -1331,12 +1337,13 @@ OwnedPtr<ClassBody> PartialInstantiation::InstantiateClassBody(const ClassBody& 
         // 2. function decl need be instantiated by requirement
         // 3. static member var can't be instantiated, it should be regarded as global var decl
         // 4. static init func can't be instantiated, only call once in template
+        // 5. common declaration with platform implementation
         // need to be instantiated:
         // 1. function decl which marked with @Frozen
         // 2. member var decl, maybe we need instantiated class decl's memory info
         if (it->astKind == ASTKind::PRIMARY_CTOR_DECL ||
             (it->astKind != ASTKind::VAR_DECL && !RequireInstantiation(*it)) || IsStaticVar(*it) ||
-            IsStaticInitializer(*it)) {
+            IsStaticInitializer(*it) || it->IsCommonMatchedWithPlatform()) {
             continue;
         }
         ret->decls.push_back(InstantiateDecl(it.get(), visitor));
@@ -1354,7 +1361,7 @@ OwnedPtr<StructBody> PartialInstantiation::InstantiateStructBody(const StructBod
     for (auto& it : sb.decls) {
         if (it->astKind == ASTKind::PRIMARY_CTOR_DECL ||
             (it->astKind != ASTKind::VAR_DECL && !RequireInstantiation(*it)) || IsStaticVar(*it) ||
-            IsStaticInitializer(*it)) {
+            IsStaticInitializer(*it) || it->IsCommonMatchedWithPlatform()) {
             continue;
         }
         ret->decls.push_back(InstantiateDecl(it.get(), visitor));

@@ -583,6 +583,9 @@ bool CompilerInstance::PerformGenericInstantiation()
         CJC_NULLPTR_CHECK(gim);
         testManager->Init(gim);
     }
+    // if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+    //     return true;
+    // }
     if (!invocation.globalOptions.enIncrementalCompilation) {
         Utils::ProfileRecorder::Start("Generic Instantiation", "ResetGenericInstantiationStage");
         // Perform instantiation for source package. NOTE: must only exist exact one source package except unittest.

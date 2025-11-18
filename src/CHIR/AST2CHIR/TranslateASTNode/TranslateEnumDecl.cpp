@@ -75,7 +75,7 @@ Ptr<Value> Translator::Visit(const AST::EnumDecl& decl)
 
     // step 4: set member func and prop
     for (auto& member : decl.members) {
-        if (!ShouldTranslateMember(decl, *member)) {
+        if (member->IsCommonMatchedWithPlatform()) {
             continue;
         }
         if (member->astKind == AST::ASTKind::FUNC_DECL) {
