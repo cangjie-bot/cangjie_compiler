@@ -185,6 +185,12 @@ std::string Triple::Info::GetEffectiveTripleString() const
     if (tripleString == "aarch64-ios-simulator") {
         return "arm64-apple-ios17.5-simulator";
     }
+    if (tripleString == "aarch64-linux-android"){
+        return tripleString + apiLevel;
+    }
+    if (tripleString == "aarch64-x86_64-android"){
+        return tripleString + apiLevel;
+    }
     return tripleString;
 }
 
