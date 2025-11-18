@@ -296,7 +296,9 @@ protected:
         auto instTys = checker.GetTyFromASTType(ctx, re.typeArguments);
         if (ctxExprs.empty()) {
             checker.InferRefExpr(ctx, re);
-            if (Ty::IsTyCorrect(re.ty) && (re.isThis || re.isSuper)) {
+            if (Ty::IsTyCorrect(re.ty) &&
+                (re.isThis || re.isSuper ||
+                    !(Ty::GetDeclPtrOfTy(re.ty) && Ty::GetDeclPtrOfTy(re.ty)->IsNominalTypeDecl()))) {
                 std::unordered_set<Ptr<Ty>> tys{re.ty};
                 return SynResult(tys);
             }
