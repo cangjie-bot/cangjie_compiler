@@ -1431,11 +1431,14 @@ std::unordered_map<const GenericType*, Type*> BuildGenericTypeMapping(
     std::unordered_map<const GenericType*, Type*> commonGenericTy2platformGenericTy;
 
     for (const auto& commonDecl : commonDecls) {
-        if (commonDecl->TestAttr(AST::Attribute::GENERIC) && commonDecl->ty && !commonDecl->ty->typeArgs.empty()) {
-            for (size_t i = 0; i < commonDecl->ty->typeArgs.size(); i++) {
-                auto cTypeArg = commonDecl->ty->typeArgs[i];
-                auto pTypeArg = commonDecl->platformImplementation->ty->typeArgs[i];
-
+        if (commonDecl->TestAttr(AST::Attribute::GENERIC) && commonDecl->GetGeneric() &&
+            !commonDecl->GetGeneric()->typeParameters.empty()) {
+            CJC_ASSERT(commonDecl->platformImplementation->GetGeneric());
+            auto& commonTypeParameters = commonDecl->GetGeneric()->typeParameters;
+            auto& platformTypeParameters = commonDecl->platformImplementation->GetGeneric()->typeParameters;
+            for (size_t i = 0; i < commonTypeParameters.size(); i++) {
+                auto cTypeArg = commonTypeParameters[i]->ty;
+                auto pTypeArg = platformTypeParameters[i]->ty;
                 if (cTypeArg->IsGeneric() && pTypeArg->IsGeneric()) {
                     auto commonGenericTy = StaticCast<GenericType*>(chirType.TranslateType(*cTypeArg));
                     auto platformGenericTy = chirType.TranslateType(*pTypeArg);
