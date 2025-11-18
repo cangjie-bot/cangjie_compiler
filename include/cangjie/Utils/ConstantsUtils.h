@@ -119,6 +119,7 @@ inline constexpr const char REFLECT_PACKAGE_NAME[] = "std.reflect";
 inline constexpr const char REF_PACKAGE_NAME[] = "std.ref";
 inline constexpr const char EFFECT_INTERNALS_PACKAGE_NAME[] = "stdx.effect";
 inline constexpr const char EFFECT_PACKAGE_NAME[] = "stdx.effect";
+inline constexpr const char SYNTAX_PACKAGE_NAME[] = "stdx.syntax";
 
 // Standard library class name
 inline const std::string STD_LIB_ARRAY = "Array";
