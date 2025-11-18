@@ -105,13 +105,15 @@ FuncBase* ClassDef::GetFinalizer() const
     return nullptr;
 }
 
-void ClassDef::AddAbstractMethod(AbstractMethodInfo methodInfo)
+void ClassDef::AddAbstractMethod(AbstractMethodInfo methodInfo, bool recordOrder)
 {
     auto mangledName = methodInfo.GetASTMangledName();
     CJC_ASSERT(!mangledName.empty());
-    if (std::find(allMethodMangledNames.begin(), allMethodMangledNames.end(), mangledName) ==
-        allMethodMangledNames.end()) {
-        allMethodMangledNames.emplace_back(mangledName);
+    if (recordOrder) {
+        if (std::find(allMethodMangledNames.begin(), allMethodMangledNames.end(), mangledName) ==
+            allMethodMangledNames.end()) {
+            allMethodMangledNames.emplace_back(mangledName);
+        }
     }
     abstractMethods.emplace_back(std::move(methodInfo));
 }
@@ -147,18 +149,25 @@ void ClassDef::PrintComment(std::stringstream& ss) const
     ss << "isAnnotation: " << BoolToString(isAnnotation);
 }
 
-void ClassDef::AddMethod(FuncBase* method)
+void ClassDef::AddMethod(FuncBase* method, bool recordOrder)
 {
     CustomTypeDef::AddMethod(method);
     auto mangledName = method->GetIdentifierWithoutPrefix();
     CJC_ASSERT(!mangledName.empty());
-    if (std::find(allMethodMangledNames.begin(), allMethodMangledNames.end(), mangledName) ==
-        allMethodMangledNames.end()) {
-        allMethodMangledNames.emplace_back(mangledName);
+    if (recordOrder) {
+        if (std::find(allMethodMangledNames.begin(), allMethodMangledNames.end(), mangledName) ==
+            allMethodMangledNames.end()) {
+            allMethodMangledNames.emplace_back(mangledName);
+        }
     }
 }
 
 const std::vector<std::string>& ClassDef::GetAllMethodMangledNames() const
 {
     return allMethodMangledNames;
+}
+
+void ClassDef::SetAllMethodMangledNames(const std::vector<std::string>& names)
+{
+    allMethodMangledNames = names;
 }

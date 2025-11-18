@@ -53,11 +53,12 @@ public:
     // ===--------------------------------------------------------------------===//
     // Member Function
     // ===--------------------------------------------------------------------===//
-    void AddMethod(class FuncBase* method) override;
-    void AddAbstractMethod(AbstractMethodInfo methodInfo);
+    void AddMethod(class FuncBase* method, bool recordOrder = true) override;
+    void AddAbstractMethod(AbstractMethodInfo methodInfo, bool recordOrder = true);
     std::vector<AbstractMethodInfo> GetAbstractMethods() const;
     void SetAbstractMethods(const std::vector<AbstractMethodInfo>& methods);
     const std::vector<std::string>& GetAllMethodMangledNames() const;
+    void SetAllMethodMangledNames(const std::vector<std::string>& names);
     FuncBase* GetFinalizer() const;
 
 protected:
