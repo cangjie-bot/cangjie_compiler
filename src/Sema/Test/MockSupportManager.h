@@ -59,12 +59,14 @@ public:
     void CollectDeclsToPrepare(AST::Decl& decl, DeclsToPrepare& decls);
 
     void PrepareClassWithDefaults(AST::ClassDecl& classDecl, AST::InterfaceDecl& interfaceDecl);
+    void WriteUsedInternalDecl(AST::Decl& decl);
 
 private:
     TypeManager& typeManager;
     Ptr<MockUtils> mockUtils;
     std::set<OwnedPtr<AST::Decl>> generatedMockDecls;
     std::unordered_map<Ptr<AST::Decl>, Ptr<AST::VarDecl>> genericMockVarsDecls;
+    std::unordered_set<Ptr<AST::Decl>> usedInternalDecls;
 
     std::unordered_map<Ptr<AST::Ty>, std::unordered_set<Ptr<AST::Ty>>> defaultInterfaceAccessorExtends;
 
@@ -92,6 +94,7 @@ private:
     Ptr<T> FindGeneratedGlobalDecl(Ptr<AST::File> file, const std::string& identifier);
     std::tuple<Ptr<AST::InterfaceDecl>, Ptr<AST::FuncDecl>> FindDefaultAccessorInterfaceAndFunction(
         Ptr<AST::FuncDecl> original);
+    Ptr<AST::FuncDecl> FindDefaultAccessorImplementation(Ptr<AST::Decl> baseDecl, Ptr<AST::FuncDecl> accessorDecl);
     void TransformAccessorCallForMutOperation(
         AST::NameReferenceExpr& originalNre, AST::Expr& replacedNre, AST::Expr& topLevelExpr);
     void ReplaceSubMemberAccessWithAccessor(
