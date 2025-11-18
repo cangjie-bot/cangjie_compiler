@@ -98,6 +98,12 @@ Parser& Parser::EnableCustomAnno()
     return *this;
 }
 
+Parser& Parser::SetLateMacroIdents(const std::set<std::string>& idents)
+{
+    impl->lateMacroIdents = idents;
+    return *this;
+}
+
 Parser& Parser::SetEHEnabled(bool enabled)
 {
     impl->enableEH = enabled;
