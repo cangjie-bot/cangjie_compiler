@@ -154,6 +154,10 @@ public:
         Ptr<AST::Decl> decl = GetImportedDecl(fullPackageName, name);
         return DynamicCast<T*>(decl);
     }
+    Ptr<AST::Decl> GetSyntaxDecl(const std::string& name) const
+    {
+        return GetImportedDecl(SYNTAX_PACKAGE_NAME, name);
+    }
     Ptr<AST::Decl> GetAstDecl(const std::string& name) const
     {
         return GetImportedDecl(AST_PACKAGE_NAME, name);
