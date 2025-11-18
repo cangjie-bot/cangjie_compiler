@@ -1063,7 +1063,7 @@ std::string Triple::Info::EnvironmentToString() const
 {
     if (auto search = ENVIRONMENT_STRING_MAP.find(env); search != ENVIRONMENT_STRING_MAP.end()) {
         if (env == Environment::ANDROID) {
-            return search->second + (apiLevel == Triple::MIN_ANDROID_API ? "" : apiLevel);
+            return search->second + apiLevel;
         }
         return search->second;
     } else {
