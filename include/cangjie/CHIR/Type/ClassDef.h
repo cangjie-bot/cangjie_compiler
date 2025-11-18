@@ -53,10 +53,11 @@ public:
     // ===--------------------------------------------------------------------===//
     // Member Function
     // ===--------------------------------------------------------------------===//
+    void AddMethod(class FuncBase* method) override;
     void AddAbstractMethod(AbstractMethodInfo methodInfo);
     std::vector<AbstractMethodInfo> GetAbstractMethods() const;
     void SetAbstractMethods(const std::vector<AbstractMethodInfo>& methods);
-    
+    const std::vector<std::string>& GetAllMethodMangledNames() const;
     FuncBase* GetFinalizer() const;
 
 protected:
@@ -74,6 +75,7 @@ private:
     bool isAnnotation = false;      // whether the class is modified by @Annotation
     ClassType* superClassTy = nullptr;
     std::vector<AbstractMethodInfo> abstractMethods;
+    std::vector<std::string> allMethodMangledNames;
 };
 } // namespace Cangjie::CHIR
 
