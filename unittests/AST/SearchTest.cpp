@@ -1494,6 +1494,49 @@ main() {
     EXPECT_EQ(decls[0]->ty->String(), "Class-A");
 }
 
+TEST_F(SearchTest, DISABLED_SynReferenceAfterSema_NameReference_Extend)
+{
+    std::string codeTest = R"(
+class A<T> {
+    var value: T
+    public init(a: T) {
+        value = a
+    }
+}
+
+interface I {
+    func demos(): Bool
+}
+
+extend<T> A<T> where T <: I {
+    public func foo() {
+        value
+    }
+}
+    )";
+
+    std::unique_ptr<TestCompilerInstance> instance = std::make_unique<TestCompilerInstance>(invocation, diag);
+    instance->code = codeTest;
+    instance->invocation.globalOptions.implicitPrelude = true;
+    instance->Compile(CompileStage::SEMA);
+    Searcher searcher;
+    auto pkgs = instance->GetSourcePackages();
+    ASSERT_EQ(pkgs.size(), 1);
+    auto ctx = *instance->GetASTContextByPackage(pkgs[0]);
+    auto res = searcher.Search(*ctx, "_ = (1, 15, 9)");
+    EXPECT_EQ(res[0]->name, "value");
+    auto re = CreateRefExpr("value");
+    re->curFile = pkgs[0]->files[0].get();
+    auto results = instance->GetGivenReferenceTarget(*ctx, res[0]->scopeName, *re, true);
+    ASSERT_FALSE(results.hasDecl);
+    ASSERT_EQ(results.tys.size(), 1);
+    EXPECT_EQ((*results.tys.begin())->name, "T");
+    EXPECT_EQ((*results.tys.begin())->kind, TypeKind::TYPE_GENERICS);
+    auto ty = DynamicCast<GenericsTy*>(*results.tys.begin()->get());
+    EXPECT_EQ(ty->upperBounds.size(), 1);
+    EXPECT_EQ(ty->upperBounds.begin()->get()->name, "I");
+}
+
 TEST_F(SearchTest, DISABLED_SynReferenceAfterSema_NameReference_ThisAndSuper)
 {
     // Test for normal name reference accessing.
