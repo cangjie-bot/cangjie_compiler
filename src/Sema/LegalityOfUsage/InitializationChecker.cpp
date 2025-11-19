@@ -1018,7 +1018,7 @@ bool InitializationChecker::CheckInitInExpr(Ptr<Node> node)
         }
         case ASTKind::RESUME_EXPR: {
             auto& re = StaticCast<ResumeExpr>(*node);
-            bool result = true;
+            bool result = CheckInitInExpr(re.expr);
             if (re.withExpr) {
                 result = result && CheckInitInExpr(re.withExpr);
             }
@@ -1123,6 +1123,7 @@ bool InitializationChecker::CheckInitInTryExpr(const TryExpr& te)
         // If there are handlers, we need to check them
         for (const auto& handler : te.handlers) {
             result = result && CheckInitInExpr(handler.commandPattern.get());
+            result = result && CheckInitInExpr(handler.resumptionPattern.get());
             CheckInitialization(handler.desugaredLambda.get());
         }
     }
