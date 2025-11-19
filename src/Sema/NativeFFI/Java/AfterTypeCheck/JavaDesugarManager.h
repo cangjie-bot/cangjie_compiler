@@ -21,6 +21,7 @@
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
+using namespace std;
 
 const std::string JAVA_ARRAY_GET_FOR_REF_TYPES = "$javaarrayget";
 const std::string JAVA_ARRAY_SET_FOR_REF_TYPES = "$javaarrayset";
@@ -532,6 +533,7 @@ private:
     OwnedPtr<FuncDecl> GenerateFwdClassCtor(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriCtorDecl);
     void InsertAttachCJObject(ClassDecl& fwdDecl, ClassDecl& classDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassMethod(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriMethodDecl, int index);
+    void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs);
 
     ImportManager& importManager;
     TypeManager& typeManager;

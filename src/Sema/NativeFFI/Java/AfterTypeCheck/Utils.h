@@ -32,6 +32,21 @@ enum class ArrayOperationKind: uint8_t {
     GET_LENGTH
 };
 
+struct GenericConfigInfo {
+    // Reference type symbol name
+    std::string declSymbolName;
+    // Definition name with generics, such as: GenericClassint32
+    std::string declInstName;
+    // item: <"T", "int32">
+    std::vector<std::pair<std::string, std::string>> instTypes;
+    // Config func symbol name
+    std::unordered_set<std::string> funcNames;
+    GenericConfigInfo(std::string name, std::string declInstName, std::vector<std::pair<std::string, std::string>> &insts, std::unordered_set<std::string> &funcs)
+        : declSymbolName(name), declInstName(declInstName), instTypes(insts), funcNames(funcs)
+    {
+    }
+};
+
 class Utils final {
 public:
     Utils(ImportManager& importManager, TypeManager& typeManager);
@@ -227,7 +242,11 @@ bool IsImpl(const Decl& decl);
 bool IsImpl(const Ty& ty);
 bool IsCJMappingInterface(const Ty& ty);
 bool IsCJMapping(const Ty& ty);
-bool IsCJMappingInterface(const Ty& ty);
+bool IsCJMappingGeneric(const Decl& decl);
+void SplitAndTrim(std::string str, std::vector<std::string>& types);
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
+std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName);
+TypeKind GetGenericActualTypeKind(std::string configType);
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
 

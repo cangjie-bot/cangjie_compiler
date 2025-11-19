@@ -66,6 +66,18 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
 
 void JavaInteropManager::DesugarPackage(Package& pkg)
 {
+    for (auto& file : pkg.files) {
+        for (auto& decl : file->decls) {
+            auto classDecl = As<ASTKind::CLASS_DECL>(decl.get());
+            if (classDecl) {
+                auto refType = As<ASTKind::REF_TYPE>(classDecl->inheritedTypes[1]);
+                if (refType) {
+                    continue;
+                }
+                continue;
+            }
+        }
+    }
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
