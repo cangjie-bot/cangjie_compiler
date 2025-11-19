@@ -21,6 +21,7 @@
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
+using namespace std;
 
 const std::string JAVA_ARRAY_GET_FOR_REF_TYPES = "$javaarrayget";
 const std::string JAVA_ARRAY_SET_FOR_REF_TYPES = "$javaarrayset";
@@ -38,6 +39,21 @@ enum class DesugarJavaMirrorImplStage : uint8_t {
 };
 
 enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
+
+struct GenericConfigInfo {
+    // Reference type symbol name
+    std::string declSymbolName;
+    // Definition name with generics, such as: GenericClassint32
+    std::string declInstName;
+    // item: <"T", "int32">
+    std::vector<std::pair<std::string, std::string>> instTypes;
+    // Config func symbol name
+    std::unordered_set<std::string> funcNames;
+    GenericConfigInfo(std::string name, std::vector<std::pair<std::string, std::string>> &insts, std::unordered_set<std::string> &funcs)
+        : declSymbolName(name), instTypes(insts), funcNames(funcs)
+    {
+    }
+};
 
 class JavaDesugarManager {
 public:
@@ -532,6 +548,7 @@ private:
     OwnedPtr<FuncDecl> GenerateFwdClassCtor(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriCtorDecl);
     void InsertAttachCJObject(ClassDecl& fwdDecl, ClassDecl& classDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassMethod(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriMethodDecl, int index);
+    void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs);
 
     ImportManager& importManager;
     TypeManager& typeManager;

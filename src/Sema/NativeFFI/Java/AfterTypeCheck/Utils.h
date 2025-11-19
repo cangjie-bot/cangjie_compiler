@@ -227,7 +227,9 @@ bool IsImpl(const Decl& decl);
 bool IsImpl(const Ty& ty);
 bool IsCJMappingInterface(const Ty& ty);
 bool IsCJMapping(const Ty& ty);
-bool IsCJMappingInterface(const Ty& ty);
+bool IsCJMappingGeneric(const Decl& decl);
+void SplitAndTrim(std::string str, std::vector<std::string>& types);
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
 

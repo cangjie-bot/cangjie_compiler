@@ -128,6 +128,61 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
     }
 }
 
+void JavaDesugarManager::InitGenericConfigs(
+    const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs)
+{
+    // <Class<int32>, ["find", "value"]>
+    std::unordered_map<std::string, std::unordered_set<std::string>> visibleFuncs;
+    for (const auto& outerPair : file.curPackage->allowedInteropCJGenericInstantiations) {
+        const auto declSymbolName = outerPair.first;
+        const auto& innerMap = outerPair.second;
+        auto declGenericStart = decl->identifier.Val() + "<";
+        if (declSymbolName.compare(0, declGenericStart.size(), declGenericStart) == 0) {
+            continue;
+        }
+        size_t start = declSymbolName.find('<');
+        size_t end = declSymbolName.find('>');
+        CJC_ASSERT(start != std::string::npos && end != std::string::npos && start < end);
+        std::string typeStr = declSymbolName.substr(start + 1, end - start - 1);
+        std::vector<std::string> actualTypes;
+        SplitAndTrim(typeStr, actualTypes);
+        std::string actualTypeStr = JoinVector(actualTypes, ",");
+        for (const auto& innerPair : innerMap) {
+            // symbols
+            GenericTypeArguments args = innerPair.second;
+            visibleFuncs[actualTypeStr] = args.symbols;
+        }
+    }
+
+    for (const auto& outerPair : file.curPackage->allowedInteropCJGenericInstantiations) {
+        const auto declSymbolName = outerPair.first;
+        const auto& innerMap = outerPair.second;
+        if (declSymbolName != decl->identifier.Val()) {
+            continue;
+        }
+        for (const auto& innerPair : innerMap) {
+            const GenericTypeArguments& args = innerPair.second;
+            for (const std::string& typeStr : args.symbols) {
+                std::vector<std::string> actualTypes;
+                SplitAndTrim(typeStr, actualTypes);
+                std::vector<std::pair<std::string, std::string>> instTypes;
+                const auto typeArgs = decl->ty->typeArgs;
+                for (size_t i = 0; i < typeArgs.size(); i++) {
+                    instTypes.push_back(std::make_pair(typeArgs[i]->name, actualTypes[i]));
+                }
+                std::string actualTypesStr = JoinVector(actualTypes, ",");
+                std::unordered_set<std::string> funcNames;
+                if (visibleFuncs.find(actualTypesStr) != visibleFuncs.end()) {
+                    funcNames = visibleFuncs.at(actualTypesStr);
+                }
+                GenericConfigInfo *declGenericConfig =
+                    new GenericConfigInfo(decl->identifier.Val(), instTypes, funcNames);
+                genericConfigs.push_back(declGenericConfig);
+            }
+        }
+    }
+}
+
 OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFuncForEnumCtorNoParams(
     AST::EnumDecl& enumDecl, AST::VarDecl& ctor)
 {
@@ -766,6 +821,10 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
         }
     }
     for (auto decl : genDecls) {
+        if (IsCJMappingGeneric(*decl)) {
+            std::vector<GenericConfigInfo*> genericConfigs;
+            InitGenericConfigs(file, decl, genericConfigs);
+        }
         const std::string fileJ = decl.get()->identifier.Val() + ".java";
         auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
             GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
