@@ -16,12 +16,18 @@ namespace Cangjie::CHIR {
  */
 class MarkClassHasInited {
 public:
-    /**
-     * @brief Main process to add has invited flag to class.
-     * @param package package to do optimization.
-     * @param builder CHIR builder for generating IR.
-     */
-    static void RunOnPackage(const Package& package, CHIRBuilder& builder);
+    explicit MarkClassHasInited(CHIRBuilder& builder);
+
+    void RunOnPackage(const Package& package);
+
+private:
+    void AddHasInitedFlagToClassDef(ClassDef& classDef);
+    void AddGuardToFinalizer(ClassDef& classDef);
+    void AssignHasInitedFlagToFalseInConstructorHead(Func& constructor);
+    void AssignHasInitedFlagToTrueInConstructorExit(Func& constructor);
+
+private:
+    CHIRBuilder& builder;
 };
 } // namespace Cangjie::CHIR
 
