@@ -1172,7 +1172,6 @@ private:
 
     // =============== Helper functions for Array/VArrayOutOfBounds Check =============== //
 
-    const FuncInfo boxInitFunc = FuncInfo("init", "$BOX_RNat5Array", {ANY_TYPE, ANY_TYPE}, NOT_CARE, NOT_CARE);
     const FuncInfo arrayInitFunc = FuncInfo("init", "Array", {NOT_CARE}, NOT_CARE, "std.core");
     const FuncInfo arraySliceFunc = FuncInfo("slice", "Array", {ANY_TYPE, ANY_TYPE, ANY_TYPE}, ANY_TYPE, "std.core");
     const FuncInfo arrayBracketsFunc = FuncInfo("[]", "Array", {NOT_CARE}, ANY_TYPE, "std.core");
@@ -1209,9 +1208,7 @@ private:
             return ExceptionKind::NA;
         }
 
-        if (IsExpectedFunction(*calleeFunc, boxInitFunc)) {
-            HandleBoxedArrayInit(state, apply);
-        } else if (IsExpectedFunction(*calleeFunc, arrayInitFunc)) {
+        if (IsExpectedFunction(*calleeFunc, arrayInitFunc)) {
             HandleArrayInit(state, apply);
         } else if (IsExpectedFunction(*calleeFunc, arraySliceFunc)) {
             HandleArraySlice(state, apply);
@@ -1224,21 +1221,6 @@ private:
             return HandleRangeInit(state, apply);
         }
         return ExceptionKind::NA;
-    }
-
-    template <typename TApply> void HandleBoxedArrayInit(TConstDomain& state, const TApply* apply)
-    {
-        /**
-         * func init(this: Class-_CN7default27$BOX_RNat5ArrayIlEE&, array: Struct-_CNat5ArrayIlE<Int64>)
-         */
-        auto args = apply->GetArgs();
-        CJC_ASSERT(args.size() == 2U);
-        constexpr size_t boxedValueIndex = 0;
-        auto toBeInitedArray = state.GetChild(args[thisArgIndex], boxedValueIndex);
-        CJC_ASSERT(toBeInitedArray);
-        constexpr size_t initArrayArgIndex = 1;
-        auto initArg = args[initArrayArgIndex];
-        state.Propagate(initArg, toBeInitedArray);
     }
 
     /**

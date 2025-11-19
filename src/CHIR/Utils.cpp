@@ -36,39 +36,32 @@ bool CheckParentTy(const FuncBase& func, const FuncInfo& funcInfo)
         return true;
     }
 
-    auto parentTy = func.GetParentCustomTypeDef();
-    if (auto extendDef = DynamicCast<const ExtendDef*>(parentTy); extendDef) {
-        auto extendedType = extendDef->GetExtendedType();
-        if (extendedType == nullptr) {
-            parentTy = nullptr;
-        } else if (auto customTy = DynamicCast<const CustomType*>(extendedType); customTy) {
-            parentTy = customTy->GetCustomTypeDef();
-        } else {
-            parentTy = nullptr;
-        }
+    auto parentType = func.GetParentCustomTypeOrExtendedType();
+    if (parentType == nullptr) {
+        return funcInfo.parentTy.empty();
     }
-    bool parentMatch = false;
-    if (parentTy == nullptr) {
-        if (funcInfo.parentTy.empty()) {
-            parentMatch = true;
-        }
+    if (funcInfo.parentTy == ANY_TYPE) {
+        return true;
+    }
+    std::string parentName;
+    if (auto customTy = DynamicCast<const CustomType*>(parentType)) {
+        parentName = customTy->GetCustomTypeDef()->GetSrcCodeIdentifier();
+    } else if (auto builtinTy = DynamicCast<const BuiltinType*>(parentType)) {
+        parentName = builtinTy->ToString();
     } else {
-        if (funcInfo.parentTy == ANY_TYPE) {
-            parentMatch = true;
-        } else if (funcInfo.parentTy == parentTy->GetSrcCodeIdentifier()) {
-            parentMatch = true;
-        } else if (funcInfo.parentTy.find(Cangjie::BOX_DECL_PREFIX) != std::string::npos &&
-            parentTy->GetSrcCodeIdentifier().find(funcInfo.parentTy) == 0) {
-            parentMatch = true;
-        }
+        CJC_ABORT();
     }
-    return parentMatch;
+    return parentName == funcInfo.parentTy;
 }
 
 bool CheckParametersTy(const FuncBase& funcBase, const FuncInfo& funcInfo)
 {
     bool needToMatchArgsNum = true;
     auto paramTys = funcBase.GetFuncType()->GetParamTypes();
+    if (funcBase.IsMemberFunc() && !funcBase.TestAttr(Attribute::STATIC)) {
+        CJC_ASSERT(!paramTys.empty());
+        paramTys.erase(paramTys.begin());
+    }
     size_t loopCnt = funcInfo.params.size() < paramTys.size() ? funcInfo.params.size() : paramTys.size();
     for (size_t i = 0; i < loopCnt; ++i) {
         std::string expectedArgTyStr = funcInfo.params[i];
