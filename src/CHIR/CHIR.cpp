@@ -34,6 +34,7 @@
 #include "cangjie/CHIR/Transformation/RedundantFutureRemoval.h"
 #include "cangjie/CHIR/Transformation/RedundantGetOrThrowElimination.h"
 #include "cangjie/CHIR/Transformation/RedundantLoadElimination.h"
+#include "cangjie/CHIR/Transformation/ReplaceSrcCodeImportedVal.h"
 #include "cangjie/CHIR/Transformation/SanitizerCoverage.h"
 #include "cangjie/CHIR/Transformation/UnitUnify.h"
 #include "cangjie/CHIR/Transformation/UselessAllocateElimination.h"
@@ -49,6 +50,26 @@
 #include "NativeFFI/TypeCastCheck.h"
 
 namespace Cangjie::CHIR {
+namespace {
+void CreateNewExtendDef(Package& package, CustomTypeDef& curDef, ClassType& parentType,
+    std::vector<VirtualMethodInfo>& virtualMethods, CHIRBuilder& builder)
+{
+    auto mangledName = "extend_" + curDef.GetIdentifier() + "_p_" + parentType.ToString();
+    auto genericParams = curDef.GetGenericTypeParams();
+    auto extendDef = builder.CreateExtend(
+        INVALID_LOCATION, mangledName, package.GetName(), false, genericParams);
+    extendDef->SetExtendedType(*curDef.GetType());
+    extendDef->AddImplementedInterfaceTy(parentType);
+    extendDef->EnableAttr(Attribute::COMPILER_ADD);
+    if (curDef.TestAttr(Attribute::GENERIC)) {
+        extendDef->EnableAttr(Attribute::GENERIC);
+    }
+
+    VTableInDef vtable;
+    vtable.AddNewItemToTypeVTable(parentType, std::move(virtualMethods));
+    extendDef->SetVTable(std::move(vtable));
+}
+}
 static void FlattenEffectMap(OptEffectCHIRMap& effectMap)
 {
     auto mergeToEffectedNodes = [](std::unordered_set<Ptr<Value>>& src, std::unordered_set<Ptr<Value>>& patch) {
@@ -260,31 +281,24 @@ void ToCHIR::DoClosureConversion()
 void ToCHIR::UnreachableBlockReporter()
 {
     Utils::ProfileRecorder recorder("CHIR", "UnreachableBlockWarningReporter");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.UnreachableBlockWarningReporter(*chirPkg, opts.GetJobs(), maybeUnreachable);
 }
 
 void ToCHIR::UnreachableBlockElimination()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "UnreachableBlockElimination");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.UnreachableBlockElimination(*chirPkg, opts.chirDebugOptimizer);
     DumpCHIRToFile("UnreachableBlockElimination");
 
     RunMergingBlocks("CHIR Opt", "MergingBlockAfterUnreachableBlock");
 }
 
-void ToCHIR::RunMarkClassHasInited()
-{
-    Utils::ProfileRecorder recorder("CHIR", "MarkClassHasInited");
-    MarkClassHasInited::RunOnPackage(*chirPkg, builder);
-    DumpCHIRToFile("MarkClassHasInited");
-}
-
 void ToCHIR::NothingTypeExprElimination()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "NothingTypeExprElimination");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.NothingTypeExprElimination(*chirPkg, opts.chirDebugOptimizer);
     DumpCHIRToFile("NothingTypeExprElimination");
 }
@@ -302,7 +316,7 @@ void ToCHIR::UselessExprElimination()
         return;
     }
     Utils::ProfileRecorder recorder("CHIR Opt", "UselessExprElimination");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.UselessExprElimination(*chirPkg, opts.chirDebugOptimizer);
     DumpCHIRToFile("UselessExprElimination");
 }
@@ -310,7 +324,7 @@ void ToCHIR::UselessExprElimination()
 void ToCHIR::UselessFuncElimination()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "UselessFuncElimination");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.UselessFuncElimination(*chirPkg, opts);
     DumpCHIRToFile("UselessFuncElimination");
 }
@@ -318,7 +332,7 @@ void ToCHIR::UselessFuncElimination()
 void ToCHIR::ReportUnusedCode()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "ReportUnusedCode");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.ReportUnusedCode(*chirPkg, opts);
 }
 
@@ -478,7 +492,7 @@ void ToCHIR::RunFunctionInline(DevirtualizationInfo& devirtInfo)
 void ToCHIR::RunUnreachableMarkBlockRemoval()
 {
     Utils::ProfileRecorder recorder("CHIR", "Clear Blocks Marked as Unreachable");
-    auto dce = CHIR::DeadCodeElimination(builder, diag, *chirPkg);
+    auto dce = DeadCodeElimination(builder, diag, *chirPkg);
     dce.ClearUnreachableMarkBlock(*chirPkg);
     DumpCHIRToFile("ClearBlocksMarkAsUnreachable");
 }
@@ -496,7 +510,7 @@ void ToCHIR::RunConstantAnalysis()
     constAnalysisWrapper.RunOnPackage(chirPkg, opts.chirDebugOptimizer, opts.GetJobs(), &diag);
 }
 
-bool ToCHIR::RunConstantPropagation()
+void ToCHIR::RunConstantPropagation()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "Constant Propagation & Safety Check");
     size_t threadNum = opts.GetJobs();
@@ -533,14 +547,6 @@ bool ToCHIR::RunConstantPropagation()
         builder.GetChirContext().MergeTypes();
     }
     DumpCHIRToFile("ConstantPropagation");
-    return diag.GetErrorCount() == 0;
-}
-
-bool ToCHIR::RunConstantPropagationAndSafetyCheck()
-{
-#ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    return RunConstantPropagation();
-#endif
 }
 
 void ToCHIR::RunRangePropagation()
@@ -678,32 +684,11 @@ void ToCHIR::MarkNoSideEffect()
     DumpCHIRToFile("MarkNoSideEffect");
 }
 
-bool ToCHIR::RunOptimizationPassAndRulesChecking()
+void ToCHIR::RunOptimizationPass()
 {
     Utils::ProfileRecorder recorder("CHIR", "CHIR Opt");
-
-    NothingTypeExprElimination();
-    RunConstantAnalysis();
-    if (!RunVarInitChecking()) {
-        return false;
-    }
-    if (!RunNativeFFIChecks()) {
-        return false;
-    }
-    UnreachableBranchReporter();
-    // this instantance of block elimination is to maintain dead code warnings
-    UnreachableBlockElimination();
-    ReportUnusedCode();
     RunArrayListConstStartOpt();
-    if (!RunConstantPropagationAndSafetyCheck()) {
-        return false;
-    }
-    UnreachableBlockElimination();
-    UselessFuncElimination();
-    UselessExprElimination();
-    UselessFuncElimination();
-    UselessExprElimination();
-    MarkNoSideEffect();
+    RunConstantPropagation();
     RunUnitUnify();
     auto devirtInfo = CollectDevirtualizationInfo();
     RunFunctionInline(devirtInfo);
@@ -717,7 +702,6 @@ bool ToCHIR::RunOptimizationPassAndRulesChecking()
     RunRedundantFutureOpt();
     RunNoSideEffectMarkerOpt();
     RunGetRefToArrayElemOpt();
-    return true;
 }
 
 bool ToCHIR::RunConstantEvaluation()
@@ -939,12 +923,10 @@ bool ToCHIR::RunAnalysisForCJLint()
         return false;
     }
     UnreachableBlockElimination();
-    if (RunConstantPropagationAndSafetyCheck()) {
-        constAnalysisWrapper.InvalidateAllAnalysisResults();
-        RunConstantAnalysis();
-        return true;
-    }
-    return false;
+    RunConstantPropagation();
+    constAnalysisWrapper.InvalidateAllAnalysisResults();
+    RunConstantAnalysis();
+    return true;
 }
 
 void ToCHIR::EraseDebugExpr()
@@ -1147,7 +1129,7 @@ bool ToCHIR::ComputeAnnotations(std::vector<const AST::Decl*>&& annoOnly)
         return true;
     }
 #endif
-    CreateVTableAndUpdateFuncCall();
+    Canonicalization();
     if (!opts.enIncrementalCompilation && !RunIRChecker(Phase::RAW)) {
         return false;
     }
@@ -1158,7 +1140,6 @@ bool ToCHIR::ComputeAnnotations(std::vector<const AST::Decl*>&& annoOnly)
     }
 #endif
     RunUnreachableMarkBlockRemoval();
-    RunMergingBlocks("CHIR", "MergingBlock");
     NothingTypeExprElimination();
     UnreachableBlockElimination();
     DoClosureConversion();
@@ -1167,6 +1148,31 @@ bool ToCHIR::ComputeAnnotations(std::vector<const AST::Decl*>&& annoOnly)
     }
     isComputingAnnos = false;
     debugFileIndex = 0;
+    return true;
+}
+
+bool ToCHIR::RulesChecking()
+{
+    UnreachableBlockReporter();
+    RunUnreachableMarkBlockRemoval();
+    RunMergingBlocks("CHIR", "MergingBlock");
+    NothingTypeExprElimination();
+    RunConstantAnalysis();
+    if (!RunVarInitChecking()) {
+        return false;
+    }
+    if (!RunNativeFFIChecks()) {
+        return false;
+    }
+    UnreachableBranchReporter();
+    // this instantance of block elimination is to maintain dead code warnings
+    UnreachableBlockElimination();
+    ReportUnusedCode();
+    UnreachableBlockElimination();
+    UselessFuncElimination();
+    UselessExprElimination();
+    UselessFuncElimination();
+    UselessExprElimination();
     return true;
 }
 
@@ -1179,54 +1185,54 @@ bool ToCHIR::Run()
     CJC_NULLPTR_CHECK(&releaseCHIRMemory);
     CJC_NULLPTR_CHECK(&cangjieHome);
 
+    // 1. AST to CHIR
     if (!TranslateToCHIR({})) {
         return false;
     }
-#ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
+    // 2. for cjmp, while compiling common package, just be here and save CHIR to file.
     if (opts.outputMode == GlobalOptions::OutputMode::CHIR) {
         auto fileName = FileUtil::JoinPath(opts.output, chirPkg->GetName()) + CHIR_SERIALIZATION_FILE_EXTENSION;
         CHIRSerializer::Serialize(*chirPkg, fileName, CHIR::ToCHIR::RAW);
         return true;
     }
-#endif
-    CreateVTableAndUpdateFuncCall();
-    if (!opts.enIncrementalCompilation && !RunIRChecker(Phase::RAW)) {
-        return false;
-    }
-#ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    /// ===============   Meta Transformation for CHIR  ===============
+    // 3. run plugin for CHIR
     if (!PerformPlugin(*chirPkg)) {
         return false;
     }
-#endif
+    // 4. Canonicalization, after this pass, the CHIR is ready for analysis and optimization.
+    Canonicalization();
+    if (!opts.enIncrementalCompilation && !RunIRChecker(Phase::RAW)) {
+        return false;
+    }
     if (opts.emitCHIRPhase == GlobalOptions::CandidateEmitCHIRPhase::RAW) {
         EmitCHIR(outputPath, *chirPkg, Phase::RAW, (opts.dumpCHIR || opts.dumpAll));
         return true;
     }
     RecordCHIRExprNum("trans");
     RecordCodeInfoAtTheBegin();
-    UnreachableBlockReporter();
-    RunUnreachableMarkBlockRemoval();
-    RunMergingBlocks("CHIR", "MergingBlock");
-    RunMarkClassHasInited();
 
     if (ci.isCJLint) {
         return RunAnalysisForCJLint() && RunIRChecker(Phase::ANALYSIS_FOR_CJLINT);
     }
-    if (!RunOptimizationPassAndRulesChecking()) {
+    // 5. analysis and check rules
+    if (!RulesChecking()) {
         return false;
     }
+    // 6. run optimization pass
+    RunOptimizationPass();
     RecordCHIRExprNum("opt");
+    // 7. do closure conversion
     DoClosureConversion();
     RecordCHIRExprNum("cc");
-    CreateBoxTypeForRecursionValueType();
+    // 8. run constant evaluation
     if (!RunConstantEvaluation()) {
         return false;
     }
-    // must be after `RunConstantEvaluation`, because we need to calculate const var from imported package
-    RemoveUnusedImports();
+    // 9. must be after `RunConstantEvaluation`, because we need to calculate const var from imported package
+    ReplaceSrcCodeImportedVal(*chirPkg, implicitFuncs, builder).Run(
+        srcCodeImportedFuncs, srcCodeImportedVars, uselessClasses, uselessLambda);
 
-    // annotation check depends on const eval
+    // 10. annotation check depends on const eval
     if (!RunAnnotationChecks()) {
         return false;
     }
@@ -1453,20 +1459,82 @@ void ToCHIR::UpdateMemberVarPath()
     }
 }
 
-void ToCHIR::CreateVTableAndUpdateFuncCall()
+void ToCHIR::CreateExtendDefForImportedCustomTypeDef()
 {
-    Utils::ProfileRecorder record("CHIR", "CreateVTableAndUpdateFuncCall");
+    if (kind == IncreKind::INCR) {
+        return;
+    }
+    /*  codegen will create extension def according to CHIR's vtable, in order not to create duplicate
+        extension def, codegen won't visit vtable from imported CustomTypeDef, these vtables are assumed that
+        must be created in imported package. but there is a special case:
+        ================ package A ================
+        public interface I {}
+        open public class A {}
+
+        ================ package B ================
+        import package A
+        public class B <: A {} // extension def B_ed_A will be created in codegen
+
+        ================ package C ================
+        import package A
+        extend A <: I {} // extension def A_ed_I will be created in codegen
+
+        ================ package D ================
+        import package A, B, C
+        // extension def B_ed_I is needed, but there isn't in imported packages
+
+        so we need to create extension def B_ed_I in current package, in order to deal with this case,
+        a compiler added extend def is needed:
+        [COMPILER_ADD] extend B <: I {}
+        this def is create in current package, so extension def B_ed_I will be created in codegen
+    */
+    for (auto def : chirPkg->GetAllImportedCustomTypeDef()) {
+        if (def->IsExtend()) {
+            continue;
+        }
+        for (auto& it : def->GetModifiableDefVTable().GetModifiableTypeVTables()) {
+            if (ParentDefIsFromExtend(*def, *(it.GetSrcParentType()->GetClassDef()))) {
+                CreateNewExtendDef(*chirPkg, *def, *it.GetSrcParentType(), it.GetModifiableVirtualMethods(), builder);
+                continue;
+            }
+        }
+    }
+}
+
+void ToCHIR::Canonicalization()
+{
+    Utils::ProfileRecorder record("CHIR", "Canonicalization");
     auto allDefs = chirPkg->GetAllCustomTypeDef();
+    // 1. create vtable
     auto generator = GenerateVTable(*chirPkg, allDefs, builder, opts);
     generator.CreateVTable();
     generator.UpdateOperatorVirFunc();
     generator.CreateVirtualFuncWrapper(kind, cachedInfo, curVirtFuncWrapDep, delVirtFuncWrapForIncr);
     generator.SetSrcFuncType();
     generator.CreateMutFuncWrapper();
+
+    // 2. calculate virtual method offset and store it in Invoke/InvokeStatic
+    // 3. update callee of Apply, it may be replaced by mut wrapper func
     generator.UpdateFuncCall();
 
+    CreateExtendDefForImportedCustomTypeDef();
+
+    // 4. add has invited flag to class which has finalizer, in case of finalize before init
+    MarkClassHasInited(builder).RunOnPackage(*chirPkg);
+
+    // 5. update member var path, from name to offset
     UpdateMemberVarPath();
-    DumpCHIRToFile("CreateVTableAndUpdateFuncCall");
+
+    // 6. set mark on some functions that have no side effect
+    MarkNoSideEffect();
+
+    // 7. create box type for recursion value type
+    CreateBoxTypeForRecursionValueType();
+
+    // 8. after all passes, run merging blocks
+    RunMergingBlocks("CHIR", "MergingBlock");
+
+    DumpCHIRToFile("Canonicalization");
 }
 
 bool ToCHIR::TranslateToCHIR(std::vector<const AST::Decl*>&& annoOnly)
