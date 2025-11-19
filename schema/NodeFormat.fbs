@@ -133,15 +133,6 @@ table ResumptionTypePattern {
   bit_or_pos_vec: [Position];
 }
 
-table ResumptionTypePattern {
-  base: NodeBase;
-  pattern: Pattern;
-  pattern_pos: Position;
-  colon_pos: Position;
-  types: [Type];
-  bit_or_pos_vec: [Position];
-}
-
 table TypePattern {
   base: NodeBase;
   pattern: Pattern;

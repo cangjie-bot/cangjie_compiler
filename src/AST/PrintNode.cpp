@@ -1345,17 +1345,8 @@ void PrintResumptionTypePattern(unsigned indent, const ResumptionTypePattern& re
     }
 }
 
-void PrintResumptionTypePattern(unsigned indent, const ResumptionTypePattern& resumptionTypePattern, std::ostream& stream = std::cout)
-{
-    PrintNode(resumptionTypePattern.pattern.get(), indent + ONE_INDENT, "", stream);
-    for (auto& type : resumptionTypePattern.types) {
-        PrintNode(type.get(), indent + ONE_INDENT, "", stream);
-    }
-}
-
-
 void PrintFeaturesDirective(
-    unsigned indent, const FeaturesDirective& featuresDirective, std::ostream& stream = std::cout)
+    unsigned indent, const FeaturesDirective& featuresDirective, std::ostream& stream = std::cout) {
     PrintIndent(stream, indent, "FeaturesDirective:", "features", "{");
     PrintIndent(stream, indent + ONE_INDENT, "ids: ", "[");
     if (!featuresDirective.content.empty()) {
@@ -1527,7 +1518,7 @@ void PrintNode(Ptr<const Node> node, unsigned indent, const std::string& additio
         [&indent, &stream](const VarPattern& varPattern) { PrintVarPattern(indent, varPattern, stream); },
         [&indent, &stream](const TuplePattern& tuplePattern) { PrintTuplePattern(indent, tuplePattern, stream); },
         [&indent, &stream](const TypePattern& typePattern) { PrintBasicpePattern(indent, typePattern, stream); },
-        [&indent, &stream](const EnumPattern& enumPattern) { PrintEnumPattern(indent, enumPattern); },
+        [&indent, &stream](const EnumPattern& enumPattern) { PrintEnumPattern(indent, enumPattern, stream); },
         [&indent, &stream](const ExceptTypePattern& exceptTypePattern) { PrintExceptTypePattern(indent, exceptTypePattern, stream); },
         [&indent, &stream](const CommandTypePattern& cmdTypePattern) { PrintCommandTypePattern(indent, cmdTypePattern, stream); },
         [&indent, &stream](const ResumptionTypePattern& resTypePattern) { PrintResumptionTypePattern(indent, resTypePattern, stream); },

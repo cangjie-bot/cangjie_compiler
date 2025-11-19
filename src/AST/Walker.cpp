@@ -1100,19 +1100,6 @@ VisitAction WalkerT<NodeT>::Walk(Ptr<NodeT> curNode) const
                 action = VisitAction::WALK_CHILDREN;
                 break;
             }
-            case ASTKind::RESUMPTION_TYPE_PATTERN: {
-                auto& resumptionPattern = *StaticCast<ResumptionTypePattern*>(curNode);
-                if (Walk(resumptionPattern.pattern.get()) == VisitAction::STOP_NOW) {
-                    return VisitAction::STOP_NOW;
-                }
-                for (auto& i : resumptionPattern.types) {
-                    if (Walk(i.get()) == VisitAction::STOP_NOW) {
-                        return VisitAction::STOP_NOW;
-                    }
-                }
-                action = VisitAction::WALK_CHILDREN;
-                break;
-            }
             case ASTKind::ANNOTATION: {
                 auto anno = StaticAs<ASTKind::ANNOTATION>(curNode);
                 if (Walk(anno->baseExpr.get()) == VisitAction::STOP_NOW) {

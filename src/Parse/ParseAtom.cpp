@@ -752,37 +752,6 @@ OwnedPtr<Pattern> ParserImpl::ParseResumptionTypePattern()
     }
 }
 
-OwnedPtr<Pattern> ParserImpl::ParseResumptionTypePattern()
-{
-    if (Seeing(TokenKind::WILDCARD) || Seeing(TokenKind::IDENTIFIER)) {
-        auto resumptionTypePattern = MakeOwned<ResumptionTypePattern>();
-        auto begin = lookahead.Begin();
-        resumptionTypePattern->begin = begin;
-        if (Seeing(TokenKind::WILDCARD)) {
-            auto wildCardPos = lastToken.Begin();
-            resumptionTypePattern->pattern = MakeOwned<WildcardPattern>(wildCardPos);
-        } else {
-            auto ident = ParseIdentifierFromToken(lookahead);
-            resumptionTypePattern->pattern = MakeOwned<VarPattern>(std::move(ident), begin);
-        }
-        resumptionTypePattern->patternPos = lookahead.Begin();
-        Next();
-        if (!Skip(TokenKind::COLON)) {
-            ParseDiagnoseRefactor(
-                DiagKindRefactor::parse_expected_colon_in_resumption_pattern, lookahead, ConvertToken(lookahead));
-        }
-        resumptionTypePattern->colonPos = lastToken.Begin();
-        resumptionTypePattern->types.emplace_back(ParseType());
-        if (!resumptionTypePattern->types.empty()) {
-            resumptionTypePattern->end = resumptionTypePattern->types.back()->end;
-        }
-        return resumptionTypePattern;
-    } else {
-        ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_resumption_pattern, lookahead, ConvertToken(lookahead));
-        return MakeInvalid<InvalidPattern>(lookahead.Begin());
-    }
-}
-
 void ParserImpl::ParsePatternsInCase(const OwnedPtr<MatchCase>& matchCase, const MatchExpr& matchExpr)
 {
     auto first = ParsePattern();

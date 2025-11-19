@@ -1269,20 +1269,6 @@ OwnedPtr<ResumptionTypePattern> ASTCloner::CloneResumptionTypePattern(
     return ret;
 }
 
-OwnedPtr<ResumptionTypePattern> ASTCloner::CloneResumptionTypePattern(
-    const ResumptionTypePattern& rtp, const VisitFunc& visitor)
-{
-    auto ret = MakeOwned<ResumptionTypePattern>();
-    ret->pattern = ClonePattern(rtp.pattern.get(), visitor);
-    for (auto& i : rtp.types) {
-        ret->types.push_back(CloneType(i.get(), visitor));
-    }
-    ret->patternPos = rtp.patternPos;
-    ret->colonPos = rtp.colonPos;
-    ret->bitOrPosVector = rtp.bitOrPosVector;
-    return ret;
-}
-
 OwnedPtr<VarOrEnumPattern> ASTCloner::CloneVarOrEnumPattern(
     const VarOrEnumPattern& vep, const VisitFunc& visitor)
 {
