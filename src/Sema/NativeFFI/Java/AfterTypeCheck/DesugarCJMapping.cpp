@@ -128,6 +128,37 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
     }
 }
 
+void JavaDesugarManager::InitGenericConfigs(
+    const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs)
+{
+    // Collect information on the names of generic configuration methods
+    // such as: {GenericClass<int32>, symbols: ["find", "value"]>}
+    std::unordered_map<std::string, std::unordered_set<std::string>> visibleFuncs;
+    for (const auto& outerPair : file.curPackage->allowedInteropCJGenericInstantiations) {
+        const auto declSymbolName = outerPair.first;
+        const auto& innerMap = outerPair.second;
+        if (declSymbolName != decl->identifier.Val()) {
+            continue;
+        }
+        for (const auto& innerPair : innerMap) {
+            const std::string typeStr = innerPair.first;
+            const GenericTypeArguments& args = innerPair.second;
+            std::unordered_set<std::string> funcNames = args.symbols;
+            std::vector<std::string> actualTypes;
+            SplitAndTrim(typeStr, actualTypes);
+            std::vector<std::pair<std::string, std::string>> instTypes;
+            const auto typeArgs = decl->ty->typeArgs;
+            for (size_t i = 0; i < typeArgs.size(); i++) {
+                instTypes.push_back(std::make_pair(typeArgs[i]->name, actualTypes[i]));
+            }
+            std::string declName = decl->identifier.Val();
+            std::string declWInstStr = declName + JoinVector(actualTypes);
+            GenericConfigInfo* declGenericConfig = new GenericConfigInfo(declName, declWInstStr, instTypes, funcNames);
+            genericConfigs.push_back(declGenericConfig);
+        }
+    }
+}
+
 OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFuncForEnumCtorNoParams(
     AST::EnumDecl& enumDecl, AST::VarDecl& ctor)
 {
@@ -766,11 +797,23 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
         }
     }
     for (auto decl : genDecls) {
-        const std::string fileJ = decl.get()->identifier.Val() + ".java";
-        auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
-            GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
-                              file.curPackage.get()->isInteropCJPackageConfig);
-        codegen.Generate();
+        if (IsCJMappingGeneric(*decl)) {
+            std::vector<GenericConfigInfo*> genericConfigs;
+            InitGenericConfigs(file, decl, genericConfigs);
+            for (auto& config : genericConfigs) {
+                const std::string fileJ = config->declInstName + ".java";
+                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+                    GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), config,
+                    file.curPackage.get()->isInteropCJPackageConfig);
+                codegen.Generate();
+            }
+        } else {
+            const std::string fileJ = decl.get()->identifier.Val() + ".java";
+            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+                GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
+                file.curPackage.get()->isInteropCJPackageConfig);
+            codegen.Generate();
+        }
     }
 }
 
