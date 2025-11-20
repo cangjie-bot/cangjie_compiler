@@ -500,6 +500,9 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (IsCJMapping(*ty)) {
         return jlongTy;
     }
+    if (ty->HasGeneric()) {
+        return jlongTy;
+    }
     CJC_ASSERT(ty->IsBuiltin());
     return ty;
 }
@@ -508,6 +511,11 @@ std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method)
 {
     auto sampleJavaName = GetJavaMemberName(method);
     std::string fqname = GetJavaFQName(*(method.outerDecl));
+    if (auto enumDecl = As<ASTKind::ENUM_DECL>(method.outerDecl)) {
+        if (enumDecl->ty->HasGeneric()) {
+            fqname = fqname + "Long";
+        }
+    }
     MangleJNIName(fqname);
     auto mangledFuncName = GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName);
     MangleJNIName(mangledFuncName);
@@ -537,6 +545,11 @@ inline std::string JavaDesugarManager::GetJniSuperArgFuncName(const ClassLikeDec
 std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const FuncDecl& ctor, bool isGeneratedCtor)
 {
     std::string fqname = GetJavaFQName(*(ctor.outerDecl));
+    if (auto enumDecl = As<ASTKind::ENUM_DECL>(ctor.outerDecl)) {
+        if (enumDecl->ty->HasGeneric()) {
+            fqname = fqname + "Long";
+        }
+    }
     MangleJNIName(fqname);
     auto mangledFuncName = GetMangledJniInitCjObjectFuncName(mangler, ctor.funcBody->paramLists[0]->params,
                                                              isGeneratedCtor);

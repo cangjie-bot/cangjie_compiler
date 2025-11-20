@@ -753,6 +753,9 @@ std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler,
             continue;
         }
         auto mangledParam = mangler.MangleType(*param->ty);
+        if (param->ty->HasGeneric()) {
+            mangledParam = mangler.MangleType(*TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+        }
         std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
         name += mangledParam;
     }
@@ -768,6 +771,9 @@ std::string GetMangledJniInitCjObjectFuncNameForEnum(
     // the first parameter is added in generated constructor, it should be skipped in mangling
     for (auto& param : params) {
         auto mangledParam = mangler.MangleType(*param->ty);
+        if (param->ty->HasGeneric()) {
+            mangledParam = mangler.MangleType(*TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+        }
         std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
         name += mangledParam;
     }

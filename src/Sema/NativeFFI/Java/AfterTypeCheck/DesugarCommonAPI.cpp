@@ -7,6 +7,7 @@
 #include "JavaDesugarManager.h"
 #include "NativeFFI/Java/JavaCodeGenerator/JavaSourceCodeGenerator.h"
 #include "Utils.h"
+#include "TypeCheckUtil.h"
 
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Match.h"
@@ -81,7 +82,7 @@ bool JavaDesugarManager::FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>&
         methodArg = CreateFuncArg(lib.UnwrapJavaEntity(std::move(entity), arg->ty, *outerDecl));
     } else if (IsCJMapping(*arg->ty)) {
         auto entity = lib.CreateGetFromRegistryCall(
-            WithinFile(CreateRefExpr(jniEnvPtrParam), funcDecl.curFile), std::move(paramRef), arg->ty);
+            WithinFile(CreateRefExpr(jniEnvPtrParam), funcDecl.curFile), std::move(paramRef), *arg.get());
         methodArg = CreateFuncArg(WithinFile(std::move(entity), funcDecl.curFile));
     } else if (IsCJMappingInterface(*arg->ty)) {
         Ptr<Ty> fwdTy(nullptr);
@@ -143,7 +144,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, 
         methodAccess = CreateMemberAccess(std::move(fwdClassInstance), sampleMethod);
     } else {
         auto reg = lib.CreateGetFromRegistryCall(
-            WithinFile(CreateRefExpr(jniEnvPtrParam), curFile), WithinFile(CreateRefExpr(selfParam), curFile), decl.ty);
+            WithinFile(CreateRefExpr(jniEnvPtrParam), curFile), WithinFile(CreateRefExpr(selfParam), curFile), decl);
         methodAccess = CreateMemberAccess(std::move(reg), sampleMethod);
     }
     methodAccess->curFile = curFile;
@@ -291,6 +292,20 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFunc(FuncDecl& ctor
         auto fwdCtorRef = WithinFile(CreateRefExpr(*fwdCtor), curFile);
         objectCtorCall = CreateCallExpr(std::move(fwdCtorRef), std::move(ctorCallArgs), fwdCtor,
             fwdCtor->outerDecl->ty, CallKind::CALL_OBJECT_CREATION);
+    } else if (ctor.outerDecl->ty->HasGeneric()) {
+        if (auto enumDecl = DynamicCast<EnumDecl>(ctor.outerDecl)) {
+            auto enumTy = typeManager.GetEnumTy(*enumDecl, {std::move(TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64))});
+            auto enumRefExpr = WithinFile(CreateRefExpr(*enumDecl), curFile);
+            auto int64Type = MakeOwned<PrimitiveType>();
+            int64Type->kind = TypeKind::TYPE_INT64;
+            int64Type->str = "Int64";
+            int64Type->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+            enumRefExpr->typeArguments.emplace_back(std::move(int64Type));
+            OwnedPtr<MemberAccess> methodAccess = CreateMemberAccess(std::move(enumRefExpr), ctor);
+            methodAccess->curFile = curFile;
+            objectCtorCall = CreateCallExpr(std::move(methodAccess), std::move(ctorCallArgs), Ptr(&ctor), enumTy,
+                CallKind::CALL_OBJECT_CREATION);
+        }
     } else {
         auto ctorRef = WithinFile(CreateRefExpr(ctor), curFile);
         objectCtorCall = CreateCallExpr(std::move(ctorRef), std::move(ctorCallArgs), Ptr(&ctor), ctor.outerDecl->ty,
