@@ -573,7 +573,7 @@ private:
     void DesugarResume(ASTContext& ctx, AST::ResumeExpr& re);
     void DesugarImmediateResume(ASTContext& ctx, AST::ResumeExpr& re);
     void DesugarDeferredResume(ASTContext& ctx, AST::ResumeExpr& re);
-    OwnedPtr<AST::MemberAccess> GetHelperFrameMethod(
+    OwnedPtr<AST::Expr> GetHelperFrameMethod(
         AST::Node& base, const std::string& methodName, std::vector<Ptr<AST::Ty>> typeArgs);
     void CreateResult(
         ASTContext& ctx, const AST::TryExpr& te, AST::VarDecl& frame, std::vector<OwnedPtr<AST::Node>>& block);
@@ -584,7 +584,7 @@ private:
     AST::VarDecl& CreateFrame(ASTContext& ctx, AST::TryExpr& te, std::vector<OwnedPtr<AST::Node>>& block);
     Ptr<AST::FuncTy> CastDeferredHandlerFn(Ptr<AST::FuncTy> stdxFuncTy);
     Ptr<AST::Ty> ResumptionToInternalResumptionTy(Ptr<AST::Ty> stdxResumptionTy);
-    void EncloseTryLambda(ASTContext& ctx, OwnedPtr<AST::LambdaExpr>& tryLambda, OwnedPtr<AST::Block>& tryBlock, bool isDeferred);
+    void EncloseTryLambda(ASTContext& ctx, OwnedPtr<AST::LambdaExpr>& tryLambda);
 
     /* Synthesize specialized for desugar after sema. Will not recover previous desugar results */
     Ptr<AST::Ty> SynthesizeWithoutRecover(ASTContext& ctx, Ptr<AST::Node> node);
