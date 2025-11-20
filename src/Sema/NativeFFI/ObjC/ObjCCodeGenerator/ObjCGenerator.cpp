@@ -798,6 +798,7 @@ void ObjCGenerator::AddCtorsForCjMappingEnum(AST::EnumDecl& enumDecl)
 
         if (ctor->astKind == ASTKind::FUNC_DECL) {
             auto funcDecl = As<ASTKind::FUNC_DECL>(ctor.get());
+            CJC_NULLPTR_CHECK(funcDecl);
             const auto selectorComponents = ctx.nameGenerator.GetObjCDeclSelectorComponents(*funcDecl);
             result += GenerateFuncParamLists(funcDecl->funcBody->paramLists, selectorComponents,
                 FunctionListFormat::DECLARATION, ObjCFunctionType::STATIC,
