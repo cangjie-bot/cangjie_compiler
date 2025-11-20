@@ -25,5 +25,7 @@ body:
           required: false
         - label: release/1.0
           required: false
+        - label: release/OpenHarmony-release-6.0
+          required: false
     validations:
       required: true
