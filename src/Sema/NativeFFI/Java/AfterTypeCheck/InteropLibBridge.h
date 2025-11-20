@@ -494,8 +494,7 @@ public:
     /**
      * Java_CFFI_getFromRegistry<ty>(env, self)
      */
-    OwnedPtr<CallExpr> CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Ptr<Ty> ty,
-        OwnedPtr<Type> actualTy = nullptr);
+    OwnedPtr<CallExpr> CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Ptr<Ty> ty);
 
     /**
      * Java_CFFI_getFromRegistryOption<ty>(self)

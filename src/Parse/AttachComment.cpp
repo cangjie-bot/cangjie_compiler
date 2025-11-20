@@ -163,7 +163,8 @@ std::string CNodeToString(const std::vector<CNode>& nodes)
     std::stringstream ss;
     ss << "[\n";
     std::function<void(const TreeNode*, int)> printNode = [&](const TreeNode* tn, int indent) {
-        std::string indentStr(indent * 2, ' ');
+        unsigned long a = (unsigned long)indent * 2;
+        std::string indentStr(a, ' ');
         ss << indentStr;
         if (auto n = tn->node) {
             ss << "Node<" << (void*)n << ", " << ASTKIND_TO_STR.at(n->astKind)

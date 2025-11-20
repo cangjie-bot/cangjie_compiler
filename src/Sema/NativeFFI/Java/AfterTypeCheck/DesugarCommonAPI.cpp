@@ -246,11 +246,11 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, 
                 instantiationRefType->ty = instantTy;
                 reg = lib.CreateGetFromRegistryCall(
                     WithinFile(CreateRefExpr(jniEnvPtrParam), curFile), WithinFile(CreateRefExpr(selfParam), curFile),
-                    instantTy, std::move(instantiationRefType));
+                    instantTy);
                 std::vector<Ptr<Ty>> funcTyParams;
                 for (auto& param : params) {
                     if (param->ty->IsGeneric()) {
-                        funcTyParams.push_back(param->ty);
+                        funcTyParams.push_back(actualTy);
                     }
                 }
                 Ptr<FuncTy> funcTy;
