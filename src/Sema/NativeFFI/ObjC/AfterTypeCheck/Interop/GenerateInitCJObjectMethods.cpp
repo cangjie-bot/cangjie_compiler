@@ -33,6 +33,7 @@ void GenerateInitCJObjectMethods::GenNativeInitMethodForEnumCtor(InteropContext&
             initCjObject = ctx.factory.CreateInitCjObject(enumDecl, *fd, true);
         } else if (ctor->astKind == ASTKind::VAR_DECL) {
             auto varDecl = As<ASTKind::VAR_DECL>(ctor.get());
+            CJC_NULLPTR_CHECK(varDecl);
             initCjObject = ctx.factory.CreateInitCjObjectForEnumNoParams(enumDecl, *varDecl);
         }
         ctx.genDecls.emplace_back(std::move(initCjObject));
