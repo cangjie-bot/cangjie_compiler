@@ -347,7 +347,7 @@ The `build` option builds the project files. It provides the following secondary
 - `--product {all,cjc,libs}`: Specifies the build target products, which can be `all` (default, includes `cjc` and `libs`), `cjc` (compiler binary), or `libs` (compiler libraries required by the standard library).
 - `--build-cjdb`: Enables building the Cangjie debugger.
 - `--enable-sanitize-option`: Make cjc option `--sanitize` visible to developer, in order to build sanitizer version cangjie code.
-- `--cjlib-sanitizer-support`： Build santizer version of cangjie library，you should use it along with `--product=libs` option. Valid values: `asan`, `tsan` or `hwasan`.
+- `--cjlib-sanitizer-support`： Build sanitizer version of cangjie library，you should use it along with `--product=libs` option. Valid values: `asan`, `tsan` or `hwasan`.
 
 ### `install` Option
 
