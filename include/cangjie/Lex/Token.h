@@ -13,6 +13,7 @@
 #ifndef CANGJIE_LEX_TOKEN_H
 #define CANGJIE_LEX_TOKEN_H
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <ostream>
