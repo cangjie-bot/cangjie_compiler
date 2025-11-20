@@ -634,11 +634,3 @@ OwnedPtr<Pattern> ASTLoader::ASTLoaderImpl::LoadResumptionTypePattern(const Pack
     ctp->pattern = LoadPattern(*pattern.patterns()->Get(0));
     return ctp;
 }
-
-OwnedPtr<Pattern> ASTLoader::ASTLoaderImpl::LoadResumptionTypePattern(const PackageFormat::Pattern& pattern)
-{
-    auto ctp = CreateAndLoadBasicInfo<ResumptionTypePattern>(pattern, INVALID_FORMAT_INDEX);
-    CJC_ASSERT(pattern.patterns()->size() == 1);
-    ctp->pattern = LoadPattern(*pattern.patterns()->Get(0));
-    return ctp;
-}

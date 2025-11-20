@@ -1238,14 +1238,6 @@ void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie
             }
             break;
         }
-        case ASTKind::RESUMPTION_TYPE_PATTERN: {
-            auto rtp = StaticAs<ASTKind::RESUMPTION_TYPE_PATTERN>(node);
-            BuildSymbolTable(ctx, rtp->pattern.get(), buildTrie);
-            for (auto& type : rtp->types) {
-                BuildSymbolTable(ctx, type.get(), buildTrie);
-            }
-            break;
-        }
         // ----------- Types ----------------------
         case ASTKind::REF_TYPE: {
             auto rt = StaticAs<ASTKind::REF_TYPE>(node);

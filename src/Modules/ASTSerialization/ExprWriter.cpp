@@ -383,19 +383,6 @@ TExprOffset ASTWriter::ASTWriterImpl::SaveExpression(const ResumeExpr& re, const
     return dbuilder.Finish();
 }
 
-TExprOffset ASTWriter::ASTWriterImpl::SaveExpression(const ResumeExpr& re, const NodeInfo& info)
-{
-    CJC_NULLPTR_CHECK(re.expr);
-    std::vector<FormattedIndex> operands;
-    operands.emplace_back(SaveExpr(*re.expr));
-    auto operandsIdx = builder.CreateVector<FormattedIndex>(operands);
-    PackageFormat::ExprBuilder dbuilder(builder);
-    dbuilder.add_kind(PackageFormat::ExprKind_ResumeExpr);
-    SaveBasicNodeInfo(dbuilder, info);
-    dbuilder.add_operands(operandsIdx);
-    return dbuilder.Finish();
-}
-
 TExprOffset ASTWriter::ASTWriterImpl::SaveExpression(const SpawnExpr& se, const NodeInfo& info)
 {
     // Sub node 'task' does not used for SpawnExpr with futureObj.
@@ -884,26 +871,6 @@ TPatternOffset ASTWriter::ASTWriterImpl::SaveCommandTypePattern(const CommandTyp
     auto patternsIdx = builder.CreateVector<TPatternOffset>({pIdx});
     PackageFormat::PatternBuilder dbuilder(builder);
     dbuilder.add_kind(PackageFormat::PatternKind_CommandTypePattern);
-    dbuilder.add_begin(&info.begin);
-    dbuilder.add_end(&info.end);
-    dbuilder.add_types(tyIdx);
-    dbuilder.add_patterns(patternsIdx);
-    return dbuilder.Finish();
-}
-
-TPatternOffset ASTWriter::ASTWriterImpl::SaveResumptionTypePattern(const ResumptionTypePattern& rtp)
-{
-    auto pIdx = SavePattern(*rtp.pattern);
-    auto info = PackNodeInfo(rtp);
-    std::vector<FormattedIndex> types{info.ty};
-    for (auto& type : rtp.types) {
-        CJC_NULLPTR_CHECK(type);
-        types.emplace_back(SaveType(type->ty));
-    }
-    auto tyIdx = builder.CreateVector<FormattedIndex>(types);
-    auto patternsIdx = builder.CreateVector<TPatternOffset>({pIdx});
-    PackageFormat::PatternBuilder dbuilder(builder);
-    dbuilder.add_kind(PackageFormat::PatternKind_ResumptionTypePattern);
     dbuilder.add_begin(&info.begin);
     dbuilder.add_end(&info.end);
     dbuilder.add_types(tyIdx);
