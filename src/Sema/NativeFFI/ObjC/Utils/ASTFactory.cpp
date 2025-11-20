@@ -1538,8 +1538,9 @@ OwnedPtr<CallExpr> ASTFactory::CreateGetInstanceVariableCall(const PropDecl& fie
     auto args = Nodes<FuncArg>(CreateFuncArg(std::move(nativeHandle)), CreateFuncArg(std::move(nameExpr)));
 
     auto retTy = StaticCast<FuncTy>(getInstVarRef->ty)->retTy;
-    return CreateCallExpr(
-        std::move(getInstVarRef), std::move(args), getInstVarDecl, retTy, CallKind::CALL_DECLARED_FUNCTION);
+    return WithinFile(CreateCallExpr(std::move(getInstVarRef), std::move(args), getInstVarDecl, retTy,
+                          CallKind::CALL_DECLARED_FUNCTION),
+        field.curFile);
 }
 
 OwnedPtr<CallExpr> ASTFactory::CreateSetInstanceVariableCall(
@@ -1567,8 +1568,8 @@ OwnedPtr<CallExpr> ASTFactory::CreateSetInstanceVariableCall(
     auto args = Nodes<FuncArg>(
         CreateFuncArg(std::move(nativeHandle)), CreateFuncArg(std::move(nameExpr)), CreateFuncArg(std::move(value)));
 
-    return CreateCallExpr(std::move(setInstVarRef), std::move(args), setInstVarDecl,
-        TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT), CallKind::CALL_DECLARED_FUNCTION);
+    return WithinFile(CreateCallExpr(std::move(setInstVarRef), std::move(args), setInstVarDecl,
+        TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT), CallKind::CALL_DECLARED_FUNCTION), field.curFile);
 }
 
 OwnedPtr<Expr> ASTFactory::CreateUnsafePointerCast(OwnedPtr<Expr> expr, Ptr<Ty> elementType)
