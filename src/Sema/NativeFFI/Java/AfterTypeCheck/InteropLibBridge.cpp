@@ -555,7 +555,7 @@ OwnedPtr<Expr> InteropLibBridge::CreateJavaEntityCall(OwnedPtr<Expr> arg)
             if (ctor->funcBody->paramLists[0]->params.size() != 1) {
                 continue;
             }
-            if (typeManager.IsTyEqual(arg->ty, ctor->funcBody->paramLists[0]->params[0]->ty)) {
+            if (typeManager.IsTyEqual(arg->ty, ctor->funcBody->paramLists[0]->params[0]->ty) || arg->ty->HasGeneric()) {
                 suitableCtor = ctor;
             }
         }
@@ -1073,7 +1073,7 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateJavaStringToCangjieCall(OwnedPtr<Expr
     return CreateCall(funcDecl, curFile, std::move(env), std::move(jstring));
 }
 
-OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Ptr<Ty> ty)
+OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> env, OwnedPtr<Expr> self, Decl& decl)
 {
     auto curFile = self->curFile;
     auto funcDecl = GetGetFromRegistryDecl();
@@ -1086,9 +1086,25 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryCall(OwnedPtr<Expr> en
     callArgs.push_back(CreateFuncArg(std::move(self)));
 
     auto fdRef = WithinFile(CreateRefExpr(*funcDecl), curFile);
-    fdRef->instTys.push_back(ty);
+    if (decl.ty->HasGeneric()) {
+        if (auto enumDecl = DynamicCast<EnumDecl>(&decl)) {
+            auto enumTy = typeManager.GetEnumTy(*enumDecl, {std::move(TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64))});
+            fdRef->instTys.push_back(enumTy);
+            auto enumRefType = CreateRefType(*enumDecl);
+            auto int64Type = MakeOwned<PrimitiveType>();
+            int64Type->kind = TypeKind::TYPE_INT64;
+            int64Type->str = "Int64";
+            int64Type->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+            enumRefType->typeArguments.emplace_back(std::move(int64Type));
+            enumRefType->ty = enumTy;
+            fdRef->typeArguments.emplace_back(std::move(enumRefType));
+            fdRef->ty = typeManager.GetInstantiatedTy(funcDecl->ty, GenerateTypeMapping(*funcDecl, fdRef->instTys));
+            return CreateCallExpr(std::move(fdRef), std::move(callArgs), funcDecl, enumTy, CallKind::CALL_DECLARED_FUNCTION);
+        }
+    }
+    fdRef->instTys.push_back(decl.ty);
     fdRef->ty = typeManager.GetInstantiatedTy(funcDecl->ty, GenerateTypeMapping(*funcDecl, fdRef->instTys));
-    return CreateCallExpr(std::move(fdRef), std::move(callArgs), funcDecl, ty, CallKind::CALL_DECLARED_FUNCTION);
+    return CreateCallExpr(std::move(fdRef), std::move(callArgs), funcDecl, decl.ty, CallKind::CALL_DECLARED_FUNCTION);
 }
 
 OwnedPtr<CallExpr> InteropLibBridge::CreateGetFromRegistryOptionCall(OwnedPtr<Expr> self, Ptr<Ty> ty)

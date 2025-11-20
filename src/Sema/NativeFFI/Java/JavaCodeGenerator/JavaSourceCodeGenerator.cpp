@@ -219,6 +219,9 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
     auto declTy = Ty::GetDeclOfTy(ty);
 
     switch (ty->kind) {
+        case TypeKind::TYPE_GENERICS:
+            javaType = "long";
+            break;
         case TypeKind::TYPE_FLOAT64:
             javaType = "double";
             break;
@@ -1027,7 +1030,7 @@ void JavaSourceCodeGenerator::AddPrivateCtorForCJMappring()
 
 void JavaSourceCodeGenerator::AddPrivateCtorForCJMappringEnum()
 {
-    std::string signature = "private " + decl->identifier.Val() + " (long id) {";
+    std::string signature = "private " + decl->identifier.Val() + "(long id) {";
     AddWithIndent(TAB, signature);
     AddWithIndent(TAB2, "self = id;");
     AddWithIndent(TAB, "}\n");

@@ -67,7 +67,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateCJMappingNativeDetachCjObjectFunc(Cla
 
 
     auto javaEntityCall = lib.CreateJavaEntityJobjectCall(std::move(objParamRef));
-    auto reg = lib.CreateGetFromRegistryCall(std::move(envParamRef), std::move(selfParamRef), fwdDecl.ty);
+    auto reg = lib.CreateGetFromRegistryCall(std::move(envParamRef), std::move(selfParamRef), fwdDecl);
     auto controllerVar = GetFwdClassField(fwdDecl, JAVA_OBJECT_CONTROLLER_NAME);
     auto varAccess = CreateMemberAccess(std::move(reg), *controllerVar);
     auto detachCjObjectFd = lib.GetDetachCJObjectDecl();
@@ -766,6 +766,9 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
         }
     }
     for (auto decl : genDecls) {
+        if (decl.get()->ty->HasGeneric()) {
+            decl.get()->identifier = decl.get()->identifier + "Long";
+        }
         const std::string fileJ = decl.get()->identifier.Val() + ".java";
         auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
             GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
