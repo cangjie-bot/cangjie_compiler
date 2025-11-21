@@ -310,6 +310,11 @@ void MockSupportManager::CollectDeclsToPrepare(Decl& decl, DeclsToPrepare& decls
         return;
     }
 
+    if (decl.IsConst()) {
+        // "const" functions are not supported
+        return;
+    }
+
     if (decl.TestAttr(Attribute::PRIVATE) || decl.TestAttr(Attribute::MAIN_ENTRY)) {
         return;
     }
@@ -1457,7 +1462,9 @@ Ptr<Expr> MockSupportManager::ReplaceFieldSetWithAccessor(AssignExpr& assignExpr
     }
 
     CJC_ASSERT(accessorCall);
-    accessorCall->args.emplace_back(CreateFuncArg(ASTCloner::Clone(assignExpr.rightExpr.get())));
+    auto arg = ASTCloner::Clone(assignExpr.rightExpr.get());
+    arg->ty = leftValue->GetTarget()->ty;
+    accessorCall->args.emplace_back(CreateFuncArg(std::move(arg)));
     accessorCall->sourceExpr = Ptr(&assignExpr);
     assignExpr.desugarExpr = std::move(accessorCall);
     return assignExpr.desugarExpr;
@@ -1638,6 +1645,11 @@ void MockSupportManager::PrepareClassWithDefaults(ClassDecl& classDecl, Interfac
         interfaceDecl.curFile, interfaceDecl.identifier + MockUtils::defaultAccessorSuffix);
     if (!accessorInterfaceDecl) {
         // Interface is in package, which was compiled without mocking support
+        return;
+    }
+
+    if (classDecl.TestAttr(Attribute::GENERIC)) {
+        // TODO: Support generic classes to mock methods with default implementation
         return;
     }
 
