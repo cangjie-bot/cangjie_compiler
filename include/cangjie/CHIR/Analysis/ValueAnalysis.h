@@ -493,6 +493,11 @@ private:
             }
             return;
         }
+        if (is_instance_of_v<ValueStatePool, ActiveStatePool> && state->Find(src) == state->End()) {
+            // It is possible that state can not find src in active state mode.
+            // state is gone normally because oversize of state pool, skip propagation.
+            return;
+        }
         if (auto it = state->Find(dest); it != state->End()) {
             it->second = programState.At(src);
         } else {
@@ -639,7 +644,10 @@ private:
             } else {
                 CJC_ASSERT(std::holds_alternative<AbstractObject*>(v1));
                 CJC_ASSERT(std::holds_alternative<AbstractObject*>(v2));
-                CJC_ASSERT(std::get<AbstractObject*>(v1) == std::get<AbstractObject*>(v2));
+                if (is_instance_of_v<ValueStatePool, FullStatePool>) {
+                    // Value of ref may change not using active state pool.
+                    CJC_ASSERT(std::get<AbstractObject*>(v1) == std::get<AbstractObject*>(v2));
+                }
             }
             return false;
         };
