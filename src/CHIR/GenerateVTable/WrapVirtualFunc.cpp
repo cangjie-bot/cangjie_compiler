@@ -293,7 +293,7 @@ void WrapVirtualFunc::CreateVirtualWrapperFunc(Func& func, FuncType& wrapperTy,
         .args = args,
         .instTypeArgs = instArgTypes,
         .thisType = thisInstTy}, entry);
-
+    apply->SetDebugLocation(rawFunc->GetDebugLocation());
     auto res = TypeCastOrBoxIfNeeded(*apply->GetResult(), *wrapperRetTy, builder, *entry, INVALID_LOCATION);
     CreateAndAppendExpression<Store>(builder, builder.GetUnitTy(), res, func.GetReturnValue(), entry);
     entry->AppendExpression(builder.CreateTerminator<Exit>(entry));
