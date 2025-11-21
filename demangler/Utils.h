@@ -13,6 +13,7 @@
 
 namespace Cangjie {
 const char MANGLE_CANGJIE_PREFIX[] = "_C";
+constexpr char MANGLE_WRAPPER_PREFIX[] = "V";
 const char MANGLE_NESTED_PREFIX[] = "N";
 constexpr char MANGLE_GENERIC_PREFIX = 'I';
 constexpr char MANGLE_FUNCTION_PREFIX = 'H';
@@ -23,6 +24,7 @@ constexpr char MANGLE_LAMBDA_PREFIX = 'L';
 constexpr char MANGLE_UNDERSCORE_PREFIX = '_';
 constexpr char END = 'E';
 constexpr char MANGLE_FILE_NUMBER_END = '$';
+constexpr char MANGLE_WRAPPED_FUNCTION_END = '$';
 constexpr size_t FILE_HASH_LEN = 13;
 constexpr size_t SPECIAL_NAME_LEN = 2;
 constexpr size_t MANGLE_CHAR_LEN = 1;
