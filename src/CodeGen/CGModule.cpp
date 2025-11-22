@@ -509,6 +509,8 @@ llvm::Constant* CGModule::GenerateTypeNameConstantString(const std::string& type
     klassName->setInitializer(strConstant);
     klassName->setAlignment(llvm::Align(1));
     klassName->addAttribute(CJTYPE_NAME_ATTR);
+    klassName->setConstant(true);
+    klassName->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     AddLinkageTypeMetadata(*klassName, linkageType, false);
     return llvm::ConstantExpr::getBitCast(klassName, llvm::Type::getInt8PtrTy(module->getContext()));
 }
