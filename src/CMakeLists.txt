@@ -68,7 +68,7 @@ if(NOT CANGJIE_BUILD_CJC AND CANGJIE_BUILD_STD_SUPPORT)
         $<TARGET_OBJECTS:CangjieCommonUtilFFI>
         $<TARGET_OBJECTS:CangjieUnicodeUtils>
         $<TARGET_OBJECTS:CangjieTempFilesUtil>)
-    add_library(cangjie-ast-support STATIC ${AST_FFI_OBJECTS})
+    add_library(cangjie-ast-support SHARED ${AST_FFI_OBJECTS})
     string(TOLOWER ${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND} output_lib_dir)
     install(TARGETS cangjie-ast-support DESTINATION lib/${output_lib_dir}${SANITIZER_SUBPATH})
     return()
@@ -420,6 +420,6 @@ set(AST_FFI_OBJECTS
     $<TARGET_OBJECTS:CangjieCommonUtilFFI>
     $<TARGET_OBJECTS:CangjieUnicodeUtils>
     $<TARGET_OBJECTS:CangjieTempFilesUtil>)
-add_library(cangjie-ast-support STATIC ${AST_FFI_OBJECTS})
+add_library(cangjie-ast-support SHARED ${AST_FFI_OBJECTS})
 string(TOLOWER ${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND} output_lib_dir)
 install(TARGETS cangjie-ast-support DESTINATION lib/${output_lib_dir}${SANITIZER_SUBPATH})
