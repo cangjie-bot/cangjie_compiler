@@ -381,7 +381,7 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::Interfac
             interfaceRefType->ty = typeManager.GetInterfaceTy(interfaceDecl, typeArgs);
             fwdclassDecl->inheritedTypes.emplace_back(std::move(interfaceRefType));
 
-            fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs);
+            fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, typeArgs);
             auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
             CJC_ASSERT(classLikeTy);
             classLikeTy->directSubtypes.insert(fwdclassDecl->ty);

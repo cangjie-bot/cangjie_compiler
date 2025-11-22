@@ -461,6 +461,11 @@ GenericInfo GIM::GenericInstantiationManagerImpl::ConstructGenericInfo(
     Decl& decl, const std::vector<Ptr<Ty>>& instTys) const
 {
     CJC_ASSERT(decl.TestAttr(Attribute::GENERIC));
+    for (int a =0; a<1; a++) {
+        if (decl.identifier.Val() == "A") {
+        break;
+    }
+    }
     TypeSubst gTyToTyMap = GenerateTypeMapping(decl, instTys);
     CJC_ASSERT(!gTyToTyMap.empty());
     GenericInfo genericInfo(&decl, gTyToTyMap);
