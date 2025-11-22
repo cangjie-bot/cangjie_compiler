@@ -877,22 +877,20 @@ std::string GetGenericActualType(GenericConfigInfo* config, std::string genericN
 
 TypeKind GetGenericActualTypeKind(std::string configType) {
     static const std::unordered_map<std::string, TypeKind> typeMap = {
-        {"int8", TypeKind::TYPE_INT8},
-        {"int16", TypeKind::TYPE_INT16},
-        {"int32", TypeKind::TYPE_INT32},
-        {"int64", TypeKind::TYPE_INT64},
-        {"int", TypeKind::TYPE_INT_NATIVE},
-        {"long", TypeKind::TYPE_INT64},
-        {"uint8", TypeKind::TYPE_UINT8},
-        {"uint16", TypeKind::TYPE_UINT16},
-        {"uint32", TypeKind::TYPE_UINT32},
-        {"uint64", TypeKind::TYPE_UINT64},
-        {"float16", TypeKind::TYPE_FLOAT16},
-        {"float32", TypeKind::TYPE_FLOAT32},
-        {"float64", TypeKind::TYPE_FLOAT64},
-        {"float", TypeKind::TYPE_FLOAT32},
-        {"double", TypeKind::TYPE_FLOAT64},
-        {"bool", TypeKind::TYPE_BOOLEAN},
+        {"Int8", TypeKind::TYPE_INT8},
+        {"Int16", TypeKind::TYPE_INT16},
+        {"Int32", TypeKind::TYPE_INT32},
+        {"Int64", TypeKind::TYPE_INT64},
+        {"IntNative", TypeKind::TYPE_INT_NATIVE},
+        {"UInt8", TypeKind::TYPE_UINT8},
+        {"UInt16", TypeKind::TYPE_UINT16},
+        {"UInt32", TypeKind::TYPE_UINT32},
+        {"UInt64", TypeKind::TYPE_UINT64},
+        {"UIntNative", TypeKind::TYPE_UINT_NATIVE},
+        {"Float16", TypeKind::TYPE_FLOAT16},
+        {"Float32", TypeKind::TYPE_FLOAT32},
+        {"Float64", TypeKind::TYPE_FLOAT64},
+        {"Boolean", TypeKind::TYPE_BOOLEAN},
     };
     auto it = typeMap.find(configType);
     CJC_ASSERT(it != typeMap.end());
@@ -907,6 +905,38 @@ const Ptr<ClassDecl> GetSyntheticClass(const ImportManager& importManager, const
     CJC_NULLPTR_CHECK(synthetic);
 
     return Ptr(synthetic);
+}
+
+std::string ReplaceClassName(std::string& classTypeSignature, std::string newSegment)
+{
+    bool hasSemicolon = (!classTypeSignature.empty() && classTypeSignature.back() == ';');
+    
+    std::string base = hasSemicolon ? classTypeSignature.substr(0, classTypeSignature.length() - 1) : classTypeSignature;
+    
+    size_t lastSlash = classTypeSignature.rfind('/');
+    if (lastSlash != std::string::npos) {
+        base = base.substr(0, lastSlash + 1) + newSegment;
+    } else {
+        base = newSegment;
+    }
+    
+    return hasSemicolon ? base + ";" : base;
+}
+
+OwnedPtr<PrimitiveType> GetInt64PrimitiveType() {
+    OwnedPtr<PrimitiveType> type = MakeOwned<PrimitiveType>();
+    type->str = "UInt64";
+    type->kind = AST::TypeKind::TYPE_UINT64;
+    type->ty = TypeManager::GetPrimitiveTy(AST::TypeKind::TYPE_UINT64);
+    return type;
+}
+
+OwnedPtr<PrimitiveType> GetPrimitiveType1(std::string typeName, AST::TypeKind typekind) {
+    OwnedPtr<PrimitiveType> type = MakeOwned<PrimitiveType>();
+    type->str = typeName;
+    type->kind = typekind;
+    type->ty = TypeManager::GetPrimitiveTy(typekind);
+    return type;
 }
 
 OwnedPtr<Expr> CreateMirrorConstructorCall(

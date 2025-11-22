@@ -104,6 +104,7 @@ struct JavaInteropTypeChecker {
             case TypeKind::TYPE_INT64:
             case TypeKind::TYPE_FLOAT32:
             case TypeKind::TYPE_FLOAT64:
+            case TypeKind::TYPE_GENERICS:
                 return true;
             case TypeKind::TYPE_ENUM:
                 if (!ty.IsCoreOptionType() || ty.typeArgs[0]->IsCoreOptionType()) {

@@ -37,6 +37,32 @@ struct MemberJNISignature {
             signature = utils.GetJavaTypeSignature(retTy, paramTys);
     }
 
+    MemberJNISignature(Utils& utils, FuncDecl& member, GenericConfigInfo* genericConfig)
+    {
+        auto jobject = StaticAs<ASTKind::CLASS_LIKE_DECL>(member.outerDecl);
+        CJC_ASSERT(jobject);
+        Ptr<Ty> ty = jobject->ty;
+
+        classTypeSignature = utils.GetJavaClassNormalizeSignature(*ty);
+        ReplaceClassName(classTypeSignature, genericConfig->declInstName);
+        name = GetJavaMemberName(member);
+
+        CJC_ASSERT(member.astKind == ASTKind::FUNC_DECL);
+
+        auto& retTy = *member.funcBody->retType->ty;
+        // if (retTy.HasGeneric()) {
+        //     retTy = TypeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(config, ty->name)));
+        // }
+        std::vector<Ptr<Ty>> paramTys = Native::FFI::GetParamTys(*member.funcBody->paramLists[0]);
+        // for (auto paramTy : paramTys) {
+        //     if (paramTy.HasGeneric()) {
+        //         paramTy =
+        //             TypeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(config, paramTy->name)));
+        //     }
+        // }
+        signature = utils.GetJavaTypeSignature(retTy, paramTys);
+    }
+
     MemberJNISignature(Utils& utils, PropDecl& member)
         : MemberJNISignature(utils, member, StaticAs<ASTKind::CLASS_LIKE_DECL>(member.outerDecl))
     {

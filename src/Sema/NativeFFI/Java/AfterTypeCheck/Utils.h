@@ -247,6 +247,9 @@ void SplitAndTrim(std::string str, std::vector<std::string>& types);
 std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
 std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName);
 TypeKind GetGenericActualTypeKind(std::string configType);
+std::string ReplaceClassName(std::string& classTypeSignature, std::string newSegment);
+OwnedPtr<PrimitiveType> GetInt64PrimitiveType();
+OwnedPtr<PrimitiveType> GetPrimitiveType1(std::string typeName, AST::TypeKind typekind);
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
 

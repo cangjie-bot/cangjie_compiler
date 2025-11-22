@@ -269,13 +269,31 @@ void JavaDesugarManager::GenerateForCJExtendMapping(AST::ExtendDecl& extendDecl)
 }
 
 OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassMethod(
-    AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl)
+    AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl, GenericConfigInfo *genericConfig)
 {
     auto funcDecl = ASTCloner::Clone(Ptr<FuncDecl>(&interfaceFuncDecl));
     funcDecl->DisableAttr(Attribute::ABSTRACT, Attribute::OPEN);
     funcDecl->EnableAttr(Attribute::PUBLIC, Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);
 
-    DesugarJavaMirrorMethod(*funcDecl, fwdclassDecl);
+    if (genericConfig) {
+        auto& retType = *funcDecl->funcBody->retType;
+        if (retType.ty->HasGeneric()) {
+            auto actualTypeName = GetGenericActualType(genericConfig, retType.ty->name);
+            auto typeKind = GetGenericActualTypeKind(actualTypeName);
+            funcDecl->funcBody->retType = GetPrimitiveType1(actualTypeName, typeKind);
+        }
+        for (auto& param : funcDecl->funcBody->paramLists[0]->params) {
+            auto ty = param->ty;
+            if (ty->HasGeneric()) {
+                auto actualTypeName = GetGenericActualType(genericConfig, ty->name);
+                auto typeKind = GetGenericActualTypeKind(actualTypeName);
+                param = CreateFuncParam(param->identifier, GetPrimitiveType1(actualTypeName, typeKind),
+                    nullptr, TypeManager::GetPrimitiveTy(typeKind));
+            }
+        }
+    }
+
+    DesugarJavaMirrorMethod(*funcDecl, fwdclassDecl, genericConfig);
     funcDecl->outerDecl = Ptr<Decl>(&fwdclassDecl);
 
     return funcDecl;
@@ -317,14 +335,14 @@ OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassDefaultMethod(
     return funcStub;
 }
 
-void JavaDesugarManager::GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl)
+void JavaDesugarManager::GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl, GenericConfigInfo *genericConfig)
 {
     InsertJavaRefVarDecl(fwdclassDecl);
     InsertJavaMirrorCtor(fwdclassDecl, true);
     for (auto& decl : interfaceDecl.GetMemberDecls()) {
         if (FuncDecl* fd = As<ASTKind::FUNC_DECL>(decl.get());
             fd && !fd->TestAttr(Attribute::CONSTRUCTOR) && !fd->TestAttr(Attribute::STATIC)) {
-            fwdclassDecl.body->decls.push_back(GenerateInterfaceFwdclassMethod(fwdclassDecl, *fd));
+            fwdclassDecl.body->decls.push_back(GenerateInterfaceFwdclassMethod(fwdclassDecl, *fd, genericConfig));
             if (fd->TestAttr(Attribute::DEFAULT)) {
                 fwdclassDecl.body->decls.push_back(GenerateInterfaceFwdclassDefaultMethod(fwdclassDecl, *fd));
             }
@@ -336,23 +354,32 @@ void JavaDesugarManager::GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassD
     }
 }
 
-void JavaDesugarManager::GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl)
+void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::InterfaceDecl& interfaceDecl)
 {
-    if (IsCJMappingGeneric(*decl)) {
+    if (IsCJMappingGeneric(interfaceDecl)) {
         std::vector<GenericConfigInfo*> genericConfigs;
-        InitGenericConfigs(file, decl, genericConfigs);
-        for (auto& config : genericConfigs) {
+        InitGenericConfigs(file, &interfaceDecl, genericConfigs);
+        for (const auto& config : genericConfigs) {
             auto fwdclassDecl = MakeOwned<ClassDecl>();
-            fwdclassDecl->identifier = interfaceDecl.identifier.Val() + JAVA_FWD_CLASS_SUFFIX;
+            fwdclassDecl->identifier = config->declInstName + JAVA_FWD_CLASS_SUFFIX;
             fwdclassDecl->identifier.SetPos(interfaceDecl.identifier.Begin(), interfaceDecl.identifier.End());
             fwdclassDecl->fullPackageName = interfaceDecl.fullPackageName;
             fwdclassDecl->moduleName = ::Cangjie::Utils::GetRootPackageName(interfaceDecl.fullPackageName);
             fwdclassDecl->curFile = interfaceDecl.curFile;
 
+            // set fwdclassDecl parent interface.
             auto interfaceRefType = CreateRefType(interfaceDecl);
-            auto interfaceTy = typeManager.GetInterfaceTy()
-
-            fwdclassDecl->inheritedTypes.emplace_back();
+            std::vector<Ptr<Ty>> typeArgs;
+            std::vector<OwnedPtr<Type>> typeArguments;
+            for (const auto& typePair : config->instTypes) {
+                std::string type = typePair.second;
+                auto ty = typeManager.GetPrimitiveTy(GetGenericActualTypeKind(type));
+                typeArgs.push_back(ty);
+                auto priType = GetPrimitiveType1(type, GetGenericActualTypeKind(type));
+                interfaceRefType->typeArguments.emplace_back(std::move(priType));
+            }
+            interfaceRefType->ty = typeManager.GetInterfaceTy(interfaceDecl, typeArgs);
+            fwdclassDecl->inheritedTypes.emplace_back(std::move(interfaceRefType));
 
             fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs);
             auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
@@ -363,35 +390,32 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(AST::InterfaceDecl& inter
                 Attribute::PUBLIC, Attribute::COMPILER_ADD, Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);
 
             fwdclassDecl->body = MakeOwned<ClassBody>();
-            GenerateInterfaceFwdclassBody(*fwdclassDecl, interfaceDecl);
+            GenerateInterfaceFwdclassBody(*fwdclassDecl, interfaceDecl, config);
 
             generatedDecls.push_back(std::move(fwdclassDecl));
         }
+    } else {
+        auto fwdclassDecl = MakeOwned<ClassDecl>();
+        fwdclassDecl->identifier = interfaceDecl.identifier.Val() + JAVA_FWD_CLASS_SUFFIX;
+        fwdclassDecl->identifier.SetPos(interfaceDecl.identifier.Begin(), interfaceDecl.identifier.End());
+        fwdclassDecl->fullPackageName = interfaceDecl.fullPackageName;
+        fwdclassDecl->moduleName = ::Cangjie::Utils::GetRootPackageName(interfaceDecl.fullPackageName);
+        fwdclassDecl->curFile = interfaceDecl.curFile;
+
+        fwdclassDecl->inheritedTypes.emplace_back(CreateRefType(interfaceDecl));
+
+        fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs);
+        auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
+        CJC_ASSERT(classLikeTy);
+        classLikeTy->directSubtypes.insert(fwdclassDecl->ty);
+
+        fwdclassDecl->EnableAttr(Attribute::PUBLIC, Attribute::COMPILER_ADD, Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);
+
+        fwdclassDecl->body = MakeOwned<ClassBody>();
+        GenerateInterfaceFwdclassBody(*fwdclassDecl, interfaceDecl);
+
+        generatedDecls.push_back(std::move(fwdclassDecl));
     }
-}
-else
-{
-    auto fwdclassDecl = MakeOwned<ClassDecl>();
-    fwdclassDecl->identifier = interfaceDecl.identifier.Val() + JAVA_FWD_CLASS_SUFFIX;
-    fwdclassDecl->identifier.SetPos(interfaceDecl.identifier.Begin(), interfaceDecl.identifier.End());
-    fwdclassDecl->fullPackageName = interfaceDecl.fullPackageName;
-    fwdclassDecl->moduleName = ::Cangjie::Utils::GetRootPackageName(interfaceDecl.fullPackageName);
-    fwdclassDecl->curFile = interfaceDecl.curFile;
-
-    fwdclassDecl->inheritedTypes.emplace_back(CreateRefType(interfaceDecl));
-
-    fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs);
-    auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
-    CJC_ASSERT(classLikeTy);
-    classLikeTy->directSubtypes.insert(fwdclassDecl->ty);
-
-    fwdclassDecl->EnableAttr(Attribute::PUBLIC, Attribute::COMPILER_ADD, Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD);
-
-    fwdclassDecl->body = MakeOwned<ClassBody>();
-    GenerateInterfaceFwdclassBody(*fwdclassDecl, interfaceDecl);
-
-    generatedDecls.push_back(std::move(fwdclassDecl));
-}
 }
 
 void JavaDesugarManager::InsertJavaObjectControllerVarDecl(ClassDecl& fwdClassDecl, ClassDecl& classDecl)
@@ -419,14 +443,6 @@ void JavaDesugarManager::InsertJavaObjectControllerVarDecl(ClassDecl& fwdClassDe
     javaObjectControllerVarDecl->fullPackageName = fwdClassDecl.fullPackageName;
 
     fwdClassDecl.body->decls.push_back(std::move(javaObjectControllerVarDecl));
-}
-
-OwnedPtr<PrimitiveType> GetInt64PrimitiveType() {
-    OwnedPtr<PrimitiveType> type = MakeOwned<PrimitiveType>();
-    type->str = "UInt64";
-    type->kind = AST::TypeKind::TYPE_UINT64;
-    type->ty = TypeManager::GetPrimitiveTy(AST::TypeKind::TYPE_UINT64);
-    return type;
 }
 
 void JavaDesugarManager::InsertOverrideMaskVar(AST::ClassDecl& fwdClassDecl)
@@ -760,7 +776,7 @@ void JavaDesugarManager::GenerateFwdClassInCJMapping(File& file)
         }
         auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(decl.get());
         if (interfaceDecl && IsCJMapping(*interfaceDecl)) {
-            GenerateForCJInterfaceMapping(*interfaceDecl);
+            GenerateForCJInterfaceMapping(file, *interfaceDecl);
             continue;
         }
 

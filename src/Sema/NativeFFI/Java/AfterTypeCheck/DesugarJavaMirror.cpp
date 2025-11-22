@@ -347,7 +347,8 @@ void JavaDesugarManager::DesugarJavaMirrorConstructor(FuncDecl& ctor, FuncDecl& 
     }
 }
 
-void JavaDesugarManager::AddJavaMirrorMethodBody(const ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall)
+void JavaDesugarManager::AddJavaMirrorMethodBody(
+    const ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall, GenericConfigInfo* genericConfig)
 {
     if (fun.TestAttr(Attribute::ABSTRACT) && !IsSynthetic(mirror)) {
         return;
@@ -363,22 +364,38 @@ void JavaDesugarManager::AddJavaMirrorMethodBody(const ClassLikeDecl& mirror, Fu
 
     OwnedPtr<Expr> methodCall;
     auto& paramList = *fun.funcBody->paramLists[0].get();
+    // FuncParamList paramList = FuncParamList();
+    MemberJNISignature *memberJNISignature = nullptr;
+
+    if (genericConfig) {
+        memberJNISignature = new MemberJNISignature(utils, fun, genericConfig);
+        // for (auto param : fun.funcBody->paramLists[0]->params) {
+        //     auto ty = param->ty;
+        //     if (ty->HasGeneric()) {
+        //         auto actualTypeName = GetGenericActualType(genericConfig, ty->name);
+        //         auto typeKind = GetGenericActualTypeKind(actualTypeName);
+        //         auto newParam = CreateFuncParam(param->identifier, std::move(GetPrimitiveType1(actualTypeName, typeKind), nullptr, TypeManager::GetPrimitiveTy(typeKind));
+        //         paramList.params.push_back(newParam);
+        //     } else {
+        //         paramList.params.push_back(param);
+        //     }
+        // }
+    } else {
+        memberJNISignature = new MemberJNISignature(utils, fun);
+        // paramList = *fun.funcBody->paramLists[0].get()
+    }
+
     if (fun.TestAttr(Attribute::STATIC)) {
-        methodCall = lib.CreateCFFICallStaticMethodCall(
-            std::move(jniEnvCall), MemberJNISignature(utils, fun),
-            paramList, *curFile);
+        methodCall = lib.CreateCFFICallStaticMethodCall(std::move(jniEnvCall), *memberJNISignature, paramList, *curFile);
     } else {
         if (IsJArray(mirror)) {
             auto genericParam = mirror.generic->typeParameters[0].get();
             CJC_ASSERT(genericParam);
             methodCall = lib.CreateCFFICallArrayMethodCall(
-                std::move(jniEnvCall), std::move(javaRefCall), paramList, genericParam,
-                GetArrayOperationKind(fun));
+                std::move(jniEnvCall), std::move(javaRefCall), paramList, genericParam, GetArrayOperationKind(fun));
         } else {
             methodCall = lib.CreateCFFICallMethodCall(
-                std::move(jniEnvCall), std::move(javaRefCall),
-                MemberJNISignature(utils, fun),
-                paramList, *fun.curFile);
+                std::move(jniEnvCall), std::move(javaRefCall), *memberJNISignature, paramList, *fun.curFile);
         }
     }
 
@@ -414,11 +431,11 @@ void JavaDesugarManager::AddJavaMirrorMethodBody(const ClassLikeDecl& mirror, Fu
     }
 }
 
-void JavaDesugarManager::DesugarJavaMirrorMethod(FuncDecl& fun, ClassLikeDecl& mirror)
+void JavaDesugarManager::DesugarJavaMirrorMethod(FuncDecl& fun, ClassLikeDecl& mirror, GenericConfigInfo *genericConfig)
 {
     CJC_ASSERT(!fun.TestAttr(Attribute::CONSTRUCTOR) &&
         (fun.TestAttr(Attribute::JAVA_MIRROR) || fun.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD)));
-    AddJavaMirrorMethodBody(mirror, fun, CreateJavaRefCall(mirror, mirror.curFile));
+    AddJavaMirrorMethodBody(mirror, fun, CreateJavaRefCall(mirror, mirror.curFile), genericConfig);
 }
 
 void JavaDesugarManager::InsertJavaMirrorPropGetter(PropDecl& prop)

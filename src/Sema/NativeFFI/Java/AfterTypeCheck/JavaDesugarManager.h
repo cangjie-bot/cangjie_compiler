@@ -372,13 +372,13 @@ private:
      *
      * where *UnwrapJavaEntity* - generated unwrapper for Ret type value.
      */
-    void DesugarJavaMirrorMethod(FuncDecl& fun, ClassLikeDecl& mirror);
+    void DesugarJavaMirrorMethod(FuncDecl& fun, ClassLikeDecl& mirror, GenericConfigInfo *config = nullptr);
 
     /**
      * used in DesugarJavaMirrorMethod for method's body generation
      *
      */
-    void AddJavaMirrorMethodBody(const ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall);
+    void AddJavaMirrorMethodBody(const ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall, GenericConfigInfo *config = nullptr);
 
     /**
      * for prop [prop]:
@@ -518,10 +518,10 @@ private:
      *     return CJMappingInterface_fwd(javaref).foo_default_impl()
      * }
      */
-    void GenerateForCJInterfaceMapping(AST::InterfaceDecl& interfaceDecl);
+    void GenerateForCJInterfaceMapping(File& file, AST::InterfaceDecl& interfaceDecl);
     void GenerateNativeForCJInterfaceMapping(AST::ClassDecl& classDecl);
-    void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl);
-    OwnedPtr<FuncDecl> GenerateInterfaceFwdclassMethod(AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl);
+    void GenerateInterfaceFwdclassBody(AST::ClassDecl& fwdclassDecl, AST::InterfaceDecl& interfaceDecl, GenericConfigInfo *config = nullptr);
+    OwnedPtr<FuncDecl> GenerateInterfaceFwdclassMethod(AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl, GenericConfigInfo *config = nullptr);
     OwnedPtr<FuncDecl> GenerateInterfaceFwdclassDefaultMethod(
         AST::ClassDecl& fwdclassDecl, FuncDecl& interfaceFuncDecl);
 
