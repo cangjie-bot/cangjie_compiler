@@ -671,7 +671,8 @@ void CGType::GenTypeInfo()
 
     typeInfo->setInitializer(llvm::ConstantStruct::get(CGType::GetOrCreateTypeInfoType(llvmCtx), typeInfoVec));
     if (IsStaticGI()) {
-        typeInfo->setLinkage(llvm::GlobalValue::InternalLinkage);
+        typeInfo->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+        llvm::GlobalAlias::create(llvm::GlobalValue::InternalLinkage, typeInfo->getName(), typeInfo);
     } else { // For Concrete type:
         // Note: The chirType that enters this branch is expected to be of CustomType.
         auto customType = dynamic_cast<const CHIR::CustomType*>(&chirType);
