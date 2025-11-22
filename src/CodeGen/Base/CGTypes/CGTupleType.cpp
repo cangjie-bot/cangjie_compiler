@@ -131,6 +131,8 @@ llvm::Constant* CGTupleType::GenTypeArgsOfTypeInfo()
     typeInfoOfGenericArgs->setInitializer(llvm::ConstantArray::get(typeOfGenericArgsGV, constants));
     typeInfoOfGenericArgs->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
     typeInfoOfGenericArgs->addAttribute(CJTI_TYPE_ARGS_ATTR);
+    typeInfoOfGenericArgs->setConstant(true);
+    typeInfoOfGenericArgs->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     return llvm::ConstantExpr::getBitCast(typeInfoOfGenericArgs, p0i8);
 }
 
