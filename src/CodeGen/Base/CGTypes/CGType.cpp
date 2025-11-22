@@ -679,6 +679,8 @@ void CGType::GenTypeInfo()
         auto linkageType = CHIRLinkage2LLVMLinkage(customType->GetCustomTypeDef()->Get<CHIR::LinkTypeInfo>());
         AddLinkageTypeMetadata(*typeInfo, linkageType, cgMod.GetCGContext().IsCGParallelEnabled());
     }
+    typeInfo->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+    llvm::GlobalAlias::create(llvm::GlobalValue::InternalLinkage, typeInfo->getName(), typeInfo);
     PostActionOfGenTypeInfo();
 }
 
