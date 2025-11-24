@@ -69,9 +69,31 @@ void JavaInteropManager::DesugarPackage(Package& pkg)
     for (auto& file : pkg.files) {
         for (auto& decl : file->decls) {
             auto classDecl = As<ASTKind::CLASS_DECL>(decl.get());
+            auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(decl.get());
             if (classDecl) {
+                for (auto& mdecl : classDecl->GetMemberDecls()) {
+                    if (FuncDecl* fd = As<ASTKind::FUNC_DECL>(mdecl.get());
+                        fd && !fd->TestAttr(Attribute::CONSTRUCTOR) && !fd->TestAttr(Attribute::STATIC)) {
+
+                            auto funcTy = DynamicCast<FuncTy*>(fd->ty);
+                            if (funcTy) {
+                                continue;
+                            }
+                    }
+                }
                 auto refType = As<ASTKind::REF_TYPE>(classDecl->inheritedTypes[1]);
                 if (refType) {
+                    continue;
+                }
+                continue;
+            } else if (interfaceDecl) {
+                auto inty = DynamicCast<InterfaceTy*>(interfaceDecl->ty);
+                if (inty) {
+                    for (const auto& ptr : inty->directSubtypes) {
+                        if(ptr) {
+                            continue;
+                        }
+                    }
                     continue;
                 }
                 continue;

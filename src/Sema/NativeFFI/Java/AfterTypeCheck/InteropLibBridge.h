@@ -44,7 +44,7 @@ struct MemberJNISignature {
         Ptr<Ty> ty = jobject->ty;
 
         classTypeSignature = utils.GetJavaClassNormalizeSignature(*ty);
-        ReplaceClassName(classTypeSignature, genericConfig->declInstName);
+        classTypeSignature = ReplaceClassName(classTypeSignature, genericConfig->declInstName);
         name = GetJavaMemberName(member);
 
         CJC_ASSERT(member.astKind == ASTKind::FUNC_DECL);

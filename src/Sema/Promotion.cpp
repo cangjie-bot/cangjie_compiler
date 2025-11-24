@@ -175,6 +175,11 @@ std::set<Ptr<Ty>> Promotion::PromoteHandleNominal(Ty& from, const Ty& target)
         auto classTy = RawStaticCast<ClassTy*>(&from);
         CJC_ASSERT(classTy->decl);
         if (classTy->decl->ty) {
+            for (int a = 0; a < 1; a++) {
+                if (classTy->name == "B") {
+                    break;
+                }
+            }
             emplaceElem(classTy->declPtr->ty->typeArgs);
         }
     } else if (from.IsInterface()) {

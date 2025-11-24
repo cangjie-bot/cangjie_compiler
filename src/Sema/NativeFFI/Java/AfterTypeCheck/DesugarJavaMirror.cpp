@@ -348,7 +348,7 @@ void JavaDesugarManager::DesugarJavaMirrorConstructor(FuncDecl& ctor, FuncDecl& 
 }
 
 void JavaDesugarManager::AddJavaMirrorMethodBody(
-    const ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall, GenericConfigInfo* genericConfig)
+    ClassLikeDecl& mirror, FuncDecl& fun, OwnedPtr<Expr> javaRefCall, GenericConfigInfo* genericConfig)
 {
     if (fun.TestAttr(Attribute::ABSTRACT) && !IsSynthetic(mirror)) {
         return;
@@ -364,25 +364,12 @@ void JavaDesugarManager::AddJavaMirrorMethodBody(
 
     OwnedPtr<Expr> methodCall;
     auto& paramList = *fun.funcBody->paramLists[0].get();
-    // FuncParamList paramList = FuncParamList();
     MemberJNISignature *memberJNISignature = nullptr;
 
     if (genericConfig) {
         memberJNISignature = new MemberJNISignature(utils, fun, genericConfig);
-        // for (auto param : fun.funcBody->paramLists[0]->params) {
-        //     auto ty = param->ty;
-        //     if (ty->HasGeneric()) {
-        //         auto actualTypeName = GetGenericActualType(genericConfig, ty->name);
-        //         auto typeKind = GetGenericActualTypeKind(actualTypeName);
-        //         auto newParam = CreateFuncParam(param->identifier, std::move(GetPrimitiveType1(actualTypeName, typeKind), nullptr, TypeManager::GetPrimitiveTy(typeKind));
-        //         paramList.params.push_back(newParam);
-        //     } else {
-        //         paramList.params.push_back(param);
-        //     }
-        // }
     } else {
         memberJNISignature = new MemberJNISignature(utils, fun);
-        // paramList = *fun.funcBody->paramLists[0].get()
     }
 
     if (fun.TestAttr(Attribute::STATIC)) {
@@ -426,6 +413,9 @@ void JavaDesugarManager::AddJavaMirrorMethodBody(
     // Return type has to be specified, so it's safe to use it below
     fun.funcBody->body = CreateBlock(std::move(blockNodes), fun.funcBody->retType->ty);
     fun.funcBody->ty = TypeManager::GetNothingTy();
+    if(fun.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD)) {
+        fun.funcBody->parentClassLike = &mirror;
+    }
     if (IsSynthetic(mirror)) {
         fun.DisableAttr(Attribute::ABSTRACT);
     }
