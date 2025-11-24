@@ -383,8 +383,8 @@ void CjoManager::LoadAllDeclsAndRefs() const
 std::optional<std::vector<std::string>> CjoManagerImpl::PreReadCommonPartCjoFiles(CjoManager& cjoManager)
 {
     // use `cjoFileCacheMap`
-    std::vector<uint8_t> buffer;
-    std::string failedReason;
+    // std::vector<uint8_t> buffer;
+    // std::string failedReason;
 
     if (!globalOptions.commonPartCjo) {
         diag.DiagnoseRefactor(DiagKindRefactor::module_common_part_path_is_required, DEFAULT_POSITION);
@@ -393,18 +393,24 @@ std::optional<std::vector<std::string>> CjoManagerImpl::PreReadCommonPartCjoFile
 
     CJC_ASSERT(globalOptions.commonPartCjo);
     std::string commonPartCjoPath = *globalOptions.commonPartCjo;
-    FileUtil::ReadBinaryFileToBuffer(commonPartCjoPath, buffer, failedReason);
-    if (!failedReason.empty()) {
-        diag.DiagnoseRefactor(
-            DiagKindRefactor::module_read_file_to_buffer_failed, DEFAULT_POSITION, commonPartCjoPath, failedReason);
+    commonPartLoader = ReadCjo(commonPartCjoPath, commonPartCjoPath, cjoManager, false);
+    if (commonPartLoader == nullptr) {
         return {};
     }
-
-    // name of package is unknown before parsing and reading .cjo, so fake is used.
-    std::string fakeName = "";
-    commonPartLoader = MakeOwned<ASTLoader>(std::move(buffer), fakeName, typeManager, cjoManager, globalOptions);
-    commonPartLoader->SetImportSourceCode(importSrcCode);
     commonPartLoader->PreReadAndSetPackageName();
+
+    // FileUtil::ReadBinaryFileToBuffer(commonPartCjoPath, buffer, failedReason);
+    // if (!failedReason.empty()) {
+    //     diag.DiagnoseRefactor(
+    //         DiagKindRefactor::module_read_file_to_buffer_failed, DEFAULT_POSITION, commonPartCjoPath, failedReason);
+    //     return {};
+    // }
+
+    // // name of package is unknown before parsing and reading .cjo, so fake is used.
+    // std::string fakeName = "";
+    // commonPartLoader = MakeOwned<ASTLoader>(std::move(buffer), fakeName, typeManager, cjoManager, globalOptions);
+    // commonPartLoader->SetImportSourceCode(importSrcCode);
+    // commonPartLoader->PreReadAndSetPackageName();
 
     return commonPartLoader->ReadFileNames();
 }
