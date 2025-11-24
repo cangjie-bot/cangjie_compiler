@@ -71,6 +71,31 @@ if(NOT CANGJIE_BUILD_CJC AND CANGJIE_BUILD_STD_SUPPORT)
     add_library(cangjie-ast-support STATIC ${AST_FFI_OBJECTS})
     string(TOLOWER ${TARGET_TRIPLE_DIRECTORY_PREFIX}_${CJNATIVE_BACKEND} output_lib_dir)
     install(TARGETS cangjie-ast-support DESTINATION lib/${output_lib_dir}${SANITIZER_SUBPATH})
+
+    set(FRONTEND_SRC_OBJECTS
+        $<TARGET_OBJECTS:CangjieASTCommon>
+        $<TARGET_OBJECTS:CangjieParseFFI>
+        $<TARGET_OBJECTS:CangjieLex>
+        $<TARGET_OBJECTS:CangjieBasic>
+        $<TARGET_OBJECTS:CangjieOption>
+        $<TARGET_OBJECTS:CangjieAstSerialization>
+        $<TARGET_OBJECTS:CangjieCommonUtilFFI>
+        $<TARGET_OBJECTS:CangjieUnicodeUtils>
+        $<TARGET_OBJECTS:CangjieTempFilesUtil>)
+
+    if (CANGJIE_CODEGEN_CJNATIVE_BACKEND)
+        set(FRONTEND_SRC_OBJECTS ${FRONTEND_SRC_OBJECTS} $<TARGET_OBJECTS:CangjieMetaTransformation>)
+    endif()
+
+    add_library(cangjie-lsp ${FRONTEND_SRC_OBJECTS})
+    if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
+        install(
+            TARGETS cangjie-lsp-share
+            RUNTIME DESTINATION tools/bin
+            ARCHIVE DESTINATION tools/lib
+            LIBRARY DESTINATION tools/lib)
+    endif()
+
     return()
 endif()
 
