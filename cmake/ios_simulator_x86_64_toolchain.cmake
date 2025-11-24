@@ -3,7 +3,7 @@ include("${CMAKE_DIR}/darwin_toolchain.cmake")
  
 set(CMAKE_SYSTEM_NAME "ios")
 set(CMAKE_SYSTEM_PROCESSOR "x86_64")
-set(TRIPLE arm64-apple-ios11-simulator)
+set(TRIPLE x86_64-apple-ios11-simulator)
 set(CXX_COMPATIABLE_TRIPLE arm64-apple-ios12-simulator)
 set(TARGET_TRIPLE_DIRECTORY_PREFIX ios_simulator_aarch64)
  
