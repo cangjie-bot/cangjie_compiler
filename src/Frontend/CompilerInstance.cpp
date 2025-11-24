@@ -157,10 +157,17 @@ void DumpAST(const std::vector<Ptr<Package>>& srcPkgs, const std::string& output
     if (!checkDumpDir) {
         if (FileUtil::FileExist(dumpDir)) {
             FileUtil::RemoveDirectoryRecursively(dumpDir);
+        } else {
+            FileUtil::CreateDirs(dumpDir);
         }
         checkDumpDir = true;
     }
-    dumpPath = FileUtil::JoinPath(dumpDir, std::to_string(fileNum) + "_" + prefix + "_ast" + ".txt");
+    auto realDirPath = Cangjie::FileUtil::GetAbsPath(dumpDir);
+    if (!realDirPath.has_value()) {
+        Errorln("Cannot get absolute path of dump directory: " + dumpDir, ", not dump ", prefix, " AST");
+        return;
+    }
+    dumpPath = FileUtil::JoinPath(realDirPath.value(), std::to_string(fileNum) + "_" + prefix + "_ast" + ".txt");
     if (!FileUtil::FileExist(dumpPath)) {
         FileUtil::CreateDirs(dumpPath);
     }
