@@ -58,8 +58,9 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
         decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED);
     classDef.Set<LinkTypeInfo>(isImportedInstantiated ? Linkage::INTERNAL : decl.linkage);
 
-    // common and platform upper bounds are same, do not set again
-    if (!(mergingPlatform && decl.TestAttr(AST::Attribute::PLATFORM) && !decl.TestAttr(AST::Attribute::IMPORTED))) {
+    // common and platform(excpet generic_instantiated) upper bounds are same, do not set again
+    if (!(mergingPlatform && decl.TestAttr(AST::Attribute::PLATFORM) &&
+            !decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED) && !decl.TestAttr(AST::Attribute::IMPORTED))) {
         // set super class
         SetClassSuperClass(classDef, decl);
         // set implemented interface
@@ -69,7 +70,9 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
     // translate member vars, funcs and props
     const auto& memberDecl = decl.GetMemberDeclPtrs();
     for (auto& member : memberDecl) {
-        if (!ShouldTranslateMember(decl, *member)) {
+        // if (!ShouldTranslateMember(decl, *member)) {
+
+        if (member->IsCommonMatchedWithPlatform()) {
             continue;
         }
         if (member->astKind == AST::ASTKind::VAR_DECL) {
@@ -260,6 +263,7 @@ bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& m
 {
     if (mergingPlatform && !decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::PLATFORM) &&
         member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
+        // member.TestAttr(AST::Attribute::FROM_COMMON_PART) && !decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED)) {
         // Skip decls from common part when compiling platform
         return false;
     }
