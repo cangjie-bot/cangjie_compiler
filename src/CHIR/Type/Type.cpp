@@ -1226,9 +1226,7 @@ std::string ThisType::ToSrcCodeString() const
 void GenericType::SetUpperBounds(const std::vector<Type*>& args)
 {
     for (auto arg : args) {
-        if (!orphanFlag) {
-            CJC_ASSERT(!arg->StripAllRefs()->IsValueType() && "Generic type upper bound should NOT be value type!");
-        }
+        CJC_ASSERT(!arg->StripAllRefs()->IsValueType() && "Generic type upper bound should NOT be value type!");
     }
     upperBounds = args;
     std::sort(upperBounds.begin(), upperBounds.end(), [](auto l, auto r) {
@@ -1282,11 +1280,7 @@ bool GenericType::operator==(const Type& other) const
 std::string GenericType::ToString() const
 {
     std::stringstream ss;
-    if (orphanFlag) {
-        ss << "(orphan)" << upperBounds[0]->ToString();
-    } else {
-        ss << "Generic-" << identifier;
-    }
+    ss << "Generic-" << identifier;
     return ss.str();
 }
 

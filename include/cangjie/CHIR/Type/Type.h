@@ -1125,10 +1125,6 @@ public:
         return identifier;
     }
 
-    bool orphanFlag = false;
-    // mark unimplemented free T
-    bool skipCheck = false;
-
 private:
     explicit GenericType(const std::string& identifier, const std::string& srcName)
         : Type(TypeKind::TYPE_GENERIC), identifier(identifier), srcCodeIdentifier(srcName)
