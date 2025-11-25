@@ -348,6 +348,17 @@ void TypeChecker::TypeCheckerImpl::HandleAlias(Ptr<Expr> expr, std::vector<Ptr<D
             if (auto ref = DynamicCast<NameReferenceExpr*>(expr)) {
                 auto wasEmpty = ref->typeArguments.empty();
                 auto typeMapping = GenerateTypeMappingForTypeAliasUse(*aliasDecl, *ref);
+                if (aliasDecl->generic) {
+                    for (auto& ge : aliasDecl->generic->typeParameters) {
+                        auto newTypeParam = AST::ASTCloner::Clone(ge.get());
+                        newTypeParam->ty = Ty::IsTyCorrect(newTypeParam->ty)
+                            ? SubstituteTypeAliasInTy(*newTypeParam->ty, true, typeMapping)
+                            : TypeManager::GetInvalidTy();
+                        if (auto declGenParam = DynamicCast<TyVar*>(ge->ty)) {
+                            typeMapping[declGenParam] = newTypeParam->ty;
+                        }
+                    }
+                }
                 SubstituteTypeArguments(*innerTypeAliasTarget, ref->typeArguments, typeMapping);
                 // Try to insert new typeArguments to ref's instTys.
                 UpdateInstTysWithTypeArgs(*ref);
