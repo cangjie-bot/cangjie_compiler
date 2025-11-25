@@ -68,6 +68,26 @@ bool CHIRDeserializer::Deserialize(const std::string& fileName, Cangjie::CHIR::C
     return true;
 }
 
+void CHIRDeserializer::Deserialize(uint8_t* data, int64_t size, CHIRBuilder& chirBuilder)
+{
+    // Disable max depth and max tables verification.
+    flatbuffers::Verifier::Options options;
+    options.max_depth = std::numeric_limits<::flatbuffers::uoffset_t>::max();
+    options.max_tables = std::numeric_limits<::flatbuffers::uoffset_t>::max();
+    flatbuffers::Verifier verifier(data, static_cast<size_t>(size), options);
+    if (!verifier.VerifyBuffer<PackageFormat::CHIRPackage>()) {
+        printf("validation of 'CHIRPackage' failed\n");
+        return;
+    }
+    const PackageFormat::CHIRPackage* package = PackageFormat::GetCHIRPackage(data);
+    printf("package name: %s\n", package->name()->str().c_str());
+    CHIRDeserializerImpl deserializer(chirBuilder, false);
+    deserializer.Run(package);
+    printf("func size in cpp: %zu\n", chirBuilder.GetCurPackage()->GetGlobalFuncs().size());
+    chirBuilder.GetCurPackage()->GetGlobalFuncs()[0]->Dump();
+    printf("CHIR plugin run success !!!\n");
+}
+
 template <typename T, typename FBT>
 std::vector<T> CHIRDeserializer::CHIRDeserializerImpl::Create(const flatbuffers::Vector<FBT>* vec)
 {
@@ -2489,71 +2509,77 @@ void CHIRDeserializer::CHIRDeserializerImpl::Run(const PackageFormat::CHIRPackag
     builder.CreatePackage(pool->name()->str());
     builder.GetCurPackage()->SetPackageAccessLevel(Package::AccessLevel(pool->pkgAccessLevel()));
     // To keep order, get CustomTypeDef first
-    for (unsigned id = 1; id <= pool->defs()->size(); ++id) {
-        GetCustomTypeDef<CustomTypeDef>(id);
+    if (pool->defs() != nullptr) {
+        for (unsigned id = 1; id <= pool->defs()->size(); ++id) {
+            GetCustomTypeDef<CustomTypeDef>(id);
+        }
     }
 
     // deserialize top level and local var for order
-    for (unsigned id = 1; id <= pool->values()->size(); ++id) {
-        auto valueElemKind = PackageFormat::ValueElem(pool->values_type()->Get(id - 1));
-        if (valueElemKind != PackageFormat::ValueElem_Func && valueElemKind != PackageFormat::ValueElem_ImportedFunc &&
-            valueElemKind != PackageFormat::ValueElem_GlobalVar &&
-            valueElemKind != PackageFormat::ValueElem_ImportedVar &&
-            valueElemKind != PackageFormat::ValueElem_LocalVar) {
-            continue;
+    if (pool->values() != nullptr) {
+        for (unsigned id = 1; id <= pool->values()->size(); ++id) {
+            auto valueElemKind = PackageFormat::ValueElem(pool->values_type()->Get(id - 1));
+            if (valueElemKind != PackageFormat::ValueElem_Func && valueElemKind != PackageFormat::ValueElem_ImportedFunc &&
+                valueElemKind != PackageFormat::ValueElem_GlobalVar &&
+                valueElemKind != PackageFormat::ValueElem_ImportedVar &&
+                valueElemKind != PackageFormat::ValueElem_LocalVar) {
+                continue;
+            }
+            // NOTE: GetValue also save result in Package via Builder
+            GetValue<Value>(id);
         }
-        // NOTE: GetValue also save result in Package via Builder
-        GetValue<Value>(id);
-    }
 
-    for (unsigned id = 1; id <= pool->values()->size(); ++id) {
-        // lazy config Func to keep order
-        switch (pool->values_type()->Get(id - 1)) {
-            case PackageFormat::ValueElem_Block:
-                Config(static_cast<const PackageFormat::Block*>(pool->values()->Get(id - 1)), *GetValue<Block>(id));
-                break;
-            case PackageFormat::ValueElem_BlockGroup:
-                Config(static_cast<const PackageFormat::BlockGroup*>(pool->values()->Get(id - 1)),
-                    *GetValue<BlockGroup>(id));
-                break;
-            case PackageFormat::ValueElem_GlobalVar:
-                Config(static_cast<const PackageFormat::GlobalVar*>(pool->values()->Get(id - 1)),
-                    *GetValue<GlobalVar>(id));
-                break;
-            case PackageFormat::ValueElem_Func:
-                Config(static_cast<const PackageFormat::Func*>(pool->values()->Get(id - 1)), *GetValue<Func>(id));
-                break;
-            case PackageFormat::ValueElem_ImportedFunc:
-                Config(static_cast<const PackageFormat::ImportedFunc*>(pool->values()->Get(id - 1)),
-                    *GetValue<ImportedFunc>(id));
-                break;
-            default:
-                // do nothing
-                break;
+        for (unsigned id = 1; id <= pool->values()->size(); ++id) {
+            // lazy config Func to keep order
+            switch (pool->values_type()->Get(id - 1)) {
+                case PackageFormat::ValueElem_Block:
+                    Config(static_cast<const PackageFormat::Block*>(pool->values()->Get(id - 1)), *GetValue<Block>(id));
+                    break;
+                case PackageFormat::ValueElem_BlockGroup:
+                    Config(static_cast<const PackageFormat::BlockGroup*>(pool->values()->Get(id - 1)),
+                        *GetValue<BlockGroup>(id));
+                    break;
+                case PackageFormat::ValueElem_GlobalVar:
+                    Config(static_cast<const PackageFormat::GlobalVar*>(pool->values()->Get(id - 1)),
+                        *GetValue<GlobalVar>(id));
+                    break;
+                case PackageFormat::ValueElem_Func:
+                    Config(static_cast<const PackageFormat::Func*>(pool->values()->Get(id - 1)), *GetValue<Func>(id));
+                    break;
+                case PackageFormat::ValueElem_ImportedFunc:
+                    Config(static_cast<const PackageFormat::ImportedFunc*>(pool->values()->Get(id - 1)),
+                        *GetValue<ImportedFunc>(id));
+                    break;
+                default:
+                    // do nothing
+                    break;
+            }
         }
     }
 
     // Config CustomTypeDef
-    for (unsigned id = 1; id <= pool->defs()->size(); ++id) {
-        switch (pool->defs_type()->Get(id - 1)) {
-            case PackageFormat::CustomTypeDefElem_EnumDef:
-                Config(static_cast<const PackageFormat::EnumDef*>(pool->defs()->Get(id - 1)),
-                    *GetCustomTypeDef<EnumDef>(id));
-                break;
-            case PackageFormat::CustomTypeDefElem_StructDef:
-                Config(static_cast<const PackageFormat::StructDef*>(pool->defs()->Get(id - 1)),
-                    *GetCustomTypeDef<StructDef>(id));
-                break;
-            case PackageFormat::CustomTypeDefElem_ClassDef:
-                Config(static_cast<const PackageFormat::ClassDef*>(pool->defs()->Get(id - 1)),
-                    *GetCustomTypeDef<ClassDef>(id));
-                break;
-            case PackageFormat::CustomTypeDefElem_ExtendDef:
-                Config(static_cast<const PackageFormat::ExtendDef*>(pool->defs()->Get(id - 1)),
-                    *GetCustomTypeDef<ExtendDef>(id));
-                break;
-            default:
-                break;
+    if (pool->defs() != nullptr) {
+        for (unsigned id = 1; id <= pool->defs()->size(); ++id) {
+            switch (pool->defs_type()->Get(id - 1)) {
+                case PackageFormat::CustomTypeDefElem_EnumDef:
+                    Config(static_cast<const PackageFormat::EnumDef*>(pool->defs()->Get(id - 1)),
+                        *GetCustomTypeDef<EnumDef>(id));
+                    break;
+                case PackageFormat::CustomTypeDefElem_StructDef:
+                    Config(static_cast<const PackageFormat::StructDef*>(pool->defs()->Get(id - 1)),
+                        *GetCustomTypeDef<StructDef>(id));
+                    break;
+                case PackageFormat::CustomTypeDefElem_ClassDef:
+                    Config(static_cast<const PackageFormat::ClassDef*>(pool->defs()->Get(id - 1)),
+                        *GetCustomTypeDef<ClassDef>(id));
+                    break;
+                case PackageFormat::CustomTypeDefElem_ExtendDef:
+                    Config(static_cast<const PackageFormat::ExtendDef*>(pool->defs()->Get(id - 1)),
+                        *GetCustomTypeDef<ExtendDef>(id));
+                    break;
+                default:
+                    break;
+            }
         }
     }
 

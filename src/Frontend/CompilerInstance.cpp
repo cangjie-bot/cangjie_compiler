@@ -291,16 +291,35 @@ void MetaTransformPlugin::RegisterCallbackTo(MetaTransformPluginBuilder& mtm) co
 
 bool CompilerInstance::PerformPluginLoad()
 {
+    if (invocation.globalOptions.pluginPaths.empty()) {
+        return true;
+    }
+    RuntimeInit::GetInstance().InitRuntime(
+        invocation.GetRuntimeLibPath(), invocation.globalOptions.environment.allVariables);
+    auto rtHandle = InvokeRuntime::OpenSymbolTable(invocation.GetRuntimeLibPath());
+    auto initLibFunc = reinterpret_cast<int (*)(const char*)>(InvokeRuntime::GetMethod(rtHandle, "InitCJLibrary"));
     for (auto pluginPath : invocation.globalOptions.pluginPaths) { // loop for all plugins
 #ifndef CANGJIE_ENABLE_GCOV
         try {
 #endif
-            auto metaTransformPlugin = MetaTransformPlugin::Get(pluginPath);
-            if (!metaTransformPlugin.IsValid()) {
-                diag.DiagnoseRefactor(DiagKindRefactor::not_a_valid_plugin, DEFAULT_POSITION, pluginPath);
+            HANDLE handle = InvokeRuntime::OpenSymbolTable(pluginPath, RTLD_NOW | RTLD_LOCAL);
+            InvokeRuntime::SetOpenedLibHandles(handle);
+            bool res = initLibFunc(pluginPath.c_str());
+            if (res != 0) {
+                printf("InitCJLibrary failed, pluginPath: %s\n", pluginPath.c_str());
+                CJC_ABORT();
             }
-            AddPluginHandle(metaTransformPlugin.GetHandle());
-            metaTransformPlugin.RegisterCallbackTo(metaTransformPluginBuilder); // register MetaTransform into builder
+            void* fPtr = InvokeRuntime::GetMethod(handle, "registerPlugin");
+            if (!fPtr) {
+                printf("get registerPlugin failed\n");
+                CJC_ABORT();
+            }
+            auto p = reinterpret_cast<bool (*)(char*)>(fPtr);
+            if (!p) {
+                printf("get registerPlugin reinterpret_cast failed\n");
+                CJC_ABORT();
+            }
+            res = p(const_cast<char*>(pluginPath.c_str()));
 #ifndef CANGJIE_ENABLE_GCOV
         } catch (...) {
             diag.DiagnoseRefactor(DiagKindRefactor::not_a_valid_plugin, DEFAULT_POSITION, pluginPath);
@@ -308,6 +327,13 @@ bool CompilerInstance::PerformPluginLoad()
         }
 #endif
     }
+    // HANDLE handle = InvokeRuntime::OpenSymbolTable(invocation.globalOptions.pluginPaths[0], RTLD_NOW | RTLD_LOCAL);
+    // void* fPtr = InvokeRuntime::GetMethod(handle, "CHIRPluginEntry");
+    // if (!fPtr) {
+    //     printf("get CHIRPluginEntry failed\n");
+    //     CJC_ABORT();
+    // }
+    // reinterpret_cast<bool (*)()>(fPtr)();
     return true;
 }
 #endif

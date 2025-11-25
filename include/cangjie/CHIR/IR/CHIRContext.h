@@ -60,6 +60,10 @@ public:
     {
         fileNameMap = fnMap;
     }
+    std::unordered_map<unsigned int, std::string>* GetFileNameMap()
+    {
+        return fileNameMap;
+    }
     void SetThreadNum(size_t num)
     {
         threadsNum = num;

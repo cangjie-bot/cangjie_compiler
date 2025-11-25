@@ -37,6 +37,7 @@ public:
 
     // Utility
     void Save(const std::string& filename, ToCHIR::Phase phase);
+    std::pair<uint8_t*, int64_t> ConvertToMemoryData();
     void Initialize();
     void Dispatch();
 

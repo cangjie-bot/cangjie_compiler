@@ -35,6 +35,14 @@ void CHIRSerializer::Serialize(const Package& package, const std::string filenam
     serializer.Save(filename, phase);
 }
 
+std::pair<uint8_t*, int64_t> CHIRSerializer::Serialize(const Package& package)
+{
+    static CHIRSerializerImpl serializer(package);
+    serializer.Initialize();
+    serializer.Dispatch();
+    return serializer.ConvertToMemoryData();
+}
+
 // ========================== ID Fetchers ==============================
 
 template <typename T, typename E> std::vector<uint32_t> CHIRSerializer::CHIRSerializerImpl::GetId(std::vector<E*> vec)
@@ -1771,6 +1779,20 @@ void CHIRSerializer::CHIRSerializerImpl::Save(const std::string& filename, ToCHI
     CJC_ASSERT(output.is_open());
     output.write(reinterpret_cast<const char*>(buf), static_cast<long>(size));
     output.close();
+}
+
+std::pair<uint8_t*, int64_t> CHIRSerializer::CHIRSerializerImpl::ConvertToMemoryData()
+{
+    auto accesslevel = package.GetPackageAccessLevel();
+    auto packageName = package.GetName();
+    auto serializedPackage = PackageFormat::CreateCHIRPackageDirect(builder, packageName.c_str(), "",
+        PackageFormat::PackageAccessLevel(accesslevel), &typeKind, &allType, &valueKind, &allValue, &exprKind,
+        &allExpression, &defKind, &allCustomTypeDef, packageInitFunc, PackageFormat::Phase::Phase_RAW,
+        packageLiteralInitFunc, maxImportedValueId, maxImportedStructId, maxImportedClassId, maxImportedEnumId,
+        maxImportedExtendId);
+
+    builder.Finish(serializedPackage);
+    return std::make_pair(builder.GetBufferPointer(), static_cast<int64_t>(builder.GetSize()));
 }
 
 void CHIRSerializer::CHIRSerializerImpl::Initialize()

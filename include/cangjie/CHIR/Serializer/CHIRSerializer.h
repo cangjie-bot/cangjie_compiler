@@ -18,6 +18,7 @@ class CHIRSerializer {
     class CHIRSerializerImpl;
 public:
     static void Serialize(const Package& package, const std::string filename, ToCHIR::Phase phase);
+    static std::pair<uint8_t*, int64_t> Serialize(const Package& package);
 };
 
 } // namespace Cangjie::CHIR
