@@ -208,6 +208,77 @@ def add_value_matrix_slide(prs: Presentation, title: str, matrix: list[list[str]
             p.alignment = PP_ALIGN.CENTER
 
 
+def add_chir_plugin_flow_slide(prs: Presentation) -> None:
+    slide = prs.slides.add_slide(prs.slide_layouts[5])
+    style_background(slide, PRIMARY_BG)
+    add_logo(slide, prs)
+    slide.shapes.title.text = "CHIR 阶段插件执行流程"
+    slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = TEXT_LIGHT
+
+    left = Inches(0.8)
+    top = Inches(1.6)
+    width = Inches(8.6)
+    height = Inches(3.8)
+
+    canvas = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, left, top, width, height)
+    canvas.fill.solid()
+    canvas.fill.fore_color.rgb = SECONDARY_BG
+    canvas.line.color.rgb = ACCENT_TEAL
+
+    boxes = [
+        ("CHIR Builder 初始化", "ci.metaTransformPluginBuilder.BuildCHIRPluginManager"),
+        ("遍历插件概念", "ForEachMetaTransformConcept"),
+        ("类别判定", "IsForFunc / IsForPackage"),
+        ("执行 Run", "函数级：遍历 funcs\n包级：直接运行"),
+        ("质量保障", "Profile 记录 + IRCheck / 异常诊断"),
+    ]
+
+    box_width = Inches(1.7)
+    box_height = Inches(1.2)
+    gap_x = Inches(0.4)
+    start_x = left + Inches(0.4)
+    start_y = top + Inches(0.5)
+
+    for idx, (title, desc) in enumerate(boxes):
+        box_left = start_x + idx * (box_width + gap_x)
+        rect = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, box_left, start_y, box_width, box_height)
+        rect.fill.solid()
+        rect.fill.fore_color.rgb = ACCENT_BLUE if idx % 2 == 0 else ACCENT_PURPLE
+        rect.line.color.rgb = TEXT_LIGHT
+        tf = rect.text_frame
+        tf.clear()
+        title_para = tf.paragraphs[0]
+        title_para.text = title
+        title_para.font.size = Pt(16)
+        title_para.font.bold = True
+        title_para.font.color.rgb = TEXT_LIGHT
+        desc_para = tf.add_paragraph()
+        desc_para.text = desc
+        desc_para.font.size = Pt(13)
+        desc_para.font.color.rgb = TEXT_LIGHT
+
+        if idx > 0:
+            arrow_left = box_left - gap_x * 0.7
+            arrow = slide.shapes.add_shape(
+                MSO_AUTO_SHAPE_TYPE.RIGHT_ARROW,
+                arrow_left,
+                start_y + box_height / 3,
+                gap_x * 0.7,
+                box_height / 3,
+            )
+            arrow.fill.solid()
+            arrow.fill.fore_color.rgb = ACCENT_TEAL
+            arrow.line.width = 0
+
+    note_box = slide.shapes.add_textbox(left + Inches(0.5), top + Inches(3.0), width - Inches(1.0), Inches(0.9))
+    note_tf = note_box.text_frame
+    note_tf.clear()
+    note_para = note_tf.paragraphs[0]
+    note_para.text = "异常：捕获后触发诊断 plugin_throws_exception；成功且启用 IRCheck 时校验变换合法性。"
+    note_para.font.size = Pt(16)
+    note_para.font.color.rgb = TEXT_LIGHT
+
+
 def main() -> None:
     output_path = Path(__file__).with_name("MetaTransformation_plugin.pptx")
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -330,6 +401,8 @@ def main() -> None:
             ["生态共建\n(伙伴插件)", "可观测 & AIOps\n(调试/监控)"],
         ],
     )
+
+    add_chir_plugin_flow_slide(prs)
 
     prs.save(output_path)
     print(f"PPT saved to {output_path}")
