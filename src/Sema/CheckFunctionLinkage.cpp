@@ -571,6 +571,9 @@ void ExternalLinkageAnalyzer::SetVarTargetLinkage(VarDecl& vd, bool byTy)
  */
 void TypeChecker::TypeCheckerImpl::AnalyzeFunctionLinkage(Package& pkg) const
 {
+    // All common side declarations should be external for CHIR output mode
+    if (ci->invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR)
+        return;
     AnalyzeLinkageBasedOnModifier(pkg, ci->invocation.globalOptions);
     ExternalLinkageAnalyzer(pkg).Run();
     IterateToplevelDecls(pkg, [](auto& decl) {
