@@ -58,8 +58,9 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
         decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED);
     classDef.Set<LinkTypeInfo>(isImportedInstantiated ? Linkage::INTERNAL : decl.linkage);
 
-    // common and platform upper bounds are same, do not set again
-    if (!(mergingPlatform && decl.TestAttr(AST::Attribute::PLATFORM) && !decl.TestAttr(AST::Attribute::IMPORTED))) {
+    // common and platform(excpet generic_instantiated) upper bounds are same, do not set again
+    if (!(mergingPlatform && decl.TestAttr(AST::Attribute::PLATFORM) &&
+            !decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED) && !decl.TestAttr(AST::Attribute::IMPORTED))) {
         // set super class
         SetClassSuperClass(classDef, decl);
         // set implemented interface
@@ -96,9 +97,6 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
 
 void Translator::AddMemberVarDecl(CustomTypeDef& def, const AST::VarDecl& decl)
 {
-    if (decl.TestAttr(AST::Attribute::PLATFORM)) {
-        return;
-    }
     if (decl.TestAttr(AST::Attribute::STATIC)) {
         auto staticVar = VirtualCast<GlobalVarBase*>(GetSymbolTable(decl));
         def.AddStaticMemberVar(staticVar);
@@ -259,7 +257,7 @@ Func* Translator::TranslateVarsInit(const AST::Decl& decl)
 bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& member) const
 {
     if (mergingPlatform && !decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::PLATFORM) &&
-        member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
+        member.TestAttr(AST::Attribute::FROM_COMMON_PART) && !decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED)) {
         // Skip decls from common part when compiling platform
         return false;
     }
@@ -346,6 +344,22 @@ void Translator::TranslateClassLikeMemberFuncDecl(ClassDef& classDef, const AST:
     if (mergingPlatform && classDef.TestAttr(CHIR::Attribute::DESERIALIZED)) {
         // Skip if method already exists in deserialized class
         for (auto method : classDef.GetMethods()) {
+            auto it = genericFuncMap.find(&decl);
+            if (it != genericFuncMap.end()) {
+                for (auto instFunc : it->second) {
+                    if (method->GetIdentifierWithoutPrefix() == instFunc->mangledName) {
+                        continue;
+                    }
+                    CJC_NULLPTR_CHECK(instFunc->outerDecl);
+                    CJC_ASSERT(instFunc->outerDecl == decl.outerDecl);
+                    classDef.AddMethod(VirtualCast<FuncBase*>(GetSymbolTable(*instFunc)));
+                    for (auto& param : instFunc->funcBody->paramLists[0]->params) {
+                        if (param->desugarDecl != nullptr) {
+                            classDef.AddMethod(VirtualCast<FuncBase>(GetSymbolTable(*param->desugarDecl)));
+                        }
+                    }
+                }
+            }
             if (method->GetIdentifierWithoutPrefix() == decl.mangledName) {
                 return;
             }

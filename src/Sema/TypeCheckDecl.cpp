@@ -37,6 +37,9 @@ using namespace TypeCheckUtil;
 namespace {
 void InsertEnumConstructors(ASTContext& ctx, const EnumDecl& ed, bool enableMacroInLsp)
 {
+    if (ed.IsCommonMatchedWithPlatform()) {
+        return;
+    }
     for (auto& ctor : ed.constructors) {
         CJC_NULLPTR_CHECK(ctor);
         if (ctor->astKind == ASTKind::VAR_DECL) {

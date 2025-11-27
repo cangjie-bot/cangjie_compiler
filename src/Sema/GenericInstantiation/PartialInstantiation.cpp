@@ -23,6 +23,7 @@ using namespace Cangjie::Meta;
 
 namespace {
 auto g_optLevel = GlobalOptions::OptimizationLevel::O0;
+auto g_outputMode = GlobalOptions::OutputMode::EXECUTABLE;
 
 inline bool IsCPointerFrozenMember(const Decl& decl)
 {
@@ -38,6 +39,7 @@ inline bool IsCPointerFrozenMember(const Decl& decl)
 void SetOptLevel(const Cangjie::GlobalOptions& opts)
 {
     g_optLevel = opts.optimizationLevel;
+    g_outputMode = opts.outputMode;
 }
 
 GlobalOptions::OptimizationLevel GetOptLevel()
@@ -59,6 +61,12 @@ bool IsOpenDecl(const Decl& decl)
 
 bool RequireInstantiation(const Decl& decl)
 {
+    if (g_outputMode == GlobalOptions::OutputMode::CHIR) {
+        return false;
+    }
+    if (decl.IsCommonMatchedWithPlatform()) {
+        return false;
+    }
     if (IsCPointerFrozenMember(decl)) {
         return true;
     }
@@ -1331,6 +1339,7 @@ OwnedPtr<ClassBody> PartialInstantiation::InstantiateClassBody(const ClassBody& 
         // 2. function decl need be instantiated by requirement
         // 3. static member var can't be instantiated, it should be regarded as global var decl
         // 4. static init func can't be instantiated, only call once in template
+        // 5. common declaration with platform implementation
         // need to be instantiated:
         // 1. function decl which marked with @Frozen
         // 2. member var decl, maybe we need instantiated class decl's memory info
