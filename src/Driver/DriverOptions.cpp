@@ -54,13 +54,6 @@ std::unordered_map<Options::ID, std::function<bool(DriverOptions&, OptionArgInst
         opts.llcArg = arg.value;
         return true;
     }},
-    { Options::ID::LIBRARY_PATH, [](DriverOptions& opts, const OptionArgInstance& arg) {
-        auto maybePath = opts.CheckDirectoryPath(arg.value);
-        if (maybePath.has_value()) {
-            opts.librarySearchPaths.emplace_back(maybePath.value());
-        }
-        return true;
-    }},
     { Options::ID::LIBRARY, [](DriverOptions& opts, const OptionArgInstance& arg) {
         opts.libraries.emplace_back(arg.value);
         return true;
