@@ -665,6 +665,13 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
          return false;
      }},
 #endif
+    { Options::ID::LIBRARY_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+        auto maybePath = opts.CheckDirectoryPath(arg.value);
+        if (maybePath.has_value()) {
+            opts.librarySearchPaths.emplace_back(maybePath.value());
+        }
+        return true;
+    }},
     { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         opts.commonPartCjo =
             GlobalOptions::ValidateInputFilePath(arg.value, DiagKindRefactor::driver_invalid_binary_file);

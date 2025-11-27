@@ -31,7 +31,7 @@ constexpr std::size_t INDENT_WIDTH = 4;
 
 } // namespace
 
-std::string DiagnosticJsonFormatter::FormatPostionJson(size_t deep, const Position& pos)
+std::string DiagnosticJsonFormatter::FormatPostionJson(size_t deep, const Position& pos, const std::string& pluginFilePath)
 {
     std::string diagsJsonStr = Whitespace(deep * INDENT_WIDTH) + "\"File\": \"";
     std::string fileStr = std::to_string(pos.fileID);
@@ -43,7 +43,12 @@ std::string DiagnosticJsonFormatter::FormatPostionJson(size_t deep, const Positi
             } else {
                 fileStr = source.path;
             }
+        } else if (!pluginFilePath.empty()) {
+            // Use plugin-provided file path when fileID is not in SourceManager
+            fileStr = pluginFilePath;
         }
+    } else if (!pluginFilePath.empty()) {
+        fileStr = pluginFilePath;
     }
     diagsJsonStr += StringConvertor::EscapeToJsonString(fileStr) + "\",\n";
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "\"Line\": " + std::to_string(pos.line) + ",\n";
@@ -51,17 +56,17 @@ std::string DiagnosticJsonFormatter::FormatPostionJson(size_t deep, const Positi
     return diagsJsonStr;
 }
 
-std::string DiagnosticJsonFormatter::FormatRangeJson(size_t deep, const Range& range)
+std::string DiagnosticJsonFormatter::FormatRangeJson(size_t deep, const Range& range, const std::string& pluginFilePath)
 {
     std::string diagsJsonStr = Whitespace(deep * INDENT_WIDTH) + "\"Range\": {\n";
     ++deep;
     // begin
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "\"Begin\": {\n";
-    diagsJsonStr += FormatPostionJson(deep + 1, range.begin) + "\n";
+    diagsJsonStr += FormatPostionJson(deep + 1, range.begin, pluginFilePath) + "\n";
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "},\n";
     // end
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "\"End\": {\n";
-    diagsJsonStr += FormatPostionJson(deep + 1, range.end) + "\n";
+    diagsJsonStr += FormatPostionJson(deep + 1, range.end, pluginFilePath) + "\n";
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "}\n";
     diagsJsonStr += Whitespace((deep - 1) * INDENT_WIDTH) + "}";
     return diagsJsonStr;
@@ -115,7 +120,7 @@ std::string DiagnosticJsonFormatter::FormatDiagnosticMainContentJson(size_t deep
         StringConvertor::EscapeToJsonString(d.errorMessage) + "\",\n";
     // Location
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "\"Location\": {\n";
-    diagsJsonStr += FormatPostionJson(deep + 1, d.mainHint.range.begin) + "\n";
+    diagsJsonStr += FormatPostionJson(deep + 1, d.mainHint.range.begin, d.pluginFilePath) + "\n";
     diagsJsonStr += Whitespace(deep * INDENT_WIDTH) + "},\n";
     // main hint
     if (d.mainHint.IsDefault()) {

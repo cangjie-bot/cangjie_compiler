@@ -17,6 +17,7 @@ using namespace InvokeRuntime;
 namespace {
 const static std::string G_CJ_RUNTIME_INIT = "InitCJRuntime";
 const static std::string G_CJ_RUNTIME_FINI = "FiniCJRuntime";
+constexpr std::string_view G_CJ_LOAD_CJ_LIB = "LoadCJLibraryWithInit";
 const static std::string G_CJ_NEW_TASK_FROM_C = "RunCJTask";
 const static std::string G_RELEASE_HANDLE_FROM_C = "ReleaseHandle";
 using CangjieInitFromC = int64_t (*)(ConfigParam*);
@@ -196,6 +197,11 @@ bool RuntimeInit::InitRuntimeMethod()
     if (runtimeMethodFunc == nullptr || runtimeReleaseFunc == nullptr) {
         auto errorInfo = runtimeMethodFunc == nullptr ? G_CJ_NEW_TASK_FROM_C : G_RELEASE_HANDLE_FROM_C;
         Errorln("could not find the create task method: ", errorInfo);
+        return false;
+    }
+    initLibFunc = reinterpret_cast<int(*)(const char*)>(InvokeRuntime::GetMethod(handle, G_CJ_LOAD_CJ_LIB.data()));
+    if (!initLibFunc) {
+        Errorln("could not find the load library method: ", G_CJ_LOAD_CJ_LIB);
         return false;
     }
     return true;

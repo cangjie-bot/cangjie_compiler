@@ -41,7 +41,7 @@ public:
      */
     bool ParseArgs(const std::vector<std::string>& args);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    std::string GetRuntimeLibPath(const std::string& relativePath = "../runtime/lib");
+    std::string GetRuntimeLibPath(const std::string& relativePath = "../runtime/lib") const;
 #endif
     GlobalOptions globalOptions;
     FrontendOptions frontendOptions;

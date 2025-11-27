@@ -582,7 +582,9 @@ private:
     bool ShouldWriteCacheFile() const;
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
+    // cangjie AST plugin handles
     std::vector<HANDLE> pluginHandles;
+    bool ExecuteASTPlugins(CompileStage stage);
 #endif
 };
 } // namespace Cangjie
