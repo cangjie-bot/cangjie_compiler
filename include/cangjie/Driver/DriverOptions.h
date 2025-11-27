@@ -51,10 +51,6 @@ public:
     // Values is passed by --link-options.
     std::vector<std::string> linkOptions;
 
-    // User-provided paths for linkers to search for libraries,
-    // passed by --library-path/-L.
-    std::vector<std::string> librarySearchPaths;
-
     // User-provided library names for linkers,
     // passed by --library/-l.
     std::vector<std::string> libraries;

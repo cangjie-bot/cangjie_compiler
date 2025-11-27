@@ -34,7 +34,7 @@ bool CompilerInvocation::ParseArgs(const std::vector<std::string>& args)
 }
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-std::string CompilerInvocation::GetRuntimeLibPath(const std::string& relativePath)
+std::string CompilerInvocation::GetRuntimeLibPath(const std::string& relativePath) const
 {
     auto runtimeLib = "libcangjie-runtime.so";
 #ifdef _WIN64
@@ -42,7 +42,7 @@ std::string CompilerInvocation::GetRuntimeLibPath(const std::string& relativePat
 #elif defined(__APPLE__)
     runtimeLib = "libcangjie-runtime.dylib";
 #endif
-    std::string& exePath = globalOptions.executablePath;
+    const std::string& exePath = globalOptions.executablePath;
     std::string hostPathName = globalOptions.GetCangjieLibHostPathName();
     auto basePath = FileUtil::JoinPath(FileUtil::GetDirPath(exePath), relativePath);
     auto runtimeLibPath =

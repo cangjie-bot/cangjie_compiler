@@ -445,6 +445,9 @@ public:
     std::vector<Diagnostic> notes;
     Ptr<AST::Node> curMacroCall{nullptr};
     bool isInMacroCall{false};
+    
+    /// File path for plugin diagnostics (used when fileID is not in SourceManager)
+    std::string pluginFilePath;
 
     // This is API supported to lsp. Will delete after refactoring.
     bool IsValid() const;                 // Check if the diagnostic is valid.
