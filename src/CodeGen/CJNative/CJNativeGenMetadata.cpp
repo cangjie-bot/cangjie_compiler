@@ -623,12 +623,13 @@ void EnumMetadataInfo::GenerateEnumMetadata(const CHIR::EnumDef& ed)
         reflectTIOrTT->addMetadata("Reflection", *mdTuple);
         return;
     }
+    auto declaredGenericTi = ed.TestAttr(CHIR::Attribute::GENERIC) ? GetTiName(*ed.GetType()) : "";
 
     std::vector<llvm::Metadata*> methodsVec{};
     std::vector<llvm::Metadata*> staticMethodsVec{};
     GenerateEnumMethodMetadata(ed, methodsVec, staticMethodsVec);
 
-    MetadataTypeItem item(llvm::MDString::get(llvmCtx, tiOrTTName), llvm::MDString::get(llvmCtx, ""),
+    MetadataTypeItem item(llvm::MDString::get(llvmCtx, tiOrTTName), llvm::MDString::get(llvmCtx, declaredGenericTi),
         GenerateEnumConstructorMetadata(ed), llvm::MDTuple::get(llvmCtx, {}), llvm::MDTuple::get(llvmCtx, methodsVec),
         llvm::MDTuple::get(llvmCtx, staticMethodsVec),
         GenerateAttrsMetadata(ed.GetAttributeInfo(), ExtraAttribute::ENUM, ed.GetAnnoInfo().mangledName,
