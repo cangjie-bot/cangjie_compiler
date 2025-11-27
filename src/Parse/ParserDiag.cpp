@@ -191,8 +191,8 @@ void ParserImpl::DiagExpectedIdentifierPackageSpec(Ptr<Node> node)
             "a package name", "after keyword 'package'");
     } else {
         DiagExpectedIdentifier(
-            MakeRange(ps->prefixDotPoses.back(), ps->prefixDotPoses.back() + std::string(".").size()), "a package name",
-            "after '.' in qualified name");
+            MakeRange(ps->prefixDotPoses.back(), ps->prefixDotPoses.back() + lastToken.Value().size()), "a package name",
+            "after '" + lastToken.Value() + "' in qualified name");
     }
 }
 

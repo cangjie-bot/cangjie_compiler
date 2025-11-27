@@ -411,6 +411,10 @@ ERROR(sema_hide_compile_time_invisible, "'@!Hide' annotation must be visible at 
 ERROR(sema_hide_diff_param, "the parameter 'isChecked' of '@!Hide' is %s")
 WARNING(sema_hide_must_at_end, APILEVEL_CHECK, "annotation '%s' must be placed below all macros and annotations")
 
+// Plugin
+ERROR(sema_plugin_error, "%s: %s")
+WARNING(sema_plugin_warning, PLUGIN, "%s: %s")
+
 WARNING(sema_unused_import, UNUSED, "unused import '%s'", "unused import")
 
 ERROR(sema_diag_end, "")
