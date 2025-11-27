@@ -137,6 +137,11 @@ void Linux_CJNATIVE::GenerateLinkOptions(Tool& tool)
     // Because std-core package is always imported, we put it here.
     if (driverOptions.target.arch != Triple::ArchType::AARCH64) {
         tool.AppendArg("-lclang_rt-builtins");
+#ifdef CANGJIE_ENABLE_GCOV
+        tool.AppendArg("-lclang_rt-profile"); // static linking std libraries requires clang profile symbols
+            // dynamic linking does not
+        tool.AppendArg("-lc"); // clang_rt-profile requires libc
+#endif
     } else {
         if (driverOptions.target.os == Triple::OSType::LINUX && driverOptions.target.env == Triple::Environment::GNU) {
             tool.AppendArg("-lgcc");

@@ -674,8 +674,6 @@ private:
     OwnedPtr<AST::Expr> ParseCallExpr(OwnedPtr<AST::Expr> baseExpr);
     AST::SuffixKind ParseSuffix(OwnedPtr<AST::Expr>& baseExpr);
     void ParseBaseExprPostfix(OwnedPtr<AST::Expr>& baseExpr, ExprKind ek = ExprKind::ALL);
-    OwnedPtr<AST::Expr> ParseOptionalExpr(
-        const Position questPos, OwnedPtr<AST::Expr> baseExpr, AST::SuffixKind suffix) const;
     void ParseQuestSuffixExpr(OwnedPtr<AST::Expr>& expr);
     OwnedPtr<AST::Expr> ParseAtom(ExprKind ek = ExprKind::ALL);
     bool IsNeedToCreateOptionalChain(TokenKind token, AST::Expr& expr) const;
