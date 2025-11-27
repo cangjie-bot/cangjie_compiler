@@ -621,12 +621,13 @@ void EnumMetadataInfo::GenerateEnumMetadata(const CHIR::EnumDef& ed)
         reflectTIOrTT->addMetadata("Reflection", *mdTuple);
         return;
     }
+    auto declaredGenericTi = ed.TestAttr(CHIR::Attribute::GENERIC) ? GetTiName(*ed.GetType()) : "";
 
     std::vector<llvm::Metadata*> methodsVec{};
     std::vector<llvm::Metadata*> staticMethodsVec{};
     GenerateEnumMethodMetadata(ed, methodsVec, staticMethodsVec);
 
-    MetadataTypeItem item(llvm::MDString::get(llvmCtx, tiOrTTName), llvm::MDString::get(llvmCtx, ""),
+    MetadataTypeItem item(llvm::MDString::get(llvmCtx, tiOrTTName), llvm::MDString::get(llvmCtx, declaredGenericTi),
         GenerateEnumConstructorMetadata(ed), llvm::MDTuple::get(llvmCtx, {}), llvm::MDTuple::get(llvmCtx, methodsVec),
         llvm::MDTuple::get(llvmCtx, staticMethodsVec),
         GenerateAttrsMetadata(ed.GetAttributeInfo(), ExtraAttribute::ENUM, ed.GetAnnoInfo().mangledName,
@@ -648,12 +649,8 @@ llvm::MDTuple* EnumMetadataInfo::GenerateEnumConstructorMetadata(const CHIR::Enu
             size_t nonArgIndex = currentCgType->IsAntiOptionLike() ? 0 : 1;
             ctorName = nonArgIndex == index && !IsCoreOption(ed) ? "N$_" + ctor.name : ctor.name;
         }
-        if (currentCgType->IsTrivial() || currentCgType->IsZeroSizeEnum()) {
-            fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(""));
-        } else {
-            std::string ti = GenerateCtorFn(ed, index++, GetTypeQualifiedName(*ed.GetType()));
-            fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(ti));
-        }
+        std::string ti = GenerateCtorFn(ed, index++, GetTypeQualifiedName(*ed.GetType()));
+        fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(ti));
     }
     return fieldsVec.CreateMDTuple();
 }
