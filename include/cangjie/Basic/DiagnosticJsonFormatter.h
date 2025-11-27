@@ -51,8 +51,8 @@ private:
     std::string FormatHintJson(size_t deep, const IntegratedString& hint, bool newLine = true);
     std::string FormatSubstitutionJson(size_t deep, const Substitution& substitution);
     std::string FormatHintsJson(size_t deep, const std::vector<IntegratedString>& hints);
-    std::string FormatRangeJson(size_t deep, const Range& range);
-    std::string FormatPostionJson(size_t deep, const Position& pos);
+    std::string FormatRangeJson(size_t deep, const Range& range, const std::string& pluginFilePath = "");
+    std::string FormatPostionJson(size_t deep, const Position& pos, const std::string& pluginFilePath = "");
 };
 
 } // namespace Cangjie

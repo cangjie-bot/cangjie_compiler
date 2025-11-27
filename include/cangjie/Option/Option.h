@@ -471,6 +471,7 @@ public:
     std::vector<std::string> importPaths; /**< .cjo search paths */
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     std::vector<std::string> pluginPaths; /**< meta-transform plugins */
+    std::vector<std::string> astPluginPaths; /**< ast meta-transform plugins */
 #endif
     std::optional<std::string> commonPartCjo = std::nullopt; /**< .cjo path for common part of package */
 
@@ -842,6 +843,11 @@ public:
     bool aggressiveParallelCompileWithoutArg = false;
     std::vector<std::string> bitcodeFilesName; /** < the name of packageMoudle.bc. */
     std::vector<std::string> symbolsNeedLocalized; /** < Symbols that need to be localized in the compiled binary. */
+
+    // User-provided paths for linkers to search for libraries,
+    // passed by --library-path/-L.
+    // Used by AST plugin to find syntaxFFI.so.
+    std::vector<std::string> librarySearchPaths;
 
     /**
      * @brief Determine if the output mode is executable.

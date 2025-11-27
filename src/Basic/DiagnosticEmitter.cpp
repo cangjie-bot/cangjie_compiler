@@ -516,20 +516,22 @@ void DiagnosticEmitterImpl::EmitErrorMessage(DiagColor color, const std::string&
 void DiagnosticEmitterImpl::EmitErrorLocation(const Position& pos)
 {
     CJC_ASSERT(!pos.IsZero());
-    if (!sm.IsSourceFileExist(pos.fileID)) {
-        return;
-    }
     auto prefix = CharacterOfNum(maxLineNum, SPACE);
     auto color = noColor ? NO_COLOR : OTHER_HINT_COLOR;
     prefix += GetColoredString(color, GetLineSymbol());
     prefix += g_spaceOfNum(1);
-    auto source = sm.GetSource(pos.fileID);
     std::string path;
-    if (source.packageName.has_value()) {
-        path = "(package " + source.packageName.value() + ")" + FileUtil::GetFileName(source.path);
+    if (static_cast<int>(pos.fileID) == -1) {
+        path = diag.pluginFilePath;
     } else {
-        path = source.path;
+        auto source = sm.GetSource(pos.fileID);
+        if (source.packageName.has_value()) {
+            path = "(package " + source.packageName.value() + ")" + FileUtil::GetFileName(source.path);
+        } else {
+            path = source.path;
+        }
     }
+    CJC_ASSERT(!path.empty());
     out << prefix << path << ":" << pos.line << ":" << pos.column << ":" << std::endl;
 }
 
