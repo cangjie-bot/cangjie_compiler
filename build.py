@@ -295,6 +295,10 @@ def build(args):
             build_cmd.extend(["-j", str(args.jobs)])
 
     cmake_command = ["cmake", HOME_DIR, "-G", generator] + generate_cmake_defs(args)
+    
+    # Add any arguments passed after -- to cmake command
+    if args.cmake_args:
+        cmake_command.extend(args.cmake_args)
 
     if args.print_cmd:
         print(' '.join(cmake_command))
@@ -645,7 +649,14 @@ def main():
         "--enable-sanitize-option", action="store_true",
         help="enable --sanitize option for cjc"
     )
-    parser_build.set_defaults(func=build)
+    # Handle -- to pass arguments directly to cmake
+    # Check if we're parsing build command and if -- is present
+    cmake_args = []
+    if len(sys.argv) > 1 and sys.argv[1] == 'build' and '--' in sys.argv:
+        dash_dash_index = sys.argv.index('--')
+        cmake_args = sys.argv[dash_dash_index + 1:]
+        sys.argv = sys.argv[:dash_dash_index]
+    parser_build.set_defaults(func=build, cmake_args=cmake_args)
 
     parser_install = subparsers.add_parser("install", help="install targets")
     parser_install.add_argument(
