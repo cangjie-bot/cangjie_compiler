@@ -23,6 +23,7 @@ using namespace Cangjie::Meta;
 
 namespace {
 auto g_optLevel = GlobalOptions::OptimizationLevel::O0;
+auto g_outputMode = GlobalOptions::OutputMode::EXECUTABLE;
 
 inline bool IsCPointerFrozenMember(const Decl& decl)
 {
@@ -38,6 +39,7 @@ inline bool IsCPointerFrozenMember(const Decl& decl)
 void SetOptLevel(const Cangjie::GlobalOptions& opts)
 {
     g_optLevel = opts.optimizationLevel;
+    g_outputMode = opts.outputMode;
 }
 
 GlobalOptions::OptimizationLevel GetOptLevel()
@@ -59,6 +61,16 @@ bool IsOpenDecl(const Decl& decl)
 
 bool RequireInstantiation(const Decl& decl)
 {
+    // Skip instantiations in common code compilation because:
+    // 1. Common code may be incomplete at this stage
+    // 2. Platform source sets can modify the implementation
+    if (g_outputMode == GlobalOptions::OutputMode::CHIR) {
+        return false;
+    }
+    // Skip common declaration with platform implementation
+    if (decl.IsCommonMatchedWithPlatform()) {
+        return false;
+    }
     if (IsCPointerFrozenMember(decl)) {
         return true;
     }
