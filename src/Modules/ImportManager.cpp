@@ -624,8 +624,7 @@ std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO
         << "\"package\":\"" << Jsonfy(pkg.fullPackageName) << "\","
         << "\"isMacro\":" << Jsonfy(pkg.isMacroPackage) << ","
         << "\"accessLevel\":\"" << Jsonfy(pkg.accessible) << "\","
-        << "\"dependencies\":" << Jsonfy(dependencies, exportCJO) << ","
-        << "\"features\":" << Jsonfy(refSet) << "}";
+        << "\"dependencies\":" << Jsonfy(dependencies, exportCJO) << "}";
     return out.str();
 }
 
