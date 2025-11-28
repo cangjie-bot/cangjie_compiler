@@ -203,6 +203,7 @@ std::string Jsonfy(const std::map<std::string, DependencyInfoItem>& dependencies
     return out.str();
 }
 
+[[maybe_unused]]
 std::string Jsonfy(const std::set<std::string>& features)
 {
     if (features.empty()) {
