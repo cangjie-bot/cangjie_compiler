@@ -93,9 +93,6 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
      *  ;
     */
     // Parse features in TopLevel
-    if (SeeingFeature()) {
-        ParseFeatureDirective(ret->feature);
-    }
     PtrVector<Annotation> annos;
     if (SeeingBuiltinAnnotation()) {
         ParseAnnotations(annos);
