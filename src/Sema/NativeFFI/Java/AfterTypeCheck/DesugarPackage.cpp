@@ -69,7 +69,8 @@ void JavaInteropManager::DesugarPackage(Package& pkg)
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
-    JavaDesugarManager desugarer{importManager, typeManager, diag, mangler, javagenOutputPath, outputPath};
+    JavaDesugarManager desugarer{
+        importManager, typeManager, diag, mangler, javagenOutputPath, outputPath, exportJavaPath};
 
     if (hasMirrorOrImpl) {
         auto nbegin = static_cast<uint8_t>(DesugarJavaMirrorImplStage::BEGIN);
