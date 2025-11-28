@@ -345,17 +345,13 @@ OwnedPtr<Annotation> ParserImpl::ParseAnnotation()
         }
         case AnnotationKind::JAVA_MIRROR:
         case AnnotationKind::JAVA_IMPL: {
-            ParseAnnotationArguments(*annotation);
             break;
         }
         case AnnotationKind::FOREIGN_NAME: {
-            ParseAnnotationArguments(*annotation);
             break;
         }
         case AnnotationKind::OBJ_C_MIRROR:
         case AnnotationKind::OBJ_C_IMPL: {
-            ParseAnnotationArguments(*annotation);
-            CheckObjCMirrorAnnotation(*annotation);
             break;
         }
         default: {
