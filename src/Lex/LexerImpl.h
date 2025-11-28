@@ -306,8 +306,6 @@ private:
         tokenMap[TOKENS[commonIndex]] = static_cast<TokenKind>(commonIndex);
         auto platformIndex = static_cast<unsigned char>(TokenKind::PLATFORM);
         tokenMap[TOKENS[platformIndex]] = static_cast<TokenKind>(platformIndex);
-        auto dcIndex = static_cast<unsigned char>(TokenKind::DOUBLE_COLON);
-        tokenMap[TOKENS[dcIndex]] = static_cast<TokenKind>(dcIndex);
         tokenMap["true"] = TokenKind::BOOL_LITERAL;
         tokenMap["false"] = TokenKind::BOOL_LITERAL;
         auto ftrIndex = static_cast<unsigned char>(TokenKind::FEATURES);
