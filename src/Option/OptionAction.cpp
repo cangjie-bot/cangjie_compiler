@@ -12,6 +12,7 @@
 
 #include "cangjie/Option/Option.h"
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -871,6 +872,35 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     { Options::ID::OUTPUT_JAVA_GEN_DIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         opts.outputJavaGenDir = {arg.value};
+        const char* exportJavaPathOption = "--export-java-path";
+        DiagnosticEngine diag;
+        diag.RegisterHandler(opts.diagFormat);
+
+        (void) diag.DiagnoseRefactor(DiagKindRefactor::driver_deprecated_option_recommmended, DEFAULT_POSITION,
+            arg.name.c_str(), exportJavaPathOption);
+
+        if (opts.exportJavaPath != std::nullopt) {
+            (void) diag.DiagnoseRefactor(
+                DiagKindRefactor::driver_simultanious_deprecated_and_recommmended_option_usage,
+                DEFAULT_POSITION,
+                arg.name.c_str(),
+                exportJavaPathOption);
+            return false;
+        }
+        return true;
+    }},
+    { Options::ID::EXPORT_JAVA_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+        opts.exportJavaPath = {arg.value};
+        if (opts.outputJavaGenDir != std::nullopt) {
+            DiagnosticEngine diag;
+            diag.RegisterHandler(opts.diagFormat);
+            (void) diag.DiagnoseRefactor(
+                DiagKindRefactor::driver_simultanious_deprecated_and_recommmended_option_usage,
+                DEFAULT_POSITION,
+                "--output-javagen-dir",
+                arg.name.c_str());
+            return false;
+        }
         return true;
     }},
     { Options::ID::SAVE_TEMPS, [](GlobalOptions& opts, const OptionArgInstance& arg) {

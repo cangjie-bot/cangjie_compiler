@@ -43,7 +43,7 @@ class JavaDesugarManager {
 public:
     JavaDesugarManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
                        const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath,
-                       const std::string& outputLibPath)
+                       const std::string& outputLibPath, const std::string& exportJavaPath)
         : importManager(importManager),
           typeManager(typeManager),
           utils(importManager, typeManager),
@@ -51,7 +51,8 @@ public:
           mangler(mangler),
           lib(importManager, typeManager, diag, utils),
           javaCodeGenPath(javaCodeGenPath),
-          outputLibPath(outputLibPath)
+          outputLibPath(outputLibPath),
+          exportJavaPath(exportJavaPath)
     {
             lib.CheckInteropLibVersion();
     }
@@ -539,8 +540,9 @@ private:
     DiagnosticEngine& diag;
     const BaseMangler& mangler;
     InteropLibBridge lib;
-    const std::optional<std::string>& javaCodeGenPath;
+    const std::optional<std::string>& javaCodeGenPath; // Deprecated
     const std::string& outputLibPath;
+    const std::string& exportJavaPath;
 
     /**
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring
