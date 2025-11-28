@@ -59,7 +59,6 @@ const std::unordered_map<std::string, uint8_t> OUTPUT_MODE_MAP = {
     {"exe", uint8_t(GlobalOptions::OutputMode::EXECUTABLE)},
     {"staticlib", uint8_t(GlobalOptions::OutputMode::STATIC_LIB)},
     {"dylib", uint8_t(GlobalOptions::OutputMode::SHARED_LIB)},
-    {"chir", uint8_t(GlobalOptions::OutputMode::CHIR)},
 };
 #endif
 
@@ -625,10 +624,6 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
          return false;
      }},
 #endif
-    { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-        opts.commonPartCjo = opts.ValidateInputFilePath(arg.value, DiagKindRefactor::driver_invalid_binary_file);
-        return true;
-    }},
     { Options::ID::INCRE_COMPILE, OPTION_TRUE_ACTION(opts.enIncrementalCompilation = true) },
     { Options::ID::INCRE_DEBUG, OPTION_TRUE_ACTION(opts.printIncrementalInfo = true) },
     { Options::ID::DUMP_DEPENDENT_PACKAGE, OPTION_TRUE_ACTION(opts.scanDepPkg = true) },
