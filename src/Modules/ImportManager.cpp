@@ -203,24 +203,6 @@ std::string Jsonfy(const std::map<std::string, DependencyInfoItem>& dependencies
     return out.str();
 }
 
-std::string Jsonfy(const std::set<std::string>& features)
-{
-    if (features.empty()) {
-        return "[]";
-    }
-    std::ostringstream out;
-    out << "[";
-    auto iter = features.cbegin();
-    out << "\"" << Jsonfy(*iter) << "\"";
-    ++iter;
-    while (iter != features.cend()) {
-        out << "," << "\"" << Jsonfy(*iter) << "\"";
-        ++iter;
-    }
-    out << "]";
-    return out.str();
-}
-
 Range GetPackageNameRange(const CjoManager& cjoManager, const ImportSpec& import)
 {
     auto& im = import.content;
@@ -624,8 +606,7 @@ std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO
         << "\"package\":\"" << Jsonfy(pkg.fullPackageName) << "\","
         << "\"isMacro\":" << Jsonfy(pkg.isMacroPackage) << ","
         << "\"accessLevel\":\"" << Jsonfy(pkg.accessible) << "\","
-        << "\"dependencies\":" << Jsonfy(dependencies, exportCJO) << ","
-        << "\"features\":" << Jsonfy(refSet) << "}";
+        << "\"dependencies\":" << Jsonfy(dependencies, exportCJO) << "}";
     return out.str();
 }
 
