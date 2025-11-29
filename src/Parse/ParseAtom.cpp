@@ -400,7 +400,6 @@ void ParserImpl::ParseElse(IfExpr& ret)
 OwnedPtr<Block> ParserImpl::ParseExprOrDeclsInMatchCase()
 {
     OwnedPtr<Block> exprOrDecls = MakeOwned<Block>();
-    exprOrDecls->begin = lastToken.Begin();
     auto flag = false;
     auto hasSemi = false;
     while (!SeeingAny({TokenKind::CASE, TokenKind::RCURL})) {
@@ -414,6 +413,7 @@ OwnedPtr<Block> ParserImpl::ParseExprOrDeclsInMatchCase()
         }
         if (SeeingMacroCallDecl() || SeeingDecl() || SeeingExpr()) {
             auto node = ParseExprOrDecl(ScopeKind::FUNC_BODY);
+            exprOrDecls->begin = node->begin;
             exprOrDecls->body.emplace_back(std::move(node));
         } else {
             DiagMatchCaseExpectedExprOrDecl();
@@ -775,7 +775,7 @@ void ParserImpl::ParseMatchNoSelector(AST::MatchExpr& matchExpr)
         }
         matchCaseOther->arrowPos = lookahead.Begin();
         matchCaseOther->exprOrDecls = ParseExprOrDeclsInMatchCase();
-        matchCaseOther->end = lastToken.Begin();
+        matchCaseOther->end = lastToken.End();
         if (matchCaseOther->exprOrDecls->body.empty() && !matchCaseOther->TestAttr(Attribute::HAS_BROKEN)) {
             DiagMatchCaseBodyCannotBeEmpty(matchCaseOther->arrowPos + std::string("=>").size());
             matchCaseOther->EnableAttr(Attribute::HAS_BROKEN);
