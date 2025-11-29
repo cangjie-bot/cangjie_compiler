@@ -15,6 +15,7 @@
 
 #include "cangjie/AST/ScopeManagerApi.h"
 #include "cangjie/AST/Utils.h"
+#include "cangjie/Modules/ModulesUtils.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -68,6 +69,7 @@ private:
         bool isSetter, std::vector<Ptr<Decl>>& results);
     bool FindRealResult(const Node& node, bool isSetter, std::vector<Ptr<Decl>>& results,
         std::multimap<Position, Ptr<Decl>>& resultsMap, bool isInDeclBody);
+    bool IsTargetMemberVisibleToNode(const Decl& target, const Node& node);
 
     std::vector<std::pair<Ptr<Decl>, Ptr<InterfaceTy>>> resultsWithInstTyV;
     void InsertResultsWithInstTy(size_t idx, Ptr<Decl> d, Ptr<InterfaceTy> interfaceTy)
@@ -502,6 +504,16 @@ bool IsTargetVisibleToNode(const Decl& target, const Node& node)
 }
 } // namespace
 
+bool LookUpImpl::IsTargetMemberVisibleToNode(const Decl& target, const Node& node)
+{
+    // In the LSP, the 'node' may be a new ast node, 'curFile' pointer consistency cannot be ensured.
+    if (target.curFile && node.curFile && *target.curFile == *node.curFile) {
+        return true;
+    }
+    Symbol* sym = ScopeManager::GetCurSymbolByKind(SymbolKind::STRUCT, ctx, node.scopeName);
+    return IsLegalAccess(sym, target, node, importManager, typeManager);
+}
+
 bool LookUpImpl::FindRealResult(const Node& node, bool isSetter, std::vector<Ptr<Decl>>& results,
     std::multimap<Position, Ptr<Decl>>& resultsMap, bool isInDeclBody)
 {
@@ -592,7 +604,7 @@ void LookUpImpl::ProcessStructDeclBody(
         if (auto vd = DynamicCast<VarDecl*>(it);
             vd && it->astKind != ASTKind::PROP_DECL && IsNodeInVarDecl(ctx, node, *vd)) {
             continue;
-        } else {
+        } else if (IsTargetMemberVisibleToNode(*it, node)) {
             results.emplace_back(it);
         }
     }
