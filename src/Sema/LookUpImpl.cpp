@@ -15,6 +15,7 @@
 
 #include "cangjie/AST/ScopeManagerApi.h"
 #include "cangjie/AST/Utils.h"
+#include "cangjie/Modules/ModulesUtils.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -520,7 +521,11 @@ bool IsNodeInTypeAliasDecl(const Node& node, const TypeAliasDecl& tad)
 bool IsTargetVisibleToNode(const Decl& target, const Node& node)
 {
     // In the LSP, the 'node' may be a new ast node, 'curFile' pointer consistency cannot be ensured.
-    return !target.TestAttr(Attribute::PRIVATE) || (target.curFile && node.curFile && *target.curFile == *node.curFile);
+    if (target.curFile && node.curFile && *target.curFile == *node.curFile) {
+        return true;
+    }
+    auto relation = Modules::GetPackageRelation(node.GetFullPackageName(), target.GetFullPackageName());
+    return Modules::IsVisible(target, relation);
 }
 } // namespace
 
@@ -614,7 +619,7 @@ void LookUpImpl::ProcessStructDeclBody(
         if (auto vd = DynamicCast<VarDecl*>(it);
             vd && it->astKind != ASTKind::PROP_DECL && IsNodeInVarDecl(ctx, node, *vd)) {
             continue;
-        } else {
+        } else if (IsTargetVisibleToNode(*it, node)) {
             results.emplace_back(it);
         }
     }
