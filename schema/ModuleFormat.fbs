@@ -319,7 +319,7 @@ table Anno { // Short name "Anno" because of the clash with "Annotation" from "P
   kind:AnnoKind;
   identifier:string;
   args:[AnnoArg];
-  target:FullId;
+  target:FullId; // Target is const constructor of custom annotaiton class.
 }
 
 table AnnoArg {
