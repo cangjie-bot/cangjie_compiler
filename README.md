@@ -6,6 +6,7 @@ Cangjie is a general-purpose programming language designed for all-scenario appl
 
 This repository provides the source code for the Cangjie compiler, which consists of two main parts: the compiler frontend and modified open-source LLVM components. The latter includes the LLVM backend, opt optimizer, llc, ld linker, and debugger. For details on third-party dependencies, see the [Third-Party Library Documentation](./third_party/README.md).
 
+
 ## Architecture
 
 The overall architecture is shown below:
