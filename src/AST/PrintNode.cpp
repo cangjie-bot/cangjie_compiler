@@ -236,6 +236,7 @@ void PrintAnnotation(unsigned indent, const Annotation& anno, std::ostream& stre
 {
     PrintIndent(stream, indent, "Annotation:", anno.identifier, "{");
     PrintBasic(indent + ONE_INDENT, anno, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "isCompileTimeVisible:", anno.isCompileTimeVisible);
     PrintIndent(stream, indent + ONE_INDENT, "args [");
     for (auto& arg : anno.args) {
         PrintNode(arg.get(), indent + TWO_INDENT, "", stream);
@@ -264,6 +265,7 @@ void PrintFuncParam(unsigned indent, const FuncParam& param, std::ostream& strea
     PrintAnnotations(param, indent + ONE_INDENT, stream);
     PrintNode(param.type.get(), indent + ONE_INDENT, "type", stream);
     PrintNode(param.assignment.get(), indent + ONE_INDENT, "assignment", stream);
+    PrintIndent(stream, indent + ONE_INDENT, "isMemberParam:", param.isMemberParam);
     if (param.desugarDecl) {
         PrintNode(param.desugarDecl.get(), indent + ONE_INDENT, "desugarDecl", stream);
     }
@@ -1567,8 +1569,8 @@ void PrintNode(Ptr<const Node> node, unsigned indent, const std::string& additio
         });
 }
 
-void PrintNode(Ptr<const AST::Node> node, std::ostream& stream = std::cout)
+void PrintNode(Ptr<const AST::Node> node)
 {
-    PrintNode(node, 0, "", stream);
+    PrintNode(node, 0, "", std::cout);
 }
 } // namespace Cangjie
