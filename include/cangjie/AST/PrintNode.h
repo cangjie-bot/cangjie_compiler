@@ -20,7 +20,8 @@
 
 namespace Cangjie {
 void PrintNode(
-    Ptr<const AST::Node> node, unsigned indent = 0, const std::string& addition = "", std::ostream& stream = std::cout);
+    Ptr<const AST::Node> node, unsigned indent, const std::string& addition = "", std::ostream& stream = std::cout);
+void PrintNode(Ptr<const AST::Node> node);
 } // namespace Cangjie
 
 #endif // CANGJIE_AST_PRINTNODE_H
