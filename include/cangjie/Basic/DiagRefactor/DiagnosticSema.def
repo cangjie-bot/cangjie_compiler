@@ -391,6 +391,9 @@ ERROR(sema_ifavailable_level_limit,
     "`@IfAvaliable` feature is not avaliable in device where the APILevel is less than 19 due to missing capatability "
     "in ROM")
 
+// @Hide
+ERROR(sema_hide_multi_annotation, "annotate more than one '@!Hide'")
+
 WARNING(sema_unused_import, UNUSED, "unused import '%s'", "unused import")
 
 ERROR(sema_diag_end, "")
