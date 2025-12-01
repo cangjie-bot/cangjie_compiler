@@ -1432,6 +1432,7 @@ OwnedPtr<Annotation> ASTCloner::CloneAnnotation(const Annotation& annotation, co
     ret->kind = annotation.kind;
     ret->definedPackage = annotation.definedPackage;
     ret->identifier = annotation.identifier;
+    ret->isCompileTimeVisible = annotation.isCompileTimeVisible;
     ret->attrs = annotation.attrs;
     ret->attrCommas = annotation.attrCommas;
     ret->adAnnotation = annotation.adAnnotation;
