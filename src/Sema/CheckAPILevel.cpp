@@ -27,10 +27,10 @@
 
 using namespace Cangjie;
 using namespace AST;
-using namespace APILevelCheck;
+using namespace PluginCheck;
 
 namespace {
-constexpr std::string_view PKG_NAME_WHERE_APILEVEL_AT = "ohos.labels";
+constexpr std::string_view PKG_NAME_OHOS_LABELS = "ohos.labels";
 constexpr std::string_view APILEVEL_ANNO_NAME = "APILevel";
 constexpr std::string_view SINCE_IDENTGIFIER = "since";
 constexpr std::string_view LEVEL_IDENTGIFIER = "level";
@@ -38,14 +38,18 @@ constexpr std::string_view SYSCAP_IDENTGIFIER = "syscap";
 constexpr std::string_view CFG_PARAM_LEVEL_NAME = "APILevel_level";
 constexpr std::string_view CFG_PARAM_SYSCAP_NAME = "APILevel_syscap";
 // For level check:
-const LevelType IFAVAIALBEL_LOWER_LIMITLEVEL = 19;
+const LevelType IFAVAILABLE_LOWER_LIMITLEVEL = 19;
+
+// For Annotation Hide:
+constexpr std::string_view HIDE_ANNO_NAME = "Hide";
+constexpr std::string_view HIDE_ARG_NAME = "isChecking";
 
 LevelType Str2LevelType(std::string s)
 {
     return static_cast<LevelType>(Stoull(s).value_or(0));
 }
 
-void ParseLevel(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& diag)
+void ParseLevel(const Expr& e, PluginCustomAnnoInfo& apilevel, DiagnosticEngine& diag)
 {
     Ptr<const LitConstExpr> lce = nullptr;
     if (e.astKind == ASTKind::BINARY_EXPR) {
@@ -63,7 +67,7 @@ void ParseLevel(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& dia
     apilevel.since = apilevel.since == 0 ? newLevel : std::min(newLevel, apilevel.since);
 }
 
-void ParseSince(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& diag)
+void ParseSince(const Expr& e, PluginCustomAnnoInfo& apilevel, DiagnosticEngine& diag)
 {
     Ptr<const LitConstExpr> lce = nullptr;
     if (e.astKind == ASTKind::BINARY_EXPR) {
@@ -81,7 +85,7 @@ void ParseSince(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& dia
     apilevel.since = apilevel.since == 0 ? newLevel : std::min(newLevel, apilevel.since);
 }
 
-void ParseSysCap(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& diag)
+void ParseSysCap(const Expr& e, PluginCustomAnnoInfo& apilevel, DiagnosticEngine& diag)
 {
     Ptr<const LitConstExpr> lce = nullptr;
     if (e.astKind == ASTKind::CALL_EXPR) {
@@ -98,11 +102,29 @@ void ParseSysCap(const Expr& e, APILevelAnnoInfo& apilevel, DiagnosticEngine& di
     apilevel.syscap = lce->stringValue;
 }
 
-using ParseNameParamFunc = std::function<void(const Expr&, APILevelAnnoInfo&, DiagnosticEngine&)>;
+void ParseCheckingHide(const Expr& e, PluginCustomAnnoInfo& apilevel, DiagnosticEngine& diag)
+{
+    Ptr<const LitConstExpr> lce = nullptr;
+    if (e.astKind == ASTKind::CALL_EXPR) {
+        auto ce = StaticCast<CallExpr>(&e);
+        CJC_ASSERT(ce->args.size() == 1 && ce->args[0]->expr);
+        lce = DynamicCast<LitConstExpr>(ce->args[0]->expr.get());
+    } else if (e.astKind == ASTKind::LIT_CONST_EXPR) {
+        lce = StaticCast<LitConstExpr>(&e);
+    }
+    if (!lce || lce->kind != LitConstKind::BOOL) {
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_only_literal_support, e, "Bool");
+        return;
+    }
+    apilevel.hasHideAnno = apilevel.hasHideAnno || lce->constNumValue.asBoolean;
+}
+
+using ParseNameParamFunc = std::function<void(const Expr&, PluginCustomAnnoInfo&, DiagnosticEngine&)>;
 std::unordered_map<std::string_view, ParseNameParamFunc> parseNameParam = {
     {SINCE_IDENTGIFIER, ParseSince},
     {LEVEL_IDENTGIFIER, ParseLevel},
     {SYSCAP_IDENTGIFIER, ParseSysCap},
+    {HIDE_ARG_NAME, ParseCheckingHide},
 };
 
 struct JsonObject;
@@ -326,9 +348,13 @@ void MarkTargetAsExternalWeak(Ptr<Node> node)
     }
 }
 
+inline std::string GetModuleName(const std::string fullPackageName)
+{
+    return fullPackageName.substr(0, fullPackageName.find('.'));
+}
 } // namespace
 
-void APILevelAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noexcept
+void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noexcept
 {
     size_t startPos = static_cast<size_t>(std::find(in.begin(), in.end(), '{') - in.begin());
     auto root = ParseJsonObject(startPos, in);
@@ -377,7 +403,7 @@ void APILevelAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noexcept
     intersectionSet = lastSyscap.value();
 }
 
-void APILevelAnnoChecker::ParseOption() noexcept
+void PluginCustomAnnoChecker::ParseOption() noexcept
 {
     auto& option = ci.invocation.globalOptions;
     auto found = option.passedWhenKeyValue.find(std::string(CFG_PARAM_LEVEL_NAME));
@@ -401,67 +427,132 @@ void APILevelAnnoChecker::ParseOption() noexcept
     }
 }
 
-bool APILevelAnnoChecker::IsAnnoAPILevel(Ptr<Annotation> anno, [[maybe_unused]] const Decl& decl)
+bool PluginCustomAnnoChecker::IsAnnoAPILevel(Ptr<Annotation> anno, [[maybe_unused]] const Decl& decl)
 {
-    if (ctx && ctx->curPackage && ctx->curPackage->fullPackageName == PKG_NAME_WHERE_APILEVEL_AT) {
+    if (ctx && ctx->curPackage && ctx->curPackage->fullPackageName == PKG_NAME_OHOS_LABELS) {
         return anno->identifier == APILEVEL_ANNO_NAME;
     }
     if (!anno || anno->identifier != APILEVEL_ANNO_NAME) {
         return false;
     }
     auto target = anno->baseExpr ? anno->baseExpr->GetTarget() : nullptr;
-    if (target && target->curFile && target->curFile->curPackage &&
-        target->curFile->curPackage->fullPackageName != PKG_NAME_WHERE_APILEVEL_AT) {
+    // Annotation from cj.d file without target, it is ok by default.
+    if (target && target->GetFullPackageName() != PKG_NAME_OHOS_LABELS) {
         return false;
     }
     return true;
 }
 
-APILevelAnnoInfo APILevelAnnoChecker::Parse(const Decl& decl)
+bool PluginCustomAnnoChecker::IsAnnoHide(Ptr<Annotation> anno)
 {
-    if (decl.annotations.empty()) {
-        return APILevelAnnoInfo();
+    if (ctx && ctx->curPackage && ctx->curPackage->fullPackageName == PKG_NAME_OHOS_LABELS) {
+        return anno->identifier == HIDE_ANNO_NAME;
     }
-    if (auto found = levelCache.find(&decl); found != levelCache.end()) {
-        return found->second;
+    if (!anno || anno->identifier != HIDE_ANNO_NAME) {
+        return false;
     }
-    APILevelAnnoInfo ret;
-    for (auto& anno : decl.annotations) {
-        if (!anno || !IsAnnoAPILevel(anno.get(), decl)) {
-            continue;
-        }
-        for (size_t i = 0; i < anno->args.size(); ++i) {
-            std::string argName = anno->args[i]->name.Val();
-            if (parseNameParam.count(argName) <= 0) {
-                continue;
-            }
-            std::string preSyscap = ret.syscap;
-            parseNameParam[argName](*anno->args[i]->expr.get(), ret, diag);
-            if (!preSyscap.empty() && preSyscap != ret.syscap) {
-                diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_multi_diff_syscap, decl);
-            }
-        }
-        // In the APILevel definition, only "since" does not provide a default value. Here, the alert indicates that
-        // there is an issue with the APILevel annotation, which may originnate from the cj.d file.
-        if (ret.since == 0) {
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_missing_arg, anno->begin, "since!: String");
-        }
+    auto target = anno->baseExpr ? anno->baseExpr->GetTarget() : nullptr;
+    // Annotation from cj.d file without target, it is ok by default.
+    if (target && target->GetFullPackageName() != PKG_NAME_OHOS_LABELS) {
+        return false;
     }
-    levelCache[&decl] = ret;
-    return ret;
+    return true;
 }
 
-bool APILevelAnnoChecker::CheckLevel(
-    const Node& node, const Decl& target, const APILevelAnnoInfo& scopeAPILevel, bool reportDiag)
+void PluginCustomAnnoChecker::ParseHideArg(const Annotation& anno, PluginCustomAnnoInfo& annoInfo)
+{
+    if (anno.args.empty() || !anno.args[0] || !anno.args[0]->expr) {
+        annoInfo.hasHideAnno = false;
+        return;
+    }
+    std::string argName = anno.args[0]->name.Val();
+    if (argName != HIDE_ARG_NAME) {
+        // Should diagnostic before here.
+        return;
+    }
+    parseNameParam[argName](*anno.args[0]->expr.get(), annoInfo, diag);
+}
+
+void PluginCustomAnnoChecker::ParseAPILevelArgs(
+    const Decl& decl, const Annotation& anno, PluginCustomAnnoInfo& annoInfo)
+{
+    for (size_t i = 0; i < anno.args.size(); ++i) {
+        std::string argName = anno.args[i]->name.Val();
+        // To support old APILevel definition that constructor parameter list is 'level: Int8, ...'.
+        argName = argName.empty() ? LEVEL_IDENTGIFIER : argName;
+        if (parseNameParam.count(argName) <= 0) {
+            continue;
+        }
+        std::string preSyscap = annoInfo.syscap;
+        parseNameParam[argName](*anno.args[i]->expr.get(), annoInfo, diag);
+        if (!preSyscap.empty() && preSyscap != annoInfo.syscap) {
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_multi_diff_syscap, decl);
+        }
+    }
+    // In the APILevel definition, only "since" does not provide a default value. Here, the alert indicates that
+    // there is an issue with the APILevel annotation, which may originnate from the cj.d file.
+    if (annoInfo.since == 0) {
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_missing_arg, anno.begin, "since!: String");
+    }
+}
+
+void PluginCustomAnnoChecker::Parse(const Decl& decl, PluginCustomAnnoInfo& annoInfo)
+{
+    if (auto found = levelCache.find(&decl); found != levelCache.end()) {
+        annoInfo.since = annoInfo.since == 0 ? found->second.since : std::min(found->second.since, annoInfo.since);
+        annoInfo.syscap = found->second.syscap;
+        annoInfo.hasHideAnno = found->second.hasHideAnno || annoInfo.hasHideAnno;
+        return;
+    }
+    bool hideExist = false;
+    for (auto& anno : decl.annotations) {
+        if (!anno) {
+            continue;
+        }
+        if (IsAnnoHide(anno)) {
+            if (hideExist) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_hide_multi_annotation, decl);
+                continue;
+            }
+            if (decl.astKind == ASTKind::FUNC_PARAM && decl.outerDecl &&
+                decl.outerDecl->TestAttr(Attribute::PRIMARY_CONSTRUCTOR)) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_hide_at_func_param, decl);
+                continue;
+            }
+            hideExist = true;
+            ParseHideArg(*anno, annoInfo);
+        } else if (IsAnnoAPILevel(anno.get(), decl)) {
+            ParseAPILevelArgs(decl, *anno, annoInfo);
+        }
+    }
+    if (!hideExist && decl.astKind != ASTKind::EXTEND_DECL) {
+        auto extendedDecl = Ty::GetDeclPtrOfTy(decl.ty);
+        PluginCustomAnnoInfo extendedAnnoInfo;
+        if (!extendedDecl) {
+            Parse(*extendedDecl, extendedAnnoInfo);
+            if (extendedAnnoInfo.hasHideAnno) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_hide_missing_hide, decl);
+            }
+        }
+    }
+    if (hideExist && decl.astKind != ASTKind::FUNC_DECL && decl.outerDecl) {
+        // TODO: Find overrided function and check hide.
+    }
+    levelCache[&decl] = annoInfo;
+}
+
+bool PluginCustomAnnoChecker::CheckLevel(
+    const Decl& target, const PluginCustomAnnoInfo& scopeAnnoInfo, DiagConfig diagCfg)
 {
     if (!optionWithLevel) {
         return true;
     }
-    LevelType scopeLevel = scopeAPILevel.since != 0 ? scopeAPILevel.since : globalLevel;
-    auto targetAPILevel = Parse(target);
-    if (targetAPILevel.since > scopeLevel && !node.begin.IsZero()) {
-        if (reportDiag) {
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_ref_higher, node, target.identifier.Val(),
+    LevelType scopeLevel = scopeAnnoInfo.since != 0 ? scopeAnnoInfo.since : globalLevel;
+    PluginCustomAnnoInfo targetAPILevel;
+    Parse(target, targetAPILevel);
+    if (targetAPILevel.since > scopeLevel && !diagCfg.node->begin.IsZero()) {
+        if (diagCfg.reportDiag && !diagCfg.message.empty()) {
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_ref_higher, *diagCfg.node, diagCfg.message[0],
                 std::to_string(targetAPILevel.since), std::to_string(scopeLevel));
         }
         return false;
@@ -469,23 +560,24 @@ bool APILevelAnnoChecker::CheckLevel(
     return true;
 }
 
-bool APILevelAnnoChecker::CheckSyscap(
-    const Node& node, const Decl& target, const APILevelAnnoInfo& scopeAPILevel, bool reportDiag)
+bool PluginCustomAnnoChecker::CheckSyscap(
+    const Decl& target, const PluginCustomAnnoInfo& scopeAnnoInfo, DiagConfig diagCfg)
 {
     if (!optionWithSyscap) {
         return true;
     }
     SysCapSet scopeSyscaps = unionSet;
-    if (!scopeAPILevel.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAPILevel.syscap);
+    if (!scopeAnnoInfo.syscap.empty()) {
+        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
     }
-    auto targetAPILevel = Parse(target);
+    PluginCustomAnnoInfo targetAPILevel;
+    Parse(target, targetAPILevel);
     std::string targetLevel = targetAPILevel.syscap;
     if (targetLevel.empty()) {
         return true;
     }
-    auto diagForSyscap = [this, &scopeSyscaps, &node, &targetLevel](DiagKindRefactor kind) {
-        auto builder = diag.DiagnoseRefactor(kind, node, targetLevel);
+    auto diagForSyscap = [this, &scopeSyscaps, &diagCfg, &targetLevel](DiagKindRefactor kind) {
+        auto builder = diag.DiagnoseRefactor(kind, *diagCfg.node, targetLevel);
         std::stringstream scopeSyscapsStr;
         // 3 is maximum number of syscap limit.
         for (size_t i = 0; i < std::min(scopeSyscaps.size(), static_cast<size_t>(3)); ++i) {
@@ -499,20 +591,20 @@ bool APILevelAnnoChecker::CheckSyscap(
     };
 
     auto found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !node.begin.IsZero()) {
-        if (reportDiag) {
+    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+        if (diagCfg.reportDiag) {
             diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_error);
         }
         return false;
     }
 
     scopeSyscaps = intersectionSet;
-    if (!scopeAPILevel.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAPILevel.syscap);
+    if (!scopeAnnoInfo.syscap.empty()) {
+        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
     }
     found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !node.begin.IsZero()) {
-        if (reportDiag) {
+    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+        if (diagCfg.reportDiag) {
             diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_warning);
         }
         return false;
@@ -520,32 +612,57 @@ bool APILevelAnnoChecker::CheckSyscap(
     return true;
 }
 
-bool APILevelAnnoChecker::CheckNode(Ptr<Node> node, APILevelAnnoInfo& scopeAPILevel, bool reportDiag)
+bool PluginCustomAnnoChecker::CheckCheckingHide(const Decl& target, DiagConfig diagCfg)
+{
+    PluginCustomAnnoInfo targetPluginAnnoInfo;
+    Parse(target, targetPluginAnnoInfo);
+    if (targetPluginAnnoInfo.hasHideAnno && curModuleName != GetModuleName(target.GetFullPackageName())) {
+        if (diagCfg.reportDiag && !diagCfg.message.empty()) {
+            auto builder =
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_undeclared_identifier, *diagCfg.node, diagCfg.message[0]);
+            builder.AddNote("the referenced declaration is hidden by 'Hide' annotation");
+        }
+        return false;
+    }
+    return true;
+}
+
+bool PluginCustomAnnoChecker::CheckNode(Ptr<Node> node, PluginCustomAnnoInfo& scopeAnnoInfo, bool reportDiag)
 {
     if (!node) {
         return true;
     }
     auto target = node->GetTarget();
     if (auto ce = DynamicCast<CallExpr>(node); ce && ce->resolvedFunction) {
+        if (ce->callKind == CallKind::CALL_SUPER_FUNCTION) {
+            // The check has been completed in the parent type checker.
+            return false;
+        }
         target = ce->resolvedFunction;
     }
     if (!target) {
         return true;
     }
     bool ret = true;
-    if (target->TestAttr(Attribute::CONSTRUCTOR) && target->outerDecl) {
-        ret = CheckLevel(*node, *target->outerDecl, scopeAPILevel, reportDiag) && ret;
-        ret = CheckSyscap(*node, *target->outerDecl, scopeAPILevel, reportDiag) && ret;
+    if (target->outerDecl) {
+        auto identifier = target->outerDecl->identifier.Val();
+        if (identifier.empty()) {
+            identifier = target->identifier.Val();
+        }
+        ret = ret && CheckLevel(*target->outerDecl, scopeAnnoInfo, {reportDiag, node, {identifier}});
+        ret = ret && CheckSyscap(*target->outerDecl, scopeAnnoInfo, {reportDiag, node, {}});
+        ret = ret && CheckCheckingHide(*target->outerDecl, scopeAnnoInfo, {reportDiag, node, {identifier}});
         if (!ret) {
             return false;
         }
     }
-    ret = CheckLevel(*node, *target, scopeAPILevel, reportDiag) && ret;
-    ret = CheckSyscap(*node, *target, scopeAPILevel, reportDiag) && ret;
+    ret = ret && CheckLevel(*target, scopeAnnoInfo, {reportDiag, node, {target->identifier.Val()}});
+    ret = ret && CheckSyscap(*target, scopeAnnoInfo, {reportDiag, node, {target->identifier.Val()}});
+    ret = ret && CheckCheckingHide(*target, scopeAnnoInfo, {reportDiag, node, {target->identifier.Val()}});
     return ret;
 }
 
-void APILevelAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, APILevelAnnoInfo& scopeAPILevel)
+void PluginCustomAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, PluginCustomAnnoInfo& scopeAnnoInfo)
 {
     if (!iae.desugarExpr || iae.desugarExpr->astKind != ASTKind::IF_EXPR) {
         return;
@@ -555,22 +672,22 @@ void APILevelAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, APILevelAnn
     if (parseNameParam.count(arg->name.Val()) <= 0) {
         return;
     }
-    auto ifScopeAPILevel = APILevelAnnoInfo();
-    parseNameParam[arg->name.Val()](*ifExpr->condExpr, ifScopeAPILevel, diag);
-    if (ifScopeAPILevel.since != 0 && ifScopeAPILevel.since < IFAVAIALBEL_LOWER_LIMITLEVEL) {
+    auto ifscopeAnnoInfo = PluginCustomAnnoInfo();
+    parseNameParam[arg->name.Val()](*ifExpr->condExpr, ifscopeAnnoInfo, diag);
+    if (ifscopeAnnoInfo.since != 0 && ifscopeAnnoInfo.since < IFAVAILABLE_LOWER_LIMITLEVEL) {
         diag.DiagnoseRefactor(DiagKindRefactor::sema_ifavailable_level_limit, *arg);
         return;
     }
     // if branch.
-    auto checkerIf = [this, &ifScopeAPILevel, &scopeAPILevel](Ptr<Node> node) -> VisitAction {
+    auto checkerIf = [this, &ifscopeAnnoInfo, &scopeAnnoInfo](Ptr<Node> node) -> VisitAction {
         if (auto e = DynamicCast<IfAvailableExpr>(node)) {
-            CheckIfAvailableExpr(*e, ifScopeAPILevel);
+            CheckIfAvailableExpr(*e, ifscopeAnnoInfo);
             return VisitAction::SKIP_CHILDREN;
         }
         // If the reference meets the 'IfAvaliable' condition but does not meet the global APILevel configuration, set
         // linkage to 'EXTERNAL_WEAK'.
-        auto ret = CheckNode(node, ifScopeAPILevel);
-        if (ret && !CheckNode(node, scopeAPILevel, false)) {
+        auto ret = CheckNode(node, ifscopeAnnoInfo);
+        if (ret && !CheckNode(node, scopeAnnoInfo, false)) {
             MarkTargetAsExternalWeak(node);
         }
         if (!ret) {
@@ -580,12 +697,12 @@ void APILevelAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, APILevelAnn
     };
     Walker(ifExpr->thenBody.get(), checkerIf).Walk();
     // else branch.
-    auto checkerElse = [this, &scopeAPILevel](Ptr<Node> node) -> VisitAction {
+    auto checkerElse = [this, &scopeAnnoInfo](Ptr<Node> node) -> VisitAction {
         if (auto e = DynamicCast<IfAvailableExpr>(node)) {
-            CheckIfAvailableExpr(*e, scopeAPILevel);
+            CheckIfAvailableExpr(*e, scopeAnnoInfo);
             return VisitAction::SKIP_CHILDREN;
         }
-        if (!CheckNode(node, scopeAPILevel)) {
+        if (!CheckNode(node, scopeAnnoInfo)) {
             return VisitAction::SKIP_CHILDREN;
         }
         return VisitAction::WALK_CHILDREN;
@@ -593,28 +710,29 @@ void APILevelAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, APILevelAnn
     Walker(ifExpr->elseBody.get(), checkerElse).Walk();
 }
 
-void APILevelAnnoChecker::Check(Package& pkg)
+void PluginCustomAnnoChecker::Check(Package& pkg)
 {
     ctx = ci.GetASTContextByPackage(&pkg);
+    curModuleName = GetModuleName(pkg.fullPackageName);
     std::vector<Ptr<Decl>> scopeDecl;
     auto checker = [this, &scopeDecl](Ptr<Node> node) -> VisitAction {
         if (auto decl = DynamicCast<Decl>(node)) {
+            if (decl->astKind == ASTKind::PRIMARY_CTOR_DECL) {
+                return VisitAction::SKIP_CHILDREN;
+            }
             scopeDecl.emplace_back(decl);
             return VisitAction::WALK_CHILDREN;
         }
-        auto scopeAPILevel = APILevelAnnoInfo();
+        PluginCustomAnnoInfo scopeAnnoInfo;
         for (auto it = scopeDecl.rbegin(); it != scopeDecl.rend(); ++it) {
-            scopeAPILevel = Parse(**it);
-            if (scopeAPILevel.since != 0) {
-                break;
-            }
+            Parse(**it, scopeAnnoInfo);
         }
         if (auto iae = DynamicCast<IfAvailableExpr>(node)) {
-            scopeAPILevel.since = scopeAPILevel.since == 0 ? globalLevel : scopeAPILevel.since;
-            CheckIfAvailableExpr(*iae, scopeAPILevel);
+            scopeAnnoInfo.since = scopeAnnoInfo.since == 0 ? globalLevel : scopeAnnoInfo.since;
+            CheckIfAvailableExpr(*iae, scopeAnnoInfo);
             return VisitAction::SKIP_CHILDREN;
         }
-        if (!CheckNode(node, scopeAPILevel)) {
+        if (!CheckNode(node, scopeAnnoInfo)) {
             return VisitAction::SKIP_CHILDREN;
         }
         return VisitAction::WALK_CHILDREN;
