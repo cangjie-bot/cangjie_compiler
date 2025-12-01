@@ -150,6 +150,9 @@ def generate_cmake_defs(args):
         "-DCANGJIE_USE_OH_LLVM_REPO=" + bool_to_opt(args.use_oh_llvm_repo),
         "-DCANGJIE_ENABLE_SANITIZE_OPTION=" + bool_to_opt(args.enable_sanitize_option)]
 
+    if args.version:
+        result.append("-DCJ_SDK_VERSION=" + args.version)
+
     if args.target and "aarch64-linux-android" in args.target:
         android_api_level = re.match(r'aarch64-linux-android(\d{2})?', args.target).group(1)
         result.append("-DCMAKE_ANDROID_NDK=" + (args.android_ndk if args.android_ndk else ""))
@@ -609,6 +612,12 @@ def main():
     parser_build.add_argument(
         "--enable-sanitize-option", action="store_true",
         help="enable --sanitize option for cjc"
+    )
+    parser_build.add_argument(
+        "-v", "--version",
+        dest="version",
+        default="0.0.1",
+        help="Version string, e.g., 0.0.1"
     )
     parser_build.set_defaults(func=build)
 
