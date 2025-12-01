@@ -319,6 +319,7 @@ table Anno { // Short name "Anno" because of the clash with "Annotation" from "P
   kind:AnnoKind;
   identifier:string;
   args:[AnnoArg];
+  target:FullId;
 }
 
 table AnnoArg {
