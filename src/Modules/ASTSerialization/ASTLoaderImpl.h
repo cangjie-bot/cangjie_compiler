@@ -116,6 +116,7 @@ friend ASTLoader;
     // Load super class type or super interface types.
     void LoadInheritedTypes(const PackageFormat::Decl& decl, AST::InheritableDecl& id);
     void LoadGenericConstraintsRef(const PackageFormat::Generic* genericRef, Ptr<AST::Generic> generic);
+    void LoadAnnotationBaseExpr(const PackageFormat::Anno& rawAnno, AST::Annotation& anno);
     template <typename DeclT> void LoadNominalDeclRef(const PackageFormat::Decl& decl, DeclT& astDecl);
     void LoadTypeAliasDeclRef(const PackageFormat::Decl& decl, AST::TypeAliasDecl& tad);
     void LoadDeclDependencies(const PackageFormat::Decl& decl, AST::Decl& astDecl);
