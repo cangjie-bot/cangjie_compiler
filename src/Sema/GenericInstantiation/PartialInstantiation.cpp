@@ -1478,6 +1478,7 @@ OwnedPtr<Annotation> PartialInstantiation::InstantiateAnnotation(const Annotatio
     CopyNodeField(ret.get(), annotation);
     ret->kind = annotation.kind;
     ret->definedPackage = annotation.definedPackage;
+    ret->isCompileTimeVisible = annotation.isCompileTimeVisible;
     ret->identifier = annotation.identifier;
     ret->attrs = annotation.attrs;
     ret->attrCommas = annotation.attrCommas;

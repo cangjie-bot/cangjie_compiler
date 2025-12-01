@@ -1764,8 +1764,14 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
             // Save common/platform annotations for consistency checking
             // This ensures that common and platform sides can be validated for annotation consistency
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
-            auto custom = PackageFormat::CreateAnno(
-                builder, PackageFormat::AnnoKind_Custom, builder.CreateString(annotation->identifier.Val()), args);
+            Ptr<Expr> baseExpr = annotation->baseExpr;
+            TFullIdOffset targetIdx = INVALID_FORMAT_INDEX;
+            if (baseExpr && baseExpr->GetTarget()) {
+                auto target = baseExpr->GetTarget();
+                targetIdx = GetFullDeclIndex(target);
+            }
+            auto custom = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_Custom,
+                builder.CreateString(annotation->identifier.Val()), args, targetIdx);
             annotations.emplace_back(custom);
         }
     }
