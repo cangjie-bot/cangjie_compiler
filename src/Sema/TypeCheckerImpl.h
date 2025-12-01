@@ -99,10 +99,10 @@ enum class MatchResult {
 };
 
 /// Mark the position of the synthesized expr/decl. It currently has not effect on decl.
-enum SynPos {
-    NONE,     // when the context is not considered, e.g. for Decl, type, pattern, and import.
-    EXPR_ARG, // when the expr is used as an argument of another expr, e.g. function arg, returned expr, throwed
-                // expr, spawn arg, initializer of var decl, block of if/else, etc.
+enum class SynPos {
+    NONE,            // when the context is not considered, e.g. for Decl, type, pattern, and import.
+    EXPR_ARG,        // when the expr is used as an argument of another expr, e.g. function arg, returned expr, throwed
+                     // expr, spawn arg, initializer of var decl, block of if/else, etc.
     IMPLICIT_RETURN, // as the implicit return value of a function, or the last expr of a block or lambda
     LEFT_VALUE,      // when the expr is used as a left value of an assignment expression
     UNUSED,          // when the expr is not used, i.e. in a block but not implicit return
