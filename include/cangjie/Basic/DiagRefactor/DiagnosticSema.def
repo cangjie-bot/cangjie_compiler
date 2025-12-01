@@ -366,6 +366,14 @@ ERROR(sema_ifavailable_level_limit,
     "`@IfAvaliable` feature is not avaliable in device where the APILevel is less than 19 due to missing capatability "
     "in ROM")
 
+// @Hide
+ERROR(sema_hide_multi_annotation, "cannot be annotated with '@!Hide' more than once")
+ERROR(sema_hide_at_func_param, "function parameter cannot be annotated with '@!Hide'")
+ERROR(sema_hide_missing_hide, "should be marked with '@!Hide' to be hidden")
+ERROR(sema_hide_compile_time_invisible, "'Hide' annotation must be visible at compile time")
+ERROR(sema_hide_diff_param, "the parameter 'isChecked' of '@!Hide' is %s")
+WARNING(sema_hide_must_at_end, APILEVEL_CHECK, "annotation '%s' must be placed below all macros and annotations")
+
 WARNING(sema_unused_import, UNUSED, "unused import '%s'", "unused import")
 
 ERROR(sema_diag_end, "")
