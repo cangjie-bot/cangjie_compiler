@@ -1763,6 +1763,11 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
             auto custom = PackageFormat::CreateAnno(
                 builder, PackageFormat::AnnoKind_Custom, builder.CreateString(annotation->identifier.Val()), args);
+            Ptr<Expr> baseExpr = annotation->baseExpr;
+            if (baseExpr && baseExpr->GetTarget()) {
+                auto target = baseExpr->GetTarget();
+                importedDeclPkgNames.insert(target->GetFullPackageName());
+            }
             annotations.emplace_back(custom);
         }
     }
