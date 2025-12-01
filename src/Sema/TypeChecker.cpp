@@ -2166,7 +2166,7 @@ void TypeChecker::TypeCheckerImpl::PostTypeCheck(std::vector<Ptr<ASTContext>>& c
                 (void)mainFunctionMap[md->curFile].emplace(md->desugarDecl.get());
             }
         });
-        APILevelCheck::APILevelAnnoChecker(*ci, diag, importManager).Check(*ctx->curPackage);
+        PluginCheck::PluginCustomAnnoChecker(*ci, diag, importManager).Check(*ctx->curPackage);
     }
     CheckWhetherHasProgramEntry();
 }
