@@ -64,6 +64,9 @@ namespace PluginCheck {
 
 using LevelType = uint32_t;
 
+/**
+ * @brief Structure to hold custom annotation information.
+ */
 struct PluginCustomAnnoInfo {
     LevelType since{0};
     std::string syscap{""};
@@ -79,7 +82,18 @@ public:
     {
         ParseOption();
     }
+
+    /**
+     * @brief Parse custom annotations from declaration.
+     * @param decl Declaration to parse.
+     * @param annoInfo Output parameter to store parsed annotation information.
+     */
     void Parse(const AST::Decl& decl, PluginCustomAnnoInfo& annoInfo);
+
+    /**
+     * @brief Check custom annotations in the package.
+     * @param pkg Package to check.
+     */
     void Check(AST::Package& pkg);
 
 private:
