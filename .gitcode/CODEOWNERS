@@ -14,7 +14,16 @@ OAT.xml @xuanjz
 /include/cangjie/AST/ @Augus_Jan @wyq1213
 /include/cangjie/AST/ASTKind.inc @Augus_Jan @wyq1213 @xiaxue0215 @mini-tang
 /include/cangjie/Basic/ @Cangjie-hljyaozhen @wyq1213
-/include/cangjie/CHIR/ @Mr_Kang_Yi @Tadddy @wyq1213
+/include/cangjie/CHIR/CHIR.h @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Analysis/ @Tadddy @wyq1213
+/include/cangjie/CHIR/Optimization/ @Tadddy @wyq1213
+/include/cangjie/CHIR/IR/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Utils/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Checker/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Transformation/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Interpreter/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Serializer/ @Mr_Kang_Yi @wyq1213
+/include/cangjie/CHIR/Utils/ @Mr_Kang_Yi @wyq1213
 /include/cangjie/CodeGen/ @Yessy @neilliuistaken
 /include/cangjie/ConditionalCompilation/ @xiaxue0215 @mini-tang
 /include/cangjie/Driver/ @Yessy @neilliuistaken
@@ -33,7 +42,17 @@ OAT.xml @xuanjz
 /include/cangjie/Utils/ @Augus_Jan @wyq1213
 /src/AST/ @Augus_Jan @wyq1213
 /src/Basic/ @Cangjie-hljyaozhen @wyq1213
-/src/CHIR/ @Mr_Kang_Yi @Tadddy @wyq1213
+/src/CHIR/CHIR.cpp @Mr_Kang_Yi @wyq1213
+/src/CHIR/CMakeLists.txt @Mr_Kang_Yi @wyq1213
+/src/CHIR/Analysis/ @Tadddy @wyq1213
+/src/CHIR/Optimization/ @Tadddy @wyq1213
+/src/CHIR/IR/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Utils/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Checker/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Transformation/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Interpreter/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Serializer/ @Mr_Kang_Yi @wyq1213
+/src/CHIR/Utils/ @Mr_Kang_Yi @wyq1213
 /src/CodeGen/ @Yessy @neilliuistaken
 /src/ConditionalCompilation/ @xiaxue0215 @mini-tang
 /src/Driver/ @Yessy @neilliuistaken

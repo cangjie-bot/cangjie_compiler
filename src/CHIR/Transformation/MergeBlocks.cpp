@@ -5,9 +5,9 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 #include "cangjie/CHIR/Transformation/MergeBlocks.h"
-#include "cangjie/CHIR/GeneratedFromForIn.h"
-#include "cangjie/CHIR/Utils.h"
-#include "cangjie/CHIR/CHIRCasting.h"
+#include "cangjie/CHIR/IR/Annotation.h"
+#include "cangjie/CHIR/Utils/Utils.h"
+#include "cangjie/CHIR/Utils/CHIRCasting.h"
 
 using namespace Cangjie;
 using namespace Cangjie::CHIR;
