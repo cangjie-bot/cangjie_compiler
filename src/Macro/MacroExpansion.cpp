@@ -119,8 +119,20 @@ void MacroExpansion::ReplaceEachFileNode(const File& file)
         ci->invocation.globalOptions.enableAddCommentToAst);
     auto names = Utils::SplitQualifiedName(file.curPackage->fullPackageName);
     std::string moduleName = names.size() > 1 ? names[0] : ""; // Only used for 'std' package case.
-    (void)newParser.SetModuleName(moduleName).EnableCustomAnno();
+    (void)newParser.SetModuleName(moduleName).EnableCustomAnno().SetLateMacroIdents(lateMacroIdents);
     auto newFile = newParser.ParseTopLevel();
+    // to be impletement
+    if (newFile->hasMacro) {
+        auto setLateMacro = [](Ptr<Node> curNode) -> VisitAction {
+            if (curNode->IsMacroCallNode()) {
+                curNode->EnableAttr(Attribute::LATE_MACRO);
+                return VisitAction::SKIP_CHILDREN;
+            }
+            return VisitAction::WALK_CHILDREN;
+        };
+        Walker walker(newFile.get(), setLateMacro);
+        walker.Walk();
+    }
     ConditionalCompilation cc{ci};
     cc.HandleFileConditionalCompilation(*newFile);
     if (curPackage) {
@@ -318,9 +330,7 @@ void MacroExpansion::ReplaceEachMacro(MacroCall& macCall)
     Parser parser{pInvocation->newTokens, ci->diag, ci->diag.GetSourceManager(),
         ci->invocation.globalOptions.enableAddCommentToAst, ci->invocation.globalOptions.compileCjd};
     parser.SetCompileOptions(ci->invocation.globalOptions);
-    if (!macCall.genLateMacro) {
-        (void)parser.SetPrimaryDecl(pInvocation->outerDeclIdent).EnableCustomAnno();
-    }
+    (void)parser.SetPrimaryDecl(pInvocation->outerDeclIdent).EnableCustomAnno().SetLateMacroIdents(lateMacroIdents);
     // Reparsing newTokens to get macro-generate ASTs.
     auto nodes = parser.ParseNodes(
         pInvocation->scope, *macCall.GetNode(), macCall.GetModifiers(), macCall.GetAnnotations());
