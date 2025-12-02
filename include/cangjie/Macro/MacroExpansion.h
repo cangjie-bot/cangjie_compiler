@@ -31,7 +31,7 @@ public:
     void Execute(std::vector<OwnedPtr<AST::Package>>& packages);
     // String format of macro generated Tokens, for pretty print.
     std::vector<std::string> tokensEvalInMacro;
-
+    std::set<std::string> lateMacroIdents; // for late macro ident names
 protected:
     Ptr<AST::Package> curPackage{nullptr};
     CompilerInstance* ci{nullptr};

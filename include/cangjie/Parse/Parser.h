@@ -108,6 +108,7 @@ public:
         const std::set<AST::Modifier>& modifiers = {}, std::vector<OwnedPtr<AST::Annotation>> annos = {});
 
     Parser& EnableCustomAnno();
+    Parser& SetLateMacroIdents(const std::set<std::string>& idents);
     std::size_t GetProcessedTokens() const;
     std::string GetPrimaryDeclIdentRawValue() const;
 
