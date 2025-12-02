@@ -457,6 +457,9 @@ std::vector<Ptr<Decl>> LookUpImpl::StdLibFieldLookup(const Node& node, const std
         target = importManager.GetCoreDecl(fieldName);
     } else if (node.TestAttr(Attribute::IN_MACRO)) {
         target = importManager.GetAstDecl(fieldName);
+        if (target == nullptr) {
+            target = importManager.GetSyntaxDecl(fieldName);
+        }
     }
     if (target) {
         results.emplace_back(target);
