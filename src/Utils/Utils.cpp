@@ -117,8 +117,16 @@ std::string GetMacroFuncName(const std::string& fullPackageName, bool isAttr, co
     const std::string prefixForAttrMacro = "macroCall_a_";
     const std::string prefixForPlainMacro = "macroCall_c_";
     auto macroFuncName = (isAttr ? prefixForAttrMacro : prefixForPlainMacro) + ident + "_" + fullPackageName;
-    /* '.' is not allowed in cangjie function name, so replace '.' to '_' */
+
+    // Replace '.' to '_'
     std::replace(macroFuncName.begin(), macroFuncName.end(), '.', '_');
+
+    // Replace "::" with "__" to make symbol name valid
+    size_t pos = 0;
+    while ((pos = macroFuncName.find("::", pos)) != std::string::npos) {
+        macroFuncName.replace(pos, 2, "__");
+        pos += 2; // move past the replacement
+    }
     return macroFuncName;
 }
 
