@@ -8,8 +8,8 @@
 #define CANGJIE_CHIR_TRANSFORMATION_MERGE_BLOCKS_H
 
 #include "cangjie/Option/Option.h"
-#include "cangjie/CHIR/Package.h"
-#include "cangjie/CHIR/Value.h"
+#include "cangjie/CHIR/IR/Package.h"
+#include "cangjie/CHIR/IR/Value/Value.h"
 
 namespace Cangjie::CHIR {
 /**
