@@ -51,6 +51,8 @@ OwnedPtr<MatchCase> GetValueMatchCase(
 }
 }
 
+namespace Cangjie {
+
 /**
  * Given selector A, SomeExpr B, OtherExpr C. Ref var x. Only support for 'Option'.
  * Construct as bellow,
@@ -152,3 +154,5 @@ void TypeChecker::TypeCheckerImpl::TryDesugarForCoalescing(Node& root) const
     Walker walker(&root, visitBe);
     walker.Walk();
 }
+
+} // namespace Cangjie
