@@ -786,8 +786,11 @@ private:
         const std::set<AST::Attribute>& attributes = {}, bool isVar = false, bool inDecl = false);
     OwnedPtr<AST::SpawnExpr> ParseSpawnExpr();
     OwnedPtr<AST::SynchronizedExpr> ParseSynchronizedExpr();
+    void ParseTopLvlFeatures(OwnedPtr<FeaturesDirective>& ftrDirective,
+        PtrVector<Annotation>& annos);
     void ParseFeatureDirective(OwnedPtr<FeaturesDirective>& features);
-    bool ParseFeatureId(OwnedPtr<FeaturesDirective>& features);
+    void ParseFeaturesSet(OwnedPtr<FeaturesSet>& features);
+    void ParseFeatureId(OwnedPtr<FeaturesSet>& features);
     void ParseCommonImportSpec(PtrVector<AST::ImportSpec>& imports, PtrVector<AST::Annotation>& annos);
     void CheckImportSpec(PtrVector<AST::ImportSpec>& imports);
     void CheckTypeArgumentsInEnumPattern(Ptr<const AST::EnumPattern> enumPattern);
@@ -878,6 +881,7 @@ private:
      * @param del left symbol
      * @param pos position of left symbol
      */
+    void DiagRawIdentifierNotAllowed(std::string& str);
     void DiagExpectedRightDelimiter(const std::string& del, const Position& pos);
     void DiagInvalidIncreExpr(const AST::Expr& expr);
     void DiagInvalidMacroExpandExpr(const Token& tok, const AST::MacroExpandExpr& expr);
@@ -1025,7 +1029,6 @@ private:
         {AST::ASTKind::GENERIC_CONSTRAINT, &ParserImpl::DiagExpectedIdentifierGenericConstraint},
         {AST::ASTKind::IMPORT_CONTENT, &ParserImpl::DiagExpectedIdentifierImportContent},
         {AST::ASTKind::IMPORT_SPEC, &ParserImpl::DiagExpectedIdentifierImportSpec},
-        {AST::ASTKind::FEATURES_DIRECTIVE, &ParserImpl::DiagExpectedIdentifierFeatureDirective},
         {AST::ASTKind::PACKAGE_SPEC, &ParserImpl::DiagExpectedIdentifierPackageSpec},
         {AST::ASTKind::PROP_DECL, &ParserImpl::DiagExpectedIdentifierPropDecl},
         {AST::ASTKind::REF_TYPE, &ParserImpl::DiagExpectedIdentifierRefType},
@@ -1047,7 +1050,6 @@ private:
     void DiagExpectedIdentifierGenericConstraint(Ptr<AST::Node> node);
     void DiagExpectedIdentifierImportContent(Ptr<AST::Node> node);
     void DiagExpectedIdentifierImportSpec(Ptr<AST::Node> node);
-    void DiagExpectedIdentifierFeatureDirective(Ptr<Node> node);
     void DiagExpectedIdentifierPackageSpec(Ptr<AST::Node> node);
     void DiagExpectedIdentifierPropDecl(Ptr<AST::Node> node);
     void DiagExpectedIdentifierRefType(Ptr<AST::Node>);
