@@ -81,6 +81,7 @@ void EarlyMacroExpansion::EvaluateMacros()
     bool useChildProcess = ci->invocation.globalOptions.enableMacroInLSP;
     MacroEvaluation evaluator(ci, &macroCollector, useChildProcess, false);
     evaluator.Evaluate();
+    lateMacroIdents = evaluator.lateMacroIdents;
     tokensEvalInMacro = evaluator.GetVecOfGeneratedCodes();
 }
 
@@ -92,7 +93,7 @@ void EarlyMacroExpansion::TransLateMacroInput(Package& package)
         if (!macroCall.GetNode()->TestAttr(Attribute::LATE_MACRO)) {
             continue;
         }
-        if (pInvocation->hasParenthesis) {
+        if (pInvocation->hasParenthesis) { 
             std::vector<Token> newTokens = pInvocation->args;
             Parser parser(newTokens, ci->diag, ci->diag.GetSourceManager());
             (void)parser.SetPrimaryDecl(GetPrimaryName(*pInvocation)).SetCurFile(macroCall.GetNode()->curFile);

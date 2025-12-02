@@ -207,12 +207,14 @@ OwnedPtr<CallExpr> CreateAttrCall(const std::string& ident, const Position& pos,
     OwnedPtr<FuncArg> param = nullptr;
     if (inputTyName == MC_INPUT_DECL) {
         auto refExpr = CreateRefExpr(MC_GEN_DECL, pos);
+        refExpr->EnableAttr(Attribute::IN_MACRO);
         std::vector<OwnedPtr<FuncArg>> genDeclArgs;
         (void)genDeclArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
         auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genDeclArgs));
         param = CreateFuncArg(std::move(callExpr));
     } else if (inputTyName == MC_INPUT_EXPR) {
         auto refExpr = CreateRefExpr(MC_GEN_EXPR, pos);
+        refExpr->EnableAttr(Attribute::IN_MACRO);
         std::vector<OwnedPtr<FuncArg>> genExprArgs;
         (void)genExprArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
         auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genExprArgs));
@@ -238,12 +240,14 @@ OwnedPtr<CallExpr> CreateCommonCall(const std::string& ident, const Position& po
     OwnedPtr<FuncArg> param = nullptr;
     if (inputTyName == MC_INPUT_DECL) {
         auto refExpr = CreateRefExpr(MC_GEN_DECL, pos);
+        refExpr->EnableAttr(Attribute::IN_MACRO);
         std::vector<OwnedPtr<FuncArg>> genDeclArgs;
         (void)genDeclArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
         auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genDeclArgs));
         param = CreateFuncArg(std::move(callExpr));
     } else if (inputTyName == MC_INPUT_EXPR) {
         auto refExpr = CreateRefExpr(MC_GEN_EXPR, pos);
+        refExpr->EnableAttr(Attribute::IN_MACRO);
         std::vector<OwnedPtr<FuncArg>> genExprArgs;
         (void)genExprArgs.emplace_back(CreateFuncArg(CreateRefExpr("params", pos)));
         auto callExpr = CreateCallExpr(std::move(refExpr), std::move(genExprArgs));

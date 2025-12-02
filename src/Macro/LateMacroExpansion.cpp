@@ -48,7 +48,7 @@ void LateMacroExpansion::EvaluateMacros()
 void LateMacroExpansion::UnsetIsCheckVisitedAttr(Package& package)
 {
     auto f = [](Ptr<Node> curNode) {
-        curNode->DisableAttr(Attribute::IS_CHECK_VISITED);
+        curNode->Clear();
         return VisitAction::WALK_CHILDREN;
     };
     Walker macroWalker(&package, f);

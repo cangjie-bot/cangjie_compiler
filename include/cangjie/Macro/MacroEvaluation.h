@@ -86,6 +86,7 @@ public:
     void ExecuteEvalSrvTask();
     // End: for process isolation in lsp.
 
+    std::set<std::string> lateMacroIdents; // for late macro ident names
 private:
     CompilerInstance* ci{nullptr};
     MacroCollector* macroCollector{nullptr};
