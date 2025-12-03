@@ -696,7 +696,6 @@ llvm::Constant* GetReadOnlyArrayKlassInfo(const CGModule& cgMod)
     gv->addAttribute(GC_KLASS_ATTR);
     if (cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS) {
         gv->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
-        llvm::GlobalAlias::create(llvm::GlobalValue::InternalLinkage, "alias_" + gv->getName(), gv);
     }
     AddLinkageTypeMetadata(*gv, llvm::GlobalValue::InternalLinkage, false);
 

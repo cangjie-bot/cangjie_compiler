@@ -675,7 +675,6 @@ void CGType::GenTypeInfo()
             typeInfo->setLinkage(llvm::GlobalValue::InternalLinkage);
         } else {
             typeInfo->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
-            llvm::GlobalAlias::create(llvm::GlobalValue::InternalLinkage, typeInfo->getName(), typeInfo);
         }
     } else { // For Concrete type:
         // Note: The chirType that enters this branch is expected to be of CustomType.

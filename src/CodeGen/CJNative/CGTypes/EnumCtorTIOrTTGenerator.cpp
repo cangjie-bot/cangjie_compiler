@@ -111,7 +111,6 @@ void EnumCtorTIOrTTGenerator::GenerateNonGenericEnumCtorTypeInfo(llvm::GlobalVar
     ti.addAttribute(GC_KLASS_ATTR);
     if (cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS) {
         ti.setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
-        llvm::GlobalAlias::create(llvm::GlobalValue::InternalLinkage, ti.getName(), &ti);
     }
     auto meta = llvm::MDTuple::get(llvmCtx, {llvm::MDString::get(llvmCtx, layoutType->getStructName().str())});
     ti.setMetadata(GC_TYPE_META_NAME, meta);
