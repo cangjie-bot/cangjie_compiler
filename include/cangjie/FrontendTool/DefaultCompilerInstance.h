@@ -27,6 +27,7 @@ public:
     bool PerformImportPackage() override;
     bool PerformConditionCompile() override;
     bool PerformMacroExpand() override;
+    bool PerformLateMacroExpand() override;
     bool PerformSema() override;
     bool PerformOverflowStrategy() override;
     bool PerformDesugarAfterSema() override;
