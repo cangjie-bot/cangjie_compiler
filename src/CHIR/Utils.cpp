@@ -724,7 +724,7 @@ std::unordered_map<const GenericType*, Type*> GetInstMapFromCurDefAndExDefToCurT
 }
 
 void GetAllInstantiatedParentType(ClassType& cur, CHIRBuilder& builder, std::vector<ClassType*>& parents,
-    std::set<std::pair<const Type*, const Type*>>* visited)
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr)
 {
     if (std::find(parents.begin(), parents.end(), &cur) != parents.end()) {
         return;

@@ -294,7 +294,7 @@ CustomTypeDef* CustomType::GetCustomTypeDef() const
 }
 
 std::vector<ClassType*> CustomType::GetSuperTypesRecusively(CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited)
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr)
 {
     std::vector<ClassType*> inheritanceList;
     for (auto interface : GetImplementedInterfaceTys(&builder)) {
@@ -838,7 +838,7 @@ std::vector<VTableSearchRes> CustomType::GetFuncIndexInVTable(
 }
 
 std::vector<ClassType*> CustomType::CalculateExtendImplementedInterfaceTys(CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited) const
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr) const
 {
     std::vector<ClassType*> allParents;
     for (auto extendDef : def->GetExtends()) {
@@ -856,7 +856,7 @@ std::vector<ClassType*> CustomType::CalculateExtendImplementedInterfaceTys(CHIRB
 }
 
 std::vector<ClassType*> CustomType::CalculateImplementedInterfaceTys(CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited)
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr)
 {
     auto genericTypes = def->GetGenericTypeParams();
     if (!genericTypes.empty()) {
@@ -875,7 +875,7 @@ std::vector<ClassType*> CustomType::CalculateImplementedInterfaceTys(CHIRBuilder
 }
 
 std::vector<ClassType*> CustomType::GetImplementedInterfaceTys(CHIRBuilder* builder,
-    std::set<std::pair<const Type*, const Type*>>* visited)
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr)
 {
     std::unique_lock<std::recursive_mutex> lock(setSuperInterfaceMtx);
     if (hasSetSuperInterface) {
@@ -1271,7 +1271,7 @@ void Type::VisitTypeRecursively(const std::function<bool(const Type&)>& visitor)
 }
 
 std::vector<ClassType*> BuiltinType::GetSuperTypesRecusively(CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited)
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr) const
 {
     std::vector<ClassType*> inheritanceList;
     for (auto extendDef : GetExtends(&builder)) {
@@ -1310,7 +1310,8 @@ std::vector<FuncBase*> BuiltinType::GetDeclareAndExtendMethods([[maybe_unused]] 
     return GetExtendMethods();
 }
 
-std::vector<ClassType*> BuiltinType::GetSuperTypes(CHIRBuilder& builder) const
+bool GenericType::SatisfyGenericConstraints(Type& type, CHIRBuilder& builder,
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr) const
 {
     std::vector<ClassType*> superTypes;
     for (auto extend : GetExtends(&builder)) {
@@ -1396,7 +1397,7 @@ bool Type::SatisfyCType() const
 }
 
 bool Type::IsEqualOrSubTypeOf(const Type& parentType, CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited) const
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr) const
 {
     /**
      *  there may be an unresolvable inheritance relationship:
@@ -1488,7 +1489,7 @@ bool Type::IsEqualOrSubTypeOf(const Type& parentType, CHIRBuilder& builder,
 }
 
 bool Type::IsEqualOrInstantiatedTypeOf(const Type& genericRelatedType, CHIRBuilder& builder,
-    std::set<std::pair<const Type*, const Type*>>* visited) const
+    std::set<std::pair<const Type*, const Type*>>* visited = nullptr) const
 {
     if (this == &genericRelatedType) {
         return true;
