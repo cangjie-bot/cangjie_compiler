@@ -28,6 +28,7 @@ const std::string INCREMENTAL_CFUNC_ATTR = "incremental";
 const std::string INTERNAL_CFUNC_ATTR = "internal";
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
 const std::string FAST_NATIVE_ATTR = "gc-leaf-function";
+const std::string CJ_RUNTIME_ATTR = "cj-runtime";
 #endif
 const std::string VTABLE_LOOKUP = "VTABLE_LOOKUP"; // Indicates that it is the instruction of VTable lookup.
 const std::string GC_TYPE_META_NAME = "RelatedType";
@@ -87,6 +88,7 @@ const std::string GENERIC_PREFIX = "$G_";
 const std::string HAS_WITH_TI_WRAPPER_ATTR = "hasWithTIWrapper";
 const std::string PKG_GV_INIT_PREFIX = "_CGP";
 const std::string FILE_GV_INIT_PREFIX = "_CGF";
+const std::string GET_METHOD_OUTER_TYPE_FUNC_NAME = "CJ_MCC_GetMethodOuterTI";
 } // namespace CodeGen
 } // namespace Cangjie
 #endif // CANGJIE_CODEGENCONSTANTS_H

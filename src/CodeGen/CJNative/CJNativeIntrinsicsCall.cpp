@@ -1232,9 +1232,25 @@ llvm::Instruction* IRBuilder2::CallIntrinsicMTable(const std::vector<llvm::Value
 llvm::Instruction* IRBuilder2::CallIntrinsicMethodOuterType(const std::vector<llvm::Value*>& parameters)
 {
     CJC_ASSERT(parameters.size() == 3U);
-    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_get_method_outertype);
+    // declare i8* @CJ_MCC_GetMethodOuterTI(i8*, i8*, i64)
+    auto& llvmCtx = cgMod.GetLLVMContext();
+    auto funcName = GET_METHOD_OUTER_TYPE_FUNC_NAME;
+    auto i8PtrTy = getInt8PtrTy();
+    auto i64Ty = getInt64Ty();
+    llvm::Function* func = cgMod.GetLLVMModule()->getFunction(funcName);
+    
+    if (!func) {
+        std::vector<llvm::Type*> parameterTypes = {i8PtrTy, i8PtrTy, i64Ty};
+        std::vector<std::string> attributes = {FAST_NATIVE_ATTR, CJ_RUNTIME_ATTR};
+        llvm::FunctionType* functionType = CGType::GetCodeGenFunctionType(llvmCtx, i8PtrTy, parameterTypes);
+        func = cgMod.GetOrInsertFunction(funcName, functionType);
+        for (auto& attribute : attributes) {
+            AddFnAttr(func, llvm::Attribute::get(llvmCtx, attribute));
+        }
+    }
+
     auto fixedParams = {
-        CreateBitCast(parameters[0], getInt8PtrTy()), CreateBitCast(parameters[1], getInt8PtrTy()), parameters[2]};
+        CreateBitCast(parameters[0], i8PtrTy), CreateBitCast(parameters[1], i8PtrTy), parameters[2]};
     return CreateCall(func, fixedParams);
 }
 
