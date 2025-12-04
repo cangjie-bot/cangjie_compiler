@@ -378,8 +378,8 @@ size_t GetInitializedlParamSize(const FuncDecl& fd)
     size_t result = 0;
     for (auto iter = params.crbegin(); iter < params.crend(); ++iter) {
         CJC_NULLPTR_CHECK(*iter);
-        if ((*iter)->isNamedParam && (*iter)->TestAttr(Attribute::HAS_INITIAL)) {
-            result++;
+        if ((*iter)->isNamedParam) {
+            result += (*iter)->TestAttr(Attribute::HAS_INITIAL);
         } else {
             break;
         }
