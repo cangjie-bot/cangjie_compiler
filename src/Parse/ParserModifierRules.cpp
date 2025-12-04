@@ -288,13 +288,13 @@ const static std::unordered_map<TokenKind, std::vector<TokenKind>> EXTEND_BODY_P
     {TokenKind::PROTECTED, {TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PRIVATE, TokenKind::STATIC}}, \
     {TokenKind::INTERNAL, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::PRIVATE, TokenKind::STATIC}}, \
     {TokenKind::PRIVATE, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::INTERNAL, TokenKind::STATIC}}, \
-    {TokenKind::CONST, {}}, \
-    {TokenKind::COMMON, {TokenKind::PLATFORM}}, \
-    {TokenKind::PLATFORM, {TokenKind::COMMON}},
+    {TokenKind::CONST, {}},
 
 #define AGGREGATE_BODY_INIT_MODIFIERS \
     AGGREGATE_BODY_INSTANCE_INIT_MODIFIERS \
-    {TokenKind::STATIC, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::INTERNAL, TokenKind::PRIVATE}},
+    {TokenKind::STATIC, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::INTERNAL, TokenKind::PRIVATE}},\
+    {TokenKind::COMMON, {TokenKind::PLATFORM}}, \
+    {TokenKind::PLATFORM, {TokenKind::COMMON}},
 
 /**
  * SCOPE_MODIFIER_RULES contains modifier trustlists defined under different scope kinds. The trustlist contains all
