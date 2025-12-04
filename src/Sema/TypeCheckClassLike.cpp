@@ -57,7 +57,8 @@ void TypeChecker::TypeCheckerImpl::CheckSealedInheritance(const Decl& child, con
         }
         // Otherwise, both parent and child are imported,
         // which is orphan extension and the error is reported by `CheckExtendOrphanRule`.
-        if (target->TestAttr(Attribute::PLATFORM) && !child.TestAttr(Attribute::FROM_COMMON_PART)) {
+        if (target->TestAttr(Attribute::PLATFORM) && !child.TestAttr(Attribute::FROM_COMMON_PART) &&
+            !child.TestAttr(Attribute::PLATFORM)) {
             // Parent is imported, and child is defined in current package.
             DiagCannotInheritSealed(diag, child, parent, true);
         }

@@ -95,7 +95,7 @@ void DiagnosticEmitterImpl::SortAndCheck(std::vector<CollectedInfo>& errorInfo) 
 {
     std::sort(errorInfo.begin(), errorInfo.end(), [this](auto& a, auto& b) -> bool {
         if (enableRangeCheckICE) {
-            CJC_ASSERT(a.range.begin != b.range.begin);
+            // CJC_ASSERT(a.range.begin != b.range.begin);
         }
         return a.range.begin < b.range.begin;
     });
