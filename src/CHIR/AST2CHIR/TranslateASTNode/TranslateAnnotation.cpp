@@ -172,8 +172,11 @@ void Translator::TranslateAnnoFactoryFuncBody([[maybe_unused]] const AST::Decl& 
 
 AnnoInfo Translator::CreateAnnoFactoryFuncSig(const AST::Decl& decl, CustomTypeDef* parent)
 {
+    // Since annotations must be consistent between common and platform sides,
+    // the platform side can directly use the serialized annotations.
     auto annosArray = decl.annotationsArray.get();
-    if (decl.TestAttr(AST::Attribute::IMPORTED) || !annosArray || annosArray->children.empty()) {
+    if (decl.TestAttr(AST::Attribute::IMPORTED) || !annosArray || annosArray->children.empty() ||
+        decl.TestAttr(AST::Attribute::PLATFORM)) {
         return {"none"};
     }
     auto found = annotationFuncMap.find(&decl);

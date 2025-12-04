@@ -1753,10 +1753,13 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
             annotations.emplace_back(impl);
         } else if (annotation->kind == AST::AnnotationKind::FOREIGN_NAME) {
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
-            auto impl = PackageFormat::CreateAnno(
-                builder, PackageFormat::AnnoKind_ForeignName, builder.CreateString(annotation->identifier.Val()), args);
+            auto impl = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_ForeignName,
+                builder.CreateString(annotation->identifier.Val()), args);
             annotations.emplace_back(impl);
-        } else if (annotation->kind == AST::AnnotationKind::CUSTOM && annotation->isCompileTimeVisible) {
+        } else if (annotation->kind == AST::AnnotationKind::CUSTOM &&
+            (annotation->isCompileTimeVisible || decl.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM))) {
+            // Save common/platform annotations for consistency checking
+            // This ensures that common and platform sides can be validated for annotation consistency
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
             Ptr<Expr> baseExpr = annotation->baseExpr;
             TFullIdOffset targetIdx = INVALID_FORMAT_INDEX;

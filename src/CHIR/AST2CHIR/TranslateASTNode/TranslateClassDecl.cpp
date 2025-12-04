@@ -190,6 +190,11 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
     blockGroupStack.emplace_back(body);
     auto entry = builder.CreateBlock(body);
     body->SetEntryBlock(entry);
+    auto unitTyRef = builder.GetType<RefType>(builder.GetUnitTy());
+    auto retVal = CreateAndAppendExpression<Allocate>(unitTyRef, builder.GetUnitTy(), entry);
+    func->SetReturnValue(*retVal->GetResult());
+    auto thisVar = func->GetParam(0);
+    CreateAndAppendExpression<Debug>(builder.GetUnitTy(), thisVar, "this", func->GetEntryBlock());
 
     return func;
 }

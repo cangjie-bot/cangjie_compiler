@@ -215,11 +215,11 @@ void ParserImpl::CheckVarDeclModifiers(
     } else if (varDecl->initializer == nullptr && !varDecl->TestAttr(Attribute::HAS_BROKEN)) {
         if (varDecl->isConst) {
             DiagConstVariableExpectedInitializer(*varDecl);
-        } else if (scopeKind != ScopeKind::TOPLEVEL && varDecl->type == nullptr &&
-            !HasModifier(modifiers, TokenKind::COMMON)) {
+        } else if (scopeKind != ScopeKind::TOPLEVEL && varDecl->type == nullptr) {
             DiagExpectedOneOfTypeOrInitializer(*varDecl, varDecl->identifier);
         } else if (scopeKind == ScopeKind::TOPLEVEL && !HasModifier(modifiers, TokenKind::FOREIGN) &&
-            (varDecl->type == nullptr || !diag.ignoreScopeCheck) && !HasModifier(modifiers, TokenKind::COMMON)) {
+            (varDecl->type == nullptr ||
+                (!diag.ignoreScopeCheck && (!HasModifier(modifiers, TokenKind::COMMON) && varDecl->type != nullptr)))) {
             DiagExpectedInitializerForToplevelVar(*varDecl);
         }
     }
@@ -244,13 +244,6 @@ OwnedPtr<Decl> ParserImpl::ParseVarDecl(
     }
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     CheckVarDeclModifiers(modifiers, ret.get(), scopeKind, keyToken);
-    bool hasNoType = ret->type == nullptr;
-    bool isCommonPlatform = ret->IsCommonOrPlatform();
-    if (hasNoType && isCommonPlatform) {
-        auto kind = ret->TestAttr(Attribute::COMMON) ? "common" : "platform";
-        auto keyword = ret->isVar ? "var" : "let";
-        ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_type_with_cjmp_var, *ret, kind, keyword);
-    }
     return ret;
 }
 
@@ -2124,7 +2117,8 @@ void ParserImpl::CheckClassLikeFuncBodyAbstractness(FuncDecl& decl)
 
     if (inAbstractCJMP && !HasModifier(decl.modifiers, TokenKind::ABSTRACT)) {
         // OPEN func without ABSTRACT or COMMON must have body in CJMP ABSTRACT class
-        if (HasModifier(decl.modifiers, TokenKind::OPEN) && inAbstractCJMP) {
+        if (HasModifier(decl.modifiers, TokenKind::OPEN) && inAbstractCJMP &&
+            !HasModifier(decl.modifiers, TokenKind::COMMON)) {
             DiagMissingBody("function", !decl.identifier.Valid() ? "" : " '" + decl.identifier + "'", lastToken.End());
         }
         decl.DisableAttr(Attribute::ABSTRACT);

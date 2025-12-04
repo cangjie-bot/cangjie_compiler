@@ -769,18 +769,9 @@ void ConvertImportedFunctionType(
     if (fn.GetFuncType() == fnTy) {
         return;
     }
-    auto [success, tempTable] = fn.GetFuncType()->CalculateGenericTyMapping(*fnTy);
-    CJC_ASSERT(success);
-    auto replaceTable = tempTable;
-
-    ConvertTypeFunc convertTypeFunc = [replaceTable](Type& type) {
-        if (!type.IsGeneric()) {
-            return &type;
-        }
-        auto it = replaceTable.find(StaticCast<GenericType*>(&type));
-        return it != replaceTable.end() ? it->second : &type;
-    };
-
+    auto replaceTable = fn.GetFuncType()->CalculateGenericTyMapping(*fnTy).second;
+    ConvertTypeFunc convertTypeFunc = [&replaceTable, &builder](
+                                          Type& type) { return ReplaceRawGenericArgType(type, replaceTable, builder); };
     ValueTypeConverter converter(convertTypeFunc, builder);
     converter.VisitSubValue(fn);
 }
@@ -1494,15 +1485,21 @@ void ConvertPlatformMemberMethods(
  */
 void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg)
 {
-    auto extends = chirPkg.GetExtends();
-    auto it = std::remove_if(extends.begin(), extends.end(), [](const ExtendDef* ed) {
-        CJC_NULLPTR_CHECK(ed);
-        return ed->TestAttr(CHIR::Attribute::DESERIALIZED) &&
-            (ed->TestAttr(CHIR::Attribute::COMMON) || ed->TestAttr(CHIR::Attribute::PLATFORM));
-    });
+    auto removeUnusedExtends = [](std::vector<ExtendDef*>& extends) {
+        auto it = std::remove_if(extends.begin(), extends.end(), [](const ExtendDef* ed) {
+            CJC_NULLPTR_CHECK(ed);
+            return ed->TestAttr(CHIR::Attribute::DESERIALIZED) &&
+                (ed->TestAttr(CHIR::Attribute::COMMON) || ed->TestAttr(CHIR::Attribute::PLATFORM));
+        });
+        extends.erase(it, extends.end());
+        return extends;
+    };
 
-    extends.erase(it, extends.end());
-    chirPkg.SetExtends(std::move(extends));
+    auto extends = chirPkg.GetExtends();
+    chirPkg.SetExtends(removeUnusedExtends(extends));
+
+    auto importedExtends = chirPkg.GetImportedExtends();
+    chirPkg.SetImportedExtends(removeUnusedExtends(importedExtends));
 }
 } // namespace
 
