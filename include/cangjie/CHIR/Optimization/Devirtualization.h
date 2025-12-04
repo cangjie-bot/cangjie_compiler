@@ -81,18 +81,20 @@ private:
         std::unordered_map<const GenericType*, Type*>& replaceTable) const;
 
     bool IsInstantiationOf(CHIRBuilder& builder, const GenericType* generic, const Type* instantiated) const;
-    
+
     void InstantiateFuncIfPossible(CHIRBuilder& builder, std::vector<RewriteInfo>& rewriteInfoList);
-    
+
     void CollectCandidates(
         CHIRBuilder& builder, ClassType* specific, std::pair<FuncBase*, Type*>& res, const FuncSig& method) const;
-    
+
     FuncBase* GetCandidateFromSpecificType(
         CHIRBuilder& builder, ClassType& specific, const FuncSig& method) const;
-    
+
     static void RewriteToApply(CHIRBuilder& builder, std::vector<RewriteInfo>& rewriteInfos, bool isDebug);
-    
+
     static bool RewriteToBuiltinOp(CHIRBuilder& builder, const RewriteInfo& info, bool isDebug);
+
+    static bool CheckExtraGenericArgs(const ClassType& specific, const Type& instSubType);
 
     /**
      * check func whether has invoke expression, implement func for CollectContainInvokeExprFuncs

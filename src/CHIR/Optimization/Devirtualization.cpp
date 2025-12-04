@@ -488,12 +488,32 @@ std::pair<FuncBase*, Type*> Devirtualization::FindRealCallee(
     }
 }
 
-static bool IsOpenClass(const ClassDef& def)
-{
-    if (def.IsInterface() || def.IsAbstract()) {
-        return true;
+bool Devirtualization::CheckExtraGenericArgs(const ClassType& specific, const Type& instSubType) {
+    if (!instSubType.IsCustomType()) {
+        return false;
     }
-    return def.TestAttr(Attribute::VIRTUAL);
+    if (!instSubType.IsGenericRelated()) {
+        return false;
+    }
+    auto customType = StaticCast<const CustomType*>(&instSubType);
+    std::function<bool(const Type& type, const Type& t)> typeHasGeneric;
+    typeHasGeneric = [typeHasGeneric](const Type& type, const Type& t) {
+        if (&type == &t) {
+            return true;
+        }
+        for (auto& arg : type.GetTypeArgs()) {
+            if (typeHasGeneric(*arg, t)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    for (auto& arg : customType->GetGenericArgs()) {
+        if (arg->IsGeneric() && !typeHasGeneric(specific, *arg)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 FuncBase* Devirtualization::GetCandidateFromSpecificType(
@@ -520,7 +540,7 @@ void Devirtualization::CollectCandidates(
     CHIRBuilder& builder, ClassType* specific, std::pair<FuncBase*, Type*>& res, const FuncSig& method) const
 {
     auto specificDef = specific->GetClassDef();
-    if (IsOpenClass(*specificDef) && !devirtFuncInfo.CheckCustomTypeInternal(*specificDef)) {
+    if (specificDef->CanBeInherited() && !devirtFuncInfo.CheckCustomTypeInternal(*specificDef)) {
         // skip open classes with external linkage
         return;
     }
@@ -529,7 +549,7 @@ void Devirtualization::CollectCandidates(
     if (targetFromSpecificType != nullptr) {
         res = {targetFromSpecificType, specific};
     }
-    if (!IsOpenClass(*specificDef)) {
+    if (!specificDef->CanBeInherited()) {
         // non-open class do not need try its subtype
         return;
     }
@@ -541,27 +561,46 @@ void Devirtualization::CollectCandidates(
     }
     // 2. Get candidate from subtypes
     for (auto& inheritInfo : it->second) {
-        auto expected = inheritInfo.parentInstType;
+        auto expected = inheritInfo.parentType;
         std::unordered_map<const GenericType*, Type*> replaceTable;
         if (!IsValidSubType(builder, expected, specific, replaceTable)) {
             continue;
         }
-        auto subtype = ReplaceRawGenericArgType(*(inheritInfo.subInstType), replaceTable, builder);
-        auto subtypeClass = DynamicCast<ClassType*>(subtype);
-        if (!subtypeClass ||
-            (!subtypeClass->GetClassDef()->IsInterface() &&
-                !subtypeClass->GetClassDef()->TestAttr(Attribute::ABSTRACT))) {
-            auto extendsOrImplements = devirtFuncInfo.defsMap[subtypeClass];
+        auto subtype = ReplaceRawGenericArgType(*(inheritInfo.subType), replaceTable, builder);
+        auto subtypeCustom = DynamicCast<CustomType*>(subtype);
+        if (!subtypeCustom ||
+            (!subtypeCustom->GetCustomTypeDef()->IsInterface() &&
+                !subtypeCustom->GetCustomTypeDef()->TestAttr(Attribute::ABSTRACT))) {
+            auto extendsOrImplements = devirtFuncInfo.defsMap[subtypeCustom];
             for (auto oriDef : extendsOrImplements) {
                 auto def = oriDef->GetGenericDecl() != nullptr ? oriDef->GetGenericDecl() : oriDef;
                 for (const auto& vtableIt : def->GetDefVTable().GetTypeVTables()) {
+                    if (CheckExtraGenericArgs(*specific, *subtypeCustom)) {
+                        /**
+                         * inteface I {
+                         *   func foo()
+                         * }
+                         * class CA<T> <: I {
+                         *   func foo() {}
+                         * }
+                         * func goo(a: I) {
+                         *   a.foo()
+                         * }
+                         * implement of foo in CA<T> has more generic args to I, a.foo() optimize to CA<T>.foo() will
+                         *   introduce a extra T. directly return nullptr because:
+                         *     1. only this implement can be choosen: can not optimize, skip.
+                         *     2. have one more implement or more: can not optimize including this implement, skip.
+                         */
+                        res = {nullptr, nullptr};
+                        return;
+                    }
                     if (!expected->IsEqualOrSubTypeOf(*vtableIt.GetSrcParentType(), builder)) {
                         continue;
                     }
                     if (auto target = FindFunctionInVtable(
                         vtableIt.GetSrcParentType(), vtableIt.GetVirtualMethods(), method, builder)) {
                         if (res.first == nullptr) {
-                            res = {target, subtypeClass};
+                            res = {target, subtypeCustom};
                         } else if (res.first != target) {
                             res = {nullptr, nullptr};
                             return;
@@ -570,8 +609,8 @@ void Devirtualization::CollectCandidates(
                 }
             }
         }
-        if (subtypeClass) {
-            CollectCandidates(builder, subtypeClass, res, method);
+        if (subtypeCustom && subtypeCustom->IsClass()) {
+            CollectCandidates(builder, StaticCast<ClassType*>(subtypeCustom), res, method);
         }
     }
 }
