@@ -86,7 +86,8 @@ const std::unordered_map<ASTKind, std::string> KIND_TO_STR = {
     {ASTKind::TUPLE_PATTERN, "tuple"},
     {ASTKind::WILDCARD_PATTERN, "wildcard"},
     {ASTKind::FUNC_PARAM, "parameter"},
-    {ASTKind::TYPE_ALIAS_DECL, "type"}
+    {ASTKind::TYPE_ALIAS_DECL, "type"},
+    {ASTKind::MACRO_EXPAND_DECL,"macro_expand_decl"}
 };
 
 std::string GetDiagKind(const AST::Node& node)
@@ -154,6 +155,27 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     }
     // Enable COMMON_WITH_DEFAULT attr for func/constructor/var
     SetCJMPAttrs(decl);
+
+    // Check if all members have COMMON_WITH_DEFAULT for common side class, interface, struct, enum, extend
+    if (decl.TestAttr(Attribute::COMMON) &&
+        (decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::INTERFACE_DECL ||
+            decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL ||
+            decl.astKind == ASTKind::EXTEND_DECL)) {
+
+        bool allMembersHaveDefault = true;
+        for (auto& member : decl.GetMemberDeclPtrs()) {
+            if (member->TestAttr(Attribute::COMMON) && !member->TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
+                allMembersHaveDefault = false;
+                break;
+            }
+        }
+
+        // Set COMMON_WITH_DEFAULT on the parent declaration if all members have it
+        if (allMembersHaveDefault) {
+            decl.EnableAttr(Attribute::COMMON_WITH_DEFAULT);
+        }
+    }
+
     // Check sema rules
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         // Check that the member of platform interface must have the body
@@ -253,11 +275,6 @@ void MPParserImpl::CheckCJMPFuncParams(AST::Decl& decl, const Ptr<AST::FuncBody>
     }
     auto& params = funcBody->paramLists[0]->params;
     for (size_t index = 0; index < params.size(); index++) {
-        if (params[index]->assignment && decl.TestAttr(Attribute::PLATFORM)) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_platform_function_parameter_cannot_have_default_value,
-                *params[index], GetDiagKind(decl));
-            decl.EnableAttr(Attribute::IS_BROKEN);
-        }
         CheckCJMPModifiersBetween(*params[index], decl);
     }
 }
