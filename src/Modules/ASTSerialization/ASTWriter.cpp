@@ -1758,8 +1758,9 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
             auto impl = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_ForeignName,
                 builder.CreateString(annotation->identifier.Val()), args);
-                annotations.emplace_back(impl);
-        } else if (annotation->kind == AST::AnnotationKind::CUSTOM && annotation->isCompileTimeVisible) {
+            annotations.emplace_back(impl);
+        } else if (annotation->kind == AST::AnnotationKind::CUSTOM &&
+            (annotation->isCompileTimeVisible || decl.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM))) {
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
             auto custom = PackageFormat::CreateAnno(
                 builder, PackageFormat::AnnoKind_Custom, builder.CreateString(annotation->identifier.Val()), args);

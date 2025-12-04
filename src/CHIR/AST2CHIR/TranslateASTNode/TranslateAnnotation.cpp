@@ -171,7 +171,8 @@ void Translator::TranslateAnnoFactoryFuncBody([[maybe_unused]] const AST::Decl& 
 AnnoInfo Translator::CreateAnnoFactoryFuncSig(const AST::Decl& decl, CustomTypeDef* parent)
 {
     auto annosArray = decl.annotationsArray.get();
-    if (decl.TestAttr(AST::Attribute::IMPORTED) || !annosArray || annosArray->children.empty()) {
+    if (decl.TestAttr(AST::Attribute::IMPORTED) || !annosArray || annosArray->children.empty() ||
+        decl.TestAttr(AST::Attribute::PLATFORM)) {
         return {"none"};
     }
     auto found = annotationFuncMap.find(&decl);

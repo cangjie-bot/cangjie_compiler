@@ -508,13 +508,29 @@ void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<Func
             }
             TypeSubst genericTyMap;
             MapCJMPGenericTypeArgs(genericTyMap, *candidate, *platformFunc);
+            bool isMatch = false;
             if (!genericTyMap.empty()) {
                 auto newCommonFuncTy = StaticCast<FuncTy*>(typeManager.GetInstantiatedTy(candidate->ty, genericTyMap));
                 auto platformFuncTy = StaticCast<FuncTy*>(platformFunc->ty);
-                return typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy);
+                isMatch = typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy);
             } else {
-                return typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
+                isMatch = typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
             }
+
+            // When functions match, propagate HAS_INITIAL attribute from common to platform
+            if (isMatch && candidate->funcBody && platformFunc->funcBody) {
+                auto& commonParams = candidate->funcBody->paramLists[0]->params;
+                auto& pfParams = platformFunc->funcBody->paramLists[0]->params;
+
+                for (size_t i = 0; i < commonParams.size() && i < pfParams.size(); ++i) {
+                    if (commonParams[i]->TestAttr(Attribute::HAS_INITIAL) &&
+                        !pfParams[i]->TestAttr(Attribute::HAS_INITIAL)) {
+                        pfParams[i]->EnableAttr(Attribute::HAS_INITIAL);
+                    }
+                }
+            }
+
+            return isMatch;
         });
     }
 }
@@ -624,6 +640,11 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
                 }
             } else if (common.astKind != ASTKind::FUNC_DECL) {
                 // Keep silent due to overloaded common funcs.
+                // Allow platform sealed abstract when common is abstract
+                if (common.astKind == ASTKind::CLASS_DECL && (attr == Attribute::SEALED || attr == Attribute::OPEN) &&
+                    platform.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
+                    continue;
+                }
                 diag.DiagnoseRefactor(
                     DiagKindRefactor::sema_platform_has_different_modifier, platform, DeclKindToString(platform));
             }
@@ -646,6 +667,32 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
             return false;
         }
     }
+
+    if (common.annotations.size() != platform.annotations.size()) {
+        diag.DiagnoseRefactor(
+            DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
+        return false;
+    }
+
+    std::unordered_set<std::string> commonAnnotationIds;
+    std::unordered_set<std::string> platformAnnotationIds;
+
+    // Collect annotation identifiers from common declaration and platform declaration
+    for (const auto& annotation : common.annotations) {
+        commonAnnotationIds.insert(annotation->identifier.Val());
+    }
+
+    for (const auto& annotation : platform.annotations) {
+        platformAnnotationIds.insert(annotation->identifier.Val());
+    }
+
+    // Compare annotation identifier sets
+    if (commonAnnotationIds != platformAnnotationIds) {
+        diag.DiagnoseRefactor(
+            DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
+        return false;
+    }
+
     return true;
 }
 
@@ -663,6 +710,9 @@ bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl
 {
     auto platformDecl = commonDecl.platformImplementation;
     if (platformDecl == nullptr) {
+        if (commonDecl.TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
+            return false;
+        }
         DiagNotMatchedPlatformDecl(diag, commonDecl);
         return false;
     }
@@ -810,6 +860,17 @@ bool MPTypeCheckerImpl::MatchCJMPFunction(FuncDecl& platformFunc, FuncDecl& comm
                 return false;
             }
         }
+
+        // Check default value consistency: default values should be on either common or platform side, not both
+        bool commonHasDefault = commonParams[i]->assignment != nullptr;
+        bool platformHasDefault = platformParams[i]->assignment != nullptr;
+
+        if (commonHasDefault && platformHasDefault) {
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_parameter_default_value_both_sides,
+                *platformParams[i]);
+            return false;
+        }
+
         // desugar platform default value, desugarDecl export all the time, assignment only export const value
         if (commonParams[i]->desugarDecl && !platformParams[i]->desugarDecl) {
             platformParams[i]->assignment = ASTCloner::Clone(commonParams[i]->assignment.get());
@@ -1049,6 +1110,7 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     std::unordered_set<std::string> matchedIds;
     // Report error for common decl having no matched platform decl.
     for (auto& decl : commonDecls) {
+
         if (decl->IsNominalDecl() && MatchCommonNominalDeclWithPlatform(*StaticCast<InheritableDecl>(decl))) {
             matchedIds.insert(decl->platformImplementation->identifier.Val());
         }
@@ -1061,6 +1123,37 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     for (auto &decl : platformDecls) {
         if (decl->IsNominalDecl() && matchedIds.find(decl->identifier.Val()) == matchedIds.end()) {
             DiagNotMatchedCommonDecl(diag, *decl);
+        }
+        if (decl->IsNominalDecl()) {
+           CheckAbstractClassMembers(*StaticCast<InheritableDecl>(decl));
+        }
+    }
+}
+
+void MPTypeCheckerImpl::CheckAbstractClassMembers(const InheritableDecl& platformDecl)
+{
+    if (!platformDecl.TestAttr(Attribute::PLATFORM) || !platformDecl.TestAttr(Attribute::ABSTRACT)) {
+        return;
+    }
+
+    if (platformDecl.astKind != ASTKind::CLASS_DECL) {
+        return;
+    }
+
+    const auto& classDecl = StaticCast<const ClassDecl&>(platformDecl);
+
+    for (const auto& memberDecl : classDecl.GetMemberDeclPtrs()) {
+        // Check if member is a function or property with abstract modifier
+        // and is NOT a platform-specific member or from common part
+        if (memberDecl->TestAttr(Attribute::ABSTRACT) &&
+            !memberDecl->TestAttr(Attribute::PLATFORM) &&
+            !memberDecl->TestAttr(Attribute::FROM_COMMON_PART) &&
+            (memberDecl->astKind == ASTKind::FUNC_DECL || memberDecl->astKind == ASTKind::PROP_DECL)) {
+
+            // Report error: cannot add abstract members to platform abstract class
+            auto memberKind = memberDecl->astKind == ASTKind::FUNC_DECL ? "function" : "property";
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_non_platform_abstract_member_in_platform_class,
+                *memberDecl, platformDecl.identifier.Val(), memberKind);
         }
     }
 }
