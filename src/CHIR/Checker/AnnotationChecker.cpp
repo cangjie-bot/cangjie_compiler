@@ -320,7 +320,7 @@ void Translator::CollectTypeAnnotation(const InheritableDecl& decl, const Custom
 {
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     // neither collect nor check annotations in compute annotations stage
-    if (isComputingAnnos) {
+    if (isComputingAnnos || cl.TestAttr(CHIR::Attribute::DESERIALIZED)) {
         return;
     }
 #endif
@@ -333,7 +333,8 @@ void Translator::CollectValueAnnotation(const Decl& decl)
         return;
     }
 #endif
-    if (decl.TestAttr(AST::Attribute::IMPORTED) || decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED)) {
+    if (decl.TestAttr(AST::Attribute::IMPORTED) || decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED) ||
+        decl.TestAttr(AST::Attribute::PLATFORM)) {
         return;
     }
     AnnotationTranslator{*this, builder, opts}.CollectAnnoInfo(decl);

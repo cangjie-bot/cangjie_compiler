@@ -50,6 +50,7 @@ private:
     void CheckCommonExtensions(std::vector<Ptr<AST::Decl>>& commonDecls);
     void MatchCJMPDecls(std::vector<Ptr<AST::Decl>>& commonDecls, std::vector<Ptr<AST::Decl>>& platformDecls);
     bool MatchPlatformDeclWithCommonDecls(AST::Decl& platformDecl, const std::vector<Ptr<AST::Decl>>& commonDecls);
+    void CheckAbstractClassMembers(const AST::InheritableDecl& platformDecl);
 
     bool MatchEnumFuncTypes(const AST::FuncDecl& platform, const AST::FuncDecl& common);
     bool MatchCJMPEnumConstructor(AST::Decl& platformDecl, AST::Decl& commonDecl);
