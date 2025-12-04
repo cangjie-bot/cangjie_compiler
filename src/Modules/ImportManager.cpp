@@ -466,6 +466,9 @@ bool ImportManager::ResolveImportedPackages(const std::vector<Ptr<Package>>& pac
         for (auto [_, typeWithFullPkgName] : stdDepsMap) {
             curPackage->AddDependentStdPkg(typeWithFullPkgName.second);
         }
+        if (opts.enableVerbose) {
+            Println("Loaded package size:", cjoManager->GetLoadedPackageSize());
+        }
     }
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     cjoManager->LoadPackageDeclsOnDemand(packages);

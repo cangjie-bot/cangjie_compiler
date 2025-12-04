@@ -886,6 +886,7 @@ void CompilerInstance::AddSourceToMember()
 bool CompilerInstance::ImportPackages()
 {
     // If CANGJIE_HOME not set, detect from executablePath.
+    auto start = std::chrono::high_resolution_clock::now();
     if (cangjieHome.empty()) {
         if (!DetectCangjieHome()) {
             return false;
@@ -913,6 +914,11 @@ bool CompilerInstance::ImportPackages()
 
     MergePackages();
     ModularizeCompilation();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (invocation.globalOptions.enableVerbose) {
+        Println("ImportPackages time: " + std::to_string(duration) + " ms");
+    }
     return true;
 }
 

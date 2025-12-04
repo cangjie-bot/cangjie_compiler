@@ -637,4 +637,9 @@ void CjoManager::RemovePackage(const std::string& fullPkgName, const Ptr<Package
         impl->GetPackageNameMap().erase(fullPkgName);
     }
 }
+
+size_t CjoManager::GetLoadedPackageSize() const
+{
+    return impl->GetPackageNameMap().size();
+}
 } // namespace Cangjie
