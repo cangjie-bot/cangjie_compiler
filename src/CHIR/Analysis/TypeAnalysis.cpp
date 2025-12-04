@@ -342,9 +342,11 @@ static Type* GetInnerTypeFromGetElementRef(const MemberAccess& ma, CHIRBuilder& 
     const auto& path = ma.GetPath();
     auto locationType = ma.GetOperands()[0]->GetType();
     for (size_t i = 0; i < path.size() - 1; ++i) {
+        CJC_NULLPTR_CHECK(locationType);
         auto index = path[i];
         locationType = GetFieldOfType(*locationType, index, builder);
     }
+    CJC_NULLPTR_CHECK(locationType);
     return locationType;
 }
 
@@ -355,8 +357,8 @@ static const CustomTypeDef* CheckMemberDefineInWhichParent(CustomType& type, siz
     return memberInfo.outerDef == nullptr ? def : memberInfo.outerDef;
 }
 
-/// override value analysis, check if virtual member type has specific type.
-void TypeAnalysis::PreHandleGetElementRefExpr(TypeDomain& state, const GetElementRef* getElemRef)
+template <typename TMemberAccess>
+void TypeAnalysis::HandleMemberAccess(TypeDomain& state, const TMemberAccess* memberAccess) const
 {
     auto locationType = GetInnerTypeFromGetElementRef(*getElemRef, builder)->StripAllRefs();
     if (!locationType->IsClassOrStruct()) {
@@ -387,43 +389,41 @@ void TypeAnalysis::PreHandleGetElementRefExpr(TypeDomain& state, const GetElemen
     if (it2 == it->second.end()) {
         return HandleDefaultExpr(state, getElemRef);
     }
-    auto instanceType = it2->second->StripAllRefs();
-    auto refObj = state.GetTwoLevelRefAndSetToTop(getElemRef->GetResult(), getElemRef);
-    UpdateDefaultValue(state, getElemRef->GetResult(), refObj, instanceType);
+    auto resType = it2->second->StripAllRefs();
+    // member define:
+    //   class XX<T> {
+    //     let member: I<T> = CA<T>()
+    //     ..
+    //   }
+    // user of XX: getElementRef or field:
+    //     let x = XX<Int64>()
+    //     x.member.func()
+    //       => type of x.member will be a inst parent type I<Int64>. To Get CA<Int64>, we need inst sub type from
+    //          parent XX's generic type params.
+    if (resType->IsGenericRelated()) {
+        auto [res, mapping] = def->GetType()->CalculateGenericTyMapping(*locationType);
+        CJC_ASSERT(res);
+        resType = ReplaceRawGenericArgType(*resType, mapping, builder);
+    }
+    AbstractObject* refObj;
+    if constexpr (std::is_same_v<GetElementRef, TMemberAccess>) {
+        refObj = state.GetTwoLevelRefAndSetToTop(memberAccess->GetResult(), memberAccess);
+    } else {
+        // else is field
+        refObj = state.GetReferencedObjAndSetToTop(memberAccess->GetResult(), memberAccess);
+    }
+    UpdateDefaultValue(state, memberAccess->GetResult(), refObj, resType);
+}
+
+void TypeAnalysis::PreHandleGetElementRefExpr(TypeDomain& state, const GetElementRef* getElemRef)
+{
+    HandleMemberAccess(state, getElemRef);
 }
 
 /// override value analysis, check if virtual member type has specific type.
 void TypeAnalysis::PreHandleFieldExpr(TypeDomain& state, const Field* field)
 {
-    auto locationType = GetInnerTypeFromGetElementRef(*field, builder)->StripAllRefs();
-    if (!locationType->IsClassOrStruct()) {
-        return HandleDefaultExpr(state, field);
-    }
-    auto path = field->GetPath();
-    auto index = path[path.size() - 1];
-    if (path.size() == 1) {
-        // %1: result type = Field(location obj, path)
-        // when size is 1, the location type is location obj's type, this type may be analysed to a more accurate type.
-        // when size is greater than 1, the location type is member var's type of location obj, we don't analysis it
-        auto srcVal = state.CheckAbstractValue(field->GetBase());
-        if (srcVal) {
-            locationType = srcVal->GetSpecificType();
-        }
-    }
-    auto customType = StaticCast<CustomType*>(locationType);
-    // get member define in which parent.
-    auto def = CheckMemberDefineInWhichParent(*customType, index);
-    auto it = constMemberTypeMap.find(def);
-    if (it == constMemberTypeMap.end()) {
-        return HandleDefaultExpr(state, field);
-    }
-    auto it2 = it->second.find(index);
-    if (it2 == it->second.end()) {
-        return HandleDefaultExpr(state, field);
-    }
-    auto instanceType = it2->second->StripAllRefs();
-    auto refObj = state.GetReferencedObjAndSetToTop(field->GetResult(), field);
-    UpdateDefaultValue(state, field->GetResult(), refObj, instanceType);
+    HandleMemberAccess(state, field);
 }
 
 void TypeAnalysis::HandleDefaultExpr(TypeDomain& state, const Expression* expr) const
