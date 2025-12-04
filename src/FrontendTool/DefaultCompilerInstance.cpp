@@ -102,6 +102,12 @@ bool DefaultCompilerInstance::PerformMacroExpand()
     return CompilerInstance::PerformMacroExpand();
 }
 
+bool DefaultCompilerInstance::PerformLateMacroExpand()
+{
+    Utils::ProfileRecorder recorder("Main Stage", "LateMacroExpand");
+    return CompilerInstance::PerformLateMacroExpand();
+}
+
 bool DefaultCompilerInstance::PerformSema()
 {
     Utils::ProfileRecorder recorder("Main Stage", "Semantic");
