@@ -2335,13 +2335,13 @@ bool TypeChecker::TypeCheckerImpl::GetCallBaseCandidates(
     if (ce.callKind == CallKind::CALL_ANNOTATION) {
         RemoveNonAnnotationCandidates(candidates);
     }
+    // Add for cjmp
+    mpImpl->RemoveCommonCandidatesIfHasPlatform(candidates);
     auto ds = DiagSuppressor(diag);
     candidates = FilterCandidatesWithReExport(ctx, candidates, ce);
     if (expr.astKind == ASTKind::REF_EXPR && candidates.empty() && target->astKind == ASTKind::PACKAGE_DECL) {
         diag.DiagnoseRefactor(DiagKindRefactor::sema_cannot_ref_to_pkg_name, expr);
     }
-    // Add for cjmp
-    mpImpl->RemoveCommonCandidatesIfHasPlatform(candidates);
     if (ds.HasError()) {
         ds.ReportDiag();
         return false;
