@@ -550,11 +550,11 @@ void Devirtualization::CollectCandidates(
             continue;
         }
         auto subtype = ReplaceRawGenericArgType(*(inheritInfo.subInstType), replaceTable, builder);
-        auto subtypeClass = DynamicCast<ClassType*>(subtype);
-        if (!subtypeClass ||
-            (!subtypeClass->GetClassDef()->IsInterface() &&
-                !subtypeClass->GetClassDef()->TestAttr(Attribute::ABSTRACT))) {
-            auto extendsOrImplements = devirtFuncInfo.defsMap[subtypeClass];
+        auto subtypeCustom = DynamicCast<CustomType*>(subtype);
+        if (!subtypeCustom ||
+            (!subtypeCustom->GetCustomTypeDef()->IsInterface() &&
+                !subtypeCustom->GetCustomTypeDef()->TestAttr(Attribute::ABSTRACT))) {
+            auto extendsOrImplements = devirtFuncInfo.defsMap[subtypeCustom];
             for (auto oriDef : extendsOrImplements) {
                 auto def = oriDef->GetGenericDecl() != nullptr ? oriDef->GetGenericDecl() : oriDef;
                 for (auto [parentTy, infos] : def->GetVTable()) {
@@ -563,7 +563,7 @@ void Devirtualization::CollectCandidates(
                     }
                     if (auto target = FindFunctionInVtable(parentTy, infos, method, builder)) {
                         if (res.first == nullptr) {
-                            res = {target, subtypeClass};
+                            res = {target, subtypeCustom};
                         } else if (res.first != target) {
                             res = {nullptr, nullptr};
                             return;
@@ -572,8 +572,8 @@ void Devirtualization::CollectCandidates(
                 }
             }
         }
-        if (subtypeClass) {
-            CollectCandidates(builder, subtypeClass, res, method);
+        if (subtypeCustom && subtypeCustom->IsClass()) {
+            CollectCandidates(builder, StaticCast<ClassType*>(subtypeCustom), res, method);
         }
     }
 }
