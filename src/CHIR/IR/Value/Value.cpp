@@ -351,9 +351,9 @@ Debug* LocalVar::GetDebugExpr() const
     return nullptr;
 }
 
-void LocalVar::SetRetValue()
+void LocalVar::SetRetValue(bool flag)
 {
-    isRetValue = true;
+    this->isRetValue = flag;
 }
 
 std::string LocalVar::ToString() const
@@ -953,6 +953,11 @@ void FuncBody::SetReturnValue(LocalVar& ret)
     retValue = &ret;
 }
 
+void FuncBody::ClearReturnValueOnly()
+{
+    retValue = nullptr;
+}
+
 /**
  * @brief get a `LocalVar` represent the returned value of this FuncBody.
  */
@@ -1003,6 +1008,18 @@ const std::string& FuncBase::GetPackageName() const
 FuncType* FuncBase::GetFuncType() const
 {
     return StaticCast<FuncType*>(GetType());
+}
+
+void FuncBase::ReplaceReturnValue(LocalVar* newRet, CHIRBuilder& builder)
+{
+    auto curFuncType = GetFuncType();
+    if (newRet == nullptr) {
+        ty = builder.GetType<FuncType>(curFuncType->GetParamTypes(), builder.GetVoidTy());
+    } else {
+        CJC_ASSERT(newRet->GetType()->IsRef());
+        auto retType = StaticCast<RefType*>(newRet->GetType())->GetBaseType();
+        ty = builder.GetType<FuncType>(curFuncType->GetParamTypes(), retType);
+    }
 }
 
 size_t FuncBase::GetNumOfParams() const
@@ -1239,6 +1256,9 @@ Func::Func(Type* ty, const std::string& identifier, const std::string& srcCodeId
 
 uint64_t Func::GenerateLocalId()
 {
+    if (identifier == "@_CNaf9RawSocket6<init>HRNaf12SocketDomainERNaf10SocketTypeERNaf12ProtocolTypeE" && localId == 39) {
+        printf("");
+    }
     return localId++;
 }
 
@@ -1265,6 +1285,20 @@ void Func::DestroyFuncBody()
         }
     }
     RemoveBody();
+}
+
+void Func::ReplaceReturnValue(LocalVar* newRet, CHIRBuilder& builder)
+{
+    FuncBase::ReplaceReturnValue(newRet, builder);
+    auto oldRet = body.GetReturnValue();
+    if (oldRet != nullptr) {
+        oldRet->SetRetValue(false);
+    }
+    if (newRet == nullptr) {
+        body.ClearReturnValueOnly();
+    } else {
+        SetReturnValue(*newRet);
+    }
 }
 
 BlockGroup* Func::GetBody() const
@@ -1328,7 +1362,7 @@ bool Func::HasReturnValue() const
 
 void Func::SetReturnValue(LocalVar& ret)
 {
-    ret.SetRetValue();
+    ret.SetRetValue(true);
     body.SetReturnValue(ret);
 }
 

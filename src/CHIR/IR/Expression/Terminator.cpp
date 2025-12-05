@@ -804,6 +804,9 @@ std::string Branch::ToString([[maybe_unused]] size_t indent) const
 
 Exit::Exit(Block* parent) : Terminator(ExprKind::EXIT, {}, {}, parent)
 {
+    if (parent->GetTopLevelFunc()->GetIdentifier() == "@_CNaf9RawSocket6<init>HRNaf12SocketDomainERNaf10SocketTypeERNaf12ProtocolTypeE") {
+        printf("");
+    }
 }
 
 RaiseException::RaiseException(Value* value, Block* parent)

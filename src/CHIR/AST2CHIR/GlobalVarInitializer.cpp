@@ -335,7 +335,7 @@ bool GlobalVarInitializer::IsIncrementalNoChange(const AST::VarDecl& decl) const
 ImportedFunc* GlobalVarInitializer::TranslateIncrementalNoChangeVar(const AST::VarDecl& decl)
 {
     GVInit<AST::VarDecl> context{decl, trans};
-    auto ty = builder.GetType<FuncType>(std::vector<Type*>{}, builder.GetVoidTy());
+    auto ty = builder.GetType<FuncType>(std::vector<Type*>{}, builder.GetUnitTy());
     auto func = builder.CreateImportedVarOrFunc<ImportedFunc>(ty, std::move(context.mangledName),
         std::move(context.srcCodeIdentifier), std::move(context.rawMangledName), context.packageName);
     func->SetFuncKind(FuncKind::GLOBALVAR_INIT);
@@ -584,7 +584,6 @@ Ptr<Func> GlobalVarInitializer::TranslateFileLiteralInitializer(
     auto func = CreateGVInitFunc<AST::File>(file, "_literal");
     func->DisableAttr(Attribute::NO_INLINE);
     func->EnableAttr(Attribute::INITIALIZER);
-    func->SetFuncKind(FuncKind::DEFAULT);
     func->SetDebugLocation(INVALID_LOCATION);
     auto currentBlock = trans.GetCurrentBlock();
     for (auto vd : varsToGenInit) {
@@ -607,7 +606,7 @@ Ptr<Func> GlobalVarInitializer::TranslateFileLiteralInitializer(
 
 void GlobalVarInitializer::AddImportedPackageInit(const AST::Package& curPackage, const std::string& suffix)
 {
-    auto voidTy = builder.GetVoidTy();
+    auto voidTy = builder.GetUnitTy();
     auto initFuncTy = builder.GetType<FuncType>(std::vector<Type*>{}, voidTy);
     for (auto& dep : importManager.GetCurImportedPackages(curPackage.fullPackageName)) {
         const std::string& pkgName = dep->srcPackage->fullPackageName;
@@ -686,7 +685,7 @@ void GlobalVarInitializer::UpdateImportsInit(
         }
 
         // Creating import initializer
-        auto voidTy = builder.GetVoidTy();
+        auto voidTy = builder.GetUnitTy();
         auto initFuncTy = builder.GetType<FuncType>(std::vector<Type*>{}, voidTy);
 
         auto attrs = AttributeInfo();

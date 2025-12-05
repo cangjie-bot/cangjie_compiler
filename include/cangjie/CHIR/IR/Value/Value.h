@@ -254,7 +254,7 @@ private:
     explicit LocalVar(Type* ty, std::string indexStr, Expression* expr);
     ~LocalVar() override = default;
 
-    void SetRetValue();
+    void SetRetValue(bool flag);
 
 private:
     Expression* expr;        // The owner of this result value.
@@ -608,6 +608,7 @@ private:
 
     LocalVar* GetReturnValue() const;
     void SetReturnValue(LocalVar& ret);
+    void ClearReturnValueOnly();
 
     explicit FuncBody();
 
@@ -725,6 +726,8 @@ public:
     // ===--------------------------------------------------------------------===//
     virtual void DestroySelf();
 
+    virtual void ReplaceReturnValue(LocalVar* newRet, CHIRBuilder& builder);
+
 protected:
     std::string srcCodeIdentifier; // origin name
     std::string rawMangledName;
@@ -810,6 +813,8 @@ public:
     // Modify Self
     // ===--------------------------------------------------------------------===//
     void DestroySelf() override;
+
+    void ReplaceReturnValue(LocalVar* newRet, CHIRBuilder& builder) override;
 
     // ===--------------------------------------------------------------------===//
     // Incremental Compile
