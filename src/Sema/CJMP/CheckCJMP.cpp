@@ -646,6 +646,12 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
             return false;
         }
     }
+
+    // if (common.annotations.size() != platform.annotations.size()) {
+    //     diag.DiagnoseRefactor(
+    //         DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
+    //     return false;
+    // }
     return true;
 }
 
@@ -1061,6 +1067,37 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     for (auto &decl : platformDecls) {
         if (decl->IsNominalDecl() && matchedIds.find(decl->identifier.Val()) == matchedIds.end()) {
             DiagNotMatchedCommonDecl(diag, *decl);
+        }
+        if (decl->IsNominalDecl()) {
+           CheckAbstractClassMembers(*StaticCast<InheritableDecl>(decl));
+        }
+    }
+}
+
+void MPTypeCheckerImpl::CheckAbstractClassMembers(const InheritableDecl& platformDecl)
+{
+    if (!platformDecl.TestAttr(Attribute::PLATFORM) || !platformDecl.TestAttr(Attribute::ABSTRACT)) {
+        return;
+    }
+
+    if (platformDecl.astKind != ASTKind::CLASS_DECL) {
+        return;
+    }
+
+    const auto& classDecl = StaticCast<const ClassDecl&>(platformDecl);
+
+    for (const auto& memberDecl : classDecl.GetMemberDeclPtrs()) {
+        // Check if member is a function or property with abstract modifier
+        // and is NOT a platform-specific member or from common part
+        if (memberDecl->TestAttr(Attribute::ABSTRACT) &&
+            !memberDecl->TestAttr(Attribute::PLATFORM) &&
+            !memberDecl->TestAttr(Attribute::FROM_COMMON_PART) &&
+            (memberDecl->astKind == ASTKind::FUNC_DECL || memberDecl->astKind == ASTKind::PROP_DECL)) {
+
+            // Report error: cannot add abstract members to platform abstract class
+            auto memberKind = memberDecl->astKind == ASTKind::FUNC_DECL ? "function" : "property";
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_non_platform_abstract_member_in_platform_class,
+                *memberDecl, platformDecl.identifier.Val(), memberKind);
         }
     }
 }

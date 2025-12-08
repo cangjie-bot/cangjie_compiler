@@ -290,7 +290,6 @@ const static std::unordered_map<TokenKind, std::vector<TokenKind>> EXTEND_BODY_P
     {TokenKind::PRIVATE, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::INTERNAL, TokenKind::STATIC}}, \
     {TokenKind::CONST, {}},
 
-
 #define AGGREGATE_BODY_INIT_MODIFIERS \
     AGGREGATE_BODY_INSTANCE_INIT_MODIFIERS \
     {TokenKind::STATIC, {TokenKind::PUBLIC, TokenKind::PROTECTED, TokenKind::INTERNAL, TokenKind::PRIVATE}},\

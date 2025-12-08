@@ -2155,7 +2155,8 @@ void ParserImpl::CheckClassLikeFuncBodyAbstractness(FuncDecl& decl)
 
     if (inAbstractCJMP && !HasModifier(decl.modifiers, TokenKind::ABSTRACT)) {
         // OPEN func without ABSTRACT or COMMON must have body in CJMP ABSTRACT class
-        if (HasModifier(decl.modifiers, TokenKind::OPEN) && inAbstractCJMP) {
+        if (HasModifier(decl.modifiers, TokenKind::OPEN) && inAbstractCJMP &&
+            !HasModifier(decl.modifiers, TokenKind::COMMON)) {
             DiagMissingBody("function", !decl.identifier.Valid() ? "" : " '" + decl.identifier + "'", lastToken.End());
         }
         decl.DisableAttr(Attribute::ABSTRACT);
