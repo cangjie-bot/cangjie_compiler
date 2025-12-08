@@ -237,6 +237,35 @@ ERROR(sema_varray_subscript_num, "'VArray' accepts exactly one subscript index w
 ERROR(sema_varray_in_cfunc, "return type of CFunc cannot be 'VArray' type")
 ERROR(sema_varray_arg_type_with_reftype, "'%s' directly or indirectly contains an unsupported type", "contain unsupported instance member variable with type '%s'")
 
+// C FFI Sema Prepare Check
+ERROR(sema_only_cfunc_can_use_annotation, "only CFunc can use '%s'")
+ERROR(sema_annotation_calling_conv_not_support, "'@CallingConv' have not supported '%s' yet")
+ERROR(sema_annotation_invalid_args_type, "'%s' arg should be right type")
+ERROR(sema_unexpected_wrapper, "unexpected %s")
+ERROR(sema_native_var_error, "variable can not be modified with 'foreign' and implicit @C")
+
+// C FFI Sema Check
+ERROR(sema_illegal_scope_use_of_annotation, "'%s' can only be used in top-level scope")
+ERROR(sema_illegal_use_of_annotation, "%s cannot be modified with '%s'")
+ERROR(sema_cffi_cannot_have_type_param, "%s cannot have type parameters")
+ERROR(sema_unsafe_function_invoke_failed, "unsafe function or native function should be invoked in unsafe context.")
+ERROR(sema_func_capture_var_not_ctype, "captured variable mustn't be struct with @C")
+ERROR(sema_cfunc_cannot_capture_var, "cannot capture variable %s in CFunc lambda expression")
+ERROR(sema_cfunc_cannot_capture_this, "'%s' is not allowed to be captured in CFunc lambda expression")
+ERROR(sema_illegal_ctype_generic_argument, "generic argument mustn't be struct with @C")
+ERROR(sema_illegal_cpointer_generic_type, "generic type of CPointer must be instantiated with CType")
+ERROR(sema_invalid_cfunc_arg_type, "arguments type of CFunc must be instantiated with CType")
+ERROR(sema_cfunc_type, "cfunc type must be a function type")
+ERROR(sema_invalid_tuple_field_ctype, "tuple member mustn't be struct with @C")
+ERROR(sema_enum_pattern_func_cty_error, "member func '%s' is forbidden in enum '%s' with @C")
+ERROR(sema_enum_pattern_func_param_cty_error, "member func '%s' of enum '%s' mustn't has struct with @C")
+ERROR(sema_illegal_ctype_member, "non-static member variable '%s' of %s '%s' cannot be struct with @C")
+ERROR(sema_illegal_member_of_cstruct, "member variable '%s' of struct '%s' with @C must be instantiated with CType")
+ERROR(sema_cfunc_cannot_have_unit_args, "CFunc cannot have arguments of type Unit")
+ERROR(sema_cstruct_cannot_have_unit_fields, "member variables cannot be type Unit in struct with @C")
+ERROR(sema_cfunc_cannot_have_named_args, "CFunc cannot have named arguments")
+ERROR(sema_cfunc_var_cannot_have_var_param, "CFunc with variable-length parameters cannot be assigned to variables")
+
 // CFFI
 ERROR(sema_invalid_cfunc_return_type, "return type of CFunc must be instantiated with CType")
 
