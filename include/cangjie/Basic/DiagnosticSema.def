@@ -152,10 +152,7 @@ ERROR(sema_cannot_convert_literal, "cannot convert %s literal to type '%s'")
 ERROR(sema_cannot_have_parameter, "%s cannot have parameter")
 
 // C FFI Sema Prepare Check.
-ERROR(sema_only_cfunc_can_use_annotation, "only CFunc can use '%s'")
 ERROR(sema_annotation_error_arg_num, "'%s' should have %s arg")
-ERROR(sema_annotation_calling_conv_not_support, "'@CallingConv' have not support '%s' yet")
-ERROR(sema_annotation_invalid_args_type, "'%s' arg should be right type")
 ERROR(sema_unexpected_wrapper, "unexpected %s")
 ERROR(sema_native_var_error, "variable can not be modified with 'foreign' and implicit @C.")
 
