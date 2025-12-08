@@ -32,39 +32,36 @@ void CheckAnnoC(const Decl& decl, const Annotation& anno, DiagnosticEngine& diag
     if (Utils::NotIn(decl.astKind, {ASTKind::FUNC_DECL, ASTKind::STRUCT_DECL})) {
         diag.Diagnose(anno, DiagKind::sema_illegal_use_of_annotation, DeclKindToString(decl), "@C");
     } else if (decl.outerDecl != nullptr || decl.scopeLevel > 0) {
-        diag.Diagnose(anno, DiagKind::sema_illegal_scope_use_of_annotation, "@C");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_illegal_scope_use_of_annotation, anno, "@C");
     }
 }
 
 void CheckAnnoCallingConv(Decl& decl, const Annotation& anno, DiagnosticEngine& diag)
 {
     if (decl.outerDecl != nullptr || decl.scopeLevel > 0) {
-        diag.Diagnose(anno, DiagKind::sema_illegal_scope_use_of_annotation, "@CallingConv");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_illegal_scope_use_of_annotation, anno, "@CallingConv");
         return;
     }
     if (decl.astKind != ASTKind::FUNC_DECL || (!decl.TestAttr(Attribute::FOREIGN) && !decl.TestAttr(Attribute::C))) {
-        // Will be merged with sema_unsupported_annotation_in_js_interop.
         // Will be replaced with anno->identifier.
-        diag.Diagnose(anno, DiagKind::sema_only_cfunc_can_use_annotation, "@CallingConv");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_only_cfunc_can_use_annotation, anno, "@CallingConv");
         return;
     }
     if (anno.args.size() != 1) {
-        diag.Diagnose(anno, DiagKind::sema_annotation_error_arg_num, "@CallingConv", "one");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_annotation_error_arg_num, anno, "@CallingConv", "one");
         return;
     }
     if (auto refExpr = DynamicCast<RefExpr*>(anno.args.front()->expr.get()); refExpr) {
         std::unordered_map<std::string, Attribute> callingConvMap = {
             {"CDECL", Attribute::C},
-            {"STDCALL", Attribute::STD_CALL},
         };
         if (callingConvMap.find(refExpr->ref.identifier) == callingConvMap.end()) {
-            // Will be merged with sema_unsupported_annotation_in_js_interop.
-            diag.Diagnose(anno, DiagKind::sema_annotation_calling_conv_not_support, refExpr->ref.identifier.Val());
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_annotation_calling_conv_not_support, anno, refExpr->ref.identifier.Val());
             return;
         }
         decl.EnableAttr(callingConvMap[refExpr->ref.identifier]);
     } else {
-        diag.Diagnose(anno, DiagKind::sema_annotation_invalid_args_type, "@CallingConv");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_annotation_invalid_args_type, anno, "@CallingConv");
     }
 }
 
@@ -80,7 +77,7 @@ void CheckAnnoFastNative(const Decl& decl, const Annotation& anno, DiagnosticEng
         return;
     }
     if (decl.outerDecl != nullptr || decl.scopeLevel > 0) {
-        diag.Diagnose(anno, DiagKind::sema_illegal_scope_use_of_annotation, "@FastNative");
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_illegal_scope_use_of_annotation, anno, "@FastNative");
     }
 }
 
