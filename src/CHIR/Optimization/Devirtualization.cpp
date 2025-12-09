@@ -181,6 +181,9 @@ bool Devirtualization::RewriteToBuiltinOp(CHIRBuilder& builder, const RewriteInf
 void Devirtualization::RewriteToApply(CHIRBuilder& builder, std::vector<RewriteInfo>& rewriteInfos, bool isDebug)
 {
     for (auto rewriteInfo = rewriteInfos.rbegin(); rewriteInfo != rewriteInfos.rend(); ++rewriteInfo) {
+        if (rewriteInfo->realCallee && rewriteInfo->realCallee->GetIdentifier() == "@_CNax6Tokens6appendHRNax5TokenE") {
+            continue;
+        }
         if (RewriteToBuiltinOp(builder, *rewriteInfo, isDebug)) {
             continue;
         }
