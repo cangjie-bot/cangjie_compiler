@@ -494,16 +494,46 @@ OwnedPtr<VarDecl> ASTFactory::CreateNativeHandleField(ClassDecl& target)
     return nativeHandleField;
 }
 
-OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(const Decl& target, FuncDecl& ctor, bool generateForOneWayMapping)
+OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(Decl& target, FuncDecl& ctor, bool generateForOneWayMapping,
+    const Native::FFI::GenericConfigInfo* genericConfig)
 {
     auto curFile = ctor.curFile;
     auto registryIdTy = bridge.GetRegistryIdTy();
 
+    std::unordered_map<std::string, Ptr<Ty>> actualTyArgMap;
+    std::vector<Ptr<Ty>> funcTyParams;
+    std::vector<OwnedPtr<Type>> actualPrimitiveType;
+    if (genericConfig && genericConfig->instTypes.size() != 0) {
+        GetArgsAndRetGenericActualTyVector(genericConfig, ctor, genericConfig->instTypes, actualTyArgMap,
+            funcTyParams, actualPrimitiveType);
+    }
+
     auto wrapperParamList = MakeOwned<FuncParamList>();
     auto& wrapperParams = wrapperParamList->params;
     auto& ctorParams = ctor.funcBody->paramLists[0]->params;
-    std::transform(ctorParams.begin(), ctorParams.end(), std::back_inserter(wrapperParams),
-        [this](auto& p) { return CreateFuncParam(p->identifier.Val(), nullptr, nullptr, typeMapper.Cj2CType(p->ty)); });
+    std::transform(
+        ctorParams.begin(),
+        ctorParams.end(),
+        std::back_inserter(wrapperParams),
+        [this, &actualTyArgMap](const auto& p) {
+            std::string paramName = p->identifier.Val();
+            // default ty
+            Ptr<Ty> finalTy = p->ty;
+            // genericTy->actualTy
+            auto it = actualTyArgMap.find(p->ty->name);
+            if (it != actualTyArgMap.end()) {
+                finalTy = it->second;
+            }
+            if (!finalTy) {
+                throw std::runtime_error("Missing type for parameter: " + paramName);
+            }
+            Ptr<Ty> cType = this->typeMapper.Cj2CType(finalTy);
+            if (!cType) {
+                throw std::runtime_error("Failed to convert type for parameter: " + paramName);
+            }
+            return CreateFuncParam(paramName, nullptr, nullptr, cType);
+        }
+    );
 
     std::vector<Ptr<Ty>> wrapperParamTys;
     std::transform(
@@ -523,21 +553,45 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(const Decl& target, FuncDecl& 
         argIdx = 1;
     }
     while (argIdx < ctorParams.size()) {
+        Ptr<Ty> finalTy = ctorParams[argIdx]->ty;
+        // genericTy->actualTy
+        auto it = actualTyArgMap.find(finalTy->name);
+        if (it != actualTyArgMap.end()) {
+            finalTy = it->second;
+        }
         auto& wrapperParam = wrapperParams[argIdx];
         auto paramRef = WithinFile(CreateRefExpr(*wrapperParam), curFile);
-        OwnedPtr<FuncArg> ctorCallArg = CreateFuncArg(WrapEntity(std::move(paramRef), *ctorParams[argIdx]->ty));
+        OwnedPtr<FuncArg> ctorCallArg = CreateFuncArg(WrapEntity(std::move(paramRef), *finalTy));
         ctorCallArgs.emplace_back(std::move(ctorCallArg));
         ++argIdx;
     }
 
-    auto ctorCall = CreateCallExpr(
-        CreateRefExpr(ctor), std::move(ctorCallArgs), Ptr(&ctor), target.ty, CallKind::CALL_OBJECT_CREATION);
+    OwnedPtr<CallExpr> ctorCall;
+    if (target.ty->HasGeneric()) {
+        auto instantiationRefExpr = CreateRefExpr(ctor);
+        auto instantTy = GetInstantyForGenericTy(target, actualTyArgMap, typeManager);
+        auto retTy = StaticCast<FuncTy*>(ctor.ty)->retTy;
+        Ptr<FuncTy> funcTy;
+        if (retTy->HasGeneric()) {
+            funcTy = typeManager.GetFunctionTy(funcTyParams, instantTy, {.isC = true});
+        } else {
+            funcTy = typeManager.GetFunctionTy(funcTyParams, retTy, {.isC = true});
+        }
+        instantiationRefExpr->typeArguments = std::move(actualPrimitiveType);
+        instantiationRefExpr->ty = funcTy;
+        ctorCall = CreateCallExpr(
+            std::move(instantiationRefExpr), std::move(ctorCallArgs), Ptr(&ctor), instantTy, CallKind::CALL_OBJECT_CREATION);
+    } else {
+        ctorCall = CreateCallExpr(
+            CreateRefExpr(ctor), std::move(ctorCallArgs), Ptr(&ctor), target.ty, CallKind::CALL_OBJECT_CREATION);
+    }
     auto putToRegistryCall = CreatePutToRegistryCall(std::move(ctorCall));
 
     auto wrapperBody = CreateFuncBody(std::move(wrapperParamLists), CreateType(registryIdTy),
         CreateBlock(Nodes<Node>(std::move(putToRegistryCall)), registryIdTy), wrapperTy);
 
-    auto wrapperName = nameGenerator.GenerateInitCjObjectName(ctor);
+    auto wrapperName = genericConfig ? nameGenerator.GenerateInitCjObjectName(ctor, &genericConfig->declInstName) :
+        nameGenerator.GenerateInitCjObjectName(ctor);
 
     auto wrapper = CreateFuncDecl(wrapperName, std::move(wrapperBody), wrapperTy);
     wrapper->moduleName = ctor.moduleName;
@@ -580,7 +634,8 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObjectForEnumNoParams(AST::EnumDecl& 
     return wrapper;
 }
 
-OwnedPtr<FuncDecl> ASTFactory::CreateDeleteCjObject(Decl& target, bool generateForOneWayMapping)
+OwnedPtr<FuncDecl> ASTFactory::CreateDeleteCjObject(Decl& target, bool generateForOneWayMapping,
+    const Native::FFI::GenericConfigInfo* genericConfig)
 {
     auto registryIdTy = bridge.GetRegistryIdTy();
     auto param = CreateFuncParam(REGISTRY_ID_IDENT, CreateType(registryIdTy), nullptr, registryIdTy);
@@ -619,7 +674,8 @@ OwnedPtr<FuncDecl> ASTFactory::CreateDeleteCjObject(Decl& target, bool generateF
     auto funcBody = CreateFuncBody(std::move(paramLists), Native::FFI::CreateUnitType(target.curFile),
         CreateBlock(std::move(funcNodes), unitTy), funcTy);
 
-    auto funcName = nameGenerator.GenerateDeleteCjObjectName(target);
+    auto funcName = genericConfig ? nameGenerator.GenerateDeleteCjObjectName(target, &genericConfig->declInstName) :
+        nameGenerator.GenerateDeleteCjObjectName(target);
 
     auto ret = CreateFuncDecl(funcName, std::move(funcBody), funcTy);
     ret->moduleName = target.moduleName;
@@ -631,7 +687,7 @@ OwnedPtr<FuncDecl> ASTFactory::CreateDeleteCjObject(Decl& target, bool generateF
     return ret;
 }
 
-OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method)
+OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method, const Native::FFI::GenericConfigInfo* genericConfig)
 {
     auto outerDecl = static_cast<InheritableDecl*>(method.outerDecl.get());
     CJC_NULLPTR_CHECK(outerDecl);
@@ -639,8 +695,19 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method)
     auto wrapperParamList = MakeOwned<FuncParamList>();
     auto& wrapperParams = wrapperParamList->params;
 
+    auto& retTy = method.funcBody->retType->ty;
+    OwnedPtr<CallExpr> getFromRegistryCall;
     OwnedPtr<VarDecl> objTmpVarDecl;
     OwnedPtr<MemberAccess> methodExpr;
+    std::unordered_map<std::string, Ptr<Ty>> actualTyArgMap;
+    std::vector<Ptr<Ty>> funcTyParams;
+    std::vector<OwnedPtr<Type>> actualPrimitiveType;
+    if (genericConfig && genericConfig->instTypes.size() != 0) {
+        GetArgsAndRetGenericActualTyVector(genericConfig, method, genericConfig->instTypes, actualTyArgMap,
+            funcTyParams, actualPrimitiveType);
+    }
+    auto instantTy = GetInstantyForGenericTy(*method.outerDecl, actualTyArgMap, typeManager);
+    auto retActualTy = retTy->IsGeneric() ? actualTyArgMap[retTy->name] : retTy;
     if (method.TestAttr(Attribute::STATIC)) {
         methodExpr = CreateMemberAccess(WithinFile(CreateRefExpr(*method.outerDecl), method.curFile), method);
     } else {
@@ -648,25 +715,62 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method)
         auto registryIdParam = CreateFuncParam(REGISTRY_ID_IDENT, CreateType(registryIdTy), nullptr, registryIdTy);
         auto registryIdParamRef = CreateRefExpr(*registryIdParam);
         wrapperParams.emplace_back(std::move(registryIdParam));
-        auto getFromRegistryCall =
-            CreateGetFromRegistryByIdCall(std::move(registryIdParamRef), CreateRefType(*outerDecl));
-        objTmpVarDecl = CreateTmpVarDecl(CreateRefType(*outerDecl), std::move(getFromRegistryCall));
+        if (outerDecl->ty->HasGeneric()) {
+            auto registryTy = CreateRefType(*outerDecl, instantTy);
+            registryTy->typeArguments = std::move(actualPrimitiveType);
+
+            getFromRegistryCall =
+                CreateGetFromRegistryByIdCall(std::move(registryIdParamRef), std::move(registryTy));
+            objTmpVarDecl = CreateTmpVarDecl(CreateType(instantTy), std::move(getFromRegistryCall));
+        } else {
+            getFromRegistryCall =
+                CreateGetFromRegistryByIdCall(std::move(registryIdParamRef), CreateRefType(*outerDecl));
+            objTmpVarDecl = CreateTmpVarDecl(CreateRefType(*outerDecl), std::move(getFromRegistryCall));
+        }
         methodExpr = CreateMemberAccess(CreateRefExpr(*objTmpVarDecl), method);
+        if (!retTy->IsGeneric()) {
+            methodExpr->ty = typeManager.GetFunctionTy(funcTyParams, retTy);
+        } else {
+            methodExpr->ty = typeManager.GetFunctionTy(funcTyParams, retActualTy);
+        }
     }
 
     auto& originParams = method.funcBody->paramLists[0]->params;
-    std::transform(originParams.begin(), originParams.end(), std::back_inserter(wrapperParams), [this](auto& p) {
-        auto convertedParamTy = typeMapper.Cj2CType(p->ty);
-        return CreateFuncParam(p->identifier.GetRawText() + (typeMapper.IsObjCCJMapping(*(p->ty)) ? "Id" : ""),
-            CreateType(convertedParamTy), nullptr, convertedParamTy);
-    });
+    std::transform(
+        originParams.begin(),
+        originParams.end(),
+        std::back_inserter(wrapperParams),
+        [this, &actualTyArgMap](const auto& p) {
+            std::string paramName = p->identifier.Val();
+            // default ty
+            Ptr<Ty> finalTy = p->ty;
+            // genericTy->actualTy
+            auto it = actualTyArgMap.find(p->ty->name);
+            if (it != actualTyArgMap.end()) {
+                finalTy = it->second;
+            }
+            if (!finalTy) {
+                throw std::runtime_error("Missing type for parameter: " + paramName);
+            }
+            auto convertedParamTy = typeMapper.Cj2CType(finalTy);
+            if (!convertedParamTy) {
+                throw std::runtime_error("Failed to convert type for parameter: " + paramName);
+            }
+            return CreateFuncParam(p->identifier.GetRawText() + (typeMapper.IsObjCCJMapping(*finalTy) ? "Id" : ""),
+                CreateType(convertedParamTy), nullptr, convertedParamTy);
+        }
+    );
 
     std::vector<Ptr<Ty>> wrapperParamTys;
     std::transform(
         wrapperParams.begin(), wrapperParams.end(), std::back_inserter(wrapperParamTys), [](auto& p) { return p->ty; });
 
-    auto& retTy = method.funcBody->retType->ty;
-    auto retWrapperTy = typeManager.GetFunctionTy(wrapperParamTys, typeMapper.Cj2CType(retTy), {.isC = true});
+    Ptr<FuncTy> retWrapperTy;
+    if (retTy->HasGeneric()) {
+        retWrapperTy = typeManager.GetFunctionTy(wrapperParamTys, typeMapper.Cj2CType(retActualTy), {.isC = true});
+    } else {
+        retWrapperTy = typeManager.GetFunctionTy(wrapperParamTys, typeMapper.Cj2CType(retTy), {.isC = true});
+    }
 
     std::vector<OwnedPtr<FuncParamList>> wrapperParamLists;
     wrapperParamLists.emplace_back(std::move(wrapperParamList));
@@ -682,14 +786,26 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method)
         auto wrapperParam = wrapperParams[i].get();
         auto originParam = originParams[i - index].get();
 
+        Ptr<Ty> finalTy = originParam->ty;
+        // genericTy->actualTy
+        auto it = actualTyArgMap.find(finalTy->name);
+        if (it != actualTyArgMap.end()) {
+            finalTy = it->second;
+        }
         auto paramRef = CreateRefExpr(*wrapperParam);
-        auto wrappedParamRef = WrapEntity(WithinFile(std::move(paramRef), method.curFile), *originParam->ty);
-        auto arg = CreateFuncArg(std::move(wrappedParamRef), wrapperParam->identifier, originParam->ty);
+        auto wrappedParamRef = WrapEntity(WithinFile(std::move(paramRef), method.curFile), *finalTy);
+        auto arg = CreateFuncArg(std::move(wrappedParamRef), wrapperParam->identifier, finalTy);
         methodArgs.emplace_back(std::move(arg));
     }
 
-    auto methodCall = CreateCallExpr(std::move(methodExpr), std::move(methodArgs), Ptr(&method),
-        method.funcBody->retType->ty, CallKind::CALL_DECLARED_FUNCTION);
+    OwnedPtr<CallExpr> methodCall;
+    if (outerDecl->ty->HasGeneric()) {
+        methodCall = CreateCallExpr(std::move(methodExpr), std::move(methodArgs), Ptr(&method),
+            retActualTy, CallKind::CALL_DECLARED_FUNCTION);
+    } else {
+        methodCall = CreateCallExpr(std::move(methodExpr), std::move(methodArgs), Ptr(&method),
+            method.funcBody->retType->ty, CallKind::CALL_DECLARED_FUNCTION);
+    }
 
     std::vector<OwnedPtr<Node>> wrapperNodes;
     if (!method.TestAttr(Attribute::STATIC)) {
@@ -700,7 +816,8 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method)
     auto wrapperBody = CreateFuncBody(std::move(wrapperParamLists), CreateType(retWrapperTy->retTy),
         CreateBlock(std::move(wrapperNodes), retWrapperTy->retTy), retWrapperTy);
 
-    auto wrapperName = nameGenerator.GenerateMethodWrapperName(method);
+    auto wrapperName = genericConfig ? nameGenerator.GenerateMethodWrapperName(method, &genericConfig->declInstName) :
+        nameGenerator.GenerateMethodWrapperName(method);
 
     auto wrapper = CreateFuncDecl(wrapperName, std::move(wrapperBody), retWrapperTy);
     wrapper->moduleName = method.moduleName;
