@@ -480,7 +480,7 @@ std::string GetJavaFQName(const Decl& decl, const std::string* genericActualName
             return GetFQNameJoinBy(*attr, "$");
         }
     }
-    if (genericActualName) {
+    if (genericActualName && !genericActualName->empty()) {
         return decl.GetFullPackageName() + "." + *genericActualName;
     } else {
         return decl.GetFullPackageName() + "." + decl.identifier;
@@ -809,59 +809,6 @@ bool IsCJMapping(const Ty& ty)
     }
 
     return false;
-}
-
-bool IsCJMappingGeneric(const Decl& decl) {
-    auto classDecl = DynamicCast<ClassDecl*>(&decl);
-    if (classDecl && !classDecl->TestAnyAttr(AST::Attribute::ABSTRACT, AST::Attribute::OPEN) &&
-        classDecl->ty->HasGeneric()) {
-        return true;
-    }
-
-    auto structDecl = DynamicCast<StructDecl*>(&decl);
-    if (structDecl && structDecl->ty->HasGeneric()) {
-        return true;
-    }
-
-    auto enumDecl = DynamicCast<EnumDecl*>(&decl);
-    if (enumDecl && enumDecl->ty->HasGeneric()) {
-        return true;
-    }
-
-    auto interfaceDecl = DynamicCast<InterfaceDecl*>(&decl);
-    if (interfaceDecl && interfaceDecl->ty->HasGeneric()) {
-        return true;
-    }
-    
-    return false;
-}
-
-void SplitAndTrim(std::string str, std::vector<std::string>& types)
-{
-    size_t pos = str.find(',');
-    if (pos == std::string::npos) {
-        types.push_back(str);
-        return;
-    }
-    std::stringstream ss(str);
-    std::string token;
-    while (std::getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \t"));
-        token.erase(token.find_last_not_of(" \t") + 1);
-        types.push_back(token);
-    }
-}
-
-std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter)
-{
-    std::string result;
-    for (size_t i = 0; i < vec.size(); ++i) {
-        result += vec[i];
-        if (i != vec.size() - 1) {
-            result += delimiter;
-        }
-    }
-    return result;
 }
 
 const Ptr<ClassDecl> GetSyntheticClass(const ImportManager& importManager, const ClassLikeDecl& cld)

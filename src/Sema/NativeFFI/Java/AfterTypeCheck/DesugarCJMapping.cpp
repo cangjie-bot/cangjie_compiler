@@ -143,40 +143,6 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
     }
 }
 
-void JavaDesugarManager::InitGenericConfigs(
-    const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs)
-{
-    // Collect information on the names of generic configuration methods
-    // such as: {GenericClass<int32>, symbols: ["find", "value"]>}
-    std::unordered_map<std::string, std::unordered_set<std::string>> visibleFuncs;
-    for (const auto& outerPair : file.curPackage->allowedInteropCJGenericInstantiations) {
-        const auto declSymbolName = outerPair.first;
-        const auto& innerMap = outerPair.second;
-        if (declSymbolName != decl->identifier.Val()) {
-            continue;
-        }
-        for (const auto& innerPair : innerMap) {
-            const std::string typeStr = innerPair.first;
-            const GenericTypeArguments& args = innerPair.second;
-            std::unordered_set<std::string> funcNames = args.symbols;
-            std::vector<std::string> actualTypes;
-            SplitAndTrim(typeStr, actualTypes);
-            std::vector<std::pair<std::string, std::string>> instTypes;
-            const auto typeArgs = decl->ty->typeArgs;
-            for (size_t i = 0; i < typeArgs.size(); i++) {
-                instTypes.push_back(std::make_pair(typeArgs[i]->name, actualTypes[i]));
-            }
-            std::string declName = decl->identifier.Val();
-            std::string declWInstStr = declName + JoinVector(actualTypes);
-            GenericConfigInfo* declGenericConfig = new GenericConfigInfo(declName, declWInstStr, instTypes, funcNames);
-            genericConfigs.push_back(declGenericConfig);
-            if (!isGenericGlueCode) {
-                isGenericGlueCode = true;
-            }
-        }
-    }
-}
-
 OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFuncForEnumCtorNoParams(
     AST::EnumDecl& enumDecl, AST::VarDecl& ctor)
 {
@@ -247,7 +213,8 @@ void JavaDesugarManager::GenerateForCJEnumMapping(AST::EnumDecl& enumDecl)
                 for (auto genericConfig : genericConfigsVector) {
                     auto getSignature = GetJniMethodNameForProp(propDecl, false);
                     if (genericConfig && !genericConfig->declInstName.empty()) {
-                        getSignature = GetJniMethodNameForProp(propDecl, false, &genericConfig->declInstName);
+                        getSignature = genericConfig ? GetJniMethodNameForProp(propDecl, false, &genericConfig->declInstName) :
+                            GetJniMethodNameForProp(propDecl, false);
                     }
                     auto nativeMethod = GenerateNativeMethod(*funcDecl.get(), enumDecl, genericConfig);
                     if (nativeMethod != nullptr) {
@@ -474,9 +441,8 @@ OwnedPtr<ClassDecl> JavaDesugarManager::InitInterfaceFwdClassDecl(AST::Interface
 void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::InterfaceDecl& interfaceDecl)
 {
     if (IsCJMappingGeneric(interfaceDecl)) {
-        std::vector<GenericConfigInfo*> genericConfigs;
-        InitGenericConfigs(file, &interfaceDecl, genericConfigs);
-        for (const auto& config : genericConfigs) {
+        InitGenericConfigs(file, &interfaceDecl, genericConfigsVector, isGenericGlueCode);
+        for (const auto& config : genericConfigsVector) {
             auto fwdclassDecl = InitInterfaceFwdClassDecl(interfaceDecl);
             fwdclassDecl->identifier = config->declInstName + JAVA_FWD_CLASS_SUFFIX;
 
@@ -895,7 +861,7 @@ void JavaDesugarManager::GenerateInCJMapping(File& file)
             continue;
         }
         // Initialize generic-related data type information.
-        InitGenericConfigs(file, decl.get(), genericConfigsVector);
+        InitGenericConfigs(file, decl.get(), genericConfigsVector, isGenericGlueCode);
         auto structDecl = As<ASTKind::STRUCT_DECL>(decl.get());
         if (file.curPackage.get()->isInteropCJPackageConfig && structDecl && !structDecl->symbol->isNeedExposedToInterop) {
             continue;
@@ -946,9 +912,8 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
     }
     for (auto decl : genDecls) {
         if (IsCJMappingGeneric(*decl)) {
-            std::vector<GenericConfigInfo*> genericConfigs;
-            InitGenericConfigs(file, decl, genericConfigs);
-            for (auto& config : genericConfigs) {
+            InitGenericConfigs(file, decl, genericConfigsVector, isGenericGlueCode);
+            for (auto& config : genericConfigsVector) {
                 const std::string fileJ = config->declInstName + ".java";
                 auto codegen = JavaSourceCodeGenerator(*decl.get(), mangler, javaCodeGenPath, fileJ,
                     GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), config,
