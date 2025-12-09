@@ -70,6 +70,7 @@ void GenerateWrappers::HandleImpl(InteropContext& ctx)
         }
     } else if (interopType == InteropType::CJ_Mapping) {
         for (auto& cjmapping : ctx.cjMappings) {
+            Native::FFI::InitGenericConfigs(*cjmapping->curFile, cjmapping.get(), genericConfigsVector, isGenericGlueCode);
             genWrapper(*cjmapping);
         }
     }
@@ -77,16 +78,36 @@ void GenerateWrappers::HandleImpl(InteropContext& ctx)
 
 void GenerateWrappers::GenerateWrapper(InteropContext& ctx, FuncDecl& method)
 {
-    auto wrapper = ctx.factory.CreateMethodWrapper(method);
-    CJC_NULLPTR_CHECK(wrapper);
-    ctx.genDecls.emplace_back(std::move(wrapper));
+    if (isGenericGlueCode) {
+        for (auto genericConfig : genericConfigsVector) {
+            auto wrapper = ctx.factory.CreateMethodWrapper(method, genericConfig);
+            CJC_NULLPTR_CHECK(wrapper);
+            ctx.genDecls.emplace_back(std::move(wrapper));
+        }
+    } else {
+        auto wrapper = ctx.factory.CreateMethodWrapper(method);
+        CJC_NULLPTR_CHECK(wrapper);
+        ctx.genDecls.emplace_back(std::move(wrapper));
+    }
 }
 
 void GenerateWrappers::GenerateWrapper(InteropContext& ctx, PropDecl& prop)
 {
-    auto wrapper = ctx.factory.CreateGetterWrapper(prop);
-    CJC_NULLPTR_CHECK(wrapper);
-    ctx.genDecls.emplace_back(std::move(wrapper));
+    if (isGenericGlueCode) {
+        for (auto genericConfig : genericConfigsVector) {
+            const OwnedPtr<FuncDecl>& funcDecl = prop.getters[0];
+            if (funcDecl) {
+               auto wrapper = ctx.factory.CreateMethodWrapper(*funcDecl.get(), genericConfig);
+                CJC_NULLPTR_CHECK(wrapper);
+                ctx.genDecls.emplace_back(std::move(wrapper));
+            }
+        }
+    } else {
+        auto wrapper = ctx.factory.CreateGetterWrapper(prop);
+        CJC_NULLPTR_CHECK(wrapper);
+        ctx.genDecls.emplace_back(std::move(wrapper));
+    }
+
 
     if (prop.isVar) {
         GenerateSetterWrapper(ctx, prop);
