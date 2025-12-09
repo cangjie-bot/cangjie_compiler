@@ -177,12 +177,37 @@ bool IsThisConstructorCall(const CallExpr& call);
 
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
 OwnedPtr<Type> GetGenericInstType(std::string typeStr);
-OwnedPtr<Type> GetGenericInstType(GenericConfigInfo* config, std::string genericName);
-std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName);
+OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
+std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
 TypeKind GetGenericActualTypeKind(std::string configType);
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName);
 Ptr<Ty> GetGenericInstTy(std::string typeStr);
 
+bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsVisibalFunc(const FuncDecl& funcDecl, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsCJMappingGeneric(const Decl& decl);
+
+void SplitAndTrim(std::string str, std::vector<std::string>& types);
+
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
+
+void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs,
+    bool& isGenericGlueCode);
+
+/**
+ * If function param or return param is generic ty, replace it to instance ty by genericConfig.
+ */
+void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager);
+
+void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
+    const std::vector<std::pair<std::string, std::string>> instTypes,
+    std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
+    std::vector<OwnedPtr<Type>> &actualPrimitiveType);
+
+Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
+    TypeManager& typeManager);
 } // namespace Cangjie::Interop::Java
 
 #endif // CANGJIE_SEMA_NATIVE_FFI_UTILS
