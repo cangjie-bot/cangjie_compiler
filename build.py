@@ -130,8 +130,9 @@ def generate_cmake_defs(args):
 
     result = [
         "-DCMAKE_BUILD_TYPE=" + args.build_type.value,
+        "-DCJDB_VERSION_STR=" + args.version,
         "-DCMAKE_ENABLE_ASSERT=" + bool_to_opt(args.enable_assert),
-        "-DCMAKE_INSTALL_PREFIX=" + install_prefix,
+        "-DCMAKE_INSTALL_PREFIX=" + install_predfix,
         "-DCMAKE_TOOLCHAIN_FILE=" + os.path.join(HOME_DIR, "cmake/" + toolchain_file),
         "-DCMAKE_PREFIX_PATH=" + (args.target_toolchain + "/../x86_64-w64-mingw32" if args.target_toolchain else ""),
         "-DCANGJIE_BUILD_TESTS=" + bool_to_opt((not args.no_tests) and (args.product == "all" or args.product == "libs")),
@@ -256,6 +257,8 @@ def build(args):
 
     output = subprocess.Popen(build_cmd, cwd=cmake_build_dir, stdout=PIPE)
     log_output(output)
+    if args.version is None:
+        args.version = "1.1.0-beta.2"
 
     if output.returncode != 0:
         LOG.fatal("build failed")
@@ -534,6 +537,11 @@ def main():
         "-t", "--build-type", type=BuildType.argparse, dest="build_type", choices=list(BuildType), required=True,
         help="select target build type"
     )
+    parser_build.add_argument(
+        '-v',
+        '--version',
+        default="1.1.0-beta.3",
+        help='Version string, e.g., 1.1.0-beta.3')
     parser_build.add_argument(
         "--print-cmd", action="store_true", help="print the command to cmake without running"
     )

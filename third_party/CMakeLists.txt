@@ -203,6 +203,7 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
             # Propagate build type and compiler.
             # For now, we can only use release version
             -DCMAKE_BUILD_TYPE=${CANGJIE_LLVM_BUILD_TYPE}
+            -DCJDB_VERSION_STR=${CJDB_VERSION_STR}
             -DCMAKE_C_COMPILER=${LLVM_BUILD_C_COMPILER}
             -DCMAKE_CXX_COMPILER=${LLVM_BUILD_CXX_COMPILER}
             -DCMAKE_AR=${CMAKE_AR}
@@ -293,7 +294,9 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/libboundscheck${boundscheck_suffix}
                             <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}/libboundscheck${boundscheck_target_suffix}
                 LIST_SEPARATOR |
-                CMAKE_ARGS ${LLVM_CMAKE_ARGS}
+                CMAKE_ARGS 
+                    ${LLVM_CMAKE_ARGS}
+                    -DCJDB_VERSION_STR=${CJDB_VERSION_STR} 
                 USES_TERMINAL_BUILD ON
                 DEPENDS cangjie-demangler boundscheck)
         else()
@@ -328,7 +331,9 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/libboundscheck${boundscheck_suffix}
                             <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}/libboundscheck${boundscheck_target_suffix}
                 LIST_SEPARATOR |
-                CMAKE_ARGS ${LLVM_CMAKE_ARGS}
+                CMAKE_ARGS 
+                    ${LLVM_CMAKE_ARGS}
+                    -DCJDB_VERSION_STR=${CJDB_VERSION_STR} 
                 USES_TERMINAL_BUILD ON
                 DEPENDS cangjie-demangler boundscheck)
         endif()
