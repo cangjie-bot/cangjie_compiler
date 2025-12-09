@@ -15,7 +15,8 @@
 using namespace Cangjie::AST;
 using namespace Cangjie::Interop::ObjC;
 
-void GenerateInitCJObjectMethods::GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl)
+void GenerateInitCJObjectMethods::GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl,
+    bool isGenericGlueCode, const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector)
 {
     if (enumDecl.TestAttr(Attribute::IS_BROKEN)) {
         return;
@@ -30,18 +31,30 @@ void GenerateInitCJObjectMethods::GenNativeInitMethodForEnumCtor(InteropContext&
         if (ctor->astKind == ASTKind::FUNC_DECL) {
             auto fd = As<ASTKind::FUNC_DECL>(ctor.get());
             CJC_NULLPTR_CHECK(fd);
-            initCjObject = ctx.factory.CreateInitCjObject(enumDecl, *fd, true);
+            if (isGenericGlueCode) {
+                for (auto genericConfig : genericConfigsVector) {
+                    initCjObject = ctx.factory.CreateInitCjObject(enumDecl, *fd, true, genericConfig);
+                    CJC_ASSERT(initCjObject);
+                    ctx.genDecls.emplace_back(std::move(initCjObject));
+                }
+            } else {
+                initCjObject = ctx.factory.CreateInitCjObject(enumDecl, *fd, true);
+                CJC_ASSERT(initCjObject);
+                ctx.genDecls.emplace_back(std::move(initCjObject));
+            }
         } else if (ctor->astKind == ASTKind::VAR_DECL) {
             auto varDecl = As<ASTKind::VAR_DECL>(ctor.get());
             initCjObject = ctx.factory.CreateInitCjObjectForEnumNoParams(enumDecl, *varDecl);
+            CJC_ASSERT(initCjObject);
+            ctx.genDecls.emplace_back(std::move(initCjObject));
         }
-        ctx.genDecls.emplace_back(std::move(initCjObject));
     }
 }
 
 void GenerateInitCJObjectMethods::HandleImpl(InteropContext& ctx)
 {
-    auto genNativeInitMethod = [this, &ctx](Decl& decl) {
+    auto genNativeInitMethod = [this, &ctx](Decl& decl, bool isGenericGlueCode,
+            const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector) {
         if (decl.TestAttr(Attribute::IS_BROKEN)) {
             return;
         }
@@ -74,22 +87,33 @@ void GenerateInitCJObjectMethods::HandleImpl(InteropContext& ctx)
             }
             bool forOneWayMapping = false;
             forOneWayMapping = this->interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(decl);
-            auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
-            CJC_ASSERT(initCjObject);
-            ctx.genDecls.emplace_back(std::move(initCjObject));
+            if (isGenericGlueCode) {
+                for (auto genericConfig : genericConfigsVector) {
+                    auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping, genericConfig);
+                    CJC_ASSERT(initCjObject);
+                    ctx.genDecls.emplace_back(std::move(initCjObject));
+                }
+            } else {
+                auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
+                CJC_ASSERT(initCjObject);
+                ctx.genDecls.emplace_back(std::move(initCjObject));
+            }
         }
     };
 
     if (interopType == InteropType::ObjC_Mirror) {
         for (auto& impl : ctx.impls) {
-            genNativeInitMethod(*impl);
+            genNativeInitMethod(*impl, false, {});
         }
     } else if (interopType == InteropType::CJ_Mapping) {
         for (auto& cjmapping : ctx.cjMappings) {
+            std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+            bool isGenericGlueCode = false;
+            Native::FFI::InitGenericConfigs(*cjmapping->curFile, cjmapping.get(), genericConfigsVector, isGenericGlueCode);
             if (auto enumDecl = As<ASTKind::ENUM_DECL>(cjmapping)) {
-                GenNativeInitMethodForEnumCtor(ctx, *enumDecl);
+                GenNativeInitMethodForEnumCtor(ctx, *enumDecl, isGenericGlueCode, genericConfigsVector);
             } else {
-                genNativeInitMethod(*cjmapping);
+                genNativeInitMethod(*cjmapping, isGenericGlueCode, genericConfigsVector);
             }
         }
     }

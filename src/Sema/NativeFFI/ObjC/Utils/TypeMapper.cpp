@@ -483,20 +483,17 @@ bool TypeMapper::IsObjCFuncOrBlock(const Ty& ty)
 
 bool TypeMapper::IsObjCCJMapping(const Decl& decl)
 {
-    // Currently, we only support CJ mapping for non-generic decl.
-    bool isGeneric = decl.generic != nullptr;
     bool isStruct = decl.astKind == ASTKind::STRUCT_DECL;
     bool isEnum = decl.astKind == ASTKind::ENUM_DECL;
     bool isClass = decl.astKind == ASTKind::CLASS_DECL;
     bool isSupportedType = isStruct || isEnum || isClass;
-    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING) && !isGeneric && isSupportedType;
+    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING) && isSupportedType;
 }
 
 bool TypeMapper::IsObjCCJMappingInterface(const Decl& decl)
 {
-    bool isGeneric = decl.generic != nullptr;
     bool isInterface = decl.astKind == ASTKind::INTERFACE_DECL;
-    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING) && !isGeneric && isInterface;
+    return decl.TestAttr(Attribute::OBJ_C_CJ_MAPPING) && isInterface;
 }
 
 bool TypeMapper::IsObjCFwdClass(const Decl& decl)
@@ -625,9 +622,6 @@ bool TypeMapper::IsOneWayMapping(const Ty& ty)
 
 bool TypeMapper::IsValidCJMapping(const Ty& ty)
 {
-    if (ty.HasGeneric()) {
-        return false;
-    }
     return IsPrimitiveMapping(ty) || IsObjCCJMapping(ty) || IsObjCCJMappingInterface(ty);
 }
 
@@ -650,6 +644,7 @@ bool TypeMapper::IsPrimitiveMapping(const Ty& ty)
         case TypeKind::TYPE_FLOAT64:
         case TypeKind::TYPE_IDEAL_FLOAT:
         case TypeKind::TYPE_BOOLEAN:
+        case TypeKind::TYPE_GENERICS:
             return true;
         default:
             return false;
