@@ -27,17 +27,57 @@ void GenerateGlueCode::HandleImpl(InteropContext& ctx)
         codegen.Generate();
     };
 
-    if (interopType == InteropType::ObjC_Mirror) {
-        for (auto& impl : ctx.impls) {
-            genGlueCode(*impl);
+    // For Generic Glue Code
+    auto genGlueCodeWithGenericConfigs = [this, &ctx](Decl& decl, Native::FFI::GenericConfigInfo* genericConfig,
+        bool isGenericGlueCode) {
+        if (decl.TestAnyAttr(Attribute::IS_BROKEN, Attribute::HAS_BROKEN)) {
+            return;
         }
-    } else if (interopType == InteropType::CJ_Mapping) {
-        for (auto& cjmapping : ctx.cjMappings) {
-            genGlueCode(*cjmapping);
+        auto codegen = ObjCGenerator(
+            ctx,
+            &decl,
+            "objc-gen",
+            ctx.cjLibOutputPath,
+            this->interopType,
+            genericConfig,
+            isGenericGlueCode
+        );
+        codegen.Generate();
+    };
+
+    auto processContainer = [&](auto& container) {
+        for (auto& item : container) {
+            std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+            bool isGenericGlueCode = false;
+            Native::FFI::InitGenericConfigs(
+                *item->curFile,
+                item.get(),
+                genericConfigsVector,
+                isGenericGlueCode
+            );
+            if (isGenericGlueCode) {
+                for (auto genericConfig : genericConfigsVector) {
+                    genGlueCodeWithGenericConfigs(*item, genericConfig, isGenericGlueCode);
+                }
+            } else {
+                genGlueCode(*item);
+            }
         }
-    } else if (interopType == InteropType::CJ_Mapping_Interface) {
-        for (auto& cjmapping : ctx.cjMappingInterfaces) {
-            genGlueCode(*cjmapping);
-        }
+    };
+
+    switch (interopType) {
+        case InteropType::ObjC_Mirror:
+            for (auto& impl : ctx.impls) {
+                genGlueCode(*impl);
+            }
+            break;
+        case InteropType::CJ_Mapping:
+            processContainer(ctx.cjMappings);
+            break;
+        case InteropType::CJ_Mapping_Interface:
+            processContainer(ctx.cjMappingInterfaces);
+            break;
+        default:
+            break;
     }
 }

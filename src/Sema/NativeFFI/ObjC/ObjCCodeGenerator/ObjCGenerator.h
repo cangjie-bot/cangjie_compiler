@@ -33,6 +33,9 @@ class ObjCGenerator {
 public:
     ObjCGenerator(InteropContext& ctx, Ptr<AST::Decl> declArg, const std::string& outputFilePath,
         const std::string& cjLibOutputPath, InteropType interopType);
+    ObjCGenerator(InteropContext& ctx, Ptr<AST::Decl> declArg, const std::string& outputFilePath,
+        const std::string& cjLibOutputPath, InteropType interopType, Native::FFI::GenericConfigInfo* genericConfig,
+        bool isGenericGlueCode);
     void Generate();
 
 private:
@@ -45,6 +48,8 @@ private:
     InteropContext& ctx;
     InteropType interopType;
     std::stringstream buffer;
+    Native::FFI::GenericConfigInfo* genericConfig = nullptr;
+    bool isGenericGlueCode{false};
 
     void OpenBlock();
     void CloseBlock(bool newLineBefore, bool newLineAfter);
@@ -84,6 +89,7 @@ private:
     std::string GenerateSetterParamLists(const std::string& type) const;
     std::string WrapperCallByInitForCJMappingReturn(const AST::Ty& retTy, const std::string& nativeCall) const;
     bool SkipSetterForValueTypeDecl(AST::Decl& declArg) const;
+    bool IsNotThisActualTyFunc(const OwnedPtr<AST::Decl>& declPtr);
 
     void GenerateImports(const std::string& objCDeclName);
     void GenerateForwardDeclarations();
