@@ -203,6 +203,7 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
             # Propagate build type and compiler.
             # For now, we can only use release version
             -DCMAKE_BUILD_TYPE=${CANGJIE_LLVM_BUILD_TYPE}
+            -DCJDB_VERSION_STR=${CJDB_VERSION_STR}
             -DCMAKE_C_COMPILER=${LLVM_BUILD_C_COMPILER}
             -DCMAKE_CXX_COMPILER=${LLVM_BUILD_CXX_COMPILER}
             -DCMAKE_AR=${CMAKE_AR}
@@ -273,6 +274,32 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
             if(CANGJIE_USE_OH_LLVM_REPO)
                 set(APPLY_LLVM_PATCH_COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ApplyLLVMPatch.cmake" ${CANGJIE_CJNATIVE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/llvmPatch.diff)
             endif()
+            # 在 ExternalProject_Add 调用前，详细检查
+message(STATUS "=== 变量传递调试 ===")
+message(STATUS "主项目中 CJDB_VERSION_STR = '${CJDB_VERSION_STR}'")
+
+# 检查 LLVM_CMAKE_ARGS 是否真的包含版本参数
+set(VERSION_FOUND FALSE)
+foreach(arg ${LLVM_CMAKE_ARGS})
+    if(arg MATCHES "CJDB_VERSION_STR")
+        message(STATUS "找到版本参数: ${arg}")
+        set(VERSION_FOUND TRUE)
+        
+        # 提取并显示实际值
+        string(REGEX REPLACE ".*=([^ ]*).*" "\\1" VERSION_VALUE "${arg}")
+        message(STATUS "参数中的版本值: '${VERSION_VALUE}'")
+    endif()
+endforeach()
+
+if(NOT VERSION_FOUND)
+    message(WARNING "⚠️  LLVM_CMAKE_ARGS 中没有找到 CJDB_VERSION_STR 参数!")
+endif()
+
+# 显示完整的 CMAKE_ARGS
+message(STATUS "将传递给 LLVM 的完整 CMAKE_ARGS:")
+foreach(arg ${LLVM_CMAKE_ARGS})
+    message(STATUS "  ${arg}")
+endforeach()
             ExternalProject_Add(
                 cjnative
                 SOURCE_DIR ${CANGJIE_CJNATIVE_SOURCE_DIR}
@@ -293,7 +320,9 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/libboundscheck${boundscheck_suffix}
                             <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}/libboundscheck${boundscheck_target_suffix}
                 LIST_SEPARATOR |
-                CMAKE_ARGS ${LLVM_CMAKE_ARGS}
+                CMAKE_ARGS 
+                    ${LLVM_CMAKE_ARGS}
+                    -DCJDB_VERSION_STR=${CJDB_VERSION_STR} 
                 USES_TERMINAL_BUILD ON
                 DEPENDS cangjie-demangler boundscheck)
         else()
@@ -308,6 +337,32 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     GIT_CONFIG ${GIT_ARGS}
                     GIT_SHALLOW OFF)
             endif()
+            # 在 ExternalProject_Add 调用前，详细检查
+message(STATUS "=== 变量传递调试 ===")
+message(STATUS "主项目中 CJDB_VERSION_STR = '${CJDB_VERSION_STR}'")
+
+# 检查 LLVM_CMAKE_ARGS 是否真的包含版本参数
+set(VERSION_FOUND FALSE)
+foreach(arg ${LLVM_CMAKE_ARGS})
+    if(arg MATCHES "CJDB_VERSION_STR")
+        message(STATUS "找到版本参数: ${arg}")
+        set(VERSION_FOUND TRUE)
+        
+        # 提取并显示实际值
+        string(REGEX REPLACE ".*=([^ ]*).*" "\\1" VERSION_VALUE "${arg}")
+        message(STATUS "参数中的版本值: '${VERSION_VALUE}'")
+    endif()
+endforeach()
+
+if(NOT VERSION_FOUND)
+    message(WARNING "⚠️  LLVM_CMAKE_ARGS 中没有找到 CJDB_VERSION_STR 参数!")
+endif()
+
+# 显示完整的 CMAKE_ARGS
+message(STATUS "将传递给 LLVM 的完整 CMAKE_ARGS:")
+foreach(arg ${LLVM_CMAKE_ARGS})
+    message(STATUS "  ${arg}")
+endforeach()
             ExternalProject_Add(
                 cjnative
                 ${LLVM_REPO_DOWNLOAD_ARGS}
@@ -328,7 +383,9 @@ if(CANGJIE_CODEGEN_CJNATIVE_BACKEND) # i.e. "--compile-backend" option
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/libboundscheck${boundscheck_suffix}
                             <SOURCE_DIR>/utils/boundscheck/lib/${CMAKE_SYSTEM_PROCESSOR}/libboundscheck${boundscheck_target_suffix}
                 LIST_SEPARATOR |
-                CMAKE_ARGS ${LLVM_CMAKE_ARGS}
+                CMAKE_ARGS 
+                    ${LLVM_CMAKE_ARGS}
+                    -DCJDB_VERSION_STR=${CJDB_VERSION_STR} 
                 USES_TERMINAL_BUILD ON
                 DEPENDS cangjie-demangler boundscheck)
         endif()
