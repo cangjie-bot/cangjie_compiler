@@ -15,6 +15,7 @@
 
 #include "Context.h"
 #include "NativeFFI/ObjC/Utils/Handler.h"
+#include "NativeFFI/Utils.h"
 
 namespace Cangjie::Interop::ObjC {
 
@@ -165,6 +166,8 @@ public:
 
 private:
     InteropType interopType{InteropType::NA};
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**
@@ -269,6 +272,8 @@ public:
 private:
     InteropType interopType{InteropType::NA};
     void GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl);
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**
@@ -321,6 +326,9 @@ private:
     void GenerateSetterWrapper(InteropContext& ctx, AST::VarDecl& field);
     bool SkipSetterForValueTypeDecl(AST::Decl& decl) const;
     InteropType interopType{InteropType::NA};
+
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**
@@ -418,6 +426,11 @@ public:
 class InsertFwdClasses : public Handler<InsertFwdClasses, InteropContext> {
 public:
     void HandleImpl(InteropContext& ctx);
+    OwnedPtr<AST::ClassDecl> InitInterfaceFwdClassDecl(const Ptr<AST::ClassLikeDecl>& interfaceDecl);
+    OwnedPtr<AST::FuncDecl> GenerateInterfaceFwdclassMethod(InteropContext& ctx, AST::ClassDecl& fwdclassDecl,
+        AST::FuncDecl& interfaceFuncDecl, Native::FFI::GenericConfigInfo* genericConfig = nullptr);
+    void GenerateInterfaceFwdClassBody(InteropContext& ctx, AST::ClassDecl& fwdclassDecl, AST::ClassLikeDecl& interfaceDecl,
+        Native::FFI::GenericConfigInfo* genericConfig = nullptr);
 };
 
 /**

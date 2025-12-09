@@ -290,12 +290,6 @@ private:
     bool FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>& params, std::vector<OwnedPtr<FuncArg>>& callArgs,
         FuncDecl& funcDecl, OwnedPtr<FuncParam>& arg, FuncParam& jniEnvPtrParam, Ptr<Ty> actualTy);
 
-    void GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const std::vector<std::pair<std::string, std::string>> instTypes,
-        std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
-        std::vector<OwnedPtr<Type>> &ActualPrimitiveType);
-
-    Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap);
-
     OwnedPtr<Decl> GenerateNativeMethod(FuncDecl& sampleMethod, Decl& decl,
         const GenericConfigInfo* genericConfig = nullptr);
 
@@ -547,14 +541,9 @@ private:
     void InsertJavaObjectControllerVarDecl(ClassDecl& fwdClassDecl, ClassDecl& classDecl);
     void InsertOverrideMaskVar(AST::ClassDecl& fwdclassDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassCtor(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriCtorDecl);
-    void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs);
     void InsertAttachCJObject(ClassDecl& fwdDecl, ClassDecl& classDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassMethod(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriMethodDecl, int index);
     OwnedPtr<ClassDecl> InitInterfaceFwdClassDecl(AST::InterfaceDecl& interfaceDecl);
-    /**
-     * If function param or return param is generic ty, replace it to instance ty by genericConfig.
-     */
-    void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig);
     /**
      * Add this. for interface fwdclass default method that call self method, and replace generic ty to instance ty by genericConfig.
      * from

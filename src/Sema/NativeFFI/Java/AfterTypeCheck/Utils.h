@@ -231,9 +231,6 @@ bool IsMirror(const Ty& ty);
 bool IsImpl(const Ty& ty);
 bool IsCJMappingInterface(const Ty& ty);
 bool IsCJMapping(const Ty& ty);
-bool IsCJMappingGeneric(const Decl& decl);
-void SplitAndTrim(std::string str, std::vector<std::string>& types);
-std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
 std::string ReplaceClassName(std::string& classTypeSignature, std::string newSegment);
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
