@@ -337,59 +337,6 @@ void LexerImpl::ProcessIntegerSuffix()
     return;
 }
 
-bool LexerImpl::ProcessXdigit(const int& base, bool& hasDigit, const char* reasonPoint)
-{
-    // If it is 'e' or 'E', it could be exponent part.
-    if (base != HEX_BASE && (currentChar == 'e' || currentChar == 'E')) {
-        return false;
-    }
-    if (base != HEX_BASE && currentChar == 'f') {
-        return false;
-    }
-    hasDigit = true;
-    if (base != HEX_BASE && success) {
-        DiagUnexpectedDigit(base, reasonPoint);
-        success = false;
-    }
-    return true;
-}
-
-/// ProcessDigits function processes number and _ in the number lexer,
-/// if the digit >= base,report error.
-/// finally return hasDigit and the index of invalid char.
-//  return true if it has integer suffix, false otherwise.
-bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint)
-{
-    bool hasTypeSuffix = false;
-    int max = base + static_cast<int>('0');
-    for (;;) {
-        if (currentChar > ASCII_BASE) {
-            if (success) {
-                DiagExpectedDigit(*reasonPoint);
-                success = false;
-            }
-        } else if (isdigit(currentChar) && base <= DEC_BASE) { // Process base <= 10.
-            hasDigit = true;
-            if (currentChar >= max && success) {
-                DiagUnexpectedDigit(base, reasonPoint);
-                success = false;
-            }
-        } else if (isxdigit(currentChar)) { // Process hexadecimal.
-            if (!ProcessXdigit(base, hasDigit, reasonPoint)) {
-                break;
-            }
-        } else if (tokenKind != TokenKind::FLOAT_LITERAL && hasDigit && (currentChar == 'i' || currentChar == 'u')) {
-            hasTypeSuffix = true;
-            ProcessIntegerSuffix();
-            return hasTypeSuffix;
-        } else if (currentChar != '_') {
-            break;
-        }
-        ReadUTF8Char();
-    }
-    return hasTypeSuffix;
-}
-
 const char* LexerImpl::PrefixName(const char prefix) const
 {
     switch (prefix) {
@@ -404,82 +351,388 @@ const char* LexerImpl::PrefixName(const char prefix) const
     }
 }
 
-bool LexerImpl::ScanNumberIntegerPart(
-    const char* pStart, int& base, char& prefix, bool& hasDigit, const char*& reasonPoint)
+// Check if next char after '.' indicates a member access (.identifier) or range operator (..)
+// Returns true if we should NOT parse a decimal fraction (i.e., stop before the dot)
+bool LexerImpl::ShouldStopBeforeDot() const
 {
-    tokenKind = TokenKind::INTEGER_LITERAL;
     char nextChar = GetNextChar(0);
-    if (currentChar == '0') {
-        if (nextChar == 'i' || nextChar == 'u' || nextChar == 'f') {
-            base = DEC_BASE;
-            prefix = 'd';
+    // Range operator: .. or ..= or ...
+    if (nextChar == '.') {
+        return true;
+    }
+    // Member access: .identifier - check if next char is identifier start
+    if (!std::isdigit(nextChar)) {
+        return true;
+    }
+    return false;
+}
+
+// Scan binary digits: [01] ([01] | '_')*
+// Returns true if at least one digit was scanned
+bool LexerImpl::ScanBinDigits(bool& hasDigit, const char* reasonPoint)
+{
+    while (currentChar == '0' || currentChar == '1' || currentChar == '_') {
+        if (currentChar != '_') {
             hasDigit = true;
-            currentChar = *pCurrent;
-            return ProcessDigits(base, hasDigit, reasonPoint);
         }
         ReadUTF8Char();
-        switch (tolower(currentChar)) {
-            case 'x':
-                reasonPoint = pCurrent;
-                ReadUTF8Char();
-                base = HEX_BASE;
-                prefix = 'x';
-                break;
-            case 'o':
-                reasonPoint = pCurrent;
-                ReadUTF8Char();
-                base = OCT_BASE;
-                prefix = 'o';
-                break;
-            case 'b':
-                reasonPoint = pCurrent;
-                ReadUTF8Char();
-                base = BIN_BASE;
-                prefix = 'b';
-                break;
-            default:
-                reasonPoint = pStart;
-                base = DEC_BASE;
-                prefix = 'd';
-                hasDigit = true;
+    }
+    // Check for invalid digits in binary literal
+    if (std::isdigit(currentChar) && success) {
+        DiagUnexpectedDigit(BIN_BASE, reasonPoint);
+        success = false;
+        // Consume remaining invalid digits
+        while (std::isdigit(currentChar) || currentChar == '_') {
+            ReadUTF8Char();
         }
     }
-    if (prefix != 'd' && currentChar == '_' && success) {
-        DiagExpectedDigit(*reasonPoint);
-        success = false;
-    }
-    return ProcessDigits(base, hasDigit, reasonPoint);
+    return hasDigit;
 }
 
-void LexerImpl::ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint)
+// Scan octal digits: [0-7] ([0-7] | '_')*
+// Returns true if at least one digit was scanned
+bool LexerImpl::ScanOctDigits(bool& hasDigit, const char* reasonPoint)
 {
-    tokenKind = TokenKind::FLOAT_LITERAL;
-    if ((prefix == 'o' || prefix == 'b') && success) {
-        DiagUnexpectedDecimalPoint(reasonPoint);
-        success = false;
+    while ((currentChar >= '0' && currentChar <= '7') || currentChar == '_') {
+        if (currentChar != '_') {
+            hasDigit = true;
+        }
+        ReadUTF8Char();
     }
-    ReadUTF8Char();
-    ProcessDigits(base, hasDigit, reasonPoint);
+    // Check for invalid digits in octal literal
+    if (std::isdigit(currentChar) && success) {
+        DiagUnexpectedDigit(OCT_BASE, reasonPoint);
+        success = false;
+        // Consume remaining invalid digits
+        while (std::isdigit(currentChar) || currentChar == '_') {
+            ReadUTF8Char();
+        }
+    }
+    return hasDigit;
 }
 
-void LexerImpl::ScanNumberExponentPart(const char* reasonPoint)
+// Scan decimal digits: DecDigit (DecDigit | '_')* where DecDigit = [0-9]
+// Returns true if at least one digit was scanned
+// Also detects and reports unexpected hex digits (a-f) in decimal context
+bool LexerImpl::ScanDecDigits(bool& hasDigit, const char* reasonPoint)
 {
-    reasonPoint = pCurrent;
+    while (std::isdigit(currentChar) || currentChar == '_') {
+        if (currentChar != '_') {
+            hasDigit = true;
+        }
+        ReadUTF8Char();
+    }
+    // Check for hex digits that are invalid in decimal context
+    // Don't flag 'e'/'E' (exponent) or 'f' (float suffix) as errors here
+    while (std::isxdigit(currentChar) && std::tolower(currentChar) != 'e' && currentChar != 'f') {
+        hasDigit = true;
+        if (success) {
+            DiagUnexpectedDigit(DEC_BASE, reasonPoint);
+            success = false;
+        }
+        ReadUTF8Char();
+        // Continue consuming any remaining digits/hex chars
+        while (std::isxdigit(currentChar) || currentChar == '_') {
+            ReadUTF8Char();
+        }
+    }
+    return hasDigit;
+}
+
+// Scan hex digits: HexDigit (HexDigit | '_')* where HexDigit = [0-9a-fA-F]
+// Returns true if at least one digit was scanned
+bool LexerImpl::ScanHexDigits(bool& hasDigit)
+{
+    while (std::isxdigit(currentChar) || currentChar == '_') {
+        if (currentChar != '_') {
+            hasDigit = true;
+        }
+        ReadUTF8Char();
+    }
+    return hasDigit;
+}
+
+// Scan decimal exponent: E '-'? DecFrag
+// DecFrag = DecDigit (DecDigit | '_')*
+void LexerImpl::ScanDecExp([[maybe_unused]] const char* reasonPoint)
+{
+    // Skip 'e' or 'E'
     ReadUTF8Char();
     tokenKind = TokenKind::FLOAT_LITERAL;
     if (currentChar == '-') {
         ReadUTF8Char();
     }
+    // Must have at least one digit
     if (currentChar == '_' && success) {
         DiagExpectedDigit('d');
         success = false;
     }
-    bool expHasDigit{false};
-    ProcessDigits(DEC_BASE, expHasDigit, reasonPoint);
+    bool expHasDigit = false;
+    // Use simple digit scanning for exponent (no hex digit checking)
+    while (std::isdigit(currentChar) || currentChar == '_') {
+        if (currentChar != '_') {
+            expHasDigit = true;
+        }
+        ReadUTF8Char();
+    }
     if (!expHasDigit && success) {
         DiagExpectedDigit('d');
         success = false;
     }
+}
+
+// Scan hex exponent: P '-'? DecFrag
+void LexerImpl::ScanHexExp()
+{
+    ReadUTF8Char();
+    tokenKind = TokenKind::FLOAT_LITERAL;
+    if (currentChar == '-') {
+        ReadUTF8Char();
+    }
+    // Must have at least one digit
+    if (currentChar == '_' && success) {
+        DiagExpectedDigit('d');
+        success = false;
+    }
+    bool expHasDigit = false;
+    // Use simple digit scanning for exponent
+    while (std::isdigit(currentChar) || currentChar == '_') {
+        if (currentChar != '_') {
+            expHasDigit = true;
+        }
+        ReadUTF8Char();
+    }
+    if (!expHasDigit && success) {
+        DiagExpectedDigit('d');
+        success = false;
+    }
+}
+
+// Scan binary number: '0' B [01] ([01] | '_')* IntSuffix?
+Token LexerImpl::ScanBinNumber(const char* pStart, const char* reasonPoint)
+{
+    tokenKind = TokenKind::INTEGER_LITERAL;
+    bool hasDigit = false;
+
+    // Check for leading underscore (invalid)
+    if (currentChar == '_' && success) {
+        DiagExpectedDigit('b');
+        success = false;
+    }
+    ScanBinDigits(hasDigit, reasonPoint);
+    if (!hasDigit && success) {
+        DiagExpectedDigit('b');
+        success = false;
+    }
+    if (currentChar == 'i' || currentChar == 'u') {
+        ProcessIntegerSuffix();
+    }
+    Back();
+    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+}
+
+// Scan octal number: '0' O [0-7] ([0-7] | '_')* IntSuffix?
+Token LexerImpl::ScanOctNumber(const char* pStart, const char* reasonPoint)
+{
+    tokenKind = TokenKind::INTEGER_LITERAL;
+    bool hasDigit = false;
+    // Check for leading underscore (invalid)
+    if (currentChar == '_' && success) {
+        DiagExpectedDigit('o');
+        success = false;
+    }
+    ScanOctDigits(hasDigit, reasonPoint);
+    if (!hasDigit && success) {
+        DiagExpectedDigit('o');
+        success = false;
+    }
+    // Check for integer suffix
+    if (currentChar == 'i' || currentChar == 'u') {
+        ProcessIntegerSuffix();
+    }
+    Back();
+    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+}
+
+// Scan hex number or hex float:
+// Hex: '0' X HexDigit (HexDigit | '_')* IntSuffix?
+// HexFloat: '0' X (HexDigits | HexFrac | HexDigits HexFrac) HexExp
+// HexFrac: '.' HexDigits
+Token LexerImpl::ScanHexNumber(const char* pStart, const char* reasonPoint)
+{
+    tokenKind = TokenKind::INTEGER_LITERAL;
+    bool hasDigit = false;
+
+    // Check for hex float starting with '.' (e.g., 0x.ap02)
+    if (currentChar == '.' && std::isxdigit(GetNextChar(0))) {
+        tokenKind = TokenKind::FLOAT_LITERAL;
+        ReadUTF8Char(); // consume '.'
+        ScanHexDigits(hasDigit);
+        // Hex float requires exponent part
+        if (std::tolower(currentChar) == 'p') {
+            ScanHexExp();
+        } else if (success) {
+            DiagExpectedExponentPart(reasonPoint);
+            success = false;
+        }
+        ProcessNumberFloatSuffix('x', true);
+        Back();
+        return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+    }
+    // Check for leading underscore (invalid)
+    if (currentChar == '_' && success) {
+        DiagExpectedDigit('x');
+        success = false;
+    }
+    ScanHexDigits(hasDigit);
+    // Check for hex fraction: '.' HexDigits
+    // But be careful: 0x1.foo() should be hex int 0x1 followed by member access .foo()
+    // We need to look ahead to see if this is really a hex float (requires 'p' exponent)
+    if (currentChar == '.' && std::isxdigit(GetNextChar(0))) {
+        // Save position in case we need to backtrack
+        const char* dotPos = pCurrent;
+        const char* afterDotNext = pNext;
+        int32_t savedChar = currentChar;
+        // Tentatively consume '.' and hex digits
+        ReadUTF8Char(); // consume '.'
+        bool fracHasDigit = false;
+        ScanHexDigits(fracHasDigit);
+        // Check if this is actually a hex float (must have 'p' exponent)
+        // or if it's a member access (followed by identifier chars like 'o' in 'foo')
+        if (std::tolower(currentChar) == 'p') {
+            // It's a hex float - continue with exponent
+            tokenKind = TokenKind::FLOAT_LITERAL;
+        } else if (std::isalpha(currentChar) || currentChar == '_') {
+            // Followed by identifier character - this is member access, backtrack
+            pCurrent = dotPos;
+            pNext = afterDotNext;
+            currentChar = savedChar;
+            // Don't set tokenKind to FLOAT_LITERAL, keep as INTEGER_LITERAL
+        } else {
+            // No 'p' exponent and not identifier - it's an invalid hex float
+            tokenKind = TokenKind::FLOAT_LITERAL;
+        }
+    }
+
+    // Hex float requires exponent part
+    if (std::tolower(currentChar) == 'p') {
+        ScanHexExp();
+    } else if (tokenKind == TokenKind::FLOAT_LITERAL && success) {
+        // Hex float without exponent is an error
+        DiagExpectedExponentPart(reasonPoint);
+        success = false;
+    }
+    if (!hasDigit && success) {
+        DiagExpectedDigit('x');
+        success = false;
+    }
+    // Check for integer suffix (only valid for integer, not float)
+    if (tokenKind == TokenKind::INTEGER_LITERAL && (currentChar == 'i' || currentChar == 'u')) {
+        ProcessIntegerSuffix();
+    }
+    // Process float suffix and edge cases
+    if (tokenKind == TokenKind::FLOAT_LITERAL) {
+        ProcessNumberFloatSuffix('x', true);
+    }
+    Back();
+    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+}
+
+// Scan decimal number or float:
+// Dec: [1-9] (DecDigit | '_')* | '0'
+// Int: Dec '_'* IntSuffix?
+// Float: (Dec DecExp | DecFrac DecExp? | (Dec DecFrac) DecExp?) FloatSuffix?
+Token LexerImpl::ScanDecNumber(const char* pStart)
+{
+    tokenKind = TokenKind::INTEGER_LITERAL;
+    bool hasDigit = false;
+    const char* reasonPoint = pStart;
+
+    // Scan decimal digits
+    ScanDecDigits(hasDigit, reasonPoint);
+
+    // For backward compatibility: emit diagnostic if decimal starts with 0 followed by digits
+    // e.g., 0127, 000 (but not just 0)
+    bool isIllegalStart = IsIllegalStartDecimalPart(pStart, pCurrent);
+
+    // Check for decimal fraction or range/member access
+    if (currentChar == '.') {
+        if (ShouldStopBeforeDot()) {
+            // Range operator (..) or member access (.identifier)
+            // Emit backward compat diagnostic for cases like 0127..0333 or 000.a
+            if (isIllegalStart) {
+                diag.DiagnoseRefactor(
+                    DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "integer", std::string{*pStart});
+            }
+            Back();
+            return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+        }
+
+        // This is a decimal fraction
+        tokenKind = TokenKind::FLOAT_LITERAL;
+        // Emit backward compat diagnostic for cases like 000.5
+        if (isIllegalStart) {
+            diag.DiagnoseRefactor(
+                DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{*pStart});
+        }
+        ReadUTF8Char(); // consume '.'
+        bool fracHasDigit = false;
+        ScanDecDigits(fracHasDigit, reasonPoint);
+
+        if (!fracHasDigit && success) {
+            DiagExpectedDigit('d');
+            success = false;
+        }
+    } else {
+        // No decimal point - emit diagnostic if needed
+        if (isIllegalStart) {
+            diag.DiagnoseRefactor(
+                DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "integer", std::string{*pStart});
+        }
+    }
+
+    // Check for exponent part: E '-'? DecFrag
+    if (std::tolower(currentChar) == 'e') {
+        ScanDecExp(reasonPoint);
+    }
+    // Check for integer suffix (only valid for integer)
+    if (tokenKind == TokenKind::INTEGER_LITERAL) {
+        // Allow trailing underscores before suffix per grammar: Dec '_'* IntSuffix?
+        while (currentChar == '_') {
+            ReadUTF8Char();
+        }
+        if (currentChar == 'i' || currentChar == 'u') {
+            ProcessIntegerSuffix();
+        }
+    }
+
+    // Process float suffix and edge cases
+    bool isFloat = (tokenKind == TokenKind::FLOAT_LITERAL);
+    ProcessNumberFloatSuffix('d', isFloat);
+    Back();
+    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+}
+
+// Entry point for scanning a number starting with '.'
+// DecFrac: '.' DecFrag where DecFrag = DecDigit (DecDigit | '_')*
+Token LexerImpl::ScanDecFracStart(const char* pStart)
+{
+    tokenKind = TokenKind::FLOAT_LITERAL;
+    const char* reasonPoint = pStart;
+    // We're at '.', consume it
+    ReadUTF8Char();
+    bool hasDigit = false;
+    ScanDecDigits(hasDigit, reasonPoint);
+    if (!hasDigit && success) {
+        DiagExpectedDigit('d');
+        success = false;
+    }
+    if (std::tolower(currentChar) == 'e') {
+        ScanDecExp(reasonPoint);
+    }
+    ProcessNumberFloatSuffix('d', true);
+    Back();
+    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
 }
 
 void LexerImpl::ProcessFloatSuffix(const char prefix)
@@ -496,25 +749,6 @@ void LexerImpl::ProcessFloatSuffix(const char prefix)
         DiagUnexpectedFloatLiteralTypeSuffix(pSuffixStart, suffix);
         success = false;
         tokenKind = TokenKind::ILLEGAL;
-    }
-}
-
-void LexerImpl::ProcessNumberExponentPart(const char prefix, const char* reasonPoint, bool& isFloat)
-{
-    char exp = static_cast<char>(std::tolower(static_cast<char>(currentChar)));
-    if (exp == 'e' || exp == 'p') {
-        if (success &&
-            ((prefix != 'd' && prefix != 'x') || (exp == 'e' && prefix == 'x') || (exp == 'p' && prefix == 'd'))) {
-            DiagUnexpectedExponentPart(exp, prefix, reasonPoint);
-            success = false;
-        }
-        if (exp == 'e') {
-            isFloat = true;
-        }
-        ScanNumberExponentPart(reasonPoint);
-    } else if (success && prefix == 'x' && tokenKind == TokenKind::FLOAT_LITERAL) {
-        DiagExpectedExponentPart(reasonPoint);
-        success = false;
     }
 }
 
@@ -616,62 +850,45 @@ bool LexerImpl::IsIllegalStartDecimalPart(const char* pStart, const char* pEnd) 
     return start <= pEnd && isdigit(*start);
 }
 
+// Main entry point for number scanning
+// Matches grammar:
+// Float: (Dec DecExp | DecFrac DecExp? | (Dec DecFrac) DecExp?) FloatSuffix?
+//      | ('0' X (HexDigits | HexFrac | HexDigits HexFrac) HexExp)
+// Int: Bin IntSuffix? | Oct IntSuffix? | Dec '_'* IntSuffix? | Hex IntSuffix?
 Token LexerImpl::ScanNumber(const char* pStart)
 {
-    int base = DEC_BASE; // number base
-    char prefix = 'd';   // 0(default), d(decimal),'O'(octal),'x'(Hex),'b'(bin)
-    const char* reasonPoint{pStart};
-    bool hasDigit = false; // hasDigit is true when digit present
-    // 1. Process integer part.
-    if (currentChar != '.') {
-        if (ScanNumberIntegerPart(pStart, base, prefix, hasDigit, reasonPoint)) {
-            if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
-                diag.DiagnoseRefactor(
-                    DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "integer", std::string{*pStart});
-            }
-            Back();
-            return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
-        }
-    }
-    bool isFloat{false};
-    // 2. Process fractional part.
+    // Case 1: Starts with '.' - this is DecFrac (decimal fraction start)
     if (currentChar == '.') {
-        // 0. is not a float number 0.b is lex to 0 DOT b
-        if (prefix == 'x') {
-            if (!isxdigit(GetNextChar(0))) {
-                DiagSmallExpectedDigit(hasDigit, prefix);
-                Back();
-                return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
-            }
-        } else {
-            if (!isdigit(GetNextChar(0))) {
-                DiagSmallExpectedDigit(hasDigit, prefix);
-                Back();
-                return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
-            }
-        }
-        hasDigit = false;
-        isFloat = true;
-        if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
-            diag.DiagnoseRefactor(
-                DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{*pStart});
-        }
-        ScanNumberDecimalPart(base, prefix, hasDigit, reasonPoint);
-    } else {
-        if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
-            diag.DiagnoseRefactor(
-                DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "integer", std::string{*pStart});
-        }
+        return ScanDecFracStart(pStart);
     }
-    DiagSmallExpectedDigit(hasDigit, prefix);
+    if (currentChar == '0') {
+        char nextChar = GetNextChar(0);
+        if (std::tolower(nextChar) == 'x') {
+            ReadUTF8Char();
+            const char* reasonPoint = pCurrent;
+            ReadUTF8Char();
+            return ScanHexNumber(pStart, reasonPoint);
+        }
+        if (std::tolower(nextChar) == 'o') {
+            ReadUTF8Char();
+            const char* reasonPoint = pCurrent;
+            ReadUTF8Char();
+            return ScanOctNumber(pStart, reasonPoint);
+        }
 
-    // 3. Process exponent part.
-    ProcessNumberExponentPart(prefix, reasonPoint, isFloat);
+        if (std::tolower(nextChar) == 'b') {
+            ReadUTF8Char();
+            const char* reasonPoint = pCurrent;
+            ReadUTF8Char();
+            return ScanBinNumber(pStart, reasonPoint);
+        }
 
-    // 4. Process float number suffix
-    ProcessNumberFloatSuffix(prefix, isFloat);
-
-    return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
+        // Just '0' or '0' followed by more decimal digits (backward compat: 0127 style)
+        // Per grammar, Dec = [1-9] (DecDigit | '_')* | '0'
+        // So '0' alone is valid, but '0127' is not - however we keep it for backward compat
+        return ScanDecNumber(pStart);
+    }
+    return ScanDecNumber(pStart);
 }
 
 Token LexerImpl::ScanDotPrefixSymbol()
