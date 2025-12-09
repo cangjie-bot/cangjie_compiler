@@ -253,11 +253,6 @@ void MPParserImpl::CheckCJMPFuncParams(AST::Decl& decl, const Ptr<AST::FuncBody>
     }
     auto& params = funcBody->paramLists[0]->params;
     for (size_t index = 0; index < params.size(); index++) {
-        if (params[index]->assignment && decl.TestAttr(Attribute::PLATFORM)) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_platform_function_parameter_cannot_have_default_value,
-                *params[index], GetDiagKind(decl));
-            decl.EnableAttr(Attribute::IS_BROKEN);
-        }
         CheckCJMPModifiersBetween(*params[index], decl);
     }
 }

@@ -298,6 +298,7 @@ ERROR(sema_platform_has_different_type, "'platform' %s type is not equal to 'com
 ERROR(sema_platform_member_must_have_implementation, "the member %s must have body in 'platform' %s")
 ERROR(sema_platform_has_different_modifier, "'platform' %s modifier is not match 'common' modifier")
 ERROR(sema_platform_has_different_annotation, "'platform' %s annotation is not match 'common' annotation")
+ERROR(sema_cjmp_parameter_default_value_both_sides, "parameter default value should be on either 'common' or 'platform' side, not both")
 ERROR(sema_platform_has_different_parameter, "'platform' function parameter is not match 'common' parameter")
 ERROR(sema_platform_has_different_super_type, "'platform' %s super types is not match 'common' super types")
 ERROR(sema_platform_has_duplicate_extensions, "declaration 'platform' extend '%s' has a conflicting extension")

@@ -816,6 +816,17 @@ bool MPTypeCheckerImpl::MatchCJMPFunction(FuncDecl& platformFunc, FuncDecl& comm
                 return false;
             }
         }
+
+        // Check default value consistency: default values should be on either common or platform side, not both
+        bool commonHasDefault = commonParams[i]->assignment != nullptr;
+        bool platformHasDefault = platformParams[i]->assignment != nullptr;
+
+        if (commonHasDefault && platformHasDefault) {
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_parameter_default_value_both_sides,
+                *platformParams[i]);
+            return false;
+        }
+
         // desugar platform default value, desugarDecl export all the time, assignment only export const value
         if (commonParams[i]->desugarDecl && !platformParams[i]->desugarDecl) {
             platformParams[i]->assignment = ASTCloner::Clone(commonParams[i]->assignment.get());
