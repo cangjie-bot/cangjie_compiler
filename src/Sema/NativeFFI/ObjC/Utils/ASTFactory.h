@@ -19,6 +19,7 @@
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Types.h"
 #include "cangjie/Utils/SafePointer.h"
+#include "NativeFFI/Utils.h"
 
 namespace Cangjie::Interop::ObjC {
 
@@ -79,7 +80,8 @@ public:
 
     OwnedPtr<AST::VarDecl> CreateNativeHandleField(AST::ClassDecl& target);
     OwnedPtr<AST::FuncDecl> CreateInitCjObject(
-        const AST::Decl& target, AST::FuncDecl& ctor, bool generateForOneWayMapping = false);
+        AST::Decl& target, AST::FuncDecl& ctor, bool generateForOneWayMapping = false,
+        const Native::FFI::GenericConfigInfo* genericConfig = nullptr);
     /**
      * @C
      * public func CJImpl_ObjC_PackageName_VarDeclNameInitCJObject() : RegistryID {
@@ -88,11 +90,13 @@ public:
      * }
      */
     OwnedPtr<AST::FuncDecl> CreateInitCjObjectForEnumNoParams(AST::EnumDecl& target, AST::VarDecl& ctor);
-    OwnedPtr<AST::FuncDecl> CreateDeleteCjObject(AST::Decl& target, bool generateForOneWayMapping = false);
+    OwnedPtr<AST::FuncDecl> CreateDeleteCjObject(AST::Decl& target, bool generateForOneWayMapping = false,
+        const Native::FFI::GenericConfigInfo* genericConfig = nullptr);
     /**
      * Returns generated top-level @C function (callable from obj-c) that calls @ObjCImpl `originMethod`.
      */
-    OwnedPtr<AST::FuncDecl> CreateMethodWrapper(AST::FuncDecl& method);
+    OwnedPtr<AST::FuncDecl> CreateMethodWrapper(AST::FuncDecl& method,
+        const Native::FFI::GenericConfigInfo* genericConfig = nullptr);
     OwnedPtr<AST::FuncDecl> CreateGetterWrapper(AST::PropDecl& prop);
     OwnedPtr<AST::FuncDecl> CreateSetterWrapper(AST::PropDecl& prop);
     OwnedPtr<AST::FuncDecl> CreateGetterWrapper(AST::VarDecl& field);
