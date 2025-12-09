@@ -29,6 +29,33 @@ enum class ArrayOperationKind: uint8_t {
     GET_LENGTH
 };
 
+/*
+Generic Config Example:
+generic_object_configuration = [
+    { name = "GenericClass", type_arguments = ["Int32"]},
+    { name = "GenericClass<Int32>", symbols = [
+        "getValue",
+        "GenericClass",
+        "value",
+        "setValue"
+    ]}
+]
+*/
+struct GenericConfigInfo {
+    // Reference type symbol name, such as: GenericClass
+    std::string declSymbolName;
+    // Definition name with generics, such as: GenericClassint32
+    std::string declInstName;
+    // item: <"T", "int32">
+    std::vector<std::pair<std::string, std::string>> instTypes;
+    // Config func symbol name, such as: "getValue", "GenericClass", "value", "setValue"
+    std::unordered_set<std::string> funcNames;
+    GenericConfigInfo(std::string name, std::string declInstName, std::vector<std::pair<std::string, std::string>> &insts, std::unordered_set<std::string> &funcs)
+        : declSymbolName(name), declInstName(declInstName), instTypes(insts), funcNames(funcs)
+    {
+    }
+};
+
 OwnedPtr<RefExpr> CreateThisRef(Ptr<Decl> target, Ptr<Ty> ty, Ptr<File> curFile);
 
 OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile);
@@ -146,6 +173,31 @@ Ptr<std::string> GetSingleArgumentAnnotationValue(const Decl& target, Annotation
 
 bool IsSuperConstructorCall(const CallExpr& call);
 
+bool IsGenericParam(const Ptr<Ty> ty, const Ptr<AST::Decl> decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsVisibalFunc(const FuncDecl& funcDecl, const Ptr<AST::Decl> decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsCJMappingGeneric(const Decl& decl);
+
+void SplitAndTrim(std::string str, std::vector<std::string>& types);
+
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
+
+void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs,
+    bool& isGenericGlueCode);
+
+std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName);
+
+TypeKind GetGenericActualTypeKind(std::string configType);
+
+OwnedPtr<PrimitiveType> GetOwnedPtrPrimitiveType(Ptr<Ty> actualType);
+
+void GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const std::vector<std::pair<std::string, std::string>> instTypes,
+    std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
+    std::vector<OwnedPtr<Type>> &actualPrimitiveType);
+
+Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
+    TypeManager& typeManager);
 } // namespace Cangjie::Interop::Java
 
 #endif // CANGJIE_SEMA_NATIVE_FFI_UTILS

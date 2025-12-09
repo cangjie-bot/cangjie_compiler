@@ -27,13 +27,40 @@ void GenerateGlueCode::HandleImpl(InteropContext& ctx)
         codegen.Generate();
     };
 
+    // For Generic CJMapping.
+    auto genGlueCodeWithGenericConfigs = [this, &ctx](Decl& decl, Native::FFI::GenericConfigInfo* genericConfig,
+        bool isGenericGlueCode) {
+        if (decl.TestAnyAttr(Attribute::IS_BROKEN, Attribute::HAS_BROKEN)) {
+            return;
+        }
+        auto codegen = ObjCGenerator(
+            ctx,
+            &decl,
+            "objc-gen",
+            ctx.cjLibOutputPath,
+            this->interopType,
+            genericConfig,
+            isGenericGlueCode
+        );
+        codegen.Generate();
+    };
+
     if (interopType == InteropType::ObjC_Mirror) {
         for (auto& impl : ctx.impls) {
             genGlueCode(*impl);
         }
     } else if (interopType == InteropType::CJ_Mapping) {
         for (auto& cjmapping : ctx.cjMappings) {
-            genGlueCode(*cjmapping);
+            std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+            bool isGenericGlueCode = false;
+            Native::FFI::InitGenericConfigs(*cjmapping->curFile, cjmapping.get(), genericConfigsVector, isGenericGlueCode);
+            if (isGenericGlueCode) {
+                for (auto genericConfig : genericConfigsVector) {
+                    genGlueCodeWithGenericConfigs(*cjmapping, genericConfig, isGenericGlueCode);
+                }
+            } else {
+                genGlueCode(*cjmapping);
+            }
         }
     } else if (interopType == InteropType::CJ_Mapping_Interface) {
         for (auto& cjmapping : ctx.cjMappingInterfaces) {
