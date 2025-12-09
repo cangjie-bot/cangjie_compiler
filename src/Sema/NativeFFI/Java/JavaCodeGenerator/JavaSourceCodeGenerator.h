@@ -123,8 +123,6 @@ private:
     void AddAttachCJObject();
     void AddDetachCJObject();
     void AddNativeDetachCJObject();
-    bool IsGenericParam(const Ptr<Ty> ty);
-    bool IsVisibalFunc(const FuncDecl& funcDecl);
 };
 } // namespace Cangjie::Interop::Java
 

@@ -74,9 +74,17 @@ void GenerateInitCJObjectMethods::HandleImpl(InteropContext& ctx)
             }
             bool forOneWayMapping = false;
             forOneWayMapping = this->interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(decl);
-            auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
-            CJC_ASSERT(initCjObject);
-            ctx.genDecls.emplace_back(std::move(initCjObject));
+            if (isGenericGlueCode) {
+                for (auto genericConfig : genericConfigsVector) {
+                    auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping, genericConfig);
+                    CJC_ASSERT(initCjObject);
+                    ctx.genDecls.emplace_back(std::move(initCjObject));
+                }
+            } else {
+                auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
+                CJC_ASSERT(initCjObject);
+                ctx.genDecls.emplace_back(std::move(initCjObject));
+            }
         }
     };
 
@@ -86,6 +94,7 @@ void GenerateInitCJObjectMethods::HandleImpl(InteropContext& ctx)
         }
     } else if (interopType == InteropType::CJ_Mapping) {
         for (auto& cjmapping : ctx.cjMappings) {
+            Native::FFI::InitGenericConfigs(*cjmapping->curFile, cjmapping.get(), genericConfigsVector, isGenericGlueCode);
             if (auto enumDecl = As<ASTKind::ENUM_DECL>(cjmapping)) {
                 GenNativeInitMethodForEnumCtor(ctx, *enumDecl);
             } else {

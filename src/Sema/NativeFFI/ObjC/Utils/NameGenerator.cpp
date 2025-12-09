@@ -39,12 +39,12 @@ std::string NameGenerator::GenerateInitCjObjectName(const VarDecl& target)
     return WRAPPER_PREFIX + name;
 }
 
-std::string NameGenerator::GenerateInitCjObjectName(const FuncDecl& target)
+std::string NameGenerator::GenerateInitCjObjectName(const FuncDecl& target, const std::string* genericActualName)
 {
     auto& params =  target.funcBody->paramLists[0]->params;
     auto ctorName = GetObjCDeclName(target);
     auto mangledCtorName = GetMangledMethodName(mangler, params, ctorName);
-    auto name = GetObjCFullDeclName(*target.outerDecl) + "_" + mangledCtorName;
+    auto name = GetObjCFullDeclName(*target.outerDecl, genericActualName) + "_" + mangledCtorName;
     std::replace(name.begin(), name.end(), '.', '_');
     std::replace(name.begin(), name.end(), ':', '_');
 
@@ -62,9 +62,9 @@ std::string NameGenerator::GenerateInitCjObjectName(const Decl& target)
     return "";
 }
 
-std::string NameGenerator::GenerateDeleteCjObjectName(const Decl& target)
+std::string NameGenerator::GenerateDeleteCjObjectName(const Decl& target, const std::string* genericActualName)
 {
-    auto name = GetObjCFullDeclName(target);
+    auto name = GetObjCFullDeclName(target, genericActualName);
     std::replace(name.begin(), name.end(), '.', '_');
     std::replace(name.begin(), name.end(), ':', '_');
 
@@ -89,12 +89,12 @@ std::string NameGenerator::GenerateUnlockCjObjectName(const AST::Decl& target)
     return WRAPPER_PREFIX + name + UNLOCK_CJ_OBJECT_SUFFIX;
 }
 
-std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target)
+std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target, const std::string* genericActualName)
 {
     auto& params = target.funcBody->paramLists[0]->params;
     auto methodName = GetObjCDeclName(target);
     auto mangledMethodName = GetMangledMethodName(mangler, params, methodName);
-    auto outerDeclName = GetObjCFullDeclName(*target.outerDecl);
+    auto outerDeclName = GetObjCFullDeclName(*target.outerDecl, genericActualName);
 
     auto name = outerDeclName + "." + mangledMethodName;
     std::replace(name.begin(), name.end(), '.', '_');
@@ -173,7 +173,7 @@ Ptr<std::string> NameGenerator::GetUserDefinedObjCName(const Decl& target)
     return nullptr;
 }
 
-std::string NameGenerator::GetObjCDeclName(const Decl& target)
+std::string NameGenerator::GetObjCDeclName(const Decl& target, const std::string* genericActualName)
 {
     auto foreignName = GetUserDefinedObjCName(target);
     if (foreignName) {
@@ -202,6 +202,9 @@ std::string NameGenerator::GetObjCDeclName(const Decl& target)
         }
     }
 
+    if (genericActualName) {
+        return *genericActualName;
+    }
     return target.identifier;
 }
 
@@ -290,14 +293,17 @@ std::vector<std::string> NameGenerator::GetObjCDeclSelectorComponents(const Func
     return result;
 }
 
-std::string NameGenerator::GetObjCFullDeclName(const Decl& target)
+std::string NameGenerator::GetObjCFullDeclName(const Decl& target, const std::string* genericActualName)
 {
     auto name = GetUserDefinedObjCName(target);
     if (name) {
         return *name;
     }
 
-    auto ret = target.fullPackageName + "." + target.identifier;
-
-    return ret;
+    // For Generic ActualTy Name
+    if (genericActualName) {
+        return target.fullPackageName + "." + *genericActualName;
+    } else {
+        return target.fullPackageName + "." + target.identifier;
+    }
 }
