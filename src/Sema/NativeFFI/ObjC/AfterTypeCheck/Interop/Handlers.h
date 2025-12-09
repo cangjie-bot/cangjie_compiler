@@ -15,6 +15,7 @@
 
 #include "Context.h"
 #include "NativeFFI/ObjC/Utils/Handler.h"
+#include "NativeFFI/Utils.h"
 
 namespace Cangjie::Interop::ObjC {
 
@@ -165,6 +166,8 @@ public:
 
 private:
     InteropType interopType{InteropType::NA};
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**
@@ -261,6 +264,8 @@ public:
 private:
     InteropType interopType{InteropType::NA};
     void GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl);
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**
@@ -313,6 +318,9 @@ private:
     void GenerateSetterWrapper(InteropContext& ctx, AST::VarDecl& field);
     bool SkipSetterForValueTypeDecl(AST::Decl& decl) const;
     InteropType interopType{InteropType::NA};
+
+    std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+    bool isGenericGlueCode = {false};
 };
 
 /**

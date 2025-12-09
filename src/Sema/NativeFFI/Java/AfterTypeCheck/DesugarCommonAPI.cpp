@@ -14,13 +14,6 @@
 namespace Cangjie::Interop::Java {
 using namespace Cangjie::Native::FFI;
 
-OwnedPtr<PrimitiveType> GetOwnedPtrPrimitiveType(Ptr<Ty> actualType) {
-    OwnedPtr<PrimitiveType> type = MakeOwned<PrimitiveType>();
-    type->kind = actualType->kind;
-    type->ty = TypeManager::GetPrimitiveTy(actualType->kind);
-    return type;
-}
-
 inline void JavaDesugarManager::PushEnvParams(std::vector<OwnedPtr<FuncParam>>& params, std::string name)
 {
     auto jniEnvPtrDecl = lib.GetJniEnvPtrDecl();
@@ -36,91 +29,6 @@ inline void JavaDesugarManager::PushObjParams(std::vector<OwnedPtr<FuncParam>>& 
 inline void JavaDesugarManager::PushSelfParams(std::vector<OwnedPtr<FuncParam>>& params, std::string name)
 {
     params.push_back(CreateFuncParam(name, lib.CreateJlongType(), nullptr, lib.GetJlongTy()));
-}
-
-// Match generic parameters in all function parameters to their corresponding Ptr<Ty>.
-void JavaDesugarManager::GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const std::vector<std::pair<std::string, std::string>> instTypes,
-    std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
-    std::vector<OwnedPtr<Type>> &actualPrimitiveType)
-{
-    Ptr<Ty> retTy = StaticCast<FuncTy*>(ctor.ty)->retTy;
-    // Lambda function to handle generic type replacement.
-    auto replaceGenericType = [&](const std::string& typeName) -> Ptr<Ty> {
-        if (!typeName.empty()) {
-            auto it = std::find_if(instTypes.begin(), instTypes.end(),
-                [&typeName](const std::pair<std::string, std::string>& p) {
-                    return p.first == typeName;
-                });
-            if (it != instTypes.end()) {
-                Ptr<Ty> actualTy = GetGenericInstTy(it->second);
-                actualTy->name = typeName;
-                actualTyArgMap[typeName] = actualTy;
-                return actualTy;
-            }
-        }
-        return nullptr;
-    };
-
-    // Analyze the generic parameters of class/struct/enum/interface.
-    if (ctor.outerDecl) {
-        for (auto argTy : ctor.outerDecl->ty->typeArgs) {
-            if (argTy->IsGeneric()) {
-                replaceGenericType(argTy->name);
-            }
-        }
-    }
-
-    // Analyze generic parameters within inner functions.
-    for (size_t argIdx = 0; argIdx < ctor.funcBody->paramLists[0]->params.size(); ++argIdx) {
-        auto& arg = ctor.funcBody->paramLists[0]->params[argIdx];
-        if (arg->ty->IsGeneric()) {
-            if (auto actualTy = replaceGenericType(arg->ty->name)) {
-                funcTyParams.emplace_back(actualTy);
-                actualPrimitiveType.emplace_back(GetOwnedPtrPrimitiveType(actualTy));
-            } else {
-                funcTyParams.emplace_back(arg->ty);
-            }
-        } else {
-            funcTyParams.emplace_back(arg->ty);
-        }
-    }
-
-    // Analyze generic retType parameters within inner functions.
-    if (retTy->IsGeneric()) {
-        replaceGenericType(retTy->name);
-    }
-
-}
-
-Ptr<Ty> JavaDesugarManager::GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap) {
-    std::vector<Ptr<Ty>> actualTypeArgs;
-    for (const auto& typeArg : decl.ty->typeArgs) {
-        std::string typeArgName = typeArg->name;
-
-        auto it = actualTyArgMap.find(typeArgName);
-        if (it != actualTyArgMap.end()) {
-            actualTypeArgs.emplace_back(it->second);
-        }
-    }
-
-    Ptr<Ty> instantTy;
-    auto classDecl = As<ASTKind::CLASS_DECL>(&decl);
-    if (classDecl) {
-        instantTy = typeManager.GetClassTy(*classDecl, actualTypeArgs);
-    }
-    auto structDecl = As<ASTKind::STRUCT_DECL>(&decl);
-    if (structDecl) {
-        instantTy = typeManager.GetStructTy(*structDecl, actualTypeArgs);
-    }
-    auto enumDecl = As<ASTKind::ENUM_DECL>(&decl);
-    if (enumDecl) {
-        instantTy = typeManager.GetEnumTy(*enumDecl, actualTypeArgs);
-    }
-    auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(&decl);
-    if (interfaceDecl) {
-        instantTy = typeManager.GetInterfaceTy(*interfaceDecl, actualTypeArgs);
-    }
-    return instantTy;
 }
 
 OwnedPtr<CallExpr> JavaDesugarManager::GetFwdClassInstance(OwnedPtr<RefExpr> paramRef, Decl& fwdClassDecl)
@@ -227,7 +135,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(FuncDecl& sampleMethod, 
     if (genericConfig && genericConfig->instTypes.size() != 0) {
         GetArgsAndRetGenericActualTyVector(sampleMethod, genericConfig->instTypes, actualTyArgMap, funcTyParams, actualPrimitiveType);
     }
-    auto instantTy = GetInstantyForGenericTy(decl, actualTyArgMap);
+    auto instantTy = GetInstantyForGenericTy(decl, actualTyArgMap, typeManager);
     auto retActualTy = retTy->IsGeneric() ? actualTyArgMap[retTy->name] : retTy;
     for (auto& arg : sampleMethod.funcBody->paramLists[0]->params) {
         if (!FillMethodParamsByArg(params, methodCallArgs, sampleMethod, arg, jniEnvPtrParam, actualTyArgMap[arg->ty->name])) {
@@ -424,7 +332,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFunc(FuncDecl& ctor
         auto enumDecl = StaticCast<EnumDecl*>(ctor.outerDecl);
         auto enumRefExpr = WithinFile(CreateRefExpr(*enumDecl), curFile);
         enumRefExpr->typeArguments = std::move(actualPrimitiveType);
-        auto enumTy = GetInstantyForGenericTy(*ctor.outerDecl, actualTyArgMap);
+        auto enumTy = GetInstantyForGenericTy(*ctor.outerDecl, actualTyArgMap, typeManager);
         enumRefExpr->ty = enumTy;
         auto retTy = StaticCast<FuncTy*>(ctor.ty)->retTy;
         Ptr<FuncTy> funcTy;
@@ -442,7 +350,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFunc(FuncDecl& ctor
         auto instantiationRefExpr = CreateRefExpr(ctor);
         auto retTy = StaticCast<FuncTy*>(ctor.ty)->retTy;
         Ptr<FuncTy> funcTy;
-        auto instantTy = GetInstantyForGenericTy(*ctor.outerDecl, actualTyArgMap);
+        auto instantTy = GetInstantyForGenericTy(*ctor.outerDecl, actualTyArgMap, typeManager);
         if (retTy->HasGeneric()) {
             funcTy = typeManager.GetFunctionTy(funcTyParams, instantTy, {.isC = true});
         } else {

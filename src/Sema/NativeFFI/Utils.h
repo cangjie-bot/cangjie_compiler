@@ -182,6 +182,27 @@ TypeKind GetGenericActualTypeKind(std::string configType);
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName);
 Ptr<Ty> GetGenericInstTy(std::string typeStr);
 
+bool IsGenericParam(const Ptr<Ty> ty, const Ptr<AST::Decl> decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsVisibalFunc(const FuncDecl& funcDecl, const Ptr<AST::Decl> decl, Native::FFI::GenericConfigInfo* genericConfig);
+
+bool IsCJMappingGeneric(const Decl& decl);
+
+void SplitAndTrim(std::string str, std::vector<std::string>& types);
+
+std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
+
+void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs,
+    bool& isGenericGlueCode);
+
+OwnedPtr<PrimitiveType> GetOwnedPtrPrimitiveType(Ptr<Ty> actualType);
+
+void GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const std::vector<std::pair<std::string, std::string>> instTypes,
+    std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
+    std::vector<OwnedPtr<Type>> &actualPrimitiveType);
+
+Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
+    TypeManager& typeManager);
 } // namespace Cangjie::Interop::Java
 
 #endif // CANGJIE_SEMA_NATIVE_FFI_UTILS

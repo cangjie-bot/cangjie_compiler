@@ -164,6 +164,18 @@ ObjCGenerator::ObjCGenerator(InteropContext& ctx, Ptr<Decl> declArg, const std::
 {
 }
 
+ObjCGenerator::ObjCGenerator(InteropContext& ctx, Ptr<AST::Decl> declArg, const std::string& outputFilePath,
+    const std::string& cjLibOutputPath, InteropType interopType, Native::FFI::GenericConfigInfo* genericConfig,
+    bool isGenericGlueCode)
+    : outputFilePath(outputFilePath),
+      cjLibOutputPath(cjLibOutputPath),
+      decl(declArg),
+      ctx(ctx),
+      interopType(interopType),
+      genericConfig(genericConfig),
+      isGenericGlueCode(isGenericGlueCode)
+{
+}
 /*
     Main access point to translation of CJ class to Objective C. Generates two files - .h and .m
 
@@ -201,7 +213,7 @@ void ObjCGenerator::Generate()
         return;
     }
 
-    const auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+    const auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl, &genericConfig->declInstName);
     GenerateImports(objCDeclName);
     GenerateForwardDeclarations();
     GenerateExternalDeclarations4CJMapping();
@@ -220,6 +232,17 @@ void ObjCGenerator::Generate()
 
     AddWithIndent(END_KEYWORD, GenerationTarget::BOTH);
     WriteToFile();
+}
+
+// Filter out elements not currently instantiated.
+bool ObjCGenerator::IsNotThisActualTyFunc(const OwnedPtr<Decl>& declPtr) {
+    if (genericConfig) {
+        auto actualOuterDeclName = genericConfig->declInstName;
+        if (declPtr->identifier.Val().find(actualOuterDeclName) == std::string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /* ------------------indent handling-------------------- */
@@ -455,6 +478,10 @@ void ObjCGenerator::GenerateForwardDeclarations()
 void ObjCGenerator::GenerateStaticReferences()
 {
     for (auto& declPtr : ctx.genDecls) {
+        // Filter out different specialization type definitions.
+        if (IsNotThisActualTyFunc(declPtr)) {
+            continue;
+        }
         // Must be filtered out earlier
         if (declPtr->curFile != decl->curFile || !declPtr->TestAttr(Attribute::C) || declPtr->TestAttr(Attribute::FOREIGN)) {
             continue;
@@ -526,6 +553,9 @@ void ObjCGenerator::GenerateFunctionSymbolsInitialization()
             continue;
         }
         if (declPtr->astKind == ASTKind::FUNC_DECL) {
+            if (IsNotThisActualTyFunc(declPtr)) {
+                continue;
+            }
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
             GenerateFunctionSymInit(funcDecl.identifier);
         }
@@ -575,7 +605,7 @@ void ObjCGenerator::GenerateInterfaceDecl()
     if (interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(*decl) && !decl->IsOpen()) {
         AddWithIndent(FINAL_MODIFIER, GenerationTarget::HEADER);
     }
-    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl, &genericConfig->declInstName);
     resultH += INTERFACE_KEYWORD;
     resultH += " ";
     resultH += objCDeclName;
@@ -843,6 +873,8 @@ void ObjCGenerator::GenerateInitializer(const string& objCDeclName)
 void ObjCGenerator::AddConstructors()
 {
     std::set<std::vector<std::string>> generatedCtors = {};
+    (void)genericConfig;
+    (void)isGenericGlueCode;
     for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
         if (!declPtr->TestAttr(Attribute::PUBLIC)) { continue; }
         if (ctx.factory.IsGeneratedMember(*declPtr.get())) {
@@ -875,7 +907,7 @@ void ObjCGenerator::AddConstructors()
         const auto selectorComponents = ctx.nameGenerator.GetObjCDeclSelectorComponents(funcDecl);
         CJC_ASSERT(selectorComponents.size() > 0);
         // wrapper name MUST use generated ctor
-        const auto cjWrapperName = ctx.nameGenerator.GenerateInitCjObjectName(*ctor);
+        const auto cjWrapperName = ctx.nameGenerator.GenerateInitCjObjectName(*ctor, &genericConfig->declInstName);
         const auto staticType = ObjCFunctionType::INSTANCE;
 
         std::string result = "";
@@ -934,7 +966,7 @@ void ObjCGenerator::GenerateDeleteObject()
     }
     AddWithIndent(GenerateFunctionDeclaration(ObjCFunctionType::INSTANCE, VOID_TYPE, DELETE_FUNC_NAME),
         GenerationTarget::BOTH, OptionalBlockOp::OPEN);
-    AddWithIndent(GenerateDefaultFunctionImplementation(ctx.nameGenerator.GenerateDeleteCjObjectName(*decl),
+    AddWithIndent(GenerateDefaultFunctionImplementation(ctx.nameGenerator.GenerateDeleteCjObjectName(*decl, &genericConfig->declInstName),
                       *ctx.typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT),
                       {std::pair<std::string, std::string>(INT64_T, string(SELF_NAME) + "." + SELF_WEAKLINK_NAME)}),
         GenerationTarget::SOURCE, OptionalBlockOp::CLOSE);
@@ -965,6 +997,9 @@ void ObjCGenerator::AddMethods()
         if (declPtr->astKind == ASTKind::FUNC_DECL &&
             !declPtr->TestAnyAttr(Attribute::CONSTRUCTOR, Attribute::FINALIZER)) {
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
+            if (!IsVisibalFunc(funcDecl, decl, genericConfig)) {
+                continue;
+            }
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
                 auto staticType =
                     funcDecl.TestAttr(Attribute::STATIC) ? ObjCFunctionType::STATIC : ObjCFunctionType::INSTANCE;
@@ -975,10 +1010,12 @@ void ObjCGenerator::AddMethods()
                 std::string result = "";
                 result += GenerateFunctionDeclaration(staticType, retType, selectorComponents[0]);
                 result +=
-                    GenerateFuncParamLists(funcDecl.funcBody->paramLists, selectorComponents, FunctionListFormat::DECLARATION, staticType, GetForeignNameAnnotation(funcDecl) != nullptr);
+                    GenerateFuncParamLists(funcDecl.funcBody->paramLists, selectorComponents, FunctionListFormat::DECLARATION,
+                        staticType, GetForeignNameAnnotation(funcDecl) != nullptr);
                 AddWithIndent(result, GenerationTarget::BOTH, OptionalBlockOp::OPEN);
                 AddWithIndent(
-                    GenerateDefaultFunctionImplementation(ctx.nameGenerator.GenerateMethodWrapperName(funcDecl), *retTy,
+                    GenerateDefaultFunctionImplementation(ctx.nameGenerator.GenerateMethodWrapperName(funcDecl,
+                        &genericConfig->declInstName), *retTy,
                         ConvertParamsListToArgsList(
                             funcDecl.funcBody->paramLists, staticType == ObjCFunctionType::INSTANCE),
                         staticType),
@@ -1037,14 +1074,14 @@ void ObjCGenerator::WriteToFile()
 
 void ObjCGenerator::WriteToHeader()
 {
-    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl, &genericConfig->declInstName);
     auto headerPath = FileUtil::JoinPath(outputFilePath, objCDeclName + ".h");
     FileUtil::WriteToFile(headerPath, res);
 }
 
 void ObjCGenerator::WriteToSource()
 {
-    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+    auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl, &genericConfig->declInstName);
     auto sourcePath = FileUtil::JoinPath(outputFilePath, objCDeclName + ".m");
     FileUtil::WriteToFile(sourcePath, resSource);
 }
@@ -1054,7 +1091,12 @@ std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<Type>& type)
     if (!type) {
         return UNSUPPORTED_TYPE;
     }
-
+    if (IsGenericParam(type->ty, decl, genericConfig)) {
+        // Current generic only support primitive type.
+        auto genericActualTy =
+            TypeManager::GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, type->ty->name)));
+        return ctx.typeMapper.Cj2ObjCForObjC(*genericActualTy);
+    }
     return ctx.typeMapper.Cj2ObjCForObjC(*type->ty);
 }
 
@@ -1063,7 +1105,13 @@ std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<FuncParam>& param)
     if (!param) {
         return UNSUPPORTED_TYPE;
     }
-
+    auto paraTy = param->type->ty;
+    if (IsGenericParam(paraTy, decl, genericConfig)) {
+        // Current generic only support primitive type.
+        auto genericActualTy =
+            TypeManager::GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, paraTy->name)));
+        return ctx.typeMapper.Cj2ObjCForObjC(*genericActualTy);
+    }
     return ctx.typeMapper.Cj2ObjCForObjC(*param->type->ty);
 }
 
