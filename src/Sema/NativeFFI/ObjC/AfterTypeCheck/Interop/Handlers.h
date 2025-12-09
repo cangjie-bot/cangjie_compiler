@@ -15,6 +15,7 @@
 
 #include "Context.h"
 #include "NativeFFI/ObjC/Utils/Handler.h"
+#include "NativeFFI/Utils.h"
 
 namespace Cangjie::Interop::ObjC {
 
@@ -268,7 +269,8 @@ public:
 
 private:
     InteropType interopType{InteropType::NA};
-    void GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl);
+    void GenNativeInitMethodForEnumCtor(InteropContext& ctx, AST::EnumDecl& enumDecl, bool isGenericGlueCode,
+            const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector);
 };
 
 /**
@@ -313,9 +315,11 @@ public:
     void HandleImpl(InteropContext& ctx);
 
 private:
-    void GenerateWrapper(InteropContext& ctx, AST::FuncDecl& method);
+    void GenerateWrapper(InteropContext& ctx, AST::FuncDecl& method, bool isGenericGlueCode,
+        const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector);
     // Generic methods for prop and field with SFINAE?
-    void GenerateWrapper(InteropContext& ctx, AST::PropDecl& prop);
+    void GenerateWrapper(InteropContext& ctx, AST::PropDecl& prop, bool isGenericGlueCode,
+        const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector);
     void GenerateSetterWrapper(InteropContext& ctx, AST::PropDecl& prop);
     void GenerateWrapper(InteropContext& ctx, AST::VarDecl& field);
     void GenerateSetterWrapper(InteropContext& ctx, AST::VarDecl& field);
@@ -427,6 +431,11 @@ public:
 class InsertFwdClasses : public Handler<InsertFwdClasses, InteropContext> {
 public:
     void HandleImpl(InteropContext& ctx);
+    OwnedPtr<AST::ClassDecl> InitInterfaceFwdClassDecl(const Ptr<AST::ClassLikeDecl>& interfaceDecl);
+    OwnedPtr<AST::FuncDecl> GenerateInterfaceFwdclassMethod(InteropContext& ctx, AST::ClassDecl& fwdclassDecl,
+        AST::FuncDecl& interfaceFuncDecl, Native::FFI::GenericConfigInfo* genericConfig = nullptr);
+    void GenerateInterfaceFwdClassBody(InteropContext& ctx, AST::ClassDecl& fwdclassDecl, AST::ClassLikeDecl& interfaceDecl,
+        Native::FFI::GenericConfigInfo* genericConfig = nullptr);
 };
 
 /**
