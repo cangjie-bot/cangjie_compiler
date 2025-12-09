@@ -286,17 +286,11 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
     return javaType;
 }
 
-bool JavaSourceCodeGenerator::IsGenericParam(const Ptr<Ty> ty)
-{
-    return IsCJMappingGeneric(*decl) && ty->kind == Cangjie::AST::TypeKind::TYPE_GENERICS &&
-        !GetGenericActualType(genericConfig, ty->name).empty();
-}
-
 std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(const OwnedPtr<Type>& type, std::set<std::string>* javaImports,
     const std::string* curPackageName, bool isNativeMethod)
 {
     CJC_ASSERT(type && type->ty);
-    if (IsGenericParam(type->ty)) {
+    if (IsGenericParam(type->ty, *decl, genericConfig)) {
         // Current generic only support primitive type.
         auto genericActualTy = GetGenericInstTy(genericConfig, type->ty->name);
         return MapCJTypeToJavaType(genericActualTy, javaImports, curPackageName, isNativeMethod);
@@ -309,7 +303,7 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(const OwnedPtr<FuncPara
 {
     CJC_ASSERT(param && param->type && param->type->ty);
     auto paraTy = param->type->ty;
-    if (IsGenericParam(paraTy)) {
+    if (IsGenericParam(paraTy, *decl, genericConfig)) {
         // Current generic only support primitive type.
         auto genericActualTy = GetGenericInstTy(genericConfig, paraTy->name);
         return MapCJTypeToJavaType(genericActualTy, javaImports, curPackageName, isNativeMethod);
@@ -829,29 +823,6 @@ void JavaSourceCodeGenerator::AddStaticMethod(const FuncDecl& funcDecl)
     AddWithIndent(TAB, methodSignature);
 }
 
-bool JavaSourceCodeGenerator::IsVisibalFunc(const FuncDecl& funcDecl)
-{
-    bool hasGenericParm = false;
-    auto& params = funcDecl.funcBody->paramLists[0]->params;
-    auto& retType = funcDecl.funcBody->retType;
-    for (auto& param : params) {
-        if (IsGenericParam(param->type->ty)) {
-            hasGenericParm = true;
-            break;
-        }
-    }
-    if (!hasGenericParm) {
-        hasGenericParm = IsGenericParam(retType->ty);
-    }
-
-    if (!hasGenericParm) {
-        return true;
-    }
-
-    bool isVisibalFunc = genericConfig->funcNames.count(funcDecl.identifier.Val()) > 0;
-    return hasGenericParm && isVisibalFunc;
-}
-
 void JavaSourceCodeGenerator::AddMethods()
 {
     bool hasHashcodeMethod = false;
@@ -884,7 +855,7 @@ void JavaSourceCodeGenerator::AddMethods()
         if (isInteropCJPackageConfig && funcDecl.symbol && !funcDecl.symbol->isNeedExposedToInterop) {
             continue;
         }
-        if (!IsVisibalFunc(funcDecl)) {
+        if (!IsVisibalFunc(funcDecl, *decl, genericConfig)) {
             continue;
         }
         if (funcDecl.funcBody && funcDecl.funcBody->retType) {
@@ -940,7 +911,7 @@ void JavaSourceCodeGenerator::AddInterfaceMethods()
         }
         if (!declPtr->TestAttr(Attribute::PRIVATE) && IsFuncDeclAndNotConstructor(declPtr)) {
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
-            if (!IsVisibalFunc(funcDecl)) {
+            if (!IsVisibalFunc(funcDecl, *decl, genericConfig)) {
                 continue;
             }
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
@@ -1011,7 +982,7 @@ void JavaSourceCodeGenerator::AddInterfaceFwdClassNativeMethod()
             if (!declPtr->TestAttr(Attribute::DEFAULT)) {
                 continue;
             }
-            if (!IsVisibalFunc(funcDecl)) {
+            if (!IsVisibalFunc(funcDecl, *decl, genericConfig)) {
                 continue;
             }
             if (funcDecl.funcBody && funcDecl.funcBody->retType) {
