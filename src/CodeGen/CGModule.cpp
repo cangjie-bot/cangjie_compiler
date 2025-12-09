@@ -48,6 +48,8 @@ inline std::string CGModule::GetTargetTripleString(const Triple::Info& target)
             return "arm64-apple-macosx12.0.0";
         }
         return target.ArchToString() + "-apple-macosx12.0.0";
+    } else if (target.env == Triple::Environment::OHOS) {
+        return target.ArchToString() + "-unknown-linux-ohos";
     } else if (target.arch == Triple::ArchType::ARM32 && target.os == Triple::OSType::LINUX) {
         return "armv7a-linux-gnu";
     } else {
