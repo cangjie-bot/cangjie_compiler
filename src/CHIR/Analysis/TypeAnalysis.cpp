@@ -30,7 +30,11 @@ std::optional<std::unique_ptr<TypeValue>> TypeValue::Join(const TypeValue& rhs) 
             return nullptr;
         }
     } else {
-        return std::nullopt;
+        if (this->kind == DevirtualTyKind::EXACTLY && rhs.kind == DevirtualTyKind::SUBTYPE_OF) {
+            return std::make_unique<TypeValue>(DevirtualTyKind::SUBTYPE_OF, this->baseLineType); 
+        } else {
+            return std::nullopt;
+        }
     }
 }
 
@@ -337,7 +341,7 @@ template <typename TTypeCast> void TypeAnalysis::HandleTypeCastExpr(TypeDomain& 
 }
 
 template <class MemberAccess>
-static Type* GetInnerTypeFromGetElementRef(const MemberAccess& ma, CHIRBuilder& builder)
+static Type* GetInnerTypeFromMemberAccess(const MemberAccess& ma, CHIRBuilder& builder)
 {
     const auto& path = ma.GetPath();
     auto locationType = ma.GetOperands()[0]->GetType();
@@ -360,34 +364,22 @@ static const CustomTypeDef* CheckMemberDefineInWhichParent(CustomType& type, siz
 template <typename TMemberAccess>
 void TypeAnalysis::HandleMemberAccess(TypeDomain& state, const TMemberAccess* memberAccess) const
 {
-    auto locationType = GetInnerTypeFromGetElementRef(*getElemRef, builder)->StripAllRefs();
+    auto locationType = GetInnerTypeFromMemberAccess(*memberAccess, builder)->StripAllRefs();
     if (!locationType->IsClassOrStruct()) {
-        return HandleDefaultExpr(state, getElemRef);
+        return HandleDefaultExpr(state, memberAccess);
     }
-    auto path = getElemRef->GetPath();
+    auto path = memberAccess->GetPath();
     auto index = path[path.size() - 1];
-    if (path.size() == 1) {
-        // %1: result type = GetElementRef(location obj, path)
-        // when size is 1, the location type is location obj's type, this type may be analysed to a more accurate type.
-        // when size is greater than 1, the location type is member var's type of location obj, we don't analysis it
-        auto srcAbsVal = state.CheckAbstractObjectRefBy(getElemRef->GetLocation());
-        if (srcAbsVal) {
-            auto srcVal = state.CheckAbstractValue(srcAbsVal);
-            if (srcVal) {
-                locationType = srcVal->GetSpecificType();
-            }
-        }
-    }
     auto customType = StaticCast<CustomType*>(locationType);
     // get member define in which parent.
     auto def = CheckMemberDefineInWhichParent(*customType, index);
     auto it = constMemberTypeMap.find(def);
     if (it == constMemberTypeMap.end()) {
-        return HandleDefaultExpr(state, getElemRef);
+        return HandleDefaultExpr(state, memberAccess);
     }
     auto it2 = it->second.find(index);
     if (it2 == it->second.end()) {
-        return HandleDefaultExpr(state, getElemRef);
+        return HandleDefaultExpr(state, memberAccess);
     }
     auto resType = it2->second->StripAllRefs();
     // member define:
