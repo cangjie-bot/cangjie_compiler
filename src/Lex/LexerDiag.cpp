@@ -14,8 +14,21 @@
 #include "cangjie/Basic/Display.h"
 
 namespace Cangjie {
-const int ESCAPE_NUM_OF_CHAR_STRING_LITERAL = 12;
-const int ESCAPE_NUM_OF_CHAR_STRING_BYTE_LITERAL = 11;  // ruled out \$
+static const int ESCAPE_NUM_OF_CHAR_STRING_LITERAL = 12;
+static const int ESCAPE_NUM_OF_CHAR_STRING_BYTE_LITERAL = 11;  // ruled out \$
+static const char* PrefixName(const char prefix)
+{
+    switch (prefix) {
+        case 'x':
+            return "hexadecimal";
+        case 'o':
+            return "octal";
+        case 'b':
+            return "binary";
+        default:
+            return "decimal";
+    }
+}
 
 void LexerImpl::DiagUnexpectedDecimalPoint(const char* reasonPoint)
 {
