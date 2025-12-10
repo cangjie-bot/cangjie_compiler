@@ -399,7 +399,13 @@ inline std::string GetConstantArrayName(const std::string& string)
 }
 
 CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, llvm::Value& llvmValue);
-void DumpIR(const llvm::Module& llvmModule, const std::string& filePath, bool debugMode);
+
+void ClearOldIRDumpFiles(const std::string& output, const std::string& pkgName);
+
+std::string GenDumpPath(const std::string& output, const std::string& pkgName, const std::string& subName,
+    const std::string& srcFileName, const std::string& suffix = "ll");
+
+void DumpIR(const llvm::Module& llvmModule, const std::string& filePath = "");
 
 llvm::StructType* GetLLVMStructType(
     CGModule& cgMod, const std::vector<CHIR::Type*>& elementTypes, const std::string& name = "");

@@ -386,6 +386,68 @@ public:
      */
     void UpdateCachedDirName(const std::string& fullPackageName);
 
+    /**
+     * @brief Check if AST dump is needed.
+     *
+     * @return bool Return true if AST dump is needed.
+     */
+    bool NeedDumpAST() const;
+
+    /**
+     * @brief Check if AST should be dumped to file.
+     *
+     * @return bool Return true if AST should be dumped to file.
+     */
+    bool NeedDumpASTToFile() const;
+
+    /**
+     * @brief Check if AST should be dumped to screen.
+     *
+     * @return bool Return true if AST should be dumped to screen.
+     */
+    bool NeedDumpASTToScreen() const;
+
+    /**
+     * @brief Check if CHIR dump is needed.
+     *
+     * @return bool Return true if CHIR dump is needed.
+     */
+    bool NeedDumpCHIR() const;
+
+    /**
+     * @brief Check if CHIR should be dumped to screen.
+     *
+     * @return bool Return true if CHIR should be dumped to screen.
+     */
+    bool NeedDumpCHIRToScreen() const;
+
+    /**
+     * @brief Check if CHIR should be dumped to file.
+     *
+     * @return bool Return true if CHIR should be dumped to file.
+     */
+    bool NeedDumpCHIRToFile() const;
+    /**
+     * @brief Check if IR dump is needed.
+     *
+     * @return bool Return true if IR dump is needed.
+     */
+    bool NeedDumpIR() const;
+
+    /**
+     * @brief Check if IR should be dumped to file.
+     *
+     * @return bool Return true if IR should be dumped to file.
+     */
+    bool NeedDumpIRToFile() const;
+
+    /**
+     * @brief Check if IR should be dumped to screen.
+     *
+     * @return bool Return true if IR should be dumped to screen.
+     */
+    bool NeedDumpIRToScreen() const;
+
     std::string cangjieHome;
 
     std::string output = "./";
@@ -714,7 +776,11 @@ public:
     enum class CHIRMode : uint8_t { NA, STANDARD, WITH_ID, ALL };
 
     bool codegenDebugMode = false;
-    bool chirDumpDebugMode = false;
+    bool dumpAST = false; 
+    bool dumpCHIR = false;
+    bool dumpIR = false;
+    bool dumpAll = false; // dump all of AST, CHIR, IR
+    bool dumpToScreen = false; // dump to screen instead of file
     bool chirDeserialize = false;
     std::string chirDeserializePath;
 
