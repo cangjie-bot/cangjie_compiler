@@ -875,10 +875,11 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     { Options::ID::DEBUG_CODEGEN, OPTION_TRUE_ACTION(opts.codegenDebugMode = true) },
     { Options::ID::CHIR_OPT_DEBUG, OPTION_TRUE_ACTION(opts.chirDebugOptimizer = true) },
-    { Options::ID::DUMP_CHIR_DEBUG, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-        opts.chirDumpDebugMode = true;
-        return true;
-    }},
+    { Options::ID::DUMP_AST, OPTION_TRUE_ACTION(opts.dumpAST = true)},
+    { Options::ID::DUMP_CHIR, OPTION_TRUE_ACTION(opts.dumpCHIR = true)},
+    { Options::ID::DUMP_IR, OPTION_TRUE_ACTION(opts.dumpIR = true)},
+    { Options::ID::DUMP_ALL, OPTION_TRUE_ACTION(opts.dumpAll = true)},
+    { Options::ID::DUMP_TO_SCREEN, OPTION_TRUE_ACTION(opts.dumpToScreen = true)},
     { Options::ID::EMIT_CHIR, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
         if (arg.value.empty()) {
             opts.emitCHIRPhase = GlobalOptions::CandidateEmitCHIRPhase::OPT;

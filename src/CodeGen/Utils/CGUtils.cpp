@@ -8,6 +8,7 @@
 
 #include <queue>
 #include <sstream>
+#include <cctype>
 
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/InstrTypes.h"
@@ -487,12 +488,40 @@ CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, ll
     return cgType;
 }
 
-void DumpIR(const llvm::Module& llvmModule, const std::string& filePath, bool debugMode)
+void ClearOldIRDumpFiles(const std::string& output, const std::string& pkgName)
 {
-#ifndef NDEBUG
-    if (!debugMode) {
+    // Clear all previously dumped IR phase directories for the given package.
+    // New IR dumping now uses numbered directories with human-readable phase suffixes
+    // (e.g. 0_TranslateCHIRNode, 1_GenExtensionDefs, ... Final, Incre). Instead of a
+    // fixed maxSubDirNum heuristic we remove any matching directories under <pkg>_IR.
+    std::string dumpDir;
+    if (FileUtil::IsDir(output)) {
+        dumpDir = FileUtil::JoinPath(output, pkgName + "_IR");
+    } else {
+        dumpDir = FileUtil::GetFileBase(output) + "_IR";
+    }
+    if (!FileUtil::FileExist(dumpDir)) {
         return;
     }
+    FileUtil::RemoveDirectoryRecursively(dumpDir);
+}
+
+std::string GenDumpPath(const std::string& output, const std::string& pkgName, const std::string& subName,
+    const std::string& srcFileName, const std::string& suffix)
+{
+    std::string dumpPath, dumpDir, subDir;
+    if (FileUtil::IsDir(output)) {
+        dumpDir = FileUtil::JoinPath(output, pkgName + "_IR");
+    } else {
+        dumpDir = FileUtil::GetFileBase(output) + "_IR";
+    }
+    subDir = FileUtil::JoinPath(dumpDir, subName);
+    dumpPath = FileUtil::JoinPath(subDir, srcFileName + "."+ suffix);
+    return dumpPath;
+}
+
+void DumpIR(const llvm::Module& llvmModule, const std::string& filePath)
+{
     if (filePath.empty()) {
         llvmModule.print(llvm::outs(), nullptr);
         return;
@@ -510,11 +539,6 @@ void DumpIR(const llvm::Module& llvmModule, const std::string& filePath, bool de
     std::error_code errorCode;
     llvm::raw_fd_ostream fileOS(normalizedPath, errorCode);
     llvmModule.print(fileOS, nullptr);
-#else
-    (void)llvmModule;
-    (void)filePath;
-    (void)debugMode;
-#endif
 }
 
 llvm::StructType* GetLLVMStructType(
