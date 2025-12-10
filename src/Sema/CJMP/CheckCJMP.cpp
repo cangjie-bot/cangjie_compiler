@@ -267,6 +267,8 @@ void MergeCommonIntoPlatform(DiagnosticEngine& diag, Decl& commonDecl, Decl& pla
 
     commonDecl.doNotExport = true;
     commonDecl.platformImplementation = &platformDecl;
+
+    platformDecl.ty = commonDecl.ty;
 }
 }
 
