@@ -195,8 +195,6 @@ private:
     void ReadUTF8Char();
     void ReadUTF8CharFromMultiBytes(int32_t& ch);
     bool CheckUnicodeSecurity(const int32_t& c) const;
-    bool ProcessXdigit(const int& base, bool& hasDigit, const char* reasonPoint);
-    bool ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint);
     std::string GetSuffix(const char* pSuffixStart);
     void ProcessIntegerSuffix();
     TokenKind LookupKeyword(const std::string& literal);
@@ -234,7 +232,6 @@ private:
     std::pair<Token, bool> ScanMultiLineComment(const char* pStart, bool allowNewLine);
     /// Check if there are f32, f64 after a float literal
     void ProcessFloatSuffix(const char prefix);
-    void ProcessNumberExponentPart(const char prefix, const char* reasonPoint, bool& isFloat);
     /// Check if there a f32, f64 after a float literal. After that, this float is completed; if there are excessive
     /// '.' and chars following it without space between, check whether the following chars are possibly valid.
     /// The valid cases are
@@ -243,9 +240,23 @@ private:
     void ProcessNumberFloatSuffix(const char& prefix, bool isFloat);
     Token ScanNumber(const char* pStart);
     Token ScanNumberOrDotPrefixSymbol(const char* pStart);
-    bool ScanNumberIntegerPart(const char* pStart, int& base, char& prefix, bool& hasDigit, const char*& reasonPoint);
-    void ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint);
-    void ScanNumberExponentPart(const char* reasonPoint);
+    // Number scanning helper functions matching cj.g4 grammar
+    bool ShouldStopBeforeDot() const;
+    bool ScanBinDigits(bool& hasDigit, const char* reasonPoint);
+    bool ScanOctDigits(bool& hasDigit, const char* reasonPoint);
+    bool ScanDecDigits(bool& hasDigit, const char* reasonPoint);
+    bool ScanHexDigits(bool& hasDigit);
+    void ScanDecExp(const char* reasonPoint);
+    void ScanHexExp();
+    // Common helper for integer-only bases (binary, octal) - private implementation detail
+    using DigitScanner = bool (LexerImpl::*)(bool&, const char*);
+    Token ScanIntegerOnlyNumber(const char* pStart, const char* reasonPoint, char prefix, DigitScanner scanDigits);
+    Token ScanBinNumber(const char* pStart, const char* reasonPoint);
+    Token ScanOctNumber(const char* pStart, const char* reasonPoint);
+    Token ScanHexNumber(const char* pStart, const char* reasonPoint);
+    Token ScanDecNumber(const char* pStart);
+    Token ScanDecFracStart(const char* pStart);
+
     Token ScanDotPrefixSymbol();
     Token ScanBackquotedIdentifier(const char* pStart);
     void ScanIdentifierOrKeyword(Token& res, const char* pStart);
@@ -286,7 +297,6 @@ private:
 
     void TryRegisterLineOffset();
 
-    const char* PrefixName(const char prefix) const;
     template <typename... T> void Diagnose(DiagKind kind, T... args)
     {
         diag.Diagnose(pos, kind, args...);

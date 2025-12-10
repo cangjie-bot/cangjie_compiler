@@ -3278,3 +3278,22 @@ TEST(PositionTest, GenericConstraintBegin)
     ASSERT_NE(foo.funcBody->generic, nullptr);
     EXPECT_EQ(foo.funcBody->generic->genericConstraints[0]->begin, Position(1, 25));
 }
+
+TEST(ParserTest2, Zerox1foo)
+{
+    std::string code = R"(
+    extend Int64 {
+        func foo() {-1}
+    }
+    main() {
+        0x1.foo()
+        0
+    }
+    )";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm);
+    auto file = parser.ParseTopLevel();
+    EXPECT_EQ(diag.GetErrorCount(), 0);
+}
