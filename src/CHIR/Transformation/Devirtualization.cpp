@@ -41,7 +41,6 @@ void Devirtualization::RunOnFunc(const Func* func, CHIRBuilder& builder)
     }
     CJC_ASSERT(result);
 
-    const auto actionBeforeVisitExpr = [this, &builder](const TypeDomain& state, Expression* expr, size_t) {
     std::optional<std::unordered_set<const GenericType*>> visibleGenericTypes = std::nullopt;
     const auto actionBeforeVisitExpr =
         [this, &builder, &visibleGenericTypes, func](const TypeDomain& state, Expression* expr, size_t) {
