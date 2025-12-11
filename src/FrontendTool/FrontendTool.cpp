@@ -183,7 +183,7 @@ int Cangjie::ExecuteFrontend(const std::string& exePath, const std::vector<std::
 
     if (ExecuteCompile(*instance)) {
         {
-            Cangjie::ICE::TriggerPointSetter iceSetter(Cangjie::ICE::TriggerPointSetter::writeCahedTP);
+            Cangjie::ICE::TriggerPointSetter iceSetter(Cangjie::ICE::TriggerPointSetter::writeCachedTP);
             instance->UpdateAndWriteCachedInfoToDisk();
         }
         return 0;
@@ -205,7 +205,7 @@ bool Cangjie::ExecuteFrontendByDriver(DefaultCompilerInstance& instance, const D
             (instance.invocation.globalOptions.enIncrementalCompilation && instance.kind == IncreKind::NO_CHANGE);
         driver.driverOptions->symbolsNeedLocalized = instance.invocation.globalOptions.symbolsNeedLocalized;
         {
-            Cangjie::ICE::TriggerPointSetter iceSetter(Cangjie::ICE::TriggerPointSetter::writeCahedTP);
+            Cangjie::ICE::TriggerPointSetter iceSetter(Cangjie::ICE::TriggerPointSetter::writeCachedTP);
             instance.UpdateAndWriteCachedInfoToDisk();
         }
         return true;

@@ -56,7 +56,7 @@ void RegisterSignalHandler()
 #endif
     RegisterCrashSignalHandler();
 #endif
-    RegisterCrtlCSignalHandler();
+    RegisterCtrlCSignalHandler();
 }
 
 std::string GetOptionName(const std::string& arg)

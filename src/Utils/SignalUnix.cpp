@@ -81,7 +81,7 @@ void SigintHandler(int signum, [[maybe_unused]] siginfo_t* si, [[maybe_unused]] 
 } // namespace
 
 namespace Cangjie {
-void RegisterCrtlCSignalHandler()
+void RegisterCtrlCSignalHandler()
 {
     struct sigaction sa;
     sa.sa_sigaction = SigintHandler;

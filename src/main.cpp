@@ -56,7 +56,7 @@ int main(int argc, const char** argv, const char** envp)
 #if (defined RELEASE)
         RegisterSignalHandler();
 #endif
-        RegisterCrtlCSignalHandler();
+        RegisterCtrlCSignalHandler();
         // Convert all arguments to string list.
         std::vector<std::string> args = Utils::StringifyArgumentVector(argc, argv);
         std::unordered_map<std::string, std::string> environmentVars = Utils::StringifyEnvironmentPointer(envp);

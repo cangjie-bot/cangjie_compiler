@@ -67,7 +67,7 @@ BOOL WINAPI LLVMConsoleCtrlHandler(DWORD dwCtrlType)
 } // namespace
 
 namespace Cangjie {
-void RegisterCrtlCSignalHandler()
+void RegisterCtrlCSignalHandler()
 {
     (void)SetConsoleCtrlHandler(LLVMConsoleCtrlHandler, TRUE);
 }

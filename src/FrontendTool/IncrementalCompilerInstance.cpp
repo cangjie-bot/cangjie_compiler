@@ -465,7 +465,7 @@ bool IncrementalCompilerInstance::PerformCHIRCompilation()
     return ret;
 }
 
-void IncrementalCompilerInstance::LoadCachedCodegenResult() const
+void IncrementalCompilerInstance::LoadCachedCodeGenResult() const
 {
     for (auto fileName : cachedInfo.bitcodeFilesName) {
         auto cachePath = invocation.globalOptions.GenerateCachedPathNameForCodeGen(fileName, ".bc");
@@ -479,7 +479,7 @@ bool IncrementalCompilerInstance::PerformCodeGen()
     Utils::ProfileRecorder recorder("Main Stage", "CodeGen");
     if (kind == IncreKind::NO_CHANGE) {
         for (auto& srcPkg : GetSourcePackages()) {
-            LoadCachedCodegenResult();
+            LoadCachedCodeGenResult();
             invocation.globalOptions.UpdateCachedDirName(srcPkg->fullPackageName);
         }
         return true;
@@ -489,7 +489,7 @@ bool IncrementalCompilerInstance::PerformCodeGen()
     RearrangeImportedPackageDependence();
     bool ret = true;
     for (auto& srcPkg : GetSourcePackages()) {
-        ret = ret && CodegenOnePackage(*srcPkg, kind == IncreKind::INCR);
+        ret = ret && CodeGenOnePackage(*srcPkg, kind == IncreKind::INCR);
     }
     return ret;
 }
