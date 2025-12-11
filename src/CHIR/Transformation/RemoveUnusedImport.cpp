@@ -349,6 +349,6 @@ void ToCHIR::RemoveUnusedImports()
 
     ReplaceSrcCodeImportedValueWithSymbol();
     CreateExtendDefForImportedCustomTypeDef(*GetPackage(), builder, kind == IncreKind::INCR);
-    DumpCHIRDebug("RemoveUnusedImports");
+    DumpCHIRToFile("RemoveUnusedImports");
 }
 }  // namespace Cangjie::CHIR

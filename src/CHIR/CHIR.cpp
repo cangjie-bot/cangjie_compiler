@@ -206,9 +206,9 @@ static void SetLambdaForWrapper(const Func& curFunc, Value& wrapperFunc)
     }
 }
 
-void ToCHIR::DumpCHIRDebug(const std::string& suffix)
+void ToCHIR::DumpCHIRToFile(const std::string& suffix)
 {
-    if (!opts.chirDumpDebugMode) {
+    if (!opts.NeedDumpCHIRToFile()) {
         return;
     }
     CJC_NULLPTR_CHECK(chirPkg);
@@ -226,19 +226,16 @@ void ToCHIR::DumpCHIRDebug(const std::string& suffix)
     fileName += suffix + "." + extension;
     std::string debugDir;
     if (FileUtil::IsDir(outputPath)) {
-        debugDir = FileUtil::JoinPath(outputPath, chirPkg->GetName() + "_CHIR_Debug");
+        debugDir = FileUtil::JoinPath(outputPath, chirPkg->GetName() + "_CHIR");
     } else {
-        debugDir = FileUtil::GetFileBase(outputPath) + "_CHIR_Debug";
+        debugDir = FileUtil::GetFileBase(outputPath) + "_CHIR";
     }
-    static bool checkDebugDir = false;
-    if (!checkDebugDir) {
+    static bool clearDumpDir = false;
+    if (!clearDumpDir) {
         if (FileUtil::FileExist(debugDir)) {
-            for (auto file : FileUtil::GetAllFilesUnderCurrentPath(debugDir, extension)) {
-                std::string fullPath = FileUtil::JoinPath(debugDir, file);
-                FileUtil::Remove(fullPath);
-            }
+            FileUtil::RemoveDirectoryRecursively(debugDir);
         }
-        checkDebugDir = true;
+        clearDumpDir = true;
     }
     std::string fullPath = FileUtil::JoinPath(debugDir, fileName);
     if (!FileUtil::FileExist(fullPath)) {
@@ -259,7 +256,7 @@ void ToCHIR::DoClosureConversion()
     if (opts.enIncrementalCompilation) {
         ccOutFuncsRawMangle = closure.GetCCOutFuncsRawMangle();
     }
-    DumpCHIRDebug("ClosureConversion");
+    DumpCHIRToFile("ClosureConversion");
 }
 
 void ToCHIR::UnreachableBlockReporter()
@@ -274,7 +271,7 @@ void ToCHIR::UnreachableBlockElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "UnreachableBlockElimination");
     auto dce = CHIR::DeadCodeElimination(builder, diag, pkg.fullPackageName);
     dce.UnreachableBlockElimination(*chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("UnreachableBlockElimination");
+    DumpCHIRToFile("UnreachableBlockElimination");
 
     RunMergingBlocks("CHIR Opt", "MergingBlockAfterUnreachableBlock");
 }
@@ -283,7 +280,7 @@ void ToCHIR::RunMarkClassHasInited()
 {
     Utils::ProfileRecorder recorder("CHIR", "MarkClassHasInited");
     MarkClassHasInited::RunOnPackage(*chirPkg, builder);
-    DumpCHIRDebug("MarkClassHasInited");
+    DumpCHIRToFile("MarkClassHasInited");
 }
 
 void ToCHIR::NothingTypeExprElimination()
@@ -291,7 +288,7 @@ void ToCHIR::NothingTypeExprElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "NothingTypeExprElimination");
     auto dce = CHIR::DeadCodeElimination(builder, diag, pkg.fullPackageName);
     dce.NothingTypeExprElimination(*chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("NothingTypeExprElimination");
+    DumpCHIRToFile("NothingTypeExprElimination");
 }
 
 void ToCHIR::UnreachableBranchReporter()
@@ -309,7 +306,7 @@ void ToCHIR::UselessExprElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "UselessExprElimination");
     auto dce = CHIR::DeadCodeElimination(builder, diag, pkg.fullPackageName);
     dce.UselessExprElimination(*chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("UselessExprElimination");
+    DumpCHIRToFile("UselessExprElimination");
 }
 
 void ToCHIR::UselessFuncElimination()
@@ -317,7 +314,7 @@ void ToCHIR::UselessFuncElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "UselessFuncElimination");
     auto dce = CHIR::DeadCodeElimination(builder, diag, pkg.fullPackageName);
     dce.UselessFuncElimination(*chirPkg, opts);
-    DumpCHIRDebug("UselessFuncElimination");
+    DumpCHIRToFile("UselessFuncElimination");
 }
 
 void ToCHIR::ReportUnusedCode()
@@ -335,7 +332,7 @@ void ToCHIR::RedundantLoadElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "RedundantLoadElimination");
     auto rle = CHIR::RedundantLoadElimination();
     rle.RunOnPackage(chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("RedundantLoadElimination");
+    DumpCHIRToFile("RedundantLoadElimination");
 }
 
 void ToCHIR::UselessAllocateElimination()
@@ -345,7 +342,7 @@ void ToCHIR::UselessAllocateElimination()
     }
     Utils::ProfileRecorder recorder("CHIR Opt", "UselessAllocateElimination");
     UselessAllocateElimination::RunOnPackage(*chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("UselessAllocateElimination");
+    DumpCHIRToFile("UselessAllocateElimination");
 }
 
 void ToCHIR::RunGetRefToArrayElemOpt()
@@ -355,7 +352,7 @@ void ToCHIR::RunGetRefToArrayElemOpt()
     }
     Utils::ProfileRecorder recorder("CHIR Opt", "ArrayGetRefOpt");
     GetRefToArrayElem::RunOnPackage(*chirPkg, builder);
-    DumpCHIRDebug("ArrayGetRefOpt");
+    DumpCHIRToFile("ArrayGetRefOpt");
 }
 
 void ToCHIR::Devirtualization(DevirtualizationInfo& devirtInfo)
@@ -395,7 +392,7 @@ void ToCHIR::Devirtualization(DevirtualizationInfo& devirtInfo)
             pass.Run(*func);
         }
     }
-    DumpCHIRDebug("Devirtualization");
+    DumpCHIRToFile("Devirtualization");
 }
 
 void ToCHIR::RedundantGetOrThrowElimination()
@@ -406,7 +403,7 @@ void ToCHIR::RedundantGetOrThrowElimination()
     Utils::ProfileRecorder recorder("CHIR Opt", "RedundantGetOrThrowElimination");
     auto rGetOrThrowE = CHIR::RedundantGetOrThrowElimination();
     rGetOrThrowE.RunOnPackage(chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("RedundantGetOrThrowElimination");
+    DumpCHIRToFile("RedundantGetOrThrowElimination");
 }
 
 void ToCHIR::FlatForInExpr()
@@ -415,7 +412,7 @@ void ToCHIR::FlatForInExpr()
     Utils::ProfileRecorder recorder("CHIR", "FlatForInExpr");
     auto flatForInExpr = CHIR::FlatForInExpr(builder);
     flatForInExpr.RunOnPackage(*chirPkg);
-    DumpCHIRDebug("FlatForInExpr");
+    DumpCHIRToFile("FlatForInExpr");
 #endif
 }
 
@@ -437,7 +434,7 @@ void ToCHIR::RunArrayListConstStartOpt()
     auto pass = ArrayListConstStartOpt(builder, opts, functionInline);
     pass.RunOnPackage(chirPkg);
     MergeEffectMap(pass.GetEffectMap(), effectMap);
-    DumpCHIRDebug("RunArrayListConstStartOpt");
+    DumpCHIRToFile("RunArrayListConstStartOpt");
 }
 
 void ToCHIR::RunFunctionInline(DevirtualizationInfo& devirtInfo)
@@ -464,7 +461,7 @@ void ToCHIR::RunFunctionInline(DevirtualizationInfo& devirtInfo)
     }
     MergeEffectMap(pass.GetEffectMap(), effectMap);
     Utils::ProfileRecorder::Stop("CHIR Opt", "FunctionInline");
-    DumpCHIRDebug("FunctionInline");
+    DumpCHIRToFile("FunctionInline");
 
     RunMergingBlocks("CHIR Opt", "MergingBlockAfterInline");
 
@@ -477,14 +474,14 @@ void ToCHIR::RunUnreachableMarkBlockRemoval()
     Utils::ProfileRecorder recorder("CHIR", "Clear Blocks Marked as Unreachable");
     auto dce = CHIR::DeadCodeElimination(builder, diag, pkg.fullPackageName);
     dce.ClearUnreachableMarkBlock(*chirPkg);
-    DumpCHIRDebug("ClearBlocksMarkAsUnreachable");
+    DumpCHIRToFile("ClearBlocksMarkAsUnreachable");
 }
 
 void ToCHIR::RunMergingBlocks(const std::string& firstName, const std::string& secondName)
 {
     Utils::ProfileRecorder recorder(firstName, secondName);
     MergeBlocks::RunOnPackage(*chirPkg, builder, opts);
-    DumpCHIRDebug(secondName);
+    DumpCHIRToFile(secondName);
 }
 
 void ToCHIR::RunConstantAnalysis()
@@ -526,7 +523,7 @@ bool ToCHIR::RunConstantPropagation()
         }
         builder.GetChirContext().MergeTypes();
     }
-    DumpCHIRDebug("ConstantPropagation");
+    DumpCHIRToFile("ConstantPropagation");
     return diag.GetErrorCount() == 0;
 }
 
@@ -575,7 +572,7 @@ void ToCHIR::RunRangePropagation()
         }
         builder.GetChirContext().MergeTypes();
     }
-    DumpCHIRDebug("RangePropagation");
+    DumpCHIRToFile("RangePropagation");
     return;
 }
 
@@ -587,7 +584,7 @@ void ToCHIR::RunArrayLambdaOpt()
     Utils::ProfileRecorder recorder("CHIR Opt", "ArrayLambdaOpt");
     auto arrayLambdaOpt = CHIR::ArrayLambdaOpt(builder);
     arrayLambdaOpt.RunOnPackage(chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("ArrayLambdaOpt");
+    DumpCHIRToFile("ArrayLambdaOpt");
 }
 
 void ToCHIR::RunRedundantFutureOpt()
@@ -597,7 +594,7 @@ void ToCHIR::RunRedundantFutureOpt()
     }
     Utils::ProfileRecorder recorder("CHIR Opt", "RedundantFutureOpt");
     RedundantFutureRemoval(*chirPkg, opts.chirDebugOptimizer).RunOnPackage();
-    DumpCHIRDebug("RedundantFutureOpt");
+    DumpCHIRToFile("RedundantFutureOpt");
 }
 
 void ToCHIR::RunSanitizerCoverage()
@@ -608,14 +605,14 @@ void ToCHIR::RunSanitizerCoverage()
     Utils::ProfileRecorder recorder("CHIR", "Sanitizer Coverage");
     auto sanCovOpt = CHIR::SanitizerCoverage(opts, builder);
     sanCovOpt.RunOnPackage(chirPkg, diag, opts.chirDebugOptimizer);
-    DumpCHIRDebug("Sanitizer_Coverage");
+    DumpCHIRToFile("Sanitizer_Coverage");
 }
 
 void ToCHIR::RunNoSideEffectMarkerOpt()
 {
     Utils::ProfileRecorder recorder("CHIR Opt", "No Side Effect Marker");
     CHIR::NoSideEffectMarker::RunOnPackage(chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("No_Side_Effect_Marker");
+    DumpCHIRToFile("No_Side_Effect_Marker");
 }
 
 void ToCHIR::RunUnitUnify()
@@ -626,7 +623,7 @@ void ToCHIR::RunUnitUnify()
     Utils::ProfileRecorder recorder("CHIR Opt", "Unit Unify");
     auto unitUnify = CHIR::UnitUnify(builder);
     unitUnify.RunOnPackage(chirPkg, opts.chirDebugOptimizer);
-    DumpCHIRDebug("Unit_Unify");
+    DumpCHIRToFile("Unit_Unify");
 }
 
 DevirtualizationInfo ToCHIR::CollectDevirtualizationInfo()
@@ -667,7 +664,7 @@ void ToCHIR::MarkNoSideEffect()
             value->EnableAttr(Attribute::NO_SIDE_EFFECT);
         }
     }
-    DumpCHIRDebug("MarkNoSideEffect");
+    DumpCHIRToFile("MarkNoSideEffect");
 }
 
 bool ToCHIR::RunOptimizationPassAndRulesChecking()
@@ -716,7 +713,7 @@ bool ToCHIR::RunConstantEvaluation()
     auto ce = CHIR::Interpreter::ConstEvalPass(ci, builder, sourceManager, opts, diagEngine);
     std::vector<Cangjie::CHIR::Interpreter::Bchir> bchirPackages;
     ce.RunOnPackage(*chirPkg, initFuncsForConstVar, bchirPackages);
-    DumpCHIRDebug("after_const_eval");
+    DumpCHIRToFile("after_const_eval");
     return true;
 }
 
@@ -921,7 +918,7 @@ void ToCHIR::EraseDebugExpr()
             }
         }
     }
-    DumpCHIRDebug("EraseUselessDebugExpr");
+    DumpCHIRToFile("EraseUselessDebugExpr");
 }
 
 void ToCHIR::CFFIFuncWrapper()
@@ -968,7 +965,7 @@ void ToCHIR::CFFIFuncWrapper()
             ReplaceUsesWithWrapper(*curFunc, res, *wrapperFunc, true);
         }
     }
-    DumpCHIRDebug("CFFIFuncWrapper");
+    DumpCHIRToFile("CFFIFuncWrapper");
 }
 
 template <typename T>
@@ -1059,7 +1056,7 @@ void ToCHIR::CreateBoxTypeForRecursionValueType()
     Utils::ProfileRecorder recorder("CHIR", "BoxRecursionEnum");
     auto transformer = BoxRecursionValueType(*chirPkg, builder);
     transformer.CreateBoxTypeForRecursionValueType();
-    DumpCHIRDebug("BoxRecursionEnum");
+    DumpCHIRToFile("BoxRecursionEnum");
 }
 
 namespace {
@@ -1116,7 +1113,7 @@ bool ToCHIR::Run()
         return false;
     }
     if (opts.emitCHIRPhase == GlobalOptions::CandidateEmitCHIRPhase::RAW) {
-        EmitCHIR(outputPath, *chirPkg, Phase::RAW, opts.chirDumpDebugMode);
+        EmitCHIR(outputPath, *chirPkg, Phase::RAW, opts.NeedDumpCHIR());
         return true;
     }
     RecordCHIRExprNum("trans");
@@ -1161,7 +1158,7 @@ bool ToCHIR::Run()
         return false;
     }
     if (opts.emitCHIRPhase == GlobalOptions::CandidateEmitCHIRPhase::OPT) {
-        EmitCHIR(outputPath, *chirPkg, Phase::OPT, opts.chirDumpDebugMode);
+        EmitCHIR(outputPath, *chirPkg, Phase::OPT, opts.NeedDumpCHIR());
     } else if (opts.saveTemps) {
         auto tempFileInfo =
             TempFileManager::Instance().CreateNewFileInfo({.fileName = chirPkg->GetName()}, TempFileKind::O_CHIR);
@@ -1245,7 +1242,7 @@ bool ToCHIR::PerformPlugin(CHIR::Package& package)
     if (!succeed) {
         diag.DiagnoseRefactor(DiagKindRefactor::plugin_throws_exception, DEFAULT_POSITION);
     } else if (hasPluginForCHIR && builder.IsEnableIRCheckerAfterPlugin()) {
-        DumpCHIRDebug("PLUGIN");
+        DumpCHIRToFile("PLUGIN");
         Utils::ProfileRecorder rec2("CHIR", "IRCheck after plugins");
         succeed = IRCheck(package, opts, builder, Phase::PLUGIN);
     }
@@ -1279,7 +1276,7 @@ bool ToCHIR::TranslateToCHIR(std::vector<const AST::Decl*>&& annoOnly)
         return false;
     }
     chirPkg = ast2CHIR.GetPackage();
-    DumpCHIRDebug("AST_CHIR");
+    DumpCHIRToFile("AST_CHIR");
     if (!opts.enIncrementalCompilation && !RunIRChecker(Phase::RAW)) {
         return false;
     }
