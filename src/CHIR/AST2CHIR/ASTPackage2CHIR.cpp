@@ -1468,12 +1468,13 @@ void ConvertPlatformMemberMethods(
         for (auto func : decl->GetMethods()) {
             if (func->TestAttr(CHIR::Attribute::DESERIALIZED)) {
                 auto f = DynamicCast<Func*>(func);
-                bool hasBodyFromCommonPart = f && f->GetBody();
-                if (hasBodyFromCommonPart) {
-                    Visitor::Visit(
-                        *f, [](Expression&) { return VisitResult::CONTINUE; }, postVisit);
+                if (f) {
+                    bool hasBodyFromCommonPart = f->GetBody();
+                    if (hasBodyFromCommonPart) {
+                        Visitor::Visit(*f, [](Expression&) { return VisitResult::CONTINUE; }, postVisit);
+                    }
+                    converter.VisitValue(*f);
                 }
-                converter.VisitValue(*f);
             }
         }
     }
