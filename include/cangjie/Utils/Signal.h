@@ -66,8 +66,8 @@ void ExecuteSignalTestCallbackFunc(TriggerPointer executionPoint);
 } // namespace Cangjie
 #endif
 namespace Cangjie {
-/* Register signal handler for Crtl C signal. */
-void RegisterCrtlCSignalHandler();
+/* Register signal handler for Ctrl C signal. */
+void RegisterCtrlCSignalHandler();
 } // namespace Cangjie
 
 #endif // CANGJIE_UTILS_SIGNAL_H
