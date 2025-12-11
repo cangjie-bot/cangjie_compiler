@@ -253,13 +253,6 @@ OwnedPtr<Decl> ParserImpl::ParseVarDecl(
     }
     ret->modifiers.insert(modifiers.begin(), modifiers.end());
     CheckVarDeclModifiers(modifiers, ret.get(), scopeKind, keyToken);
-    bool hasNoType = ret->type == nullptr;
-    bool isCommonPlatform = ret->IsCommonOrPlatform();
-    if (hasNoType && isCommonPlatform) {
-        auto kind = ret->TestAttr(Attribute::COMMON) ? "common" : "platform";
-        auto keyword = ret->isVar ? "var" : "let";
-        ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_type_with_cjmp_var, *ret, kind, keyword);
-    }
     return ret;
 }
 

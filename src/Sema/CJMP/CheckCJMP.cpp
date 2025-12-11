@@ -508,13 +508,29 @@ void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<Func
             }
             TypeSubst genericTyMap;
             MapCJMPGenericTypeArgs(genericTyMap, *candidate, *platformFunc);
+            bool isMatch = false;
             if (!genericTyMap.empty()) {
                 auto newCommonFuncTy = StaticCast<FuncTy*>(typeManager.GetInstantiatedTy(candidate->ty, genericTyMap));
                 auto platformFuncTy = StaticCast<FuncTy*>(platformFunc->ty);
-                return typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy);
+                isMatch = typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy);
             } else {
-                return typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
+                isMatch = typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
             }
+
+            // When functions match, propagate HAS_INITIAL attribute from common to platform
+            if (isMatch && candidate->funcBody && platformFunc->funcBody) {
+                auto& commonParams = candidate->funcBody->paramLists[0]->params;
+                auto& pfParams = platformFunc->funcBody->paramLists[0]->params;
+
+                for (size_t i = 0; i < commonParams.size() && i < pfParams.size(); ++i) {
+                    if (commonParams[i]->TestAttr(Attribute::HAS_INITIAL) &&
+                        !pfParams[i]->TestAttr(Attribute::HAS_INITIAL)) {
+                        pfParams[i]->EnableAttr(Attribute::HAS_INITIAL);
+                    }
+                }
+            }
+
+            return isMatch;
         });
     }
 }
@@ -624,6 +640,11 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
                 }
             } else if (common.astKind != ASTKind::FUNC_DECL) {
                 // Keep silent due to overloaded common funcs.
+                // Allow platform sealed abstract when common is abstract
+                if (common.astKind == ASTKind::CLASS_DECL && (attr == Attribute::SEALED || attr == Attribute::OPEN) &&
+                    platform.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
+                    continue;
+                }
                 diag.DiagnoseRefactor(
                     DiagKindRefactor::sema_platform_has_different_modifier, platform, DeclKindToString(platform));
             }
