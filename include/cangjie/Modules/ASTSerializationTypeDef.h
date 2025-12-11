@@ -22,7 +22,7 @@ using uoffset_t = flatbuffers::uoffset_t;
 struct ExportConfig {
     // Whether save initializer of var decl and func body of function.
     bool exportContent{false};
-    // Whether write cacahed cjo astData which used for load cached type info in incremental compilation.
+    // Whether write cached cjo astData which used for load cached type info in incremental compilation.
     bool exportForIncr{false};
     bool exportForTest{false};
     // Whether save source files with their absolute paths.

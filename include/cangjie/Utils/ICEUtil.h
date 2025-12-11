@@ -52,7 +52,7 @@ public:
     friend int64_t GetTriggerPoint();
 
     static int64_t interpreterTP;  // Module code of the interpreter stage, which is equal to frontend code plus 1.
-    static int64_t writeCahedTP;  // Module code of the write cahed stage, which is equal to frontend code plus 2.
+    static int64_t writeCachedTP;  // Module code of the write cached stage, which is equal to frontend code plus 2.
 
 private:
     // Save global ICE trigger point

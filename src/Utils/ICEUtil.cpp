@@ -26,7 +26,7 @@ namespace ICE {
 
 int64_t TriggerPointSetter::triggerPoint = static_cast<int64_t>(Cangjie::CompileStage::COMPILE_STAGE_NUMBER);
 int64_t TriggerPointSetter::interpreterTP = static_cast<int64_t>(Cangjie::CompileStage::COMPILE_STAGE_NUMBER) + 1;
-int64_t TriggerPointSetter::writeCahedTP = static_cast<int64_t>(Cangjie::CompileStage::COMPILE_STAGE_NUMBER) + 2;
+int64_t TriggerPointSetter::writeCachedTP = static_cast<int64_t>(Cangjie::CompileStage::COMPILE_STAGE_NUMBER) + 2;
 
 void TriggerPointSetter::SetICETriggerPoint(CompileStage cs)
 {
