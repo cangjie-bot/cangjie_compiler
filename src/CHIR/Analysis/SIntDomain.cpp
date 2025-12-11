@@ -312,6 +312,12 @@ SIntDomain ComputeDiv(const CHIRArithmeticBinopArgs& args)
 {
     auto& ln = args.ld.NumericBound();
     auto& rn = args.rd.NumericBound();
+    if (rn.Contains(SInt::Zero(rn.Width()))) {
+        // SDiv will return set in which the result may lie when operation is define. if divisor contains zero,
+        // the result of Sdiv will get range excluding zero.
+        // So it is necessary to complete the division by 0 judgment before calculation.
+        return {ConstantRange::Full(ln.Width()), args.uns};
+    }
     ConstantRange r{args.uns ? ln.UDiv(rn) : (IsSaturating(args.ov) ? ln.SDivSat(rn) : ln.SDiv(rn))};
     return {r, args.uns};
 }
