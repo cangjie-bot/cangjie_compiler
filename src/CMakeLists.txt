@@ -113,11 +113,11 @@ endif()
 # compiling standard library when building for a visible options only version.
 if(CANGJIE_VISIBLE_OPTIONS_ONLY)
     set(CANGJIE_SRC_OBJECTS
-        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption-Fully-Enabled>
+        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption>
         CACHE INTERNAL "")
 else()
     set(CANGJIE_SRC_OBJECTS
-        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption>
+        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption-Fully-Enabled>
         CACHE INTERNAL "")
 endif()
 add_executable(cjc main.cpp ${CANGJIE_SRC_OBJECTS})
