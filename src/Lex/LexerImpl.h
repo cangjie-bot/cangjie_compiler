@@ -196,7 +196,7 @@ private:
     void ReadUTF8CharFromMultiBytes(int32_t& ch);
     bool CheckUnicodeSecurity(const int32_t& c) const;
     bool ProcessXdigit(const int& base, bool& hasDigit, const char* reasonPoint);
-    bool ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint);
+    bool ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint, bool* isFloat = nullptr);
     std::string GetSuffix(const char* pSuffixStart);
     void ProcessIntegerSuffix();
     TokenKind LookupKeyword(const std::string& literal);
@@ -244,7 +244,7 @@ private:
     Token ScanNumber(const char* pStart);
     Token ScanNumberOrDotPrefixSymbol(const char* pStart);
     bool ScanNumberIntegerPart(const char* pStart, int& base, char& prefix, bool& hasDigit, const char*& reasonPoint);
-    void ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint);
+    void ScanNumberDecimalPart(int base, char prefix, bool& hasDigit, bool& isFloat, const char* reasonPoint);
     void ScanNumberExponentPart(const char* reasonPoint);
     Token ScanDotPrefixSymbol();
     Token ScanBackquotedIdentifier(const char* pStart);

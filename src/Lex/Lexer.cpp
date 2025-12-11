@@ -358,11 +358,14 @@ bool LexerImpl::ProcessXdigit(const int& base, bool& hasDigit, const char* reaso
 /// if the digit >= base,report error.
 /// finally return hasDigit and the index of invalid char.
 //  return true if it has integer suffix, false otherwise.
-bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint)
+bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint, bool* isFloat)
 {
     bool hasTypeSuffix = false;
     int max = base + static_cast<int>('0');
-    for (;;) {
+    for (int i{0}; ; ++i) {
+        if (i == 0 && isFloat && isdigit(currentChar)) {
+            *isFloat = true;
+        }
         if (currentChar > ASCII_BASE) {
             if (success) {
                 DiagExpectedDigit(*reasonPoint);
@@ -451,15 +454,14 @@ bool LexerImpl::ScanNumberIntegerPart(
     return ProcessDigits(base, hasDigit, reasonPoint);
 }
 
-void LexerImpl::ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint)
+void LexerImpl::ScanNumberDecimalPart(int base, char prefix, bool& hasDigit, bool& isFloat, const char* reasonPoint)
 {
-    tokenKind = TokenKind::FLOAT_LITERAL;
     if ((prefix == 'o' || prefix == 'b') && success) {
         DiagUnexpectedDecimalPoint(reasonPoint);
         success = false;
     }
-    ReadUTF8Char();
-    ProcessDigits(base, hasDigit, reasonPoint);
+    ReadUTF8Char(); // skip '.'
+    ProcessDigits(base, hasDigit, reasonPoint, &isFloat);
 }
 
 void LexerImpl::ScanNumberExponentPart(const char* reasonPoint)
@@ -512,7 +514,7 @@ void LexerImpl::ProcessNumberExponentPart(const char prefix, const char* reasonP
             isFloat = true;
         }
         ScanNumberExponentPart(reasonPoint);
-    } else if (success && prefix == 'x' && tokenKind == TokenKind::FLOAT_LITERAL) {
+    } else if (success && prefix == 'x' && tokenKind == TokenKind::FLOAT_LITERAL && isFloat) {
         DiagExpectedExponentPart(reasonPoint);
         success = false;
     }
@@ -521,7 +523,7 @@ void LexerImpl::ProcessNumberExponentPart(const char prefix, const char* reasonP
 void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat)
 {
     using namespace Unicode;
-    auto tempPoint = pCurrent;
+    auto pStart = pCurrent;
     auto hasSuffix{false};
     if (currentChar == 'f') {
         ProcessFloatSuffix(prefix);
@@ -570,8 +572,12 @@ void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat)
         }
         currentChar = static_cast<int>(cp);
     }
-    if (((!isFloat && hasSuffix) || (suffixBegin != pNext && !IsAdjacent(suffixBegin, pNext))) && success) {
-        auto errPoint = isFloat ? suffixBegin : tempPoint;
+    if (!success) {
+        Back();
+        return;
+    }
+    if ((!isFloat && hasSuffix) || (suffixBegin != pNext && !IsAdjacent(suffixBegin, pNext) && suffixBegin != pStart)) {
+        auto errPoint = isFloat ? suffixBegin : pStart;
         auto args = std::string{errPoint, pCurrent};
         /// the suffix is empty, add dot to prevent empty string in diag message
         if (args.empty()) {
@@ -651,12 +657,11 @@ Token LexerImpl::ScanNumber(const char* pStart)
             }
         }
         hasDigit = false;
-        isFloat = true;
         if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
             diag.DiagnoseRefactor(
                 DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{*pStart});
         }
-        ScanNumberDecimalPart(base, prefix, hasDigit, reasonPoint);
+        ScanNumberDecimalPart(base, prefix, hasDigit, isFloat, reasonPoint);
     } else {
         if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
             diag.DiagnoseRefactor(
