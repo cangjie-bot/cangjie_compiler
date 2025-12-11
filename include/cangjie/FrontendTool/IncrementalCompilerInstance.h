@@ -53,7 +53,7 @@ private:
     std::list<std::string> rawIncrRemovedDecls;
 
     void SaveCompilationResult(Cangjie::IncreResult&& result);
-    void LoadCachedCodegenResult() const;
+    void LoadCachedCodeGenResult() const;
     void UpdateCachedInfo() override;
     void UpdateCHIROptEffectMap();
 };

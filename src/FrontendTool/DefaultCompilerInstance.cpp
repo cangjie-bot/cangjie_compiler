@@ -45,7 +45,7 @@ public:
     bool SaveCjoAndBchir(AST::Package& pkg);
     bool SaveCjo(const AST::Package& pkg);
     void RearrangeImportedPackageDependence();
-    bool CodegenOnePackage(AST::Package& pkg, bool enableIncrement);
+    bool CodeGenOnePackage(AST::Package& pkg, bool enableIncrement);
 
 private:
     DefaultCompilerInstance& ci;
@@ -209,7 +209,7 @@ bool DefaultCIImpl::SaveCjoAndBchir(Package& pkg)
     return SaveCjo(pkg);
 }
 
-bool DefaultCIImpl::CodegenOnePackage(Package& pkg, bool enableIncrement)
+bool DefaultCIImpl::CodeGenOnePackage(Package& pkg, bool enableIncrement)
 {
     if (pkg.IsEmpty()) {
         return true;
@@ -300,7 +300,7 @@ bool DefaultCIImpl::PerformCodeGen()
     RearrangeImportedPackageDependence();
     bool ret = true;
     for (auto& srcPkg : ci.GetSourcePackages()) {
-        ret = ret && CodegenOnePackage(*srcPkg, false);
+        ret = ret && CodeGenOnePackage(*srcPkg, false);
     }
     return ret;
 }
@@ -353,8 +353,8 @@ void DefaultCompilerInstance::RearrangeImportedPackageDependence() const
 {
     return impl->RearrangeImportedPackageDependence();
 }
-bool DefaultCompilerInstance::CodegenOnePackage(AST::Package& pkg, bool enableIncrement) const
+bool DefaultCompilerInstance::CodeGenOnePackage(AST::Package& pkg, bool enableIncrement) const
 {
-    return impl->CodegenOnePackage(pkg, enableIncrement);
+    return impl->CodeGenOnePackage(pkg, enableIncrement);
 }
 }
