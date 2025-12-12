@@ -319,3 +319,17 @@ case _ => 1
     ASSERT_EQ(case1.comments.trailingComments.size(), 1);
     EXPECT_EQ(case1.comments.trailingComments[0].cms[0].info.Value(), "//comment on case");
 }
+
+TEST_F(ParseCommentTest, FeaturesDirective)
+{
+    code = "features /* featureSet comment*/ { os. /* featureId comment*/ linux } //trail comment";
+    Parser parser(code, diag, sm, {0, 1, 1}, true);
+    OwnedPtr<File> file = parser.ParseTopLevel();
+    auto& ftrDir = file->feature;
+    ASSERT_EQ(ftrDir->comments.trailingComments.size(), 1);
+    EXPECT_EQ(ftrDir->comments.trailingComments[0].cms[0].info.Value(), "//trail comment");
+    ASSERT_EQ(ftrDir->featuresSet->comments.leadingComments.size(), 1);
+    EXPECT_EQ(ftrDir->featuresSet->comments.leadingComments[0].cms[0].info.Value(), "/* featureSet comment*/");
+    ASSERT_EQ(ftrDir->featuresSet->content[0].comments.innerComments.size(), 1);
+    EXPECT_EQ(ftrDir->featuresSet->content[0].comments.innerComments[0].cms[0].info.Value(), "/* featureId comment*/");
+}
