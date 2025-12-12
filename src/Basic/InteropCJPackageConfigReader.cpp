@@ -15,6 +15,8 @@
 #include "cangjie/Basic/InteropCJPackageConfigReader.h"
 #include <iostream>
 #include <stdexcept>
+#include "cangjie/Utils/CheckUtils.h"
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -225,6 +227,41 @@ bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
                                 }
                             }
                         }
+                        
+                        // lambda patterns
+                        // lambda_patterns = [{signature = "(Int32, A) -> Int32", class_mappings = {"A" = "com.A"}}]
+                        if (packageTable.find("lambda_patterns") != packageTable.end() &&
+                            packageTable["lambda_patterns"].is<Array>()) {
+                            auto lambdaPatterns = packageTable["lambda_patterns"].as<Array>();
+                            for (const auto& item : lambdaPatterns) {
+                                if (!item.is<Table>()) {
+                                    continue;
+                                }
+                                
+                                auto genTable = item.as<Table>();
+                                // Check the name field.
+                                if (genTable.find("signature") == genTable.end() ||
+                                    !genTable["signature"].is<std::string>()) {
+                                    continue;
+                                }
+                                std::string lambdaSigna = genTable["signature"].as<std::string>();
+                                LambdaPattern lambdaPat = ParseLambdaSignature(lambdaSigna);
+                                // Check if it is a type parameter definition.
+                                if (genTable.find("class_mappings") == genTable.end() ||
+                                    !genTable["class_mappings"].is<Table>()) {
+                                    continue;
+                                }
+                                auto classMappings = genTable["class_mappings"].as<Table>();
+                                std::vector<std::string> types;
+
+                                for (const auto& [key, value] : classMappings) {
+                                    ClassMapping classMap(key, value.as<std::string>());
+                                    lambdaPat.ClassMappings.push_back(classMap);
+                                }
+                                pkgConfig.lambdaPatterns.push_back(lambdaPat);
+                            }
+                        }
+
                         // Add to Configuration
                         packages[pkgConfig.name] = pkgConfig;
                     }
@@ -317,5 +354,99 @@ bool InteropCJPackageConfigReader::Validate() const
         }
     }
     return true;
+}
+
+LambdaPattern InteropCJPackageConfigReader::ParseLambdaSignature(const std::string& signature)
+{
+    CJC_ASSERT(signature.empty());
+
+    std::string trimmed = Trim(signature);
+
+    size_t arrowPos = trimmed.find("->");
+    if (arrowPos == std::string::npos) {
+        throw std::invalid_argument("无效的签名格式：缺少 '->' 分隔符");
+    }
+
+    if (trimmed.front() != '(' || trimmed.find(')') == std::string::npos) {
+        throw std::invalid_argument("无效的签名格式：缺少括号");
+    }
+
+    // 提取参数部分和返回类型部分
+    size_t closeParenPos = trimmed.find(')');
+    if (closeParenPos >= arrowPos) {
+        throw std::invalid_argument("无效的签名格式：括号位置不正确");
+    }
+
+    std::string paramsStr = trimmed.substr(1, closeParenPos - 1);
+    std::string returnTypeStr = trimmed.substr(arrowPos + 2);
+
+    std::vector<std::string> paramTypes = ParseParameterList(paramsStr);
+
+    std::string returnType = Trim(returnTypeStr);
+    if (returnType.empty()) {
+        throw std::invalid_argument("返回类型不能为空");
+    }
+
+    return LambdaPattern(trimmed, paramTypes, returnType);
+}
+
+std::vector<std::string> InteropCJPackageConfigReader::ParseParameterList(const std::string& paramsStr)
+{
+    std::vector<std::string> parameters;
+    if (paramsStr.empty()) {
+        // such as "()->Int32"
+        return parameters;
+    }
+
+    std::string currentParam;
+    bool inGeneric = false; // whether in generic param, such as List<Int32>
+    int genericDepth = 0;
+
+    for (char ch : paramsStr) {
+        if (ch == '<') {
+            inGeneric = true;
+            genericDepth++;
+            currentParam += ch;
+        } else if (ch == '>') {
+            genericDepth--;
+            if (genericDepth == 0) {
+                inGeneric = false;
+            }
+            currentParam += ch;
+        } else if (ch == ',' && !inGeneric) {
+            std::string trimmedParam = Trim(currentParam);
+            if (!trimmedParam.empty()) {
+                parameters.push_back(trimmedParam);
+            }
+            currentParam.clear();
+        } else {
+            currentParam += ch;
+        }
+    }
+
+    if (!currentParam.empty()) {
+        std::string trimmedParam = Trim(currentParam);
+        if (!trimmedParam.empty()) {
+            parameters.push_back(trimmedParam);
+        }
+    }
+
+    return parameters;
+}
+
+std::string InteropCJPackageConfigReader::Trim(const std::string& str)
+{
+    size_t start = 0;
+    size_t end = str.length();
+
+    while (start < end && std::isspace(static_cast<unsigned char>(str[start]))) {
+        ++start;
+    }
+
+    while (end > start && std::isspace(static_cast<unsigned char>(str[end - 1]))) {
+        --end;
+    }
+
+    return str.substr(start, end - start);
 }
 } // namespace Cangjie

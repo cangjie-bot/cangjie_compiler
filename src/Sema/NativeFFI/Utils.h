@@ -175,12 +175,14 @@ Ptr<std::string> GetSingleArgumentAnnotationValue(const Decl& target, Annotation
 bool IsSuperConstructorCall(const CallExpr& call);
 
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
-OwnedPtr<Type> GetGenericInstType(std::string typeStr);
+OwnedPtr<Type> GetTypeByName(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(GenericConfigInfo* config, std::string genericName);
 std::string GetGenericActualType(GenericConfigInfo* config, std::string genericName);
-TypeKind GetGenericActualTypeKind(std::string configType);
+TypeKind GetActualTypeKind(std::string configType);
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName);
-Ptr<Ty> GetGenericInstTy(std::string typeStr);
+Ptr<Ty> GetTyByName(std::string typeStr);
+std::string GetLambdaJavaClassName(LambdaPattern& pattern);
+std::string GetLambdaJavaClassName(Ptr<Ty> ty);
 
 } // namespace Cangjie::Interop::Java
 

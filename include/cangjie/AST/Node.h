@@ -2930,6 +2930,7 @@ struct Package : Node {
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
     bool isInteropCJPackageConfig{false};
+    std::vector<LambdaPattern> lambdaPatterns;
 
 private:
     std::vector<std::string> allDependentStdPkgs; /**< Record all dependent standard packages. */
@@ -2974,6 +2975,10 @@ public:
     const std::vector<std::string>& GetAllDependentStdPkgs() const
     {
         return allDependentStdPkgs;
+    }
+
+    const std::vector<LambdaPattern>& GetLambdaPatterns() const {
+        return lambdaPatterns;
     }
 };
 

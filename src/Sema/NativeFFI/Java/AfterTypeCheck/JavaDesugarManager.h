@@ -38,7 +38,7 @@ enum class DesugarJavaMirrorImplStage : uint8_t {
     END
 };
 
-enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
+enum class DesugarCJImplStage : uint8_t { BEGIN, PRE_GENERATE, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
 
 class JavaDesugarManager {
 public:
@@ -284,7 +284,7 @@ private:
     bool FillMethodParamsByArg(std::vector<OwnedPtr<FuncParam>>& params, std::vector<OwnedPtr<FuncArg>>& callArgs,
         FuncDecl& funcDecl, OwnedPtr<FuncParam>& arg, FuncParam& jniEnvPtrParam, Ptr<Ty> actualTy);
 
-    void GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const std::vector<std::pair<std::string, std::string>> instTypes,
+    void GetArgsAndRetGenericActualTyVector(FuncDecl& ctor, const GenericConfigInfo* genericConfig,
         std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
         std::vector<OwnedPtr<Type>> &ActualPrimitiveType);
 
@@ -563,6 +563,11 @@ private:
      * }
      */
     OwnedPtr<AST::MemberAccess> GenThisMemAcessForSelfMethod(Ptr<FuncDecl> fd, Ptr<InterfaceDecl> interfaceDecl, GenericConfigInfo* genericConfig);
+    void PreGenerateInCJMapping(File& file);
+    void GenerateLambdaGlueCode(File& file);
+    OwnedPtr<LambdaExpr> GenerateLambdaExpr(File& file, LambdaPattern& pattern, FuncParam& funcParam);
+    Ptr<FuncDecl> CheckCjLambdaDeclByTy(Ptr<Ty> ty);
+    OwnedPtr<CallExpr> CreateGetCJLambdaCallExpr(Ptr<Ty> ty, const Decl& outerDecl);
 
     ImportManager& importManager;
     TypeManager& typeManager;
@@ -580,6 +585,8 @@ private:
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring
      */
     std::vector<OwnedPtr<Decl>> generatedDecls;
+    std::map<std::string, Ptr<FuncDecl>> lambdaConfUtilFuncs;
+    bool isInitLambdaUtilFunc = false;
 };
 
 } // namespace Cangjie::Interop::Java

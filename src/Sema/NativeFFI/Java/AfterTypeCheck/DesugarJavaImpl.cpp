@@ -494,7 +494,7 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (ty->IsCoreOptionType()) {
         return jobjectTy;
     }
-    if (IsMirror(*ty) || IsImpl(*ty) || IsCJMappingInterface(*ty)) {
+    if (IsMirror(*ty) || IsImpl(*ty) || IsCJMappingInterface(*ty) || IsFuncTy(*ty)) {
         return jobjectTy;
     }
     if (IsCJMapping(*ty)) {

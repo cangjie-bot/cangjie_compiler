@@ -315,11 +315,16 @@ void JavaDesugarManager::ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, Generic
     std::vector<Ptr<Ty>> tmpParamTys;
     std::vector<Ptr<Ty>> tmpTypeArgs;
     auto& retType = *funcDecl->funcBody->retType;
-    if (retType.ty->HasGeneric()) {
+    if (IsFuncTy(*retType.ty)) {
+        ReplaceGenericTyForFuncTy(retType.ty, genericConfig);
+    } else if (retType.ty->HasGeneric()) {
         funcDecl->funcBody->retType = GetGenericInstType(genericConfig, retType.ty->name);
     }
+
     for (auto& param : funcDecl->funcBody->paramLists[0]->params) {
-        if (param->ty && param->ty->HasGeneric()) {
+        if (IsFuncTy(*param->ty)) {
+            ReplaceGenericTyForFuncTy(param->ty, genericConfig);
+        } else if (param->ty && param->ty->HasGeneric()) {
             param->type = GetGenericInstType(genericConfig, param->ty->name);
             param->ty = GetGenericInstTy(genericConfig, param->ty->name);
         }
@@ -335,6 +340,31 @@ void JavaDesugarManager::ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, Generic
     auto funcTy = typeManager.GetFunctionTy(tmpParamTys, funcDecl->funcBody->retType->ty);
     funcTy->typeArgs = tmpTypeArgs;
     funcDecl->ty = funcTy;
+}
+
+void JavaDesugarManager::ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig)
+{
+    auto funcTy = StaticCast<FuncTy*>(ty.get());
+    CJC_NULLPTR_CHECK(funcTy);
+
+    if (funcTy->retTy && funcTy->retTy->HasGeneric()) {
+        funcTy->retTy = GetGenericInstTy(genericConfig, funcTy->retTy->name);;
+    }
+
+    for (auto& ty : funcTy->paramTys) {
+        if (ty && ty->HasGeneric()) {
+            ty = GetGenericInstTy(genericConfig, ty->name);
+        }
+    }
+}
+
+OwnedPtr<CallExpr> JavaDesugarManager::CreateGetCJLambdaCallExpr(Ptr<Ty> ty, const Decl& outerDecl)
+{
+    auto getCjLambdaFd = CheckCjLambdaDeclByTy(ty);
+    auto wrapJavaEntity = lib.UnwrapJavaEntity(std::move(callResRef), lib.GetJobjectTy(), outerDecl, true);
+    CJC_NULLPTR_CHECK(wrapJavaEntity);
+    auto callExpr = CreateCall(getCjLambdaFd, fun.curFile, std::move(wrapJavaEntity));
+    return callExpr;
 }
 
 OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassMethod(
@@ -363,7 +393,7 @@ OwnedPtr<AST::MemberAccess> JavaDesugarManager::GenThisMemAcessForSelfMethod(
         std::vector<Ptr<Ty>> typeArgs;
         for (const auto& typePair : genericConfig->instTypes) {
             std::string typeStr = typePair.second;
-            auto ty = GetGenericInstTy(typeStr);
+            auto ty = GetTyByName(typeStr);
             typeArgs.push_back(ty);
         }
         interfaceTy = typeManager.GetInterfaceTy(*interfaceDecl, typeArgs);
@@ -486,9 +516,9 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::Interfac
             std::vector<OwnedPtr<Type>> typeArguments;
             for (const auto& typePair : config->instTypes) {
                 std::string typeStr = typePair.second;
-                auto ty = GetGenericInstTy(typeStr);
+                auto ty = GetTyByName(typeStr);
                 typeArgs.push_back(ty);
-                auto priType = GetGenericInstType(typeStr);
+                auto priType = GetTypeByName(typeStr);
                 interfaceRefType->typeArguments.emplace_back(std::move(priType));
             }
             interfaceRefType->ty = typeManager.GetInterfaceTy(interfaceDecl, typeArgs);
@@ -708,14 +738,17 @@ OwnedPtr<FuncDecl> JavaDesugarManager::GenerateFwdClassMethod(ClassDecl& fwdDecl
 
     auto methodCallRes = WithinFile(CreateTmpVarDecl(nullptr, std::move(methodCall)), curFile);
     auto callResRef = WithinFile(CreateRefExpr(*methodCallRes), curFile);
-    auto unwrapJavaEntityCall = lib.UnwrapJavaEntity(std::move(callResRef), fun->funcBody->retType->ty, fwdDecl);
-    if (!unwrapJavaEntityCall) {
+    auto retCallExpr = lib.UnwrapJavaEntity(std::move(callResRef), fun->funcBody->retType->ty, fwdDecl);
+    if (fun->funcBody->retType->ty->kind == TypeKind::TYPE_FUNC) {
+        retCallExpr = CreateGetCJLambdaCallExpr(fun->funcBody->retType->ty, fwdDecl);
+    }
+    if (!retCallExpr) {
         fun->EnableAttr(Attribute::IS_BROKEN);
         return nullptr;
     }
 
     std::vector<OwnedPtr<Node>> thenBodyNodes;
-    auto thenRetExpr = CreateReturnExpr(std::move(unwrapJavaEntityCall), fun->funcBody.get());
+    auto thenRetExpr = CreateReturnExpr(std::move(retCallExpr), fun->funcBody.get());
     thenRetExpr->ty = TypeManager::GetNothingTy();
     thenRetExpr->refFuncBody = fun->funcBody.get();
     thenBodyNodes.push_back(std::move(envVar));
@@ -862,6 +895,109 @@ void JavaDesugarManager::GenerateNativeForCJInterfaceMapping(AST::ClassDecl& cla
             generatedDecls.push_back(GenerateNativeMethod(*fd, classDecl));
         }
     }
+}
+
+void JavaDesugarManager::PreGenerateInCJMapping(File& file)
+{
+    if (!isInitLambdaUtilFunc) {
+        GenerateLambdaGlueCode(file);
+    }
+}
+
+void JavaDesugarManager::GenerateLambdaGlueCode(File& file)
+{
+    CJC_ASSERT(file.curPackage);
+    auto curFile = file.curFile;
+    std::vector<LambdaPattern> lambdaPatterns = file.curPackage->lambdaPatterns;
+    if (lambdaPatterns.empty()) {
+        return;
+    }
+    for (auto& lambda : lambdaPatterns) {
+        // generate getInt32ToInt32CJLambda(javaLamba:jobject) : (Int32) -> Int32 decl
+        std::string className = GetLambdaJavaClassName(lambda);
+        std::vector<OwnedPtr<FuncParam>> params;
+        PushObjParams(params, "javaLambda");
+        auto& objParam = *params[0];
+        auto funcParamList = CreateFuncParamList(std::move(params));
+
+        std::vector<Ptr<Ty>> lambdaParamTys;
+        for (auto& paramStr : lambda.parameterTypes) {
+            lambdaParamTys.push_back(GetTyByName(paramStr));
+        }
+        auto retTy = typeManager.GetFunctionTy(lambdaParamTys, GetTyByName(lambda.returnType));
+        auto retType = CreateFuncType(retTy);
+
+        auto lambdaExpr = WithinFile(GenerateLambdaExpr(file, lambda, objParam), curFile);
+        auto returnExpr = WithinFile(CreateReturnExpr(std::move(lambdaExpr)), curFile);
+        std::vector<OwnedPtr<Node>> nodes;
+        nodes.push_back(std::move(returnExpr));
+        auto block = CreateBlock(std::move(nodes), TypeManager::GetNothingTy());
+
+        auto funcTy = typeManager.GetFunctionTy({objParam.ty}, retTy);
+        std::vector<OwnedPtr<FuncParamList>> paramLists;
+        paramLists.push_back(std::move(funcParamList));
+        auto body =
+            WithinFile(CreateFuncBody(std::move(paramLists), std::move(retType), std::move(block), funcTy), curFile);
+
+        auto funcDecl = WithinFile(CreateFuncDecl("get" + className + "CJLambda", std::move(body), funcTy), curFile);
+        if (funcDecl) {
+            auto tmpFuncDecl = funcDecl.get();
+            generatedDecls.push_back(std::move(funcDecl));
+            lambdaConfUtilFuncs.emplace(lambda.signature, tmpFuncDecl);
+        }
+    }
+    isInitLambdaUtilFunc = true;
+}
+
+OwnedPtr<LambdaExpr> JavaDesugarManager::GenerateLambdaExpr(File& file, LambdaPattern& pattern, FuncParam& funcParam)
+{
+    auto curFile = file.curFile;
+    // 入参
+    std::vector<OwnedPtr<FuncParam>> funcParams;
+    std::vector<Ptr<Ty>> paramTys;
+    for (auto& typeName : pattern.parameterTypes) {
+        funcParams.push_back(CreateFuncParam("", GetTypeByName(typeName), nullptr, GetTyByName(typeName)));
+        paramTys.push_back(GetTyByName(typeName));
+    }
+    auto funcParamList = CreateFuncParamList(std::move(funcParams));
+
+    // 返回参数类型
+    auto retType = GetTypeByName(pattern.returnType);
+    auto retTy = GetTyByName(pattern.returnType);
+
+    // block
+    // let tmp = Java_CFFI_callVirtualMethod()
+    OwnedPtr<Expr> objParamRef = WithinFile(CreateRefExpr(funcParam), curFile);
+    MemberJNISignature MemberJNISignature(
+        NormalizeJavaSignature(file.curPackage->fullPackageName + "/" + GetLambdaJavaClassName(pattern)), "call",
+        utils.GetJavaTypeSignature(*retTy, paramTys));
+
+    OwnedPtr<Expr> methodCall = lib.CreateCFFICallMethodCall(lib.CreateGetJniEnvCall(curFile),
+        lib.CreateJavaEntityJobjectCall(std::move(objParamRef)), MemberJNISignature, *funcParamList, *curFile);
+    CJC_NULLPTR_CHECK(methodCall);
+    auto methodCallRes = WithinFile(CreateTmpVarDecl(nullptr, std::move(methodCall)), curFile);
+
+    // return Java_CFFI_unwrapJavaEntityAsValue()
+    auto callResRef = WithinFile(CreateRefExpr(*methodCallRes), curFile);
+    Decl emptyDecl;
+    auto unwrapJavaEntityCall = lib.UnwrapJavaEntity(std::move(callResRef), retTy, emptyDecl);
+    CJC_NULLPTR_CHECK(unwrapJavaEntityCall);
+    auto returnExpr = CreateReturnExpr(std::move(unwrapJavaEntityCall));
+    returnExpr->ty = TypeManager::GetNothingTy();
+
+    std::vector<OwnedPtr<Node>> nodes;
+    nodes.push_back(std::move(methodCallRes));
+    nodes.push_back(std::move(returnExpr));
+
+    auto block = CreateBlock(std::move(nodes), TypeManager::GetNothingTy());
+
+    auto funcTy = typeManager.GetFunctionTy(paramTys, retTy);
+
+    std::vector<OwnedPtr<FuncParamList>> paramLists;
+    paramLists.push_back(std::move(funcParamList));
+    auto lambdaBody = CreateFuncBody(std::move(paramLists), std::move(retType), std::move(block), funcTy);
+    auto lambdaExpr = CreateLambdaExpr(std::move(lambdaBody));
+    return lambdaExpr;
 }
 
 void JavaDesugarManager::GenerateFwdClassInCJMapping(File& file)
