@@ -491,6 +491,9 @@ T DemangleInfo<T>::GetPkgName() const
 template<typename T>
 T DemangleInfo<T>::GetReturnType() const
 {
+    if(demangled.find("->") != std::string::npos) {
+        return T{"("} + demangled + ")";
+    }
     return demangled;
 }
 
@@ -566,7 +569,7 @@ bool DemangleInfo<T>::IsValid() const
 template<typename T>
 T DemangleInfo<T>::GetFunctionName() const
 {
-    return GetArgTypesName() + " -> " + GetReturnType();
+    return GetArgTypesName() + "->" + GetReturnType();
 }
 
 template<typename T>
