@@ -196,7 +196,7 @@ private:
     void ReadUTF8CharFromMultiBytes(int32_t& ch);
     bool CheckUnicodeSecurity(const int32_t& c) const;
     bool ProcessXdigit(const int& base, bool& hasDigit, const char* reasonPoint);
-    bool ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint);
+    bool ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint, bool* isFloat = nullptr);
     std::string GetSuffix(const char* pSuffixStart);
     void ProcessIntegerSuffix();
     TokenKind LookupKeyword(const std::string& literal);
@@ -233,18 +233,18 @@ private:
     std::pair<Token, bool> ScanComment(const char* pStart, bool allowNewLine = true);
     std::pair<Token, bool> ScanMultiLineComment(const char* pStart, bool allowNewLine);
     /// Check if there are f32, f64 after a float literal
-    void ProcessFloatSuffix(const char prefix);
-    void ProcessNumberExponentPart(const char prefix, const char* reasonPoint, bool& isFloat);
+    void ProcessFloatSuffix(char prefix);
+    void ProcessNumberExponentPart(char prefix, const char* reasonPoint, bool& isFloat);
     /// Check if there a f32, f64 after a float literal. After that, this float is completed; if there are excessive
     /// '.' and chars following it without space between, check whether the following chars are possibly valid.
     /// The valid cases are
     /// 1.3f32.. -> .. is range operator
     /// 1.3f32.什么 -> .什么 is a member prop/func access (in this case Float32/Float64 is extended)
-    void ProcessNumberFloatSuffix(const char& prefix, bool isFloat);
+    void ProcessNumberFloatSuffix(const char& prefix, bool isFloat, bool hasDot);
     Token ScanNumber(const char* pStart);
     Token ScanNumberOrDotPrefixSymbol(const char* pStart);
     bool ScanNumberIntegerPart(const char* pStart, int& base, char& prefix, bool& hasDigit, const char*& reasonPoint);
-    void ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint);
+    void ScanNumberDecimalPart(int base, char prefix, bool& hasDigit, bool& isFloat, const char* reasonPoint);
     void ScanNumberExponentPart(const char* reasonPoint);
     Token ScanDotPrefixSymbol();
     Token ScanBackquotedIdentifier(const char* pStart);
