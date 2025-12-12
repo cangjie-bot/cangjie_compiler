@@ -23,7 +23,7 @@ Ptr<ClassDecl> GetMirrorSuperClass(const ClassLikeDecl& target)
 {
     if (auto classDecl = DynamicCast<const ClassDecl*>(&target)) {
         auto superClass = classDecl->GetSuperClassDecl();
-        if (superClass && TypeMapper::IsObjCMirror(*superClass->ty)) {
+        if (superClass && TypeMapper::IsObjCMirrorSubtype(*superClass)) {
             return superClass;
         }
     }

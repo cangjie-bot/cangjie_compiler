@@ -23,20 +23,20 @@ void CheckImplInheritMirror::HandleImpl(TypeCheckContext& ctx)
     }
 
     // TODO: remove the whole if when hierarchy root @ObjCImpl is supported
-    if (auto classTy = DynamicCast<ClassTy*>(ctx.target.ty); classTy) {
-        auto hasOnlyMirrorSuperInterfaces = classTy->GetSuperInterfaceTys().size() > 0;
-        for (auto superInterfaceTy : classTy->GetSuperInterfaceTys()) {
-            if (!ctx.typeMapper.IsValidObjCMirror(*superInterfaceTy)) {
-                hasOnlyMirrorSuperInterfaces = false;
-                break;
-            }
-        }
+    // if (auto classTy = DynamicCast<ClassTy*>(ctx.target.ty); classTy) {
+    //     auto hasOnlyMirrorSuperInterfaces = classTy->GetSuperInterfaceTys().size() > 0;
+    //     for (auto superInterfaceTy : classTy->GetSuperInterfaceTys()) {
+    //         if (!ctx.typeMapper.IsValidObjCMirror(*superInterfaceTy)) {
+    //             hasOnlyMirrorSuperInterfaces = false;
+    //             break;
+    //         }
+    //     }
 
-        if (hasOnlyMirrorSuperInterfaces && (!classTy->GetSuperClassTy() || classTy->GetSuperClassTy()->IsObject())) {
-            ctx.diag.DiagnoseRefactor(DiagKindRefactor::sema_objc_impl_must_have_objc_mirror_super_class, ctx.target);
-            ctx.target.EnableAttr(Attribute::IS_BROKEN);
-        }
-    }
+    //     if (hasOnlyMirrorSuperInterfaces && (!classTy->GetSuperClassTy() || classTy->GetSuperClassTy()->IsObject())) {
+    //         ctx.diag.DiagnoseRefactor(DiagKindRefactor::sema_objc_impl_must_have_objc_mirror_super_class, ctx.target);
+    //         ctx.target.EnableAttr(Attribute::IS_BROKEN);
+    //     }
+    // }
 
     if (ctx.typeMapper.IsValidObjCMirrorSubtype(*ctx.target.ty)) {
         return;

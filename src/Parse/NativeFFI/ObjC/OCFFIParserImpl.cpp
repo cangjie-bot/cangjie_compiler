@@ -112,10 +112,10 @@ void OCFFIParserImpl::CheckImplSignature(ClassLikeDecl& decl, const PtrVector<An
         decl.EnableAttr(Attribute::IS_BROKEN);
     }
 
-    if (decl.astKind == ASTKind::CLASS_DECL && decl.TestAttr(Attribute::OPEN)) {
-        DiagObjCImplCannotBeOpen(decl);
-        decl.EnableAttr(Attribute::IS_BROKEN);
-    }
+    // if (decl.astKind == ASTKind::CLASS_DECL && decl.TestAttr(Attribute::OPEN)) {
+    //     DiagObjCImplCannotBeOpen(decl);
+    //     decl.EnableAttr(Attribute::IS_BROKEN);
+    // }
 
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         DiagObjCImplCannotBeInterface(decl);
