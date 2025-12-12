@@ -55,10 +55,11 @@ PYTHON_EXECUTABLE = sys.executable
 TARGET_DICTIONARY = {
     "native": None,
     "ohos-aarch64": "aarch64-linux-ohos",
+    "ohos-arm": "arm-linux-ohos",
     "ohos-x86_64": "x86_64-linux-ohos",
     "windows-x86_64": "x86_64-w64-mingw32",
     "ios-simulator-aarch64": "arm64-apple-ios11-simulator",
-    "ios-simulator-x86_64": "x86_64-apple-ios11-simulator"
+    "ios-simulator-x86_64": "x86_64-apple-ios11-simulator",
     "ios-aarch64": "arm64-apple-ios11",
     "android-aarch64": "aarch64-linux-android31",
     "android31-aarch64": "aarch64-linux-android31",
