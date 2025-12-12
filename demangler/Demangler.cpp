@@ -566,7 +566,7 @@ bool DemangleInfo<T>::IsValid() const
 template<typename T>
 T DemangleInfo<T>::GetFunctionName() const
 {
-    return GetArgTypesName() + " -> " + GetReturnType();
+    return "(" + GetArgTypesName() + "->" + GetReturnType() + ")";
 }
 
 template<typename T>
