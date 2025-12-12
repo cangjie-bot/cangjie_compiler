@@ -1368,24 +1368,36 @@ void PrintCommandTypePattern(
     }
 }
 
+void PrintFeatureId(unsigned indent, const FeatureId& featureId, std::ostream& stream = std::cout)
+{
+    PrintIndent(stream, indent, "FeatureId ", featureId.ToString(), " {");
+    PrintBasic(indent + ONE_INDENT, featureId, stream);
+    PrintIndent(stream, indent, "}");
+}
+
+void PrintFeaturesSet(unsigned indent, const FeaturesSet& featuresSet, std::ostream& stream = std::cout)
+{
+    PrintIndent(stream, indent, "FeaturesSet {");
+    PrintBasic(indent + ONE_INDENT, featuresSet, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "featureIds: ", "[");
+    for (auto& item : featuresSet.content) {
+        PrintNode(&item, indent + TWO_INDENT, "", stream);
+    }
+    PrintIndent(stream, indent + ONE_INDENT, "]");
+    PrintIndent(stream, indent, "}");
+}
+
 void PrintFeaturesDirective(
     unsigned indent, const FeaturesDirective& featuresDirective, std::ostream& stream = std::cout)
 {
     PrintIndent(stream, indent, "FeaturesDirective:", "features", "{");
-    PrintIndent(stream, indent + ONE_INDENT, "ids: ", "[");
-    if (!featuresDirective.content.empty()) {
-        std::stringstream ss;
-        for (size_t i = 0; i < featuresDirective.content.size(); i++) {
-            ss << featuresDirective.content[i].ToString();
-            if (i < featuresDirective.content.size() - 1) { ss << ", "; }
-        }
-        PrintIndent(stream, indent + TWO_INDENT, ss.str());
-    } else {
-        PrintIndent(stream, indent + TWO_INDENT, "// no feature arguments");
+    PrintBasic(indent + ONE_INDENT, featuresDirective, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "annotations: [");
+    for (auto& anno : featuresDirective.annotations) {
+        PrintAnnotation(indent + TWO_INDENT, *anno.get(), stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "]");
-    PrintIndent(
-        stream, indent + ONE_INDENT, "position:", featuresDirective.begin.ToString(), featuresDirective.end.ToString());
+    PrintNode(featuresDirective.featuresSet.get(), indent + ONE_INDENT, "", stream);
     PrintIndent(stream, indent, "}");
 }
 
@@ -1550,7 +1562,9 @@ void PrintNode(Ptr<const Node> node, unsigned indent, const std::string& additio
             const CommandTypePattern& cmdTypePattern) { PrintCommandTypePattern(indent, cmdTypePattern, stream); },
         [indent, &stream](const VarOrEnumPattern& ve) { PrintVarOrEnumPattern(indent, ve, stream); },
         // ----------- package----------------------
-        [&indent, &stream](const FeaturesDirective& feature) { PrintFeaturesDirective(indent, feature, stream); },
+        [&indent, &stream](const FeatureId& featureId) { PrintFeatureId(indent, featureId, stream); },
+        [&indent, &stream](const FeaturesSet& featuresSet) { PrintFeaturesSet(indent, featuresSet, stream); },
+        [&indent, &stream](const FeaturesDirective& featureDir) { PrintFeaturesDirective(indent, featureDir, stream); },
         [&indent, &stream](const PackageSpec& package) { PrintPackageSpec(indent, package, stream); },
         [&indent, &stream](const ImportSpec& import) {
             if (import.IsImportMulti()) {
