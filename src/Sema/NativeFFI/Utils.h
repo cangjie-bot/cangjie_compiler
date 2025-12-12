@@ -12,12 +12,12 @@
 #ifndef CANGJIE_SEMA_NATIVE_FFI_UTILS
 #define CANGJIE_SEMA_NATIVE_FFI_UTILS
 
-#include "cangjie/Mangle/BaseMangler.h"
-#include "cangjie/Modules/ImportManager.h"
-#include "cangjie/Sema/TypeManager.h"
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Utils.h"
+#include "cangjie/Mangle/BaseMangler.h"
+#include "cangjie/Modules/ImportManager.h"
+#include "cangjie/Sema/TypeManager.h"
 
 namespace Cangjie::Native::FFI {
 using namespace AST;
@@ -43,22 +43,19 @@ struct GenericConfigInfo {
     std::vector<std::pair<std::string, std::string>> instTypes;
     // Config func symbol name
     std::unordered_set<std::string> funcNames;
-    GenericConfigInfo(std::string name, std::string declInstName, std::vector<std::pair<std::string, std::string>> &insts, std::unordered_set<std::string> &funcs)
+    GenericConfigInfo(std::string name, std::string declInstName,
+        std::vector<std::pair<std::string, std::string>>& insts, std::unordered_set<std::string>& funcs)
         : declSymbolName(name), declInstName(declInstName), instTypes(insts), funcNames(funcs)
     {
     }
 };
 
-enum class ArrayOperationKind: uint8_t {
-    CREATE,
-    GET,
-    SET,
-    GET_LENGTH
-};
+enum class ArrayOperationKind : uint8_t { CREATE, GET, SET, GET_LENGTH };
 
 OwnedPtr<RefExpr> CreateThisRef(Ptr<Decl> target, Ptr<Ty> ty, Ptr<File> curFile);
 
-OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile, std::vector<OwnedPtr<FuncArg>> args = {});
+OwnedPtr<CallExpr> CreateThisCall(
+    Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile, std::vector<OwnedPtr<FuncArg>> args = {});
 
 OwnedPtr<PrimitiveType> CreateUnitType(Ptr<File> curFile);
 
@@ -70,8 +67,7 @@ OwnedPtr<CallExpr> CreateSuperCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> f
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
 
-template <typename Ret = Node, typename... Args>
-std::vector<OwnedPtr<Ret>> Nodes(OwnedPtr<Args>&&... args)
+template <typename Ret = Node, typename... Args> std::vector<OwnedPtr<Ret>> Nodes(OwnedPtr<Args>&&... args)
 {
     std::vector<OwnedPtr<Ret>> nodes;
     (nodes.push_back(std::forward<OwnedPtr<Args>>(args)), ...);
@@ -80,8 +76,7 @@ std::vector<OwnedPtr<Ret>> Nodes(OwnedPtr<Args>&&... args)
 
 namespace details {
 
-template <typename T>
-void WrapArg(std::vector<OwnedPtr<FuncArg>>* funcArgs, OwnedPtr<T>&& e)
+template <typename T> void WrapArg(std::vector<OwnedPtr<FuncArg>>* funcArgs, OwnedPtr<T>&& e)
 {
     CJC_ASSERT(e);
     if (auto ptr = As<ASTKind::FUNC_ARG>(e.get())) {
@@ -93,16 +88,14 @@ void WrapArg(std::vector<OwnedPtr<FuncArg>>* funcArgs, OwnedPtr<T>&& e)
 
 } // namespace details
 
-template <typename T>
-OwnedPtr<T> WithinFile(OwnedPtr<T> node, Ptr<File> curFile)
+template <typename T> OwnedPtr<T> WithinFile(OwnedPtr<T> node, Ptr<File> curFile)
 {
     CJC_NULLPTR_CHECK(curFile);
     node->curFile = curFile;
     return node;
 }
 
-template <typename... Args>
-OwnedPtr<CallExpr> CreateCall(Ptr<FuncDecl> fd, Ptr<File> curFile, OwnedPtr<Args>&&... args)
+template <typename... Args> OwnedPtr<CallExpr> CreateCall(Ptr<FuncDecl> fd, Ptr<File> curFile, OwnedPtr<Args>&&... args)
 {
     if (!fd) {
         return nullptr;
@@ -115,11 +108,12 @@ OwnedPtr<CallExpr> CreateCall(Ptr<FuncDecl> fd, Ptr<File> curFile, OwnedPtr<Args
     auto funcTy = StaticCast<FuncTy*>(fd->ty);
 
     return CreateCallExpr(WithinFile(CreateRefExpr(*fd), curFile), std::move(funcArgs), fd, funcTy->retTy,
-                          CallKind::CALL_DECLARED_FUNCTION);
+        CallKind::CALL_DECLARED_FUNCTION);
 }
 
 template <typename... Args>
-OwnedPtr<CallExpr> CreateMemberCall(OwnedPtr<Expr> receiver, Ptr<FuncDecl> fd, OwnedPtr<Args>&&... args) {
+OwnedPtr<CallExpr> CreateMemberCall(OwnedPtr<Expr> receiver, Ptr<FuncDecl> fd, OwnedPtr<Args>&&... args)
+{
     CJC_NULLPTR_CHECK(receiver);
     CJC_NULLPTR_CHECK(fd);
     std::vector<OwnedPtr<FuncArg>> funcArgs;
@@ -129,15 +123,14 @@ OwnedPtr<CallExpr> CreateMemberCall(OwnedPtr<Expr> receiver, Ptr<FuncDecl> fd, O
     auto funcTy = StaticCast<FuncTy*>(fd->ty);
     auto ma = CreateMemberAccess(std::move(receiver), *fd);
     CopyBasicInfo(ma->baseExpr, ma);
-    return CreateCallExpr(std::move(ma), std::move(funcArgs), fd, funcTy->retTy,
-                          CallKind::CALL_DECLARED_FUNCTION);
+    return CreateCallExpr(std::move(ma), std::move(funcArgs), fd, funcTy->retTy, CallKind::CALL_DECLARED_FUNCTION);
 }
 
 OwnedPtr<Type> CreateType(Ptr<Ty> ty);
 OwnedPtr<Type> CreateFuncType(Ptr<FuncTy> ty);
 
-OwnedPtr<Expr> CreateBoolMatch(OwnedPtr<Expr> selector, OwnedPtr<Expr> trueBranch, OwnedPtr<Expr> falseBranch,
-    Ptr<Ty> ty);
+OwnedPtr<Expr> CreateBoolMatch(
+    OwnedPtr<Expr> selector, OwnedPtr<Expr> trueBranch, OwnedPtr<Expr> falseBranch, Ptr<Ty> ty);
 
 StructDecl& GetStringDecl(const ImportManager& importManager);
 
@@ -153,7 +146,8 @@ StructDecl& GetStringDecl(const ImportManager& importManager);
  */
 
 OwnedPtr<CallExpr> WrapReturningLambdaCall(TypeManager& typeManager, std::vector<OwnedPtr<Node>> nodes);
-OwnedPtr<LambdaExpr> WrapReturningLambdaExpr(TypeManager& typeManager, std::vector<OwnedPtr<Node>> nodes, std::vector<OwnedPtr<FuncParam>> lambdaParams = {});
+OwnedPtr<LambdaExpr> WrapReturningLambdaExpr(
+    TypeManager& typeManager, std::vector<OwnedPtr<Node>> nodes, std::vector<OwnedPtr<FuncParam>> lambdaParams = {});
 
 /**
  * Returns trimmed cangjie library name.
@@ -161,8 +155,8 @@ OwnedPtr<LambdaExpr> WrapReturningLambdaExpr(TypeManager& typeManager, std::vect
  * and "lib{libname}.{ext}" if [trimmed] = `false`.
  * For other cases, it returns [fullPackageName]
  */
-std::string GetCangjieLibName(const std::string& outputLibPath, const std::string& fullPackageName,
-    bool trimmed = true);
+std::string GetCangjieLibName(
+    const std::string& outputLibPath, const std::string& fullPackageName, bool trimmed = true);
 
 std::string GetMangledMethodName(const BaseMangler& mangler, const std::vector<OwnedPtr<FuncParam>>& params,
     const std::string& methodName, TypeManager& typeManager, GenericConfigInfo* genericConfig = nullptr);
@@ -176,14 +170,14 @@ bool IsSuperConstructorCall(const CallExpr& call);
 bool IsThisConstructorCall(const CallExpr& call);
 
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
-OwnedPtr<Type> GetGenericInstType(std::string typeStr);
+OwnedPtr<Type> GetTypeByName(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
 std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
-TypeKind GetGenericActualTypeKind(std::string configType);
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName);
+TypeKind GetActualTypeKind(std::string configType);
+Ptr<Ty> GetGenericInstTy(const const GenericConfigInfo* config, std::string genericName);
 Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
-Ptr<Ty> GetGenericInstTy(std::string typeStr);
+Ptr<Ty> GetTyByName(std::string typeStr);
 
 bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
 
@@ -195,23 +189,30 @@ void SplitAndTrim(std::string str, std::vector<std::string>& types);
 
 std::string JoinVector(const std::vector<std::string>& vec, const std::string& delimiter = "");
 
-void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs,
-    bool& isGenericGlueCode);
+void InitGenericConfigs(
+    const File& file, const AST::Decl* decl, std::vector<GenericConfigInfo*>& genericConfigs, bool& isGenericGlueCode);
 
 /**
  * If function param or return param is generic ty, replace it to instance ty by genericConfig.
  */
 void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager);
 
+void ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig, TypeManager& typeManager);
+
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
     std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, std::vector<Ptr<Ty>>& funcTyParams,
     std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager);
 
-Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
-    TypeManager& typeManager);
+Ptr<Ty> GetInstantyForGenericTy(
+    Decl& decl, const std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, TypeManager& typeManager);
+
+std::string GetLambdaJavaClassName(LambdaPattern& pattern);
+std::string GetLambdaJavaClassName(Ptr<Ty> ty);
+bool IsFuncTy(const Ty& ty);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
 
 std::string GetCjMappingTupleName(const Ty& tupleTy);
 
-} // namespace Cangjie::Interop::Java
+} // namespace Cangjie::Native::FFI
 
 #endif // CANGJIE_SEMA_NATIVE_FFI_UTILS

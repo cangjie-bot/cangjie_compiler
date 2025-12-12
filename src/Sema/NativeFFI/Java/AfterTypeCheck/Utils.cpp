@@ -21,13 +21,6 @@ namespace {
 using namespace Cangjie;
 using namespace AST;
 
-std::string NormalizeJavaSignature(const std::string& sig)
-{
-    std::string normalized = sig;
-    std::replace(normalized.begin(), normalized.end(), '.', '/');
-    return normalized;
-}
-
 /**
  * @brief Generates a synthetic function stub based on an existing function declaration.
  *
@@ -645,7 +638,7 @@ std::string Utils::GetJavaClassNormalizeSignature(const Ty& cjtype) const
 /*
  * Should be called only on java compatible type or a function type over java compatible types
  */
-std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
+std::string Utils::GetJavaTypeSignature(const Ty& cjtype, std::string fullPackageName)
 {
     std::string jsig;
 
@@ -715,10 +708,10 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
             auto& funcTy = *StaticCast<FuncTy>(&cjtype);
             jsig = "(";
             for (auto paramTy : funcTy.paramTys) {
-                jsig.append(GetJavaTypeSignature(*paramTy));
+                jsig.append(GetParamJavaSignature(paramTy, fullPackageName));
             }
             jsig.append(")");
-            jsig.append(GetJavaTypeSignature(*funcTy.retTy));
+            jsig.append(GetParamJavaSignature(funcTy.retTy, fullPackageName));
             break;
         }
         case TypeKind::TYPE_TUPLE: {
@@ -733,9 +726,20 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
     return jsig;
 }
 
-std::string Utils::GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& params)
+std::string Utils::GetParamJavaSignature(const Ptr<Ty> ty, std::string fullPackageName)
 {
-    return GetJavaTypeSignature(*typeManager.GetFunctionTy(params, &retTy));
+    if (ty->kind == TypeKind::TYPE_FUNC) {
+        CJC_ASSERT(!fullPackageName.empty());
+        std::string javaClassName = GetLambdaJavaClassName(ty);
+        return "L" + NormalizeJavaSignature(fullPackageName + "." + javaClassName) + ";";
+    } else {
+        return GetJavaTypeSignature(*ty, fullPackageName);
+    }
+}
+
+std::string Utils::GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& params, std::string fullPackageName)
+{
+    return GetJavaTypeSignature(*typeManager.GetFunctionTy(params, &retTy), fullPackageName);
 }
 
 std::string GetMangledJniInitCjObjectFuncName(
@@ -857,6 +861,13 @@ std::string ReplaceClassName(std::string& classTypeSignature, std::string newSeg
     }
     
     return hasSemicolon ? base + ";" : base;
+}
+
+std::string NormalizeJavaSignature(const std::string& sig)
+{
+    std::string normalized = sig;
+    std::replace(normalized.begin(), normalized.end(), '.', '/');
+    return normalized;
 }
 
 OwnedPtr<Expr> CreateMirrorConstructorCall(
