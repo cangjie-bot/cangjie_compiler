@@ -34,6 +34,23 @@ struct GenericTypeArguments {
     std::unordered_set<std::string> symbols;
 };
 
+// Custom Type Mapping Information
+struct ClassMapping {
+    std::string name;
+    std::string pkgPath;
+    ClassMapping(std::string name, std::string pkg): name(name), pkgPath(pkg){};
+};
+
+// lambda configuration pattern
+struct LambdaPattern {
+    std::string signature;
+    std::vector<std::string> parameterTypes;
+    std::string returnType;
+    std::vector<ClassMapping> ClassMappings;
+    std::string fullPackageName; 
+    LambdaPattern(std::string sign, std::vector<std::string> params, std::string retType)
+        : signature(std::move(sign)), parameterTypes(std::move(params)), returnType(std::move(retType)) {}
+};
 // Package Configuration Structure
 struct PackageConfig {
     std::string name;
@@ -43,6 +60,7 @@ struct PackageConfig {
     std::vector<std::string> interopCJExcludedApis;
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
+    std::vector<LambdaPattern> lambdaPatterns;
 };
 
 // Complete Configuration Structure
@@ -72,6 +90,11 @@ private:
     InteropCJStrategy StringToStrategy(const std::string& str) const;
     // Character string-to-generic-policy type
     InteropCJGenericStrategyType StringToGenericStrategy(const std::string& str) const;
+    
+    // Parse lambda signature, such as (Int32, Int64) -> Int32.
+    LambdaPattern ParseLambdaSignature(const std::string& signature);
+    std::vector<std::string> ParseParameterList(const std::string& paramsStr);
+    std::string Trim(const std::string& str);
 };
 } // namespace Cangjie
 #endif // CANGJIE_BASIC_INTEROP_CJ_PACKAGECONFIGREADER_H

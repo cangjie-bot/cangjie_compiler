@@ -176,12 +176,12 @@ bool IsSuperConstructorCall(const CallExpr& call);
 bool IsThisConstructorCall(const CallExpr& call);
 
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
-OwnedPtr<Type> GetGenericInstType(std::string typeStr);
+OwnedPtr<Type> GetTypeByName(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
 std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
-TypeKind GetGenericActualTypeKind(std::string configType);
+TypeKind GetActualTypeKind(std::string configType);
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName);
-Ptr<Ty> GetGenericInstTy(std::string typeStr);
+Ptr<Ty> GetTyByName(std::string typeStr);
 
 bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
 
@@ -201,13 +201,19 @@ void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<Gen
  */
 void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager);
 
+void ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig, TypeManager& typeManager);
+
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
     const std::vector<std::pair<std::string, std::string>> instTypes,
     std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
-    std::vector<OwnedPtr<Type>> &actualPrimitiveType);
+    std::vector<OwnedPtr<Type>> &actualPrimitiveType, TypeManager& typeManager);
 
 Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
     TypeManager& typeManager);
+
+std::string GetLambdaJavaClassName(LambdaPattern& pattern);
+std::string GetLambdaJavaClassName(Ptr<Ty> ty);
+bool IsFuncTy(const Ty& ty);
 } // namespace Cangjie::Interop::Java
 
 #endif // CANGJIE_SEMA_NATIVE_FFI_UTILS

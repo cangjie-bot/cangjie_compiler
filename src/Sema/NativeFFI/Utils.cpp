@@ -212,6 +212,11 @@ Ptr<Annotation> GetForeignNameAnnotation(const Decl& decl)
     return it != decl.annotations.end() ? it->get() : nullptr;
 }
 
+bool IsFuncTy(const Ty& ty)
+{
+    return ty.kind == TypeKind::TYPE_FUNC;
+}
+
 bool IsSuperConstructorCall(const CallExpr& call)
 {
     auto baseFunc = As<ASTKind::REF_EXPR>(call.baseFunc.get());
@@ -357,7 +362,7 @@ std::string GetGenericActualType(const GenericConfigInfo* config, std::string ge
 }
 
 // Current generic just support primitive type
-TypeKind GetGenericActualTypeKind(std::string configType) {
+TypeKind GetActualTypeKind(std::string configType) {
     static const std::unordered_map<std::string, TypeKind> typeMap = {
         {"Int", TypeKind::TYPE_INT32},
         {"Int8", TypeKind::TYPE_INT8},
@@ -374,6 +379,8 @@ TypeKind GetGenericActualTypeKind(std::string configType) {
         {"Float32", TypeKind::TYPE_FLOAT32},
         {"Float64", TypeKind::TYPE_FLOAT64},
         {"Bool", TypeKind::TYPE_BOOLEAN},
+        {"Boolean", TypeKind::TYPE_BOOLEAN},
+        {"Unit", TypeKind::TYPE_UNIT}
     };
     auto it = typeMap.find(configType);
     CJC_ASSERT(it != typeMap.end());
@@ -382,11 +389,11 @@ TypeKind GetGenericActualTypeKind(std::string configType) {
 
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName) {
     auto actualTypeName = GetGenericActualType(config, genericName);
-    return GetGenericInstTy(actualTypeName);
+    return GetTyByName(actualTypeName);
 }
 
-Ptr<Ty> GetGenericInstTy(std::string typeStr) {
-    auto typeKind = GetGenericActualTypeKind(typeStr);
+Ptr<Ty> GetTyByName(std::string typeStr) {
+    auto typeKind = GetActualTypeKind(typeStr);
     // Current only support primitive type.
     auto ty = TypeManager::GetPrimitiveTy(typeKind);
     return ty;
@@ -394,14 +401,38 @@ Ptr<Ty> GetGenericInstTy(std::string typeStr) {
 
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName) {
     auto actualTypeName = GetGenericActualType(config, genericName);
-    return GetGenericInstType(actualTypeName);
+    return GetTypeByName(actualTypeName);
 }
 
-OwnedPtr<Type> GetGenericInstType(std::string typeStr) {
-    auto typeKind = GetGenericActualTypeKind(typeStr);
+OwnedPtr<Type> GetTypeByName(std::string typeStr) {
+    auto typeKind = GetActualTypeKind(typeStr);
     // Current only support primitive type.
     auto type = GetPrimitiveType(typeStr, typeKind);
     return type;
+}
+
+std::string GetLambdaJavaClassName(LambdaPattern& pattern) {
+    std::string name = "";
+    for(auto& type : pattern.parameterTypes) {
+        name += type;
+    }
+    name = name + "To" + pattern.returnType;
+    return name;
+}
+
+std::string GetLambdaJavaClassName(Ptr<Ty> ty) {
+    auto funTy = StaticCast<FuncTy*>(ty);
+    CJC_NULLPTR_CHECK(funTy);
+    std::string name = "";
+    for (auto paramTy : funTy->paramTys) {
+        CJC_NULLPTR_CHECK(paramTy);
+        std::string paramStr = paramTy->String();
+        name += paramStr;
+    }
+    CJC_NULLPTR_CHECK(funTy->retTy);
+    std::string retStr = funTy->retTy->String();
+    name = name + "To" + retStr;
+    return name;
 }
 
 bool IsThisConstructorCall(const CallExpr& call)
@@ -413,16 +444,48 @@ bool IsThisConstructorCall(const CallExpr& call)
     return call.callKind == CallKind::CALL_OBJECT_CREATION || call.callKind == CallKind::CALL_STRUCT_CREATION;
 }
 
+void ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig, TypeManager& typeManager)
+{
+    auto funcTy = StaticCast<FuncTy*>(ty.get());
+    CJC_NULLPTR_CHECK(funcTy);
+
+    bool hasGeneric = false;
+    auto retTy = funcTy->retTy;
+    if (funcTy->retTy && funcTy->retTy->HasGeneric()) {
+        retTy = GetGenericInstTy(genericConfig, funcTy->retTy->name);
+        hasGeneric = true;
+    }
+
+    std::vector<Ptr<Ty>> paramTys;
+    for (auto& paramTy : funcTy->paramTys) {
+        if (paramTy && paramTy->HasGeneric()) {
+            paramTys.push_back(GetGenericInstTy(genericConfig, paramTy->name));
+            hasGeneric = true;
+        } else {
+            paramTys.push_back(paramTy);
+        }
+    }
+
+    if (hasGeneric) {
+        ty = typeManager.GetFunctionTy(paramTys, retTy);
+    }
+}
+
 void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager)
 {
     std::vector<Ptr<Ty>> tmpParamTys;
     std::vector<Ptr<Ty>> tmpTypeArgs;
     auto& retType = *funcDecl->funcBody->retType;
-    if (retType.ty->HasGeneric()) {
+    if (IsFuncTy(*retType.ty)) {
+        ReplaceGenericTyForFuncTy(retType.ty, genericConfig, typeManager);
+    } else if (retType.ty->HasGeneric()) {
         funcDecl->funcBody->retType = GetGenericInstType(genericConfig, retType.ty->name);
     }
+
     for (auto& param : funcDecl->funcBody->paramLists[0]->params) {
-        if (param->ty && param->ty->HasGeneric()) {
+        if (IsFuncTy(*param->ty)) {
+            ReplaceGenericTyForFuncTy(param->ty, genericConfig, typeManager);
+        } else if (param->ty && param->ty->HasGeneric()) {
             param->type = GetGenericInstType(genericConfig, param->ty->name);
             param->ty = GetGenericInstTy(genericConfig, param->ty->name);
         }
@@ -444,7 +507,7 @@ void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericC
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
     const std::vector<std::pair<std::string, std::string>> instTypes,
     std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
-    std::vector<OwnedPtr<Type>> &actualPrimitiveType)
+    std::vector<OwnedPtr<Type>> &actualPrimitiveType, TypeManager& typeManager)
 {
     // Lambda function to handle generic type replacement.
     auto replaceGenericType = [&](const std::string& typeName) -> Ptr<Ty> {
@@ -454,7 +517,7 @@ void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDec
                     return p.first == typeName;
                 });
             if (it != instTypes.end()) {
-                auto actualTypeKind = GetGenericActualTypeKind(it->second);
+                auto actualTypeKind = GetActualTypeKind(it->second);
                 Ptr<Ty> actualTy = TypeManager::GetPrimitiveTy(actualTypeKind);
                 actualTy->name = typeName;
                 actualTyArgMap[typeName] = actualTy;
@@ -462,6 +525,35 @@ void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDec
             }
         }
         return nullptr;
+    };
+
+    auto replaceGenericTyForFuncTy = [&](const Ptr<Ty> ty) -> Ptr<Ty> {
+        CJC_NULLPTR_CHECK(ty);
+        auto funcTy = StaticCast<FuncTy*>(ty);
+        CJC_NULLPTR_CHECK(funcTy);
+        
+        bool hasGeneric = false;
+        std::vector<Ptr<Ty>> paramTys;
+        Ptr<Ty> retTy = funcTy->retTy;
+        if (funcTy->retTy && funcTy->retTy->HasGeneric()) {
+            retTy = replaceGenericType(funcTy->retTy->name);
+            hasGeneric = true;
+        }
+
+        for (auto& paramTy : funcTy->paramTys) {
+            if (paramTy && paramTy->HasGeneric()) {
+                paramTys.push_back(replaceGenericType(paramTy->name));
+                hasGeneric = true;
+            } else {
+                paramTys.push_back(paramTy);
+            }
+        }
+        if (hasGeneric) {
+            auto actualFuncTy = typeManager.GetFunctionTy(paramTys, retTy);
+            actualTyArgMap[ty->name] = actualFuncTy;
+            return actualFuncTy;
+        }
+        return ty;
     };
 
     // Analyze the generic parameters of class/struct/enum/interface.
@@ -477,7 +569,10 @@ void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDec
     // Analyze generic parameters within inner functions.
     for (size_t argIdx = 0; argIdx < ctor.funcBody->paramLists[0]->params.size(); ++argIdx) {
         auto& arg = ctor.funcBody->paramLists[0]->params[argIdx];
-        if (arg->ty->IsGeneric()) {
+        if (IsFuncTy(*arg->ty)) {
+            auto actualTy = replaceGenericTyForFuncTy(arg->ty);
+            funcTyParams.emplace_back(actualTy);
+        } else if (arg->ty->IsGeneric()) {
             if (auto actualTy = replaceGenericType(arg->ty->name)) {
                 funcTyParams.emplace_back(actualTy);
             } else {
@@ -486,6 +581,16 @@ void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDec
         } else {
             funcTyParams.emplace_back(arg->ty);
         }
+    }
+
+    // Analyze generic retType parameters within inner functions.
+    auto ctorTy = StaticCast<FuncTy*>(ctor.ty);
+    CJC_NULLPTR_CHECK(ctorTy);
+    Ptr<Ty> retTy =  ctorTy->retTy;
+    if (IsFuncTy(*retTy)) {
+        replaceGenericTyForFuncTy(retTy);
+    } else if (retTy->IsGeneric()) {
+        replaceGenericType(retTy->name);
     }
 }
 
