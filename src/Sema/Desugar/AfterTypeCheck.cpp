@@ -293,6 +293,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
         pkg->interopCJIncludedApis = currentPackageConfig->interopCJIncludedApis;
         pkg->interopCJExcludedApis = currentPackageConfig->interopCJExcludedApis;
         pkg->allowedInteropCJGenericInstantiations = currentPackageConfig->allowedInteropCJGenericInstantiations;
+        pkg->lambdaPatterns = currentPackageConfig->lambdaPatterns;
         for (auto& file : pkg->files) {
             for (auto & decl : file->decls) {
                 // Following the symbol exposure strategy "Full" requirement, and included_apis is empty

@@ -37,6 +37,8 @@ public:
     JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
         const std::string& outputFileName, std::string cjLibName, GenericConfigInfo* genericConfig,
         bool isInteropCJPackageConfig);
+    JavaSourceCodeGenerator(const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
+        const std::string& outputFileName, std::string cjLibName, Ptr<LambdaPattern> pattern);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -61,6 +63,7 @@ private:
     std::vector<Ptr<ExtendDecl>> extendDecls;
     GenericConfigInfo* genericConfig = nullptr;
     bool isInteropCJPackageConfig{false};
+    Ptr<LambdaPattern> lambdaPattern = nullptr;
 
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
     std::string GenerateFuncParamLists(
@@ -123,6 +126,10 @@ private:
     void AddAttachCJObject();
     void AddDetachCJObject();
     void AddNativeDetachCJObject();
+    void AddHeaderWithPackageName(std::string& curPackageName);
+    void GenerateLambdaJavaSourceCode();
+    std::string GenerateLambdaRetType();
+    std::string GenerateLambdaParamType(bool isVar = false);
 };
 } // namespace Cangjie::Interop::Java
 

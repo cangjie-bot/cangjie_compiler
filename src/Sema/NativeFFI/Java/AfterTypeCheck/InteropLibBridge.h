@@ -34,7 +34,7 @@ struct MemberJNISignature {
     {
             auto& retTy = *member.funcBody->retType->ty;
             std::vector<Ptr<Ty>> paramTys = Native::FFI::GetParamTys(*member.funcBody->paramLists[0]);
-            signature = utils.GetJavaTypeSignature(retTy, paramTys);
+            signature = utils.GetJavaTypeSignature(retTy, paramTys, member.fullPackageName);
     }
 
     // Constructor added for using generic types in Java
@@ -52,13 +52,13 @@ struct MemberJNISignature {
 
         auto& retTy = *member.funcBody->retType->ty;
         std::vector<Ptr<Ty>> paramTys = Native::FFI::GetParamTys(*member.funcBody->paramLists[0]);
-        signature = utils.GetJavaTypeSignature(retTy, paramTys);
+        signature = utils.GetJavaTypeSignature(retTy, paramTys, member.fullPackageName);
     }
 
     MemberJNISignature(Utils& utils, PropDecl& member)
         : MemberJNISignature(utils, member, StaticAs<ASTKind::CLASS_LIKE_DECL>(member.outerDecl))
     {
-            signature = utils.GetJavaTypeSignature(*member.ty);
+            signature = utils.GetJavaTypeSignature(*member.ty, member.fullPackageName);
     }
 
     MemberJNISignature(Utils& utils, Decl& member, Ptr<ClassLikeDecl> jobject)
@@ -76,7 +76,7 @@ struct MemberJNISignature {
         classTypeSignature = utils.GetJavaClassNormalizeSignature(*ty);
         name = GetJavaMemberName(member);
         CJC_ASSERT(member.astKind == ASTKind::FUNC_DECL || member.astKind == ASTKind::PROP_DECL);
-        signature = utils.GetJavaTypeSignature(*member.ty);
+        signature = utils.GetJavaTypeSignature(*member.ty, member.fullPackageName);
     }
 };
 
@@ -320,6 +320,16 @@ public:
      * deleteLocalRef()
      */
     Ptr<FuncDecl> GetDeleteLocalRefDecl();
+
+    /**
+     * getJavaLambdaObject(fun : Any, className: String) decl
+     */
+    Ptr<FuncDecl> GetJavaLambdaObjectDecl();
+
+    /**
+     * getJavaLambdaEntity(fun : Any, className: String) decl
+     */
+    Ptr<FuncDecl> GetJavaLambdaEntityDecl();
 
     /**
      * JNIEnv_ptr ty
@@ -626,6 +636,10 @@ public:
         std::function<OwnedPtr<Expr>(TypeKind, Ptr<Ty>)> selector
     );
 
+    OwnedPtr<CallExpr> CreateGetJavaLambdaObjectCall(OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile);
+    OwnedPtr<CallExpr> CreateGetJavaLambdaEntityCall(OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile);
+    OwnedPtr<CallExpr> CreateGetJavaLambdaCall(Ptr<FuncDecl> fd, OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile);
+
     void CheckInteropLibVersion();
 
 private:
@@ -673,6 +687,7 @@ private:
     }
 
     Ptr<FuncDecl> GetJavaObjectControllerMethodDecl(std::string methodName);
+    OwnedPtr<Expr> CreateParamExpr(FuncParam& param, Ptr<File> curFile);
 
     ImportManager& importManager;
     TypeManager& typeManager;

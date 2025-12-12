@@ -557,7 +557,7 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(Decl& target, FuncDecl& ctor, 
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
         GetArgsAndRetGenericActualTyVector(genericConfig, ctor, genericConfig->instTypes, actualTyArgMap,
-            funcTyParams, actualPrimitiveType);
+            funcTyParams, actualPrimitiveType, typeManager);
     }
 
     auto wrapperParamList = MakeOwned<FuncParamList>();
@@ -806,7 +806,7 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method, const Nativ
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
         GetArgsAndRetGenericActualTyVector(genericConfig, method, genericConfig->instTypes, actualTyArgMap,
-            funcTyParams, actualPrimitiveType);
+            funcTyParams, actualPrimitiveType, typeManager);
     }
     auto instantTy = GetInstantyForGenericTy(*method.outerDecl, actualTyArgMap, typeManager);
     auto retActualTy = retTy->IsGeneric() ? actualTyArgMap[retTy->name] : retTy;
@@ -1105,11 +1105,11 @@ OwnedPtr<FuncDecl> ASTFactory::CreateGetterWrapper(VarDecl& field, const Native:
 
     if (field.ty->IsGeneric()) {
         genericActualTy =
-            typeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, field.ty->name)));
+            typeManager.GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, field.ty->name)));
         if (outerDecl->ty->HasGeneric()) {
             for (auto argTy : outerDecl->ty->typeArgs) {
                 if (argTy->IsGeneric()) {
-                    auto actualRetTy = typeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, argTy->name)));
+                    auto actualRetTy = typeManager.GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, argTy->name)));
                     actualTyArgMap[argTy->name] = actualRetTy;
                     actualPrimitiveType.emplace_back(GetGenericInstType(genericConfig, actualRetTy->name));
                 }
