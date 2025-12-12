@@ -80,6 +80,8 @@ constexpr auto INTEROPLIB_JAVA_OBJECT_CONTROLLER = "JavaObjectController";
 constexpr auto DELETE_LOCAL_REF = "deleteLocalRef";
 constexpr auto DETACH_CJ_OBJECT = "detachCJObject";
 constexpr auto ATTACH_CJ_OBJECT = "attachCJObject";
+constexpr auto GET_JAVALAMBDA_OBJECT_DECL_ID = "getJavaLambdaObject";
+constexpr auto GET_JAVALAMBDA_ENTITY_DECL_ID = "getJavaLambdaEntity";
 
 } // namespace
 
@@ -335,6 +337,16 @@ Ptr<FuncDecl> InteropLibBridge::GetFieldIdConstrStatic()
     return GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_CFFI_JAVA_FIELDID_CONSTR_STATIC_ID);
 }
 
+Ptr<FuncDecl> InteropLibBridge::GetJavaLambdaObjectDecl()
+{
+    return GetInteropLibDecl<ASTKind::FUNC_DECL>(GET_JAVALAMBDA_OBJECT_DECL_ID);
+}
+
+Ptr<FuncDecl> InteropLibBridge::GetJavaLambdaEntityDecl()
+{
+    return GetInteropLibDecl<ASTKind::FUNC_DECL>(GET_JAVALAMBDA_ENTITY_DECL_ID);
+}
+
 Ptr<FuncDecl> InteropLibBridge::GetJavaObjectControllerMethodDecl(std::string methodName)
 {
     auto classDecl = GetJavaObjectControllerDecl();
@@ -391,6 +403,27 @@ Ptr<Ty> InteropLibBridge::GetJavaEntityTy()
 Ptr<Ty> InteropLibBridge::GetJobjectTy()
 {
     return typeManager.GetPointerTy(typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT));
+}
+
+OwnedPtr<CallExpr> InteropLibBridge::CreateGetJavaLambdaObjectCall(OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile)
+{
+    auto fd = GetJavaLambdaObjectDecl();
+    return CreateGetJavaLambdaCall(fd, std::move(refExpr), classSign, curFile);
+}
+
+OwnedPtr<CallExpr> InteropLibBridge::CreateGetJavaLambdaEntityCall(OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile)
+{
+    auto fd = GetJavaLambdaEntityDecl();
+    return CreateGetJavaLambdaCall(fd, std::move(refExpr), classSign, curFile);
+}
+
+OwnedPtr<CallExpr> InteropLibBridge::CreateGetJavaLambdaCall(Ptr<FuncDecl> fd, OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile)
+{
+    auto strTy = fd->funcBody->paramLists[0]->params[1]->ty;
+    auto classSignExpr = CreateLitConstExpr(LitConstKind::STRING, classSign, strTy);
+    auto call = CreateCall(fd, curFile, std::move(refExpr), std::move(classSignExpr));
+    CJC_NULLPTR_CHECK(call);
+    return call;
 }
 
 OwnedPtr<PointerExpr> InteropLibBridge::CreateJobjectNull()
@@ -982,9 +1015,8 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateCFFICallMethodCall(OwnedPtr<Expr> jni
     std::vector<OwnedPtr<Expr>> cffiMethodArgs;
     CJC_NULLPTR_CHECK(obj->curFile);
     for (auto& param : params.params) {
-        auto paramRef = WithinFile(CreateRefExpr(*param), Ptr(&curFile));
-        paramRef->curFile = obj->curFile;
-        cffiMethodArgs.push_back(WrapJavaEntity(std::move(paramRef)));
+        auto paramRef = CreateParamExpr(*param, obj->curFile);
+        cffiMethodArgs.push_back(std::move(paramRef));
     }
 
     return CreateCallMethodCall(std::move(jniEnv), std::move(obj), signature, std::move(cffiMethodArgs), curFile);
@@ -996,10 +1028,24 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateCFFICallStaticMethodCall(
     std::vector<OwnedPtr<Expr>> cffiMethodArgs;
 
     for (auto& param : params.params) {
-        cffiMethodArgs.push_back(WrapJavaEntity(WithinFile(CreateRefExpr(*param), Ptr(&curFile))));
+        auto paramExpr = CreateParamExpr(*param, Ptr(&curFile));
+        cffiMethodArgs.push_back(std::move(paramExpr));
     }
 
     return CreateCallStaticMethodCall(std::move(jniEnv), signature, std::move(cffiMethodArgs), curFile);
+}
+
+OwnedPtr<Expr> InteropLibBridge::CreateParamExpr(FuncParam& param, Ptr<File> curFile)
+{
+    if (param.ty->kind == TypeKind::TYPE_FUNC) {
+        std::string lambdaJavaClassSign = NormalizeJavaSignature(
+            curFile->curPackage->fullPackageName + "." + GetLambdaJavaClassName(param.ty) + "$Box");
+        auto refExpr = WithinFile(CreateRefExpr(param), curFile);
+        auto callExpr = CreateGetJavaLambdaEntityCall(std::move(refExpr), lambdaJavaClassSign, curFile);
+        return std::move(callExpr);
+    }
+    auto refExpr = WithinFile(CreateRefExpr(param), curFile);
+    return WrapJavaEntity(std::move(refExpr));
 }
 
 OwnedPtr<CallExpr> InteropLibBridge::CreateDeleteCJObjectCall(

@@ -271,7 +271,7 @@ std::string GetGenericActualType(GenericConfigInfo* config, std::string genericN
 }
 
 // Current generic just support primitive type
-TypeKind GetGenericActualTypeKind(std::string configType) {
+TypeKind GetActualTypeKind(std::string configType) {
     static const std::unordered_map<std::string, TypeKind> typeMap = {
         {"Int8", TypeKind::TYPE_INT8},
         {"Int16", TypeKind::TYPE_INT16},
@@ -281,6 +281,7 @@ TypeKind GetGenericActualTypeKind(std::string configType) {
         {"Float32", TypeKind::TYPE_FLOAT32},
         {"Float64", TypeKind::TYPE_FLOAT64},
         {"Boolean", TypeKind::TYPE_BOOLEAN},
+        {"Unit", TypeKind::TYPE_UNIT}
     };
     auto it = typeMap.find(configType);
     CJC_ASSERT(it != typeMap.end());
@@ -289,11 +290,11 @@ TypeKind GetGenericActualTypeKind(std::string configType) {
 
 Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName) {
     auto actualTypeName = GetGenericActualType(config, genericName);
-    return GetGenericInstTy(actualTypeName);
+    return GetTyByName(actualTypeName);
 }
 
-Ptr<Ty> GetGenericInstTy(std::string typeStr) {
-    auto typeKind = GetGenericActualTypeKind(typeStr);
+Ptr<Ty> GetTyByName(std::string typeStr) {
+    auto typeKind = GetActualTypeKind(typeStr);
     // Current only support primitive type.
     auto ty = TypeManager::GetPrimitiveTy(typeKind);
     return ty;
@@ -301,14 +302,38 @@ Ptr<Ty> GetGenericInstTy(std::string typeStr) {
 
 OwnedPtr<Type> GetGenericInstType(GenericConfigInfo* config, std::string genericName) {
     auto actualTypeName = GetGenericActualType(config, genericName);
-    return GetGenericInstType(actualTypeName);
+    return GetTypeByName(actualTypeName);
 }
 
-OwnedPtr<Type> GetGenericInstType(std::string typeStr) {
-    auto typeKind = GetGenericActualTypeKind(typeStr);
+OwnedPtr<Type> GetTypeByName(std::string typeStr) {
+    auto typeKind = GetActualTypeKind(typeStr);
     // Current only support primitive type.
     auto type = GetPrimitiveType(typeStr, typeKind);
     return type;
+}
+
+std::string GetLambdaJavaClassName(LambdaPattern& pattern) {
+    std::string name = "";
+    for(auto& type : pattern.parameterTypes) {
+        name += type;
+    }
+    name = name + "To" + pattern.returnType;
+    return name;
+}
+
+std::string GetLambdaJavaClassName(Ptr<Ty> ty) {
+    auto funTy = StaticCast<FuncTy*>(ty);
+    CJC_NULLPTR_CHECK(funTy);
+    std::string name = "";
+    for (auto paramTy : funTy->paramTys) {
+        CJC_NULLPTR_CHECK(paramTy);
+        std::string paramStr = paramTy->String();
+        name += paramStr;
+    }
+    CJC_NULLPTR_CHECK(funTy->retTy);
+    std::string retStr = funTy->retTy->String();
+    name = name + "To" + retStr;
+    return name;
 }
 
 } // namespace Cangjie::Native::FFI

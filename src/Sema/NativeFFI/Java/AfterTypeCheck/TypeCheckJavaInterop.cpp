@@ -105,6 +105,7 @@ struct JavaInteropTypeChecker {
             case TypeKind::TYPE_FLOAT32:
             case TypeKind::TYPE_FLOAT64:
             case TypeKind::TYPE_GENERICS:
+            case TypeKind::TYPE_FUNC:
                 return true;
             case TypeKind::TYPE_ENUM:
                 if (!ty.IsCoreOptionType() || ty.typeArgs[0]->IsCoreOptionType()) {
@@ -424,7 +425,7 @@ void JavaInteropManager::CheckCJMappingDeclSupportRange(Decl& decl)
         case ASTKind::CLASS_DECL:
         case ASTKind::INTERFACE_DECL:
         case ASTKind::EXTEND_DECL:
-            break;
+                    break;
         default:
             diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmapping_decl_not_supported, MakeRange(decl.identifier),
                 std::string{decl.identifier});

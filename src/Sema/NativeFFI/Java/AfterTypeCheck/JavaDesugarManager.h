@@ -38,7 +38,7 @@ enum class DesugarJavaMirrorImplStage : uint8_t {
     END
 };
 
-enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
+enum class DesugarCJImplStage : uint8_t { BEGIN, PRE_GENERATE, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
 
 class JavaDesugarManager {
 public:
@@ -563,6 +563,16 @@ private:
      * }
      */
     OwnedPtr<AST::MemberAccess> GenThisMemAcessForSelfMethod(Ptr<FuncDecl> fd, Ptr<InterfaceDecl> interfaceDecl, GenericConfigInfo* genericConfig);
+    void PreGenerateInCJMapping(File& file);
+    void GenerateLambdaGlueCode(File& file);
+    OwnedPtr<LambdaExpr> GenerateLambdaExpr(File& file, LambdaPattern& pattern, FuncParam& funcParam);
+    Ptr<FuncDecl> CheckCjLambdaDeclByTy(Ptr<Ty> ty);
+    OwnedPtr<CallExpr> CreateGetCJLambdaCallExpr(OwnedPtr<RefExpr> callResRef, Ptr<Ty> ty, const Decl& outerDecl);
+    OwnedPtr<Decl> GenerateCallImplNativeMethod(File& file, LambdaPattern& lambdaPattern);
+    Ptr<FuncTy> GetLambdaFuncTy(LambdaPattern& lambdaPattern);
+    Ptr<Decl> GetLambdaTmpDecl(File& file, std::string javaClassName, std::string fullPackGeName);
+    std::string GetLambdaCallImplJniMethodName(Decl& decl);
+    void ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig);
 
     ImportManager& importManager;
     TypeManager& typeManager;
@@ -580,6 +590,8 @@ private:
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring
      */
     std::vector<OwnedPtr<Decl>> generatedDecls;
+    std::map<std::string, Ptr<FuncDecl>> lambdaConfUtilFuncs;
+    bool isInitLambdaUtilFunc = false;
 };
 
 } // namespace Cangjie::Interop::Java
