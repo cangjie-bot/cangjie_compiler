@@ -60,6 +60,9 @@ GlobalVar* Translator::TranslateCustomAnnoInstanceSig(const Expr& expr, const Fu
     auto bl = builder.CreateBlock(bg);
     bg->SetEntryBlock(bl);
     gv->SetInitFunc(*init);
+    auto unitTyRef = builder.GetType<RefType>(builder.GetUnitTy());
+    auto retVal = CreateAndAppendExpression<Allocate>(unitTyRef, builder.GetUnitTy(), bl);
+    init->SetReturnValue(*retVal->GetResult());
     return gv;
 }
 
