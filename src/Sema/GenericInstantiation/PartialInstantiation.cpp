@@ -426,6 +426,7 @@ OwnedPtr<Decl> PartialInstantiation::InstantiateEnumDecl(const EnumDecl& ed, con
     ret->bitOrPosVector = ed.bitOrPosVector;
     ret->rightCurlPos = ed.rightCurlPos;
     ret->upperBoundPos = ed.upperBoundPos;
+    ret->hasEllipsis = ed.hasEllipsis;
     ret->EnableAttr(Attribute::COMPILER_ADD);
     return ret;
 }
