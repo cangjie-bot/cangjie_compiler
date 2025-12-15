@@ -49,14 +49,15 @@ public:
      * to build a group of trie trees to accelerate search. */
     static void AddSymbol(ASTContext& ctx, const NodeInfo& nodeInfo, bool buildTrie = true);
 
+    void UpdatePosLimit(AST::Package& package);
+
 private:
     ScopeManager& scopeManager;
     bool enableMacroInLsp{false};
     /** A set of functions to collect symbols of corresponding AST node. */
     void CollectPackageNode(ASTContext& ctx, AST::Package& package, bool buildTrie);
     void CollectFileNode(ASTContext& ctx, AST::File& file, bool buildTrie);
-    void CollectAnnotations(
-        ASTContext& ctx, const std::vector<OwnedPtr<AST::Annotation>>& annotations, bool buildTrie);
+    void CollectAnnotations(ASTContext& ctx, const std::vector<OwnedPtr<AST::Annotation>>& annotations, bool buildTrie);
     void CollectGeneric(ASTContext& ctx, AST::Decl& outerDecl, const AST::Generic& generic, bool buildTrie);
     void CollectClassDecl(ASTContext& ctx, AST::ClassDecl& cd, bool buildTrie);
     void CollectClassBody(ASTContext& ctx, const AST::ClassBody& cb, bool buildTrie);
