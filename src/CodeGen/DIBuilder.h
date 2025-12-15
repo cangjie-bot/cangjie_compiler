@@ -23,6 +23,20 @@
 #include "cangjie/CHIR/IR/Type/Type.h"
 #include "cangjie/CHIR/IR/Value/Value.h"
 
+namespace {
+bool IsFuncTypeOrClosureBaseRefType(const Cangjie::CHIR::Type& type)
+{
+    if (type.IsFunc()) {
+        return true;
+    }
+    auto refType = Cangjie::DynamicCast<const Cangjie::CHIR::RefType*>(&type);
+    if (refType == nullptr) {
+        return false;
+    }
+    return refType->GetBaseType()->IsAutoEnvBase();
+}
+} // namespace
+
 namespace Cangjie {
 namespace CHIR {
 class Type;
@@ -304,7 +318,14 @@ private:
             typeName.pop_back();
         }
         typeName += ")->";
+        bool isClosure = IsFuncTypeOrClosureBaseRefType(*retType);
+        if(isClosure) {
+            typeName += "(";
+        }
         typeName += GenerateTypeName(*retType);
+        if(isClosure) {
+            typeName += ")";
+        }
         return typeName;
     }
 
