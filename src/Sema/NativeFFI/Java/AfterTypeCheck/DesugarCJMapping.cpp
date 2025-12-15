@@ -950,16 +950,16 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
             InitGenericConfigs(file, decl, genericConfigs);
             for (auto& config : genericConfigs) {
                 const std::string fileJ = config->declInstName + ".java";
-                auto codegen = JavaSourceCodeGenerator(*decl.get(), mangler, javaCodeGenPath, fileJ,
+                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
                     GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), config,
-                    exportJavaPath, file.curPackage.get()->isInteropCJPackageConfig);
+                    file.curPackage.get()->isInteropCJPackageConfig);
                 codegen.Generate();
             }
         } else {
             const std::string fileJ = decl.get()->identifier.Val() + ".java";
-            auto codegen = JavaSourceCodeGenerator(*decl.get(), mangler, javaCodeGenPath, fileJ,
+            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
                 GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
-                exportJavaPath, file.curPackage.get()->isInteropCJPackageConfig);
+                file.curPackage.get()->isInteropCJPackageConfig);
             codegen.Generate();
         }
     }

@@ -26,29 +26,35 @@ using namespace AST;
 
 class JavaSourceCodeGenerator : public AbstractSourceCodeGenerator {
 public:
-    JavaSourceCodeGenerator(const Decl& decl, const BaseMangler& mangler, const std::optional<std::string>& deprecatedOutputFolderPath,
+    JavaSourceCodeGenerator(
+        Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName,
+        bool isInteropCJpackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
+        const std::string& outputFileName, std::string cjLibName, bool isInteropCJPackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
         const std::string& outputFileName, std::string cjLibName, std::vector<Ptr<ExtendDecl>> extends,
-    const std::string& exportPath, bool isInteropCJPackageConfig = false);
-    JavaSourceCodeGenerator(const Decl& decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
+        bool isInteropCJPackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
         const std::string& outputFileName, std::string cjLibName, GenericConfigInfo* genericConfig,
-        const std::string& exportPath, bool isInteropCJPackageConfig);
+        bool isInteropCJPackageConfig);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
+    static const std::string DEFAULT_OUTPUT_DIR;
     static const std::string IGNORE_IMPORT;
-    static std::string AddImport(Ptr<Ty> ty, std::set<std::string>* javaImports, const std::string& curPackageName);
+    static std::string AddImport(Ptr<Ty> ty, std::set<std::string>* javaImports, const std::string* curPackageName);
     std::string MapCJTypeToJavaType(const Ptr<Ty> ty, std::set<std::string>* javaImports,
-        const std::string& curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false);
     std::string MapCJTypeToJavaType(const OwnedPtr<Type>& type, std::set<std::string>* javaImports,
-        const std::string& curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false);
     std::string MapCJTypeToJavaType(const OwnedPtr<FuncParam>& param, std::set<std::string>* javaImports,
-        const std::string& curPackageName, bool isNativeMethod = false);
+        const std::string* curPackageName, bool isNativeMethod = false);
     static std::string GenerateParams(const std::vector<OwnedPtr<FuncParam>>& params,
         const std::function<std::string(const OwnedPtr<FuncParam>& ptr)>& transform);
     static std::string GenerateParamLists(const std::vector<OwnedPtr<FuncParamList>>& paramLists,
         const std::function<std::string(const OwnedPtr<FuncParam>& ptr)>& transform);
 
-    const Decl& decl;
+    Decl* decl;
     std::set<std::string> imports;
     const std::string cjLibName;
     const BaseMangler& mangler;

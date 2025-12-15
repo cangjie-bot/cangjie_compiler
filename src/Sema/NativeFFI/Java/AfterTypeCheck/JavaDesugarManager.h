@@ -45,8 +45,7 @@ class JavaDesugarManager {
 public:
     JavaDesugarManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
                        const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath,
-                       const std::string& outputLibPath, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap,
-                       const std::string& exportJavaPath)
+                       const std::string& outputLibPath, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
         : importManager(importManager),
           typeManager(typeManager),
           utils(importManager, typeManager),
@@ -55,8 +54,7 @@ public:
           lib(importManager, typeManager, diag, utils),
           javaCodeGenPath(javaCodeGenPath),
           outputLibPath(outputLibPath),
-          memberMap(memberMap),
-          exportJavaPath(exportJavaPath)
+          memberMap(memberMap)
     {
             lib.CheckInteropLibVersion();
     }
@@ -576,7 +574,7 @@ private:
     DiagnosticEngine& diag;
     const BaseMangler& mangler;
     InteropLibBridge lib;
-    const std::optional<std::string>& javaCodeGenPath; // Deprecated
+    const std::optional<std::string>& javaCodeGenPath;
     const std::string& outputLibPath;
     // genericConfigsVector only can use at IMPL_GENERATE stage. 
     std::vector<GenericConfigInfo*> genericConfigsVector;
@@ -589,7 +587,6 @@ private:
 
     // contains the member signatures of structs.
     const std::unordered_map<Ptr<const AST::InheritableDecl>, MemberMap>& memberMap;
-    const std::string& exportJavaPath;
 };
 
 } // namespace Cangjie::Interop::Java
