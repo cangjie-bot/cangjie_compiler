@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include "gtest/gtest.h"
+#include "TestCompilerInstance.h"
 #include "cangjie/Parse/Parser.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Node.h"
@@ -3277,4 +3278,18 @@ TEST(PositionTest, GenericConstraintBegin)
     auto& foo = StaticCast<FuncDecl>(*file->decls[0]);
     ASSERT_NE(foo.funcBody->generic, nullptr);
     EXPECT_EQ(foo.funcBody->generic->genericConstraints[0]->begin, Position(1, 25));
+}
+
+TEST(ParserTest2, Zerox1foo)
+{
+    std::string code = R"(main() {
+    let c = 0x1.foo
+    let c2 = 0x1.fp1
+    let c3 = 0x1.fxp01
+})";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser{code, diag, sm, Position{0, 1, 1}, true, true};
+    ASSERT_EQ(diag.GetErrorCount(), 0);
 }
