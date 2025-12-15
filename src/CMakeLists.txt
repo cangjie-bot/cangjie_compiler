@@ -109,17 +109,8 @@ else()
     list(APPEND CANGJIE_SRC_COMMON_OBJECTS_LIST $<TARGET_OBJECTS:CangjieCodeGen>)
 endif()
 
-# By using `CangjieOption-Fully-Enabled`, we could still have a fully featured compiler for
-# compiling standard library when building for a visible options only version.
-if(CANGJIE_VISIBLE_OPTIONS_ONLY)
-    set(CANGJIE_SRC_OBJECTS
-        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption-Fully-Enabled>
-        CACHE INTERNAL "")
-else()
-    set(CANGJIE_SRC_OBJECTS
-        ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption>
-        CACHE INTERNAL "")
-endif()
+set(CANGJIE_SRC_OBJECTS ${CANGJIE_SRC_COMMON_OBJECTS_LIST} $<TARGET_OBJECTS:CangjieOption> CACHE INTERNAL "")
+
 add_executable(cjc main.cpp ${CANGJIE_SRC_OBJECTS})
 
 if(CANGJIE_CODEGEN_CJNATIVE_BACKEND)
