@@ -23,6 +23,8 @@
 #include "Diags.h"
 #include "ExtraScopes.h"
 #include "JoinAndMeet.h"
+#include "NativeFFI/Java/BeforeTypeCheck/GenerateJavaMirror.h"
+#include "NativeFFI/ObjC/BeforeTypeCheck/Desugar.h"
 #include "TypeCheckUtil.h"
 
 #include "cangjie/AST/Clone.h"
@@ -35,9 +37,6 @@
 #include "cangjie/Frontend/CompilerInstance.h"
 #include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/Utils/Utils.h"
-#include "NativeFFI/Java/BeforeTypeCheck/GenerateJavaMirror.h"
-#include "NativeFFI/ObjC/BeforeTypeCheck/Desugar.h"
-
 
 namespace Cangjie {
 using namespace Sema;
@@ -2198,6 +2197,8 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
 
     // Phase: build symbol table.
     Collector collector(scopeManager, ci->invocation.globalOptions.enableMacroInLSP);
+    // Update position limit for symbol collector to ensure Searcher API works correctly.
+    collector.UpdatePosLimit(pkg);
     collector.BuildSymbolTable(ctx, &pkg, ci->buildTrie);
     // Phase: mark outermost binary expressions.
     MarkOutermostBinaryExpressions(pkg);
