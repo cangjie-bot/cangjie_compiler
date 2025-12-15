@@ -12,7 +12,6 @@
 
 #include "cangjie/Option/Option.h"
 
-#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -876,10 +875,6 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     { Options::ID::OUTPUT_JAVA_GEN_DIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         opts.outputJavaGenDir = {arg.value};
-        return true;
-    }},
-    { Options::ID::EXPORT_JAVA_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-        opts.exportJavaPath = {arg.value};
         return true;
     }},
     { Options::ID::SAVE_TEMPS, [](GlobalOptions& opts, const OptionArgInstance& arg) {

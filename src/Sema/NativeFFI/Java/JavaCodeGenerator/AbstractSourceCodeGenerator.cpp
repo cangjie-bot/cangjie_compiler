@@ -13,6 +13,11 @@
 #include "AbstractSourceCodeGenerator.h"
 
 namespace Cangjie::Interop {
+AbstractSourceCodeGenerator::AbstractSourceCodeGenerator(const std::string& outputFilePath)
+    : outputFilePath(outputFilePath)
+{
+}
+
 AbstractSourceCodeGenerator::AbstractSourceCodeGenerator(
     const std::string& outputFolderPath, const std::string& outputFileName)
     : outputFilePath(FileUtil::JoinPath(outputFolderPath, outputFileName))

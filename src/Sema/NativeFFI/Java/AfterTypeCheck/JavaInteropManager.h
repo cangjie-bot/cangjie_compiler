@@ -16,7 +16,6 @@
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Modules/ImportManager.h"
 #include "cangjie/Sema/TypeManager.h"
-#include <string>
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
@@ -25,7 +24,16 @@ class JavaInteropManager {
 public:
     JavaInteropManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
         const BaseMangler& mangler, const std::optional<std::string>& javagenOutputPath, const std::string outputPath,
-        GlobalOptions::InteropLanguage& targetInteropLanguage, const std::optional<std::string>& exportJavaPath);
+        GlobalOptions::InteropLanguage& targetInteropLanguage)
+        : importManager(importManager),
+          typeManager(typeManager),
+          diag(diag),
+          mangler(mangler),
+          javagenOutputPath(javagenOutputPath),
+          outputPath(outputPath),
+          targetInteropLanguage(targetInteropLanguage)
+    {
+    }
 
     void CheckImplRedefinition(Package& package);
     void CheckInheritance(ClassLikeDecl& decl) const;
@@ -61,7 +69,7 @@ private:
     TypeManager& typeManager;
     DiagnosticEngine& diag;
     const BaseMangler& mangler;
-    const std::optional<std::string>& javagenOutputPath; // Deprecated
+    const std::optional<std::string>& javagenOutputPath;
     /**
      * Name of output cangjie library
      */
@@ -71,7 +79,6 @@ private:
      */
     bool hasMirrorOrImpl = false;
     GlobalOptions::InteropLanguage& targetInteropLanguage;
-    const std::string exportJavaPath;
 };
 } // namespace Cangjie::Interop::Java
 
