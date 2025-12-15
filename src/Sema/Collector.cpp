@@ -307,8 +307,8 @@ void Collector::CollectFuncDecl(ASTContext& ctx, FuncDecl& fd, bool buildTrie)
     static const std::unordered_set<std::string> intrinsicPkgs{CORE_PACKAGE_NAME, SYNC_PACKAGE_NAME, MATH_PACKAGE_NAME,
         OVERFLOW_PACKAGE_NAME, RUNTIME_PACKAGE_NAME, NET_PACKAGE_NAME, REFLECT_PACKAGE_NAME,
         UNITTEST_MOCK_INTERNAL_PACKAGE_NAME, EFFECT_PACKAGE_NAME, INTEROP_PACKAGE_NAME};
-    static const std::unordered_set<std::string> headlessIntrinsics{GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME,
-        IS_SUBTYPE_TYPES_FUNC_NAME};
+    static const std::unordered_set<std::string> headlessIntrinsics{
+        GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME, IS_SUBTYPE_TYPES_FUNC_NAME};
 
     if (Utils::In(fd.identifier.Val(), headlessIntrinsics)) {
         return;
@@ -483,7 +483,7 @@ void Collector::CollectCondition(ASTContext& ctx, AST::Expr& e, bool buildTrie)
             return CollectCondition(ctx, *binop->rightExpr, buildTrie);
         }
     }
-    
+
     // normal expr
     BuildSymbolTable(ctx, &e, buildTrie);
     return;
@@ -620,6 +620,27 @@ void Collector::CollectSpawnExpr(ASTContext& ctx, SpawnExpr& se, bool buildTrie)
     AddSymbol(ctx, nodeInfo, buildTrie);
     BuildSymbolTable(ctx, se.task.get(), buildTrie);
     BuildSymbolTable(ctx, se.arg.get(), buildTrie);
+}
+
+void Collector::UpdatePosLimit(Package& package)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+    unsigned int fileIdMax = 0;
+    int lineNumMax = 0;
+    int columnNumMax = 0;
+    Walker(&package, [&fileIdMax, &lineNumMax, &columnNumMax](Ptr<Node> node) -> VisitAction {
+        if (node) {
+            fileIdMax = std::max({fileIdMax, node->begin.fileID, node->end.fileID});
+            lineNumMax = std::max({lineNumMax, node->begin.line, node->end.line});
+            columnNumMax = std::max({columnNumMax, node->begin.column, node->end.column});
+        }
+        return VisitAction::WALK_CHILDREN;
+    }).Walk();
+    PosSearchApi::UpdatePosLimit(fileIdMax, lineNumMax, columnNumMax);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    Println("Update limit to", PosSearchApi::MAX_DIGITS_FILE, PosSearchApi::MAX_DIGITS_LINE,
+        PosSearchApi::MAX_DIGITS_COLUMN, "in", duration, "ms");
 }
 
 void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie)
