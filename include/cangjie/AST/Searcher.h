@@ -31,14 +31,14 @@ class ASTContext;
 class TrieNode {
 public:
     using Next = std::map<char, std::unique_ptr<TrieNode>>;
-    Next next;                                      /**< Next trie node map. */
-    char c;                                         /**< Trie node's value. */
-    std::string value;                              /**< Store string value at the leaf node. */
-    std::string prefix;                             /**< Store prefix string of current node. */
-    std::set<std::string> suffixes;                 /**< Store suffix strings of current node. */
-    std::set<AST::Symbol*> ids;                     /**< Symbol ID set. */
-    uint32_t depth = 0;                             /**< Depth of the node in the tree. */
-    TrieNode* parent{nullptr};                      /**< Pointer to the parent node. */
+    Next next;                      /**< Next trie node map. */
+    char c;                         /**< Trie node's value. */
+    std::string value;              /**< Store string value at the leaf node. */
+    std::string prefix;             /**< Store prefix string of current node. */
+    std::set<std::string> suffixes; /**< Store suffix strings of current node. */
+    std::set<AST::Symbol*> ids;     /**< Symbol ID set. */
+    uint32_t depth = 0;             /**< Depth of the node in the tree. */
+    TrieNode* parent{nullptr};      /**< Pointer to the parent node. */
     explicit TrieNode(char c) : c(c)
     {
     }
@@ -152,10 +152,21 @@ public:
     static void GetIDsLessThanPosOfDepth(
         TrieNode& n, const std::string& posStr, std::set<AST::Symbol*>& ids, bool& isClose);
 
-    const static int MAX_DIGITS_FILE = 4;   /**< Max num of files to compile once is 9999. */
-    const static int MAX_DIGITS_LINE = 5;   /**< Max num of lines of a file is 99999. */
-    const static int MAX_DIGITS_COLUMN = 5; /**< Max column width is 99999. */
-    constexpr static int MAX_DIGITS_POSITION = MAX_DIGITS_FILE + MAX_DIGITS_LINE + MAX_DIGITS_COLUMN;
+    static void UpdatePosLimit(unsigned int fileId, int line, int column);
+
+    static uint32_t MAX_DIGITS_FILE;   // Max num of fileId digits.
+    static uint32_t MAX_DIGITS_LINE;   // Max num of source code line number digits.
+    static uint32_t MAX_DIGITS_COLUMN; // Max num of source code column number digits.
+
+    /**
+     * Get the max digits of position string.
+     * @return the max digits of position string.
+     */
+    static uint32_t GetMaxDigitsPostion()
+    {
+        return MAX_DIGITS_FILE + MAX_DIGITS_LINE + MAX_DIGITS_COLUMN;
+    }
+
     constexpr static int MAX_LINE = static_cast<int>(10e5);
     const static int MAX_COLUMN = static_cast<int>(10e3);
 };
