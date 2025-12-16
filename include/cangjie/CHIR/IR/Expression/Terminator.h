@@ -594,7 +594,9 @@ private:
     IntOpWithException* Clone(CHIRBuilder& builder, Block& parent) const override;
 
     ExprKind opKind; // Operator Kind
-    Cangjie::OverflowStrategy overflowStrategy{Cangjie::OverflowStrategy::NA};
+
+    // mark throwing if need IntOpWithException
+    Cangjie::OverflowStrategy overflowStrategy{Cangjie::OverflowStrategy::THROWING};
 };
 
 /**
@@ -645,6 +647,9 @@ private:
     ~TypeCastWithException() override = default;
 
     TypeCastWithException* Clone(CHIRBuilder& builder, Block& parent) const override;
+
+    // mark throwing if need TypeCastWithException
+    OverflowStrategy overflowStrategy{Cangjie::OverflowStrategy::THROWING};
 };
 
 /**

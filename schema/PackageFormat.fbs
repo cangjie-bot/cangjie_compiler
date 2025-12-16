@@ -1295,6 +1295,7 @@ table IntOpWithException {
 
 table TypeCastWithException {
   base: Terminator;
+  overflowStrategy: OverflowStrategy;
 }
 
 table IntrinsicWithException {
