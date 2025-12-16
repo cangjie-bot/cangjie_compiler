@@ -358,11 +358,15 @@ bool LexerImpl::ProcessXdigit(const int& base, bool& hasDigit, const char* reaso
 /// if the digit >= base,report error.
 /// finally return hasDigit and the index of invalid char.
 //  return true if it has integer suffix, false otherwise.
-bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint)
+bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reasonPoint, bool* isFloat)
 {
     bool hasTypeSuffix = false;
     int max = base + static_cast<int>('0');
-    for (;;) {
+    for (int i{0}; ; ++i) {
+        if (i == 0 && isFloat && isdigit(currentChar)) {
+            *isFloat = true;
+            tokenKind = TokenKind::FLOAT_LITERAL;
+        }
         if (currentChar > ASCII_BASE) {
             if (success) {
                 DiagExpectedDigit(*reasonPoint);
@@ -451,15 +455,14 @@ bool LexerImpl::ScanNumberIntegerPart(
     return ProcessDigits(base, hasDigit, reasonPoint);
 }
 
-void LexerImpl::ScanNumberDecimalPart(const int& base, const char& prefix, bool& hasDigit, const char* reasonPoint)
+void LexerImpl::ScanNumberDecimalPart(int base, char prefix, bool& hasDigit, bool& isFloat, const char* reasonPoint)
 {
-    tokenKind = TokenKind::FLOAT_LITERAL;
     if ((prefix == 'o' || prefix == 'b') && success) {
         DiagUnexpectedDecimalPoint(reasonPoint);
         success = false;
     }
-    ReadUTF8Char();
-    ProcessDigits(base, hasDigit, reasonPoint);
+    ReadUTF8Char(); // skip '.'
+    ProcessDigits(base, hasDigit, reasonPoint, &isFloat);
 }
 
 void LexerImpl::ScanNumberExponentPart(const char* reasonPoint)
@@ -482,7 +485,7 @@ void LexerImpl::ScanNumberExponentPart(const char* reasonPoint)
     }
 }
 
-void LexerImpl::ProcessFloatSuffix(const char prefix)
+void LexerImpl::ProcessFloatSuffix(char prefix)
 {
     tokenKind = TokenKind::FLOAT_LITERAL; // 0f64 should be float token
     const char* pSuffixStart = pCurrent;
@@ -499,7 +502,7 @@ void LexerImpl::ProcessFloatSuffix(const char prefix)
     }
 }
 
-void LexerImpl::ProcessNumberExponentPart(const char prefix, const char* reasonPoint, bool& isFloat)
+void LexerImpl::ProcessNumberExponentPart(char prefix, const char* reasonPoint, bool& isFloat)
 {
     char exp = static_cast<char>(std::tolower(static_cast<char>(currentChar)));
     if (exp == 'e' || exp == 'p') {
@@ -508,20 +511,20 @@ void LexerImpl::ProcessNumberExponentPart(const char prefix, const char* reasonP
             DiagUnexpectedExponentPart(exp, prefix, reasonPoint);
             success = false;
         }
-        if (exp == 'e') {
-            isFloat = true;
-        }
+        // cannot use exponent part in integer
+        isFloat = true;
+        tokenKind = TokenKind::FLOAT_LITERAL;
         ScanNumberExponentPart(reasonPoint);
-    } else if (success && prefix == 'x' && tokenKind == TokenKind::FLOAT_LITERAL) {
+    } else if (success && prefix == 'x' && tokenKind == TokenKind::FLOAT_LITERAL && isFloat) {
         DiagExpectedExponentPart(reasonPoint);
         success = false;
     }
 }
 
-void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat)
+void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat, bool hasDot)
 {
     using namespace Unicode;
-    auto tempPoint = pCurrent;
+    auto nonDigitStart = pCurrent; // pos to first non-digit char (non-xidigit if prefix is 'x')
     auto hasSuffix{false};
     if (currentChar == 'f') {
         ProcessFloatSuffix(prefix);
@@ -570,8 +573,9 @@ void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat)
         }
         currentChar = static_cast<int>(cp);
     }
-    if (((!isFloat && hasSuffix) || (suffixBegin != pNext && !IsAdjacent(suffixBegin, pNext))) && success) {
-        auto errPoint = isFloat ? suffixBegin : tempPoint;
+    if (((!isFloat && hasSuffix) || (suffixBegin != pNext && !IsAdjacent(suffixBegin, pNext)
+        && (isFloat || !hasDot))) && success) {
+        auto errPoint = isFloat ? suffixBegin : nonDigitStart;
         auto args = std::string{errPoint, pCurrent};
         /// the suffix is empty, add dot to prevent empty string in diag message
         if (args.empty()) {
@@ -622,6 +626,7 @@ Token LexerImpl::ScanNumber(const char* pStart)
     char prefix = 'd';   // 0(default), d(decimal),'O'(octal),'x'(Hex),'b'(bin)
     const char* reasonPoint{pStart};
     bool hasDigit = false; // hasDigit is true when digit present
+    const char* dotPos{};
     // 1. Process integer part.
     if (currentChar != '.') {
         if (ScanNumberIntegerPart(pStart, base, prefix, hasDigit, reasonPoint)) {
@@ -632,8 +637,10 @@ Token LexerImpl::ScanNumber(const char* pStart)
             Back();
             return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
         }
+        dotPos = pCurrent;
     }
     bool isFloat{false};
+    bool hasDot{false};
     // 2. Process fractional part.
     if (currentChar == '.') {
         // 0. is not a float number 0.b is lex to 0 DOT b
@@ -651,12 +658,12 @@ Token LexerImpl::ScanNumber(const char* pStart)
             }
         }
         hasDigit = false;
-        isFloat = true;
         if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
             diag.DiagnoseRefactor(
                 DiagKindRefactor::lex_cannot_start_with_digit, GetPos(pStart), "float", std::string{*pStart});
         }
-        ScanNumberDecimalPart(base, prefix, hasDigit, reasonPoint);
+        ScanNumberDecimalPart(base, prefix, hasDigit, isFloat, reasonPoint);
+        hasDot = true;
     } else {
         if (IsIllegalStartDecimalPart(pStart, pCurrent)) {
             diag.DiagnoseRefactor(
@@ -669,7 +676,12 @@ Token LexerImpl::ScanNumber(const char* pStart)
     ProcessNumberExponentPart(prefix, reasonPoint, isFloat);
 
     // 4. Process float number suffix
-    ProcessNumberFloatSuffix(prefix, isFloat);
+    ProcessNumberFloatSuffix(prefix, isFloat, hasDot);
+    // int DOT identifier, rollback to DOT
+    if (!isFloat && hasDot && success && dotPos > pInputStart) { // implies dotPos is valid
+        pNext = dotPos;
+        pCurrent = dotPos - 1;
+    }
 
     return Token(tokenKind, std::string(pStart, pNext), pos, GetPos(pNext));
 }
