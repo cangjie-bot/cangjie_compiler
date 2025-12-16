@@ -59,6 +59,16 @@ public:
         const Ptr<const AST::Node> node, const Ptr<const AST::VarDeclAbstract> target) const;
 
     /**
+     * @brief Obtains local function of function or lambda index under its scope.
+     *
+     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
+     * @param target Indicates the index needs to be obtained which is AST::FuncDecl.
+     * @return std::optional<size_t> The index.
+     */
+    std::optional<size_t> GetIndexOfFunc(
+        const Ptr<const AST::Node> node, const Ptr<const AST::FuncDecl> target) const;
+
+    /**
      * @brief Obtains global lambda, local lambda of function or lambda index under its scope.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
@@ -99,6 +109,13 @@ public:
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      */
     void SaveVar2CurDecl(const Ptr<AST::Node> node);
+
+    /**
+     * @brief Obtain map contains local function of function or lambda.
+     *
+     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
+     */
+    void SaveFunc2CurDecl(const Ptr<AST::Node> node);
 
     /**
      * @brief Obtain map contains global lambda, local lambda of function or lambda.
@@ -147,6 +164,8 @@ public:
     std::map<Ptr<const AST::Node>, std::vector<Ptr<AST::LambdaExpr>>> node2Lambda;
     // Key is AST::File/AST::FuncDecl/AST::LambdaExpr node ptr, value is map of local var identifier to var decls.
     std::map<Ptr<const AST::Node>, std::map<std::string, std::vector<Ptr<AST::VarDeclAbstract>>>> node2LocalVar;
+    // Key is AST::File/AST::FuncDecl/AST::LambdaExpr node ptr, value is map of local func identifier to func decls.
+    std::map<Ptr<const AST::Node>, std::map<std::string, std::vector<Ptr<AST::FuncDecl>>>> node2LocalFunc;
     std::map<Ptr<const AST::File>, std::map<std::string, std::vector<Ptr<AST::ExtendDecl>>>> file2ExtendDecl;
 
     std::vector<uint64_t> fileIndexes;
@@ -261,6 +280,16 @@ public:
      * @return Ptr<AST::Node> The outer container of lambda.
      */
     Ptr<AST::Node> FindOuterNodeOfLambda(
+        const std::vector<Ptr<AST::Node>>::const_iterator& iter, const std::vector<Ptr<AST::Node>>& prefix) const;
+
+    /**
+     * @brief Find outer container of local function.
+     *
+     * @param iter Iterator of the prefix which is second param.
+     * @param prefix Path of the node.
+     * @return Ptr<AST::Node> The outer container of local function.
+     */
+    Ptr<AST::Node> FindOuterNodeOfLocalFunc(
         const std::vector<Ptr<AST::Node>>::const_iterator& iter, const std::vector<Ptr<AST::Node>>& prefix) const;
 
     /**
