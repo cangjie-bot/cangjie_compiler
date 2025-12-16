@@ -514,9 +514,6 @@ Value* IntOpWithException::GetRHSOperand() const
 
 Cangjie::OverflowStrategy IntOpWithException::GetOverflowStrategy() const
 {
-    if (opKind == ExprKind::DIV) {
-        return overflowStrategy;
-    }
     return Cangjie::OverflowStrategy::THROWING;
 }
 

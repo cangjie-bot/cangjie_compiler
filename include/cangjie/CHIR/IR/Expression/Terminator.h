@@ -594,7 +594,6 @@ private:
     IntOpWithException* Clone(CHIRBuilder& builder, Block& parent) const override;
 
     ExprKind opKind; // Operator Kind
-    Cangjie::OverflowStrategy overflowStrategy{Cangjie::OverflowStrategy::NA};
 };
 
 /**
