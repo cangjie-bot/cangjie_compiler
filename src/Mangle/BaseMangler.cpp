@@ -678,6 +678,31 @@ std::string BaseMangler::ManglePrefix(const Node& node, const std::vector<Ptr<No
                 auto& decl = static_cast<const FuncDecl&>(*curPrefix);
                 auto funcMangled = MangleUtils::MangleName(decl.identifier) +
                     MangleGenericArgumentsHelper(decl, genericsTypeStack, true);
+                if (!decl.TestAttr(AST::Attribute::GLOBAL) && outerMostNode && GetOuterDecl(decl) &&
+                    GetOuterDecl(decl)->IsFunc()) {
+                    auto outerNode = FindOuterNodeOfLocalFunc(item, prefix);
+                    std::string pkgName = "";
+                    if (auto decl = dynamic_cast<Decl*>(outerNode.get()); decl) {
+                        pkgName = decl->fullPackageName;
+                    } else {
+                        for (size_t i = 0; i < prefix.size(); i++) {
+                            if (auto prefixDecl = dynamic_cast<Decl*>(prefix[i].get()); prefixDecl) {
+                                pkgName = prefixDecl->fullPackageName;
+                                break;
+                            }
+                        }
+                    }
+                    pkgName = ManglerContext::ReduceUnitTestPackageName(pkgName);
+                    CJC_ASSERT(!pkgName.empty() && "pkgName of local func is empty.");
+                    CJC_ASSERT(manglerCtxTable.find(pkgName) != manglerCtxTable.end() &&
+                        "can not find pkgName in manglerCtxTable.");
+                    auto mangleCtx = manglerCtxTable.at(pkgName);
+                    CJC_NULLPTR_CHECK(mangleCtx.get());
+                    std::optional<size_t> index = mangleCtx->GetIndexOfFunc(outerNode, &decl);
+                    if (index.value() > 0) {
+                        mangled += MangleUtils::DecimalToManglingNumber(std::to_string(index.value() - 1));
+                    }
+                }
                 funcMangled += MANGLE_FUNC_PARAM_TYPE_PREFIX + MangleFuncParams(decl, genericsTypeStack, false);
                 mangled += funcMangled + MANGLE_SUFFIX;
                 break;
@@ -876,6 +901,28 @@ Ptr<AST::Node> BaseMangler::FindOuterNodeOfLambda(
     return Ptr<AST::Node>();
 }
 
+Ptr<AST::Node> BaseMangler::FindOuterNodeOfLocalFunc(
+    const std::vector<Ptr<AST::Node>>::const_iterator& iter, const ::std::vector<Ptr<AST::Node>>& prefix) const
+{
+    auto prevItem = prev(iter);
+    auto cnt = prevItem - prefix.begin() + 1;
+    while (cnt--) {
+        auto prevPrefix = *prevItem;
+        prevItem = prev(prevItem);
+        auto vda = dynamic_cast<VarDeclAbstract*>(prevPrefix.get());
+        if (prevPrefix->astKind == AST::ASTKind::FUNC_DECL || prevPrefix->astKind == AST::ASTKind::PRIMARY_CTOR_DECL ||
+            prevPrefix->astKind == AST::ASTKind::LAMBDA_EXPR || (vda && vda->TestAttr(Attribute::GLOBAL)) ||
+            (vda && vda->outerDecl.get() &&
+                (vda->outerDecl->astKind == ASTKind::CLASS_DECL || vda->outerDecl->astKind == ASTKind::INTERFACE_DECL ||
+                    vda->outerDecl->astKind == ASTKind::STRUCT_DECL ||
+                    vda->outerDecl->astKind == ASTKind::ENUM_DECL))) {
+            return prevPrefix;
+        }
+    }
+    CJC_ASSERT(false && "no outer container of local func found.");
+    return Ptr<AST::Node>();
+}
+
 std::string BaseMangler::MangleLambda(const LambdaExpr& lambda, const::std::vector<Ptr<AST::Node>>& prefix) const
 {
     // The outerNode is the outer container of lambda which can be another lambda.
@@ -926,6 +973,7 @@ void BaseMangler::CollectVarOrLambda(ManglerContext& ctx, AST::Package& pkg) con
         bool needCollect = isFunc || isLambda || isGlobal || isCompositeType;
         if (needCollect) {
             ctx.SaveVar2CurDecl(node);
+            ctx.SaveFunc2CurDecl(node);
             ctx.SaveLambda2CurDecl(node);
             ctx.SaveLocalWildcardVar2Decl(node);
         }
@@ -1294,6 +1342,32 @@ void ManglerContext::SaveVar2CurDecl(const Ptr<Node> node)
     }).Walk();
 }
 
+void ManglerContext::SaveFunc2CurDecl(const Ptr<Node> node)
+{
+    Ptr<Node> key = nullptr;
+    if (auto lambda = DynamicCast<LambdaExpr>(node)) {
+        key = lambda->funcBody.get();
+    } else if (auto function = DynamicCast<FuncDecl>(node)) {
+        key = function->funcBody.get();
+    } else if (auto pcd = DynamicCast<PrimaryCtorDecl>(node)) {
+        key = pcd->funcBody.get();
+    } else if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && vda->TestAttr(Attribute::GLOBAL)) {
+        key = vda;
+    }
+    if (!key) {
+        return;
+    }
+    Walker(key, [this, &key](const Ptr<Node>& node) {
+        if (auto fd = DynamicCast<FuncDecl>(node); fd && node != key) {
+            auto& mapOfName2Func = node2LocalFunc[key][fd->identifier.Val()];
+            mapOfName2Func.emplace_back(fd);
+        } else if (Is<FuncBody>(node) && node != key) {
+            return VisitAction::SKIP_CHILDREN;
+        }
+        return VisitAction::WALK_CHILDREN;
+    }).Walk();
+}
+
 void ManglerContext::SaveLambda2CurDecl(const Ptr<Node> node)
 {
     std::vector<Ptr<Node>> keys;
@@ -1408,6 +1482,34 @@ std::optional<size_t> ManglerContext::GetIndexOfVar(
     }
 
     if (foundFunc != node2LocalVar.end()) {
+        auto foundId = foundFunc->second.find(target->identifier);
+        if (foundId == foundFunc->second.end()) {
+            return {};
+        }
+        auto targetIt = std::find(foundId->second.begin(), foundId->second.end(), target);
+        if (targetIt != foundId->second.end()) {
+            return targetIt - foundId->second.begin();
+        }
+        return {};
+    }
+    return {};
+}
+
+std::optional<size_t> ManglerContext::GetIndexOfFunc(
+    const Ptr<const Node> node, const Ptr<const FuncDecl> target) const
+{
+    auto foundFunc = node2LocalFunc.end();
+    if (auto lambda = DynamicCast<LambdaExpr>(node)) {
+        foundFunc = node2LocalFunc.find(lambda->funcBody.get());
+    } else if (auto function = DynamicCast<FuncDecl>(node)) {
+        foundFunc = node2LocalFunc.find(function->funcBody.get());
+    } else if (auto pcd = DynamicCast<PrimaryCtorDecl>(node)) {
+        foundFunc = node2LocalFunc.find(pcd->funcBody.get());
+    } else if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && vda->TestAttr(Attribute::GLOBAL)) {
+        foundFunc = node2LocalFunc.find(vda);
+    }
+
+    if (foundFunc != node2LocalFunc.end()) {
         auto foundId = foundFunc->second.find(target->identifier);
         if (foundId == foundFunc->second.end()) {
             return {};
