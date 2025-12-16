@@ -1761,13 +1761,15 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
                 annotations.emplace_back(impl);
         } else if (annotation->kind == AST::AnnotationKind::CUSTOM && annotation->isCompileTimeVisible) {
             auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
-            auto custom = PackageFormat::CreateAnno(
-                builder, PackageFormat::AnnoKind_Custom, builder.CreateString(annotation->identifier.Val()), args);
             Ptr<Expr> baseExpr = annotation->baseExpr;
+            FormattedIndex targetIdx = INVALID_FORMAT_INDEX;
             if (baseExpr && baseExpr->GetTarget()) {
                 auto target = baseExpr->GetTarget();
                 importedDeclPkgNames.insert(target->GetFullPackageName());
+                targetIdx = GetDeclIndex(target);
             }
+            auto custom = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_Custom,
+                builder.CreateString(annotation->identifier.Val()), args, targetIdx);
             annotations.emplace_back(custom);
         }
     }

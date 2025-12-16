@@ -646,6 +646,7 @@ OwnedPtr<Annotation> ASTLoader::ASTLoaderImpl::LoadAnnotation(const PackageForma
     } else if (rawAnno.kind() == PackageFormat::AnnoKind_Custom) {
         annotation->kind = AnnotationKind::CUSTOM;
         annotation->isCompileTimeVisible = true;
+        annotation->baseExpr = CreateRefExpr(LoadExpr(rawAnno.baseExpr()));
     } else {
         InternalError("Unhandled annotation kind.");
     }
