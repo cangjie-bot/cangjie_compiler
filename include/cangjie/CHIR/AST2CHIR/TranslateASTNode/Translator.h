@@ -24,6 +24,7 @@
 #include "cangjie/Option/Option.h"
 #include "cangjie/Sema/GenericInstantiationManager.h"
 #include "cangjie/Utils/SafePointer.h"
+#include "cangjie/Utils/Utils.h"
 
 namespace Cangjie::CHIR {
 
@@ -668,9 +669,12 @@ private:
         if (tryCatchContext.empty() || !mayThrowE) {
             return CreateAndAppendExpression<CHIRNodeNormalT<TExpr>>(std::forward<Args>(args)..., ofs, parent);
         }
-        return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)...);
+        if (std::is_same_v<TExpr, TypeCast>) {
+            return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)...);
+        }
+        return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)..., ofs);
     }
- 
+
     template <typename TEx, typename... Args>
     TEx* TryCreateExceptionTerminator(Block& parent, Args&&... args)
     {
