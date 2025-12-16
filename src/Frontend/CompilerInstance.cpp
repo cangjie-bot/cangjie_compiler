@@ -823,7 +823,7 @@ bool CompilerInstance::PerformMangling()
             mangler->manglerCtxTable[pkgName] = manglerCtx.get();
             manglerCtxVec.emplace_back(std::move(manglerCtx));
         }
-        mangler->CollectVarOrLambda(*mangler->manglerCtxTable.at(pkgName), *package->srcPackage);
+        mangler->CollectLocalDecls(*mangler->manglerCtxTable.at(pkgName), *package->srcPackage);
     }
 #endif
     mangler->lambdaCounter = cachedInfo.lambdaCounter;
