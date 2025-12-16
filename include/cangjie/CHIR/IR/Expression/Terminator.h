@@ -586,9 +586,10 @@ public:
     std::string ToString(size_t indent = 0) const override;
 
 private:
-    explicit IntOpWithException(ExprKind unaryKind, Value* operand, Block* normal, Block* exception, Block* parent);
     explicit IntOpWithException(
-        ExprKind binaryKind, Value* lhs, Value* rhs, Block* normal, Block* exception, Block* parent);
+        ExprKind unaryKind, Value* operand, OverflowStrategy ofs, Block* normal, Block* exception, Block* parent);
+    explicit IntOpWithException(ExprKind binaryKind, Value* lhs, Value* rhs, OverflowStrategy ofs, Block* normal,
+        Block* exception, Block* parent);
     ~IntOpWithException() override = default;
 
     IntOpWithException* Clone(CHIRBuilder& builder, Block& parent) const override;
