@@ -373,6 +373,29 @@ void ASTLoader::ASTLoaderImpl::LoadGenericConstraintsRef(
     }
 }
 
+void ASTLoader::ASTLoaderImpl::LoadAnnotationBaseExpr(
+    const flatbuffers::Vector<TAnnoOffset>* annotationObjs, std::vector<OwnerPtr<Annotation>>& annotations)
+{
+    if (!annotationObjs) {
+        return;
+    }
+    for (uoffset_t i = 0; i < annotationObjs->size(); i++) {
+        if (annotations[i]->kind != AST::AnnotationKind::CUSTOM) {
+            continue;
+        }
+        auto rawAnno = annotationObjs->Get(i);
+        CJC_NULLPTR_CHECK(rawAnno);
+        auto targetCtr = GetDeclFromIndex(rawAnno->target());
+        if (targetCtr) {
+            auto re = MakeOwned<RefExpr>();
+            re->ref.target = targetCtr;
+            re->ref.identifier = targetCtr->identifier;
+            re->ty = targetCtr->ty;
+            annotations[i]->baseExpr = std::move(re);
+        }
+    }
+}
+
 template <typename DeclT>
 void ASTLoader::ASTLoaderImpl::LoadNominalDeclRef(const PackageFormat::Decl& decl, DeclT& astDecl)
 {
@@ -438,6 +461,7 @@ void ASTLoader::ASTLoaderImpl::LoadDeclRefs(const PackageFormat::Decl& declObj, 
         return; // Skip following steps if ty is not correct during loading cache.
     }
     LoadGenericConstraintsRef(declObj.generic(), decl.GetGeneric());
+    LoadAnnotationBaseExpr(declObj.annotations(), decl->annotations);
     switch (declObj.kind()) {
         case PackageFormat::DeclKind_FuncDecl: {
             LoadNominalDeclRef(declObj, StaticCast<FuncDecl&>(decl));

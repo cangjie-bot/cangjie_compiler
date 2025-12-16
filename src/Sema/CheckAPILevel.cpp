@@ -42,7 +42,7 @@ const LevelType IFAVAILABLE_LOWER_LIMITLEVEL = 19;
 
 // For Annotation Hide:
 constexpr std::string_view HIDE_ANNO_NAME = "Hide";
-constexpr std::string_view HIDE_ARG_NAME = "needCompilerChecking";
+constexpr std::string_view HIDE_ARG_NAME = "isChecking";
 
 LevelType Str2LevelType(std::string s)
 {
@@ -432,8 +432,8 @@ bool PluginCustomAnnoChecker::IsAnnoAPILevel(Ptr<Annotation> anno, [[maybe_unuse
         return false;
     }
     auto target = anno->baseExpr ? anno->baseExpr->GetTarget() : nullptr;
-    if (target && target->curFile && target->curFile->curPackage &&
-        target->curFile->curPackage->fullPackageName != PKG_NAME_OHOS_LABELS) {
+    // Annotation from cj.d file without target, it is ok by default.
+    if (target && target->GetFullPackageName() != PKG_NAME_OHOS_LABELS) {
         return false;
     }
     return true;
@@ -448,8 +448,8 @@ bool PluginCustomAnnoChecker::IsAnnoHide(Ptr<Annotation> anno)
         return false;
     }
     auto target = anno->baseExpr ? anno->baseExpr->GetTarget() : nullptr;
-    if (target && target->curFile && target->curFile->curPackage &&
-        target->curFile->curPackage->fullPackageName != PKG_NAME_OHOS_LABELS) {
+    // Annotation from cj.d file without target, it is ok by default.
+    if (target && target->GetFullPackageName() != PKG_NAME_OHOS_LABELS) {
         return false;
     }
     return true;
@@ -507,7 +507,13 @@ void PluginCustomAnnoChecker::Parse(const Decl& decl, PluginCustomAnnoInfo& anno
         if (!anno) {
             continue;
         }
+        bool hideExist = false;
         if (IsAnnoHide(anno)) {
+            if (hideExist) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_apilevel_multi_hide_annotation, *anno);
+                continue;
+            }
+            hideExist = true;
             ParseHideArg(*anno, annoInfo);
         } else if (IsAnnoAPILevel(anno.get(), decl)) {
             ParseAPILevelArgs(decl, *anno, annoInfo);
