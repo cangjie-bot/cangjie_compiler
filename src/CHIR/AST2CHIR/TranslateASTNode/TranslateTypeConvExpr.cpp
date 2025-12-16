@@ -23,6 +23,8 @@ Ptr<Value> Translator::Visit(const AST::TypeConvExpr& typeConvExpr)
     auto ofs = typeConvExpr.overflowStrategy;
     auto noException = (srcTy->IsInteger() && targetTy->IsInteger()) && ofs != OverflowStrategy::THROWING;
     auto opLoc = TranslateLocation(*typeConvExpr.expr);
-    auto newNode = TryCreateWithOV<TypeCast>(currentBlock, !noException, ofs, loc, chirType, operand);
-    return newNode->GetResult();
+    if (tryCatchContext.empty() || noException) {
+        return CreateAndAppendExpression<TypeCast>(loc, chirType, operand, ofs, currentBlock)->GetResult();
+    }
+    return TryCreateExceptionTerminator<TypeCastWithException>(*currentBlock, loc, chirType, operand)->GetResult();
 }

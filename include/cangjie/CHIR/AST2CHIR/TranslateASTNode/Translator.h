@@ -668,9 +668,9 @@ private:
         if (tryCatchContext.empty() || !mayThrowE) {
             return CreateAndAppendExpression<CHIRNodeNormalT<TExpr>>(std::forward<Args>(args)..., ofs, parent);
         }
-        return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)...);
+        return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)..., ofs);
     }
- 
+
     template <typename TEx, typename... Args>
     TEx* TryCreateExceptionTerminator(Block& parent, Args&&... args)
     {
