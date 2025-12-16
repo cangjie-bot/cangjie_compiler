@@ -916,6 +916,10 @@ void DIBuilder::CreateInheritedInterface(
 void DIBuilder::CreateMethodType(
     const CHIR::CustomTypeDef& customDef, CodeGenDIVector16& elements, llvm::DICompositeType* fwdDecl)
 {
+    bool isMockMode = (cgMod.GetCGContext().GetCompileOptions().mock == MockMode::ON) || cgMod.GetCGContext().GetCompileOptions().enableCompileTest;
+    if(customDef.TestAttr(CHIR::Attribute::IMPORTED) && !isMockMode) {
+        return;
+    }
     auto allMethods = customDef.GetType()->GetDeclareAndExtendMethods(cgMod.GetCGContext().GetCHIRBuilder());
     if (allMethods.empty()) {
         return;
