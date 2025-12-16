@@ -30,7 +30,11 @@ std::optional<std::unique_ptr<TypeValue>> TypeValue::Join(const TypeValue& rhs) 
             return nullptr;
         }
     } else {
-        return std::nullopt;
+        if (this->kind == DevirtualTyKind::EXACTLY && rhs.kind == DevirtualTyKind::SUBTYPE_OF) {
+            return std::make_unique<TypeValue>(DevirtualTyKind::SUBTYPE_OF, this->baseLineType); 
+        } else {
+            return std::nullopt;
+        }
     }
 }
 
@@ -342,10 +346,11 @@ static Type* GetInnerTypeFromMemberAccess(const MemberAccess& ma, CHIRBuilder& b
     const auto& path = ma.GetPath();
     auto locationType = ma.GetOperands()[0]->GetType();
     for (size_t i = 0; i < path.size() - 1; ++i) {
-        CJC_ASSERT(locationType != nullptr);
+        CJC_NULLPTR_CHECK(locationType);
         auto index = path[i];
         locationType = GetFieldOfType(*locationType, index, builder);
     }
+    CJC_NULLPTR_CHECK(locationType);
     return locationType;
 }
 
@@ -389,9 +394,7 @@ void TypeAnalysis::HandleMemberAccess(TypeDomain& state, const TMemberAccess* me
     //          parent XX's generic type params.
     if (resType->IsGenericRelated()) {
         auto [res, mapping] = def->GetType()->CalculateGenericTyMapping(*locationType);
-        if (!res) {
-            return HandleDefaultExpr(state, memberAccess);
-        }
+        CJC_ASSERT(res);
         resType = ReplaceRawGenericArgType(*resType, mapping, builder);
     }
     AbstractObject* refObj;

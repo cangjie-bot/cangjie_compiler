@@ -137,7 +137,7 @@ private:
 
     template <typename TTypeCast> void HandleTypeCastExpr(TypeDomain& state, const TTypeCast* typecast) const;
 
-    template <typename TMemberAccess>	
+    template <typename TMemberAccess>
     void HandleMemberAccess(TypeDomain& state, const TMemberAccess* memberAccess) const;
 
     void HandleBoxExpr(TypeDomain& state, const Box* boxExpr) const;
