@@ -916,6 +916,9 @@ void DIBuilder::CreateInheritedInterface(
 void DIBuilder::CreateMethodType(
     const CHIR::CustomTypeDef& customDef, CodeGenDIVector16& elements, llvm::DICompositeType* fwdDecl)
 {
+    if(customDef.TestAttr(CHIR::Attribute::IMPORTED)) {
+        return;
+    }
     auto allMethods = customDef.GetType()->GetDeclareAndExtendMethods(cgMod.GetCGContext().GetCHIRBuilder());
     if (allMethods.empty()) {
         return;
@@ -1067,7 +1070,7 @@ void DIBuilder::CreateCustomTypeMember(std::vector<CHIR::MemberVarInfo> members,
 void DIBuilder::CreateGetGenericFunc(
     const CHIR::CustomType& customTy, llvm::DICompositeType* fwdDecl, CodeGenDIVector16& elements)
 {
-    if (!customTy.IsGenericRelated()) {
+    if (!customTy.IsGenericRelated() || customTy.GetCustomTypeDef()->TestAttr(CHIR::Attribute::IMPORTED)) {
         return;
     }
     auto defType = GetOrCreateType(*customTy.GetCustomTypeDef()->GetType());
