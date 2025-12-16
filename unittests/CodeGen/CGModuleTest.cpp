@@ -48,6 +48,6 @@ TEST_F(CGModuleTest, GetTargetTripleString)
     target.arch = Triple::ArchType::ARM32;
     target.vendor = Triple::Vendor::UNKNOWN;
     target.os = Triple::OSType::LINUX;
-    target.env = Triple::Environment::NOT_AVAILABLE;
+    target.env = Triple::Environment::OHOS;
     EXPECT_EQ(CGModule::GetTargetTripleString(target), "armv7a-linux-gnu");
 }
