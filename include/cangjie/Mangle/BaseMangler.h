@@ -39,7 +39,7 @@ public:
         const Ptr<const AST::File> file, const Ptr<const AST::VarWithPatternDecl> target) const;
 
     /**
-     * @brief Obtains local wildcard variable index under its scope.
+     * @brief Obtains the index for a local wildcard variable under its scope.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      * @param target Indicates the index needs to be obtained which is AST::VarWithPatternDecl.
@@ -49,7 +49,7 @@ public:
         const Ptr<const AST::Node> node, const Ptr<const AST::VarWithPatternDecl> target) const;
 
     /**
-     * @brief Obtains global variable, local variable of function or lambda index under its scope.
+     * @brief Obtains the index for a local variable under its scope.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      * @param target Indicates the index needs to be obtained which is AST::VarDeclAbstract.
@@ -59,7 +59,17 @@ public:
         const Ptr<const AST::Node> node, const Ptr<const AST::VarDeclAbstract> target) const;
 
     /**
-     * @brief Obtains global lambda, local lambda of function or lambda index under its scope.
+     * @brief Obtains the index for a local function under its scope.
+     *
+     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
+     * @param target Indicates the index needs to be obtained which is AST::FuncDecl.
+     * @return std::optional<size_t> The index.
+     */
+    std::optional<size_t> GetIndexOfFunc(
+        const Ptr<const AST::Node> node, const Ptr<const AST::FuncDecl> target) const;
+
+    /**
+     * @brief Obtains the index for a local lambda under its scope.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      * @param target Indicates the index needs to be obtained which is AST::LambdaExpr.
@@ -69,7 +79,7 @@ public:
         const Ptr<const AST::Node> node, const Ptr<const AST::LambdaExpr> target) const;
 
     /**
-     * @brief Obtains global extend index under its scope.
+     * @brief Obtains the index for a global extend under its scope.
      *
      * @param file Indicates AST::File.fileHash.
      * @param target Indicates the index needs to be obtained which is AST::ExtendDecl.
@@ -87,18 +97,11 @@ public:
     void SaveGlobalWildcardVar(const Ptr<const AST::File> file, const Ptr<AST::VarWithPatternDecl> vpd);
 
     /**
-     * @brief Obtain local wildcard variable map which is used to calculate index.
+     * @brief Obtain map contains local declarations under current declaration.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      */
-    void SaveLocalWildcardVar2Decl(const Ptr<AST::Node> node);
-
-    /**
-     * @brief Obtain map contains global variable, local variable of function or lambda.
-     *
-     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
-     */
-    void SaveVar2CurDecl(const Ptr<AST::Node> node);
+    void SaveLocalDecl2CurDecl(const Ptr<AST::Node> node);
 
     /**
      * @brief Obtain map contains global lambda, local lambda of function or lambda.
@@ -147,6 +150,8 @@ public:
     std::map<Ptr<const AST::Node>, std::vector<Ptr<AST::LambdaExpr>>> node2Lambda;
     // Key is AST::File/AST::FuncDecl/AST::LambdaExpr node ptr, value is map of local var identifier to var decls.
     std::map<Ptr<const AST::Node>, std::map<std::string, std::vector<Ptr<AST::VarDeclAbstract>>>> node2LocalVar;
+    // Key is AST::File/AST::FuncDecl/AST::LambdaExpr node ptr, value is map of local func identifier to func decls.
+    std::map<Ptr<const AST::Node>, std::map<std::string, std::vector<Ptr<AST::FuncDecl>>>> node2LocalFunc;
     std::map<Ptr<const AST::File>, std::map<std::string, std::vector<Ptr<AST::ExtendDecl>>>> file2ExtendDecl;
 
     std::vector<uint64_t> fileIndexes;
@@ -252,6 +257,15 @@ public:
      * @return std::string The mangled signature.
      */
     std::string MangleLambda(const AST::LambdaExpr& lambda, const std::vector<Ptr<AST::Node>>& prefix) const;
+    
+    /**
+     * @brief Obtain local function mangled index.
+     *
+     * @param decl The local function decl.
+     * @param prefix Path of the node.
+     * @return std::string The mangled index.
+     */
+    std::string GetMangledLocalFuncIndex(const AST::FuncDecl& decl, const std::vector<Ptr<AST::Node>>& prefix) const;
 
     /**
      * @brief Find outer container of lambda.
@@ -264,12 +278,20 @@ public:
         const std::vector<Ptr<AST::Node>>::const_iterator& iter, const std::vector<Ptr<AST::Node>>& prefix) const;
 
     /**
-     * @brief Check whether the decl is lacal variable decl.
+     * @brief Check whether the decl is local variable decl.
      *
      * @param decl The decl to be judged.
      * @return bool If yes, true is returned. Otherwise, false is returned.
      */
     bool IsLocalVariable(const AST::Decl& decl) const;
+
+    /**
+     * @brief Check whether the decl is local function decl.
+     *
+     * @param decl The decl to be judged.
+     * @return bool If yes, true is returned. Otherwise, false is returned.
+     */
+    bool IsLocalFunc(const AST::Decl& decl) const;
 
     /**
      * @brief Helper function for mangling type name.
@@ -318,7 +340,7 @@ public:
      * @param ctx Save collected variable or lambda.
      * @param pkg The AST::Package node being visited.
      */
-    void CollectVarOrLambda(ManglerContext& ctx, AST::Package& pkg) const;
+    void CollectLocalDecls(ManglerContext& ctx, AST::Package& pkg) const;
 
     /**
      * @brief Export id for AST::Package.
