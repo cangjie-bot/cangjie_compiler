@@ -188,7 +188,9 @@ void FunctionGeneratorImpl::EmitIR()
     IRBuilder2 builder(cgMod);
     auto cgFunc = cgMod.GetOrInsertCGFunction(&chirFunc);
     auto rawFunction = cgFunc->GetRawFunction();
-    cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
+    if(!chirFunc.TestAttr(CHIR::Attribute::IMPORTED)) {
+        cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
+    }
     auto chirFuncTy = chirFunc.GetFuncType();
     CJC_NULLPTR_CHECK(chirFuncTy);
     if (chirFuncTy->IsCFunc()) {
