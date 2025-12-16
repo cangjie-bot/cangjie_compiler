@@ -82,13 +82,13 @@ Ptr<Value> Translator::ProcessBinaryExpr(const AST::BinaryExpr& binaryExpr)
     bool mayHaveException = OverloadableExprMayThrowException(binaryExpr, *chirType);
     if (binaryExpr.leftExpr->ty->IsNothing()) {
         const auto& rightExprLoc = TranslateLocation(*binaryExpr.rightExpr);
-        return TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, binaryExpr.overflowStrategy,
-            rightExprLoc, loc, chirType, kd, lhs, rightExpr)
+        return TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, rightExprLoc, loc, chirType, kd,
+            lhs, rightExpr, binaryExpr.overflowStrategy)
             ->GetResult();
     } else {
         const auto& operatorLoc = GetOperatorLoc(binaryExpr);
         return TryCreateWithOV<BinaryExpression>(
-            currentBlock, mayHaveException, binaryExpr.overflowStrategy, operatorLoc, loc, chirType, kd, lhs, rightExpr)
+            currentBlock, mayHaveException, operatorLoc, loc, chirType, kd, lhs, rightExpr, binaryExpr.overflowStrategy)
             ->GetResult();
     }
 }

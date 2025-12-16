@@ -106,8 +106,8 @@ Value* Translator::TranslateVArrayAssign(const AssignExpr& assign)
         // normal compound assign, e.g a[0] += b
         auto rhsValue = TranslateExprArg(*assign.rightExpr);
         bool mayHaveException = OverloadableExprMayThrowException(assign, *lhs->GetType());
-        auto binaryOpResult = TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, assign.overflowStrategy,
-            loc, lhs->GetType(), op2ExprKind.at(COMPOUND_ASSIGN_EXPR_MAP.at(assign.op)), lhs, rhsValue)
+        auto binaryOpResult = TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, loc, lhs->GetType(),
+            op2ExprKind.at(COMPOUND_ASSIGN_EXPR_MAP.at(assign.op)), lhs, rhsValue, assign.overflowStrategy)
                                   ->GetResult();
 
         auto arrSetContext = IntrisicCallContext {
@@ -177,8 +177,8 @@ Value* Translator::TranslateCompoundAssign(const AssignExpr& assign)
     } else {
         // Translate the RHS part "Y"
         Value* rhs = TranslateExprArg(*assign.rightExpr);
-        auto binOp = TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, assign.overflowStrategy, loc,
-            lhsRightValue->GetType(), op2ExprKind.at(COMPOUND_ASSIGN_EXPR_MAP.at(assign.op)), lhsRightValue, rhs);
+        auto binOp = TryCreateWithOV<BinaryExpression>(currentBlock, mayHaveException, loc, lhsRightValue->GetType(),
+            op2ExprKind.at(COMPOUND_ASSIGN_EXPR_MAP.at(assign.op)), lhsRightValue, rhs, assign.overflowStrategy);
         compoundValue = binOp->GetResult();
     }
     compoundValue = TypeCastOrBoxIfNeeded(*compoundValue, *storeTargetTy, loc);

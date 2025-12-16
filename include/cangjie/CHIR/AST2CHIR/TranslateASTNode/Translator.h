@@ -663,10 +663,10 @@ private:
      * For IntOp, typecast with overflow strategy.
      */
     template <typename TExpr, typename... Args>
-    Expression* TryCreateWithOV(Block* parent, bool mayThrowE, OverflowStrategy ofs, Args&&... args)
+    Expression* TryCreateWithOV(Block* parent, bool mayThrowE, Args&&... args)
     {
         if (tryCatchContext.empty() || !mayThrowE) {
-            return CreateAndAppendExpression<CHIRNodeNormalT<TExpr>>(std::forward<Args>(args)..., ofs, parent);
+            return CreateAndAppendExpression<CHIRNodeNormalT<TExpr>>(std::forward<Args>(args)..., parent);
         }
         return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)...);
     }

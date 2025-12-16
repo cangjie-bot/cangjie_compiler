@@ -23,11 +23,10 @@ Ptr<Value> Translator::Visit(const AST::UnaryExpr& unaryExpr)
     auto chirExpr = TranslateExprArg(*unaryExpr.expr);
     const auto& loc = TranslateLocation(unaryExpr.begin, unaryExpr.end);
 
-    auto ofs = unaryExpr.overflowStrategy;
     bool mayHaveException = OverloadableExprMayThrowException(unaryExpr, *chirType);
     auto opLoc = TranslateLocation(*unaryExpr.expr);
     const auto& operatorLoc = GetOperatorLoc(unaryExpr);
     return TryCreateWithOV<UnaryExpression>(
-        currentBlock, mayHaveException, ofs, operatorLoc, loc, chirType, kd, chirExpr)
+        currentBlock, mayHaveException, operatorLoc, loc, chirType, kd, chirExpr, unaryExpr.overflowStrategy)
         ->GetResult();
 }
