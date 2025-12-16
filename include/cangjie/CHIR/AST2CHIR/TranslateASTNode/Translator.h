@@ -665,7 +665,7 @@ private:
     template <typename TExpr, typename... Args>
     Expression* TryCreateWithOV(Block* parent, bool mayThrowE, OverflowStrategy ofs, Args&&... args)
     {
-        if (tryCatchContext.empty() || !mayThrowE) {
+        if (tryCatchContext.empty() || !mayThrowE || ofs != OverflowStrategy::THROWING) {
             return CreateAndAppendExpression<CHIRNodeNormalT<TExpr>>(std::forward<Args>(args)..., ofs, parent);
         }
         return TryCreateExceptionTerminator<CHIRNodeExceptionT<TExpr>>(*parent, std::forward<Args>(args)...);
