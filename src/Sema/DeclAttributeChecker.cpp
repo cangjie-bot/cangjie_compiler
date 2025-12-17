@@ -445,8 +445,8 @@ void TypeChecker::TypeCheckerImpl::CheckAllDeclAttributes(const ASTContext& ctx)
     std::vector<Symbol*> syms = GetAllDecls(ctx);
     for (auto& sym : syms) {
         if (auto decl = AST::As<ASTKind::DECL>(sym->node)) {
-            CJC_ASSERT(!decl->TestAttr(Attribute::IMPORTED) || decl->TestAttr(Attribute::TOOL_ADD) ||
-                       decl->TestAttr(Attribute::FROM_COMMON_PART) || decl->TestAttr(Attribute::COMMON));
+            CJC_ASSERT(!decl->TestAttr(Attribute::IMPORTED) || decl->TestAnyAttr(Attribute::TOOL_ADD, 
+                Attribute::FROM_COMMON_PART, Attribute::COMMON, Attribute::COMPILER_ADD));
             DeclAttributeChecker(ci->invocation.globalOptions, diag, *decl).Check();
         }
     }

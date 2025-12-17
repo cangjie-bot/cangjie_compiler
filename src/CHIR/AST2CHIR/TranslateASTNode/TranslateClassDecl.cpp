@@ -284,12 +284,13 @@ bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& m
         return true;
     }
 
-    if (member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
+    // if (member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
     if (mergingPlatform && !decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::PLATFORM) &&
       DeclaredInDifferentFiles(decl, member)) {
         // Skip decls from common part when compiling platform
         return false;
     }
+    // }
 
     return true;
 }
