@@ -202,7 +202,22 @@ void ObjCGenerator::Generate()
     }
 
     const auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+<<<<<<< HEAD
     GenerateImports(objCDeclName);
+=======
+
+    // Hack: we now only support sequential generation of header file. As we go through types during code generation,
+    // and in case of function pointers, typedefs are required to be inserted before type usage. Therefore, we collect
+    // them and insert between preamble and all other generated code after we went through all types.
+    AddToPreamble(GenerateImport(FOUNDATION_IMPORT));
+    AddToPreamble(GenerateImport(STDDEF_IMPORT));
+
+    AddWithIndent(GenerateImport("\"" + objCDeclName + ".h\""), GenerationTarget::SOURCE);
+    AddWithIndent(GenerateImport(CJ_IMPORT), GenerationTarget::SOURCE);
+    AddWithIndent(GenerateImport(DLFCN_IMPORT), GenerationTarget::SOURCE);
+    AddWithIndent(GenerateImport(STDLIB_IMPORT), GenerationTarget::SOURCE);
+
+>>>>>>> da76941 (fix: generate function/block pointers through typedef)
     GenerateForwardDeclarations();
     GenerateExternalDeclarations4CJMapping();
     GenerateStaticReferences();
@@ -219,6 +234,10 @@ void ObjCGenerator::Generate()
     GenerateDealloc();
 
     AddWithIndent(END_KEYWORD, GenerationTarget::BOTH);
+
+    InsertTypedefsToPreamble();
+    InsertPreambleInHeaderFront();
+
     WriteToFile();
 }
 
@@ -253,6 +272,10 @@ void ObjCGenerator::AddWithIndent(const std::string& s, const GenerationTarget t
         }
         resSource += "\n";
     }
+}
+
+void ObjCGenerator::AddToPreamble(const std::string& s) {
+    resPreamble += s + "\n";
 }
 /* ------------------------------------------------------ */
 
@@ -319,13 +342,13 @@ std::string ObjCGenerator::WrapperCallByInitForCJMappingReturn(const Ty& retTy, 
  *  return CJImpl_ObjC_cjworld_A_goo(arg1, arg2, ... arg3);
  */
 std::string ObjCGenerator::GenerateDefaultFunctionImplementation(
-    const std::string& name, const Ty& retTy, const ArgsList args, [[maybe_unused]] const ObjCFunctionType type) const
+    const std::string& name, const Ty& retTy, const ArgsList args, [[maybe_unused]] const ObjCFunctionType type)
 {
     std::string result = retTy.IsUnit() ? "" : RETURN_KEYWORD;
     result += " ";
     std::string nativeCall = "";
-    if (ctx.typeMapper.IsObjCObjectType(retTy) && !ctx.typeMapper.IsObjCCJMapping(retTy)) {
-        nativeCall += "(__bridge " + ctx.typeMapper.Cj2ObjCForObjC(retTy) + ")";
+    if ((ctx.typeMapper.IsObjCObjectType(retTy) || ctx.typeMapper.IsObjCBlock(retTy)) && !ctx.typeMapper.IsObjCCJMapping(retTy)) {
+        nativeCall += "(__bridge " + MapCJTypeToObjCType(retTy) + ")";
     }
     nativeCall += name + "(";
     for (size_t i = 0; i < args.size(); i++) {
@@ -466,10 +489,10 @@ void ObjCGenerator::GenerateStaticReferences()
             auto& retTy = *StaticCast<const FuncTy*>(funcDecl.ty)->retTy;
             const auto retType = ctx.typeMapper.IsObjCObjectType(retTy) || ctx.typeMapper.IsObjCBlock(retTy)
                 ? VOID_POINTER_TYPE
-                : ctx.typeMapper.Cj2ObjCForObjC(retTy);
+                : MapCJTypeToObjCType(retTy);
             std::string argTypes = "";
             for (auto& arg: funcDecl.funcBody->paramLists[0]->params) {
-                argTypes += ctx.typeMapper.Cj2ObjCForObjC(*arg->ty) + ",";
+                argTypes += MapCJTypeToObjCType(*arg->ty) + ",";
             }
             // trim unnecessary ","
             argTypes.erase(std::find_if(argTypes.rbegin(), argTypes.rend(), [](auto c) { return c != ','; }).base(),
@@ -692,7 +715,7 @@ void ObjCGenerator::AddProperties()
         if (ctx.factory.IsGeneratedNativeHandleField(*declPtr)) {
             continue;
         }
-        
+
         if (interopType == InteropType::CJ_Mapping && !ctx.typeMapper.IsObjCCJMappingMember(*declPtr)) {
             continue;
         }
@@ -700,7 +723,7 @@ void ObjCGenerator::AddProperties()
         const auto& varDecl = *As<ASTKind::VAR_DECL>(declPtr.get());
         const auto& staticType =
             varDecl.TestAttr(Attribute::STATIC) ? ObjCFunctionType::STATIC : ObjCFunctionType::INSTANCE;
-        const std::string& type = ctx.typeMapper.Cj2ObjCForObjC(*varDecl.ty);
+        const std::string& type = MapCJTypeToObjCType(*varDecl.ty);
         bool genSetter = varDecl.isVar && !SkipSetterForValueTypeDecl(*decl);
         const auto modeModifier = genSetter ? READWRITE_MODIFIER : READONLY_MODIFIER;
         const auto name = ctx.nameGenerator.GetObjCDeclName(varDecl);
@@ -957,7 +980,6 @@ void ObjCGenerator::AddMethods()
         if (ctx.factory.IsGeneratedMember(*declPtr.get())) { continue; }
 
         if (!declPtr->TestAttr(Attribute::PUBLIC)) { continue; }
-        
         if (interopType == InteropType::CJ_Mapping &&
             (!ctx.typeMapper.IsObjCCJMappingMember(*declPtr) || declPtr->IsOpen())) {
             continue;
@@ -1049,13 +1071,32 @@ void ObjCGenerator::WriteToSource()
     FileUtil::WriteToFile(sourcePath, resSource);
 }
 
+void ObjCGenerator::InsertPreambleInHeaderFront() {
+    res = resPreamble + res;
+}
+
+void ObjCGenerator::InsertTypedefsToPreamble() {
+    for (auto def : typedefs) {
+        AddToPreamble(def + ";");
+    }
+}
+
+std::string ObjCGenerator::MapCJTypeToObjCType(const Ty& ty)
+{
+    auto objctype = ctx.typeMapper.Cj2ObjCForObjC(ty);
+    if (objctype.decl != "") {
+        typedefs.insert(objctype.decl);
+    }
+    return objctype.usage;
+}
+
 std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<Type>& type)
 {
     if (!type) {
         return UNSUPPORTED_TYPE;
     }
 
-    return ctx.typeMapper.Cj2ObjCForObjC(*type->ty);
+    return MapCJTypeToObjCType(*type->ty);
 }
 
 std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<FuncParam>& param)
@@ -1064,7 +1105,7 @@ std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<FuncParam>& param)
         return UNSUPPORTED_TYPE;
     }
 
-    return ctx.typeMapper.Cj2ObjCForObjC(*param->type->ty);
+    return MapCJTypeToObjCType(*param->type->ty);
 }
 
 std::string ObjCGenerator::GenerateArgumentCast(const Ty& retTy, std::string value) const

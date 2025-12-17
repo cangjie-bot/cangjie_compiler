@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <string_view>
+#include <unordered_set>
 
 #include "NativeFFI/ObjC/AfterTypeCheck/Interop/Context.h"
 #include "NativeFFI/ObjC/Utils/Handler.h"
@@ -36,8 +37,10 @@ public:
     void Generate();
 
 private:
+    std::string resPreamble;
     std::string res;
     std::string resSource;
+    std::unordered_set<std::string> typedefs;
     const std::string& outputFilePath;
     const std::string& cjLibOutputPath;
     size_t currentBlockIndent = 0;
@@ -50,6 +53,7 @@ private:
     void CloseBlock(bool newLineBefore, bool newLineAfter);
     void AddWithIndent(const std::string& s, const GenerationTarget target = GenerationTarget::HEADER,
         const OptionalBlockOp bOp = OptionalBlockOp::NONE);
+    void AddToPreamble(const std::string& s);
 
     std::string GenerateReturn(const std::string& statement) const;
     std::string GenerateAssignment(const std::string& lhs, const std::string& rhs) const;
@@ -58,7 +62,7 @@ private:
     std::string GenerateCCall(
         const std::string& funcName, const std::vector<std::string> args = std::vector<std::string>()) const;
     std::string GenerateDefaultFunctionImplementation(const std::string& name, const AST::Ty& retTy,
-        const ArgsList args = ArgsList(), const ObjCFunctionType = ObjCFunctionType::INSTANCE) const;
+        const ArgsList args = ArgsList(), const ObjCFunctionType = ObjCFunctionType::INSTANCE);
     std::string GenerateFunctionDeclaration(
         const ObjCFunctionType type, const std::string& returnType, const std::string& name) const;
     std::string GeneratePropertyDeclaration(const ObjCFunctionType staticType, const std::string& mode,
@@ -74,6 +78,7 @@ private:
         const ObjCFunctionType type = ObjCFunctionType::INSTANCE,
         bool hasForeignNameAnno = true);
     std::string GenerateArgumentCast(const AST::Ty& retTy, std::string value) const;
+    std::string MapCJTypeToObjCType(const AST::Ty& ty);
     std::string MapCJTypeToObjCType(const OwnedPtr<AST::Type>& type);
     std::string MapCJTypeToObjCType(const OwnedPtr<AST::FuncParam>& param);
 
@@ -101,6 +106,8 @@ private:
     void WriteToFile();
     void WriteToHeader();
     void WriteToSource();
+    void InsertTypedefsToPreamble();
+    void InsertPreambleInHeaderFront();
 
     // Generate for cj mapping
     void GenerateExternalDeclarations4CJMapping();
