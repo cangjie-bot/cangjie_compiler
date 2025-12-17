@@ -304,15 +304,6 @@ llvm::Value* IRBuilder2::CreateCallOrInvoke(const CGFunctionType& calleeType, ll
                 return CreateLoad(elementType, srcPayload);
             }
         }
-    } else if (chirFuncType.GetReturnType()->IsGeneric()) {
-        CJC_ASSERT(false);
-        auto rstType = chirExpr->GetResult()->GetType();
-        auto rstCGType = CGType::GetOrCreate(cgMod, rstType);
-        if (rstCGType->GetSize() && !rstCGType->IsReference()) {
-            auto elementType = rstCGType->GetLLVMType();
-            auto srcPayload = CreateBitCast(GetPayloadFromObject(ret), elementType->getPointerTo(1U));
-            return CreateLoad(elementType, srcPayload);
-        }
     }
 
     // Determine whether we need to add the metadata that would infer backend to do some optimizations.

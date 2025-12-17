@@ -164,6 +164,7 @@ CGType* CGType::GetOrCreate(CGModule& cgModule, const Cangjie::CHIR::Type* chirT
     /// Release mode: this problem on CHIR will be covered by codegen, the program won't behave incorrectly.
     /// Debug mode: the program will abort and an error will be reported.
     auto& secondCache = cgContext.impl->chirTypeName2CGTypeMap;
+#ifndef NDEBUG
     if (auto it = secondCache.find(chirTy->ToString());
         it != secondCache.end() && !IsLitStructPtrType(it->second->llvmType)) {
         auto [iter, success] = cache.emplace(chirTy, it->second);
@@ -171,6 +172,7 @@ CGType* CGType::GetOrCreate(CGModule& cgModule, const Cangjie::CHIR::Type* chirT
         CJC_ASSERT(false && "It must be a bug on CHIR: an AST type corresponds to different memory address");
         return it->second;
     }
+#endif
     // This `cgType` will be released in the de-constructor of `CGContextImpl`.
     CGType* cgType = CGTypeMgr::GetConcreteCGTypeFor(cgModule, *chirTy, extraInfo);
     // Add the incomplete `cgType` to prevent infinite recursion into this program point.
