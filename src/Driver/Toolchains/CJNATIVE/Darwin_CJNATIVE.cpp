@@ -74,5 +74,14 @@ void Darwin_CJNATIVE::GenerateLinkOptions(Tool& tool)
     }
     auto cangjieLibPath =
         FileUtil::JoinPath(FileUtil::JoinPath(driver.cangjieHome, "lib"), driverOptions.GetCangjieLibTargetPathName());
+    if (driverOptions.linkStatic) {
+        tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "libcangjie-runtime.a"));
+        tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "libcangjie-thread.a"));
+        tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "libboundscheck-static.a"));
+    } else {
+        tool.AppendArg("-lcangjie-runtime");
+        tool.AppendArg("-lboundscheck");
+    }
+    tool.AppendArg("-lSystem");
     tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "libclang_rt.osx.a"));
 }
