@@ -311,13 +311,20 @@ bool DriverOptions::CheckSanitizerRPath() const
 
 bool DriverOptions::CheckStaticOption()
 {
-    if (linkStatic && (target.os != Triple::OSType::LINUX || target.env == Triple::Environment::OHOS)) {
-        linkStatic = false;
-        Warningln("'--static' option has only effect on Linux targets.");
+    if ((target.os == Triple::OSType::LINUX && target.env != Triple::Environment::OHOS)
+        || target.os == Triple::OSType::DARWIN
+        || target.os == Triple::OSType::WINDOWS
+        || target.os == Triple::OSType::IOS) {
+        if (linkStatic && (outputMode != OutputMode::EXECUTABLE)) {
+            linkStatic = false;
+            Warningln("'--static' option is only effective when compiling executables.");
+        }
+        return true;
     }
-    if (linkStatic && (outputMode != OutputMode::EXECUTABLE)) {
+    if (linkStatic) {
         linkStatic = false;
-        Warningln("'--static' option is only effective when compiling executables.");
+        std::string tripleString = target.ToFullTripleString();
+        Warningln("'--static' option is not supported when targeting %s.\n", tripleString.c_str());
     }
     return true;
 }
