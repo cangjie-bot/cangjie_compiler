@@ -133,7 +133,7 @@ public:
     // ===--------------------------------------------------------------------===//
     // Member Function
     // ===--------------------------------------------------------------------===//
-    virtual void AddMethod(class FuncBase* method, bool recordOrder = true);
+    void AddMethod(class FuncBase* method);
     std::vector<FuncBase*> GetMethods() const;
     // you need to update vtable by yourself, after setting methods
     void SetMethods(const std::vector<FuncBase*>& items);

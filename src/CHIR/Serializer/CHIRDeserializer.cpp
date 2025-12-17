@@ -1549,7 +1549,7 @@ void CHIRDeserializer::CHIRDeserializerImpl::ConfigCustomTypeDef(
     auto declaredMethods = GetValue<FuncBase>(buffer->methods());
     for (auto declaredMethod : declaredMethods) {
         CJC_NULLPTR_CHECK(declaredMethod);
-        obj.AddMethod(declaredMethod, false);
+        obj.AddMethod(declaredMethod);
     }
     auto implementedInterfaces = GetType<ClassType>(buffer->implementedInterfaces());
     for (auto implementedInterface : implementedInterfaces) {
@@ -1779,15 +1779,9 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
     }
     if (buffer->abstractMethods()) {
         for (auto info : Create<AbstractMethodInfo>(buffer->abstractMethods())) {
-            obj.AddAbstractMethod(info, false);
+            obj.AddAbstractMethod(info);
         }
     }
-    std::vector<std::string> names;
-    names.reserve(buffer->allMethodMangledNames()->size());
-    for (const auto& name : *buffer->allMethodMangledNames()) {
-        names.emplace_back(name->str());
-    }
-    obj.SetAllMethodMangledNames(names);
 }
 
 template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::ExtendDef* buffer, ExtendDef& obj)
