@@ -8,6 +8,8 @@
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Node.h"
+#include "cangjie/AST/Types.h"
+#include "cangjie/AST/Walker.h"
 
 using namespace Cangjie;
 using namespace Cangjie::AST;
@@ -32,24 +34,30 @@ static constexpr auto DOUBLE_TYPE = "double";
 static constexpr auto BOOL_TYPE = "BOOL";
 static constexpr auto STRUCT_TYPE_PREFIX = "struct ";
 
-template <class TypeRep, class ToString>
-std::string buildFunctionalCType(
-    const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString)
-{
-    std::string result = toString(resultType);
-    result.append({'(', designator, ')', '('});
-    for (auto& argType : argTypes) {
-        result.append(toString(argType));
-        result.push_back(',');
-    }
-    if (result.back() == ',') {
-        result.pop_back();
-    }
-    result.push_back(')');
-    return result;
-}
-
+static constexpr auto TYPEDEF_PREFIX = "typedef ";
+static constexpr auto TYPEDEF_NAME_PREFIX = "Callback";
 } // namespace
+
+template <class TypeRep, class ToString>
+MappedCType TypeMapper::BuildFunctionalCType(
+    const FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString) const
+{
+    auto mangledName = TYPEDEF_NAME_PREFIX + mangler.MangleType(funcType);
+    std::string decl = TYPEDEF_PREFIX;
+    decl.append(toString(resultType));
+    decl.append({'(', designator});
+    decl.append(mangledName);
+    decl.append({')', '('});
+    for (auto& argType : argTypes) {
+        decl.append(toString(argType));
+        decl.push_back(',');
+    }
+    if (decl.back() == ',') {
+        decl.pop_back();
+    }
+    decl.push_back(')');
+    return {mangledName, decl};
+}
 
 Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
 {
@@ -86,7 +94,7 @@ Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
     return cjty;
 }
 
-std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
+MappedCType TypeMapper::Cj2ObjCForObjC(const Ty& from) const
 {
     switch (from.kind) {
         case TypeKind::TYPE_UNIT:
@@ -121,7 +129,9 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
             return BOOL_TYPE;
         case TypeKind::TYPE_STRUCT:
             if (IsObjCPointer(from)) {
-                return Cj2ObjCForObjC(*from.typeArgs[0]) + "*";
+                auto result = Cj2ObjCForObjC(*from.typeArgs[0]);
+                result.usage += "*";
+                return result;
             } else if (Ty::IsCStructType(from)) {
                 return STRUCT_TYPE_PREFIX + from.name;
             } else if (IsObjCCJMapping(from)) {
@@ -132,8 +142,8 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
                 if (!actualFuncType) {
                     return UNSUPPORTED_TYPE;
                 }
-                return buildFunctionalCType(actualFuncType->paramTys, actualFuncType->retTy, '*',
-                    [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t); });
+                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '*',
+                    [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
             }
             CJC_ABORT();
             return UNSUPPORTED_TYPE;
@@ -143,8 +153,8 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
                 if (!actualFuncType) {
                     return UNSUPPORTED_TYPE;
                 }
-                return buildFunctionalCType(actualFuncType->paramTys, actualFuncType->retTy, '^',
-                    [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t); });
+                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '^',
+                    [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
             }
             if (IsObjCObjectType(from)) {
                 return from.name + "*";
@@ -158,16 +168,19 @@ std::string TypeMapper::Cj2ObjCForObjC(const Ty& from) const
                 return "id<" + from.name + ">";
             }
             return UNSUPPORTED_TYPE;
-        case TypeKind::TYPE_POINTER:
+        case TypeKind::TYPE_POINTER: {
             if (from.typeArgs[0]->kind == TypeKind::TYPE_FUNC) {
                 return Cj2ObjCForObjC(*from.typeArgs[0]);
             }
-            return Cj2ObjCForObjC(*from.typeArgs[0]) + "*";
+            auto result = Cj2ObjCForObjC(*from.typeArgs[0]);
+            result.usage += "*";
+            return result;
+        }
         case TypeKind::TYPE_FUNC: {
             auto actualFuncType = DynamicCast<FuncTy>(&from);
             CJC_NULLPTR_CHECK(actualFuncType);
-            return buildFunctionalCType(
-                actualFuncType->paramTys, actualFuncType->retTy, '*', [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t); });
+            return BuildFunctionalCType(
+                *actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '*', [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
         }
         case TypeKind::TYPE_ENUM:
             if (IsObjCCJMapping(from)) {
