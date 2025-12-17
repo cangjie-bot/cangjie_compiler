@@ -280,7 +280,7 @@ TypeKind GetGenericActualTypeKind(std::string configType) {
         {"Float16", TypeKind::TYPE_FLOAT16},
         {"Float32", TypeKind::TYPE_FLOAT32},
         {"Float64", TypeKind::TYPE_FLOAT64},
-        {"Boolean", TypeKind::TYPE_BOOLEAN},
+        {"Bool", TypeKind::TYPE_BOOLEAN},
     };
     auto it = typeMap.find(configType);
     CJC_ASSERT(it != typeMap.end());
