@@ -28,6 +28,7 @@ Ptr<AST::VarDecl> GetNativeVarHandle(const AST::ClassDecl& target);
 bool HasMirrorSuperClass(const AST::ClassLikeDecl& target);
 bool IsStaticInitMethod(const AST::Node& node);
 bool HasMirrorSuperInterface(const AST::ClassLikeDecl& target);
+bool HasImplSuperClass(const AST::ClassDecl& target);
 Ptr<AST::FuncDecl> GetNativeHandleGetter(const AST::ClassLikeDecl& target);
 Ptr<AST::ClassDecl> GetSyntheticWrapper(const ImportManager& importManager, const AST::ClassLikeDecl& target);
 Ptr<AST::FuncDecl> GetFinalizer(const AST::ClassDecl& target);

@@ -27,6 +27,10 @@ Ptr<ClassDecl> GetMirrorSuperClass(const ClassLikeDecl& target)
         if (superClass && TypeMapper::IsObjCMirror(*superClass->ty)) {
             return superClass;
         }
+
+        if (superClass && TypeMapper::IsObjCImpl(*superClass->ty)) {
+            return GetMirrorSuperClass(*superClass);
+        }
     }
 
     return nullptr;
@@ -44,15 +48,15 @@ Ptr<Decl> FindMirrorMember(const std::string_view& mirrorMemberIdent, const Inhe
 }
 
 /**
-    * @brief Generates a synthetic function stub based on an existing function declaration.
-    *
-    * This function creates a clone of the provided function declaration (fd),
-    * replaces its outerDecl to synthetic class, and then inserts the
-    * modified function declaration into the specified synthetic class declaration.
-    *
-    * @param synthetic The class declaration where the cloned function stub will be inserted.
-    * @param fd The original function declaration that will be cloned and modified.
-    */
+ * @brief Generates a synthetic function stub based on an existing function declaration.
+ *
+ * This function creates a clone of the provided function declaration (fd),
+ * replaces its outerDecl to synthetic class, and then inserts the
+ * modified function declaration into the specified synthetic class declaration.
+ *
+ * @param synthetic The class declaration where the cloned function stub will be inserted.
+ * @param fd The original function declaration that will be cloned and modified.
+ */
 void GenerateSyntheticClassFuncStub(ClassDecl& synthetic, FuncDecl& fd)
 {
     OwnedPtr<FuncDecl> funcStub = ASTCloner::Clone(Ptr(&fd));
@@ -84,7 +88,7 @@ void GenerateSyntheticClassPropStub([[maybe_unused]] ClassDecl& synthetic, [[may
     propStub->outerDecl = Ptr(&synthetic);
     synthetic.body->decls.emplace_back(std::move(propStub));
 }
-    
+
 } // namespace
 
 bool HasMirrorSuperClass(const ClassLikeDecl& target)
@@ -162,7 +166,7 @@ Ptr<FuncDecl> GetFinalizer(const ClassDecl& target)
     return nullptr;
 }
 
-bool IsSyntheticWrapper(const AST::Decl& decl)
+bool IsSyntheticWrapper(const Decl& decl)
 {
     return TypeMapper::IsSyntheticWrapper(*decl.ty);
 }
@@ -188,6 +192,17 @@ void GenerateSyntheticClassAbstractMemberImplStubs(ClassDecl& synthetic, const M
                 continue;
         }
     }
+}
+
+bool HasImplSuperClass(const ClassDecl& target)
+{
+    for (auto& it : target.inheritedTypes) {
+        if (TypeMapper::IsObjCImpl(*it->ty)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 } // namespace Cangjie::Interop::ObjC

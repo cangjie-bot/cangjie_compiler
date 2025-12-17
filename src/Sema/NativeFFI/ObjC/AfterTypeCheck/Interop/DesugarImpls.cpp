@@ -15,6 +15,7 @@
 #include "NativeFFI/Utils.h"
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Walker.h"
+#include <iterator>
 
 using namespace Cangjie::AST;
 using namespace Cangjie::Native::FFI;
@@ -54,6 +55,7 @@ void DesugarImpls::Desugar(InteropContext& ctx, ClassDecl& impl, FuncDecl& metho
     // We are interested in:
     // 1. CallExpr to MemberAccess, as it could be `super.<member>(...)`
     // 2. MemberAccess, as it could be a prop getter call
+    // 3. CallExpr to RefExpr, as it could be `super(...)` or `this(...)`
     Walker(method.funcBody->body.get(), [&](auto node) {
         if (node->TestAnyAttr(Attribute::HAS_BROKEN, Attribute::IS_BROKEN)) {
             return VisitAction::SKIP_CHILDREN;
@@ -61,11 +63,9 @@ void DesugarImpls::Desugar(InteropContext& ctx, ClassDecl& impl, FuncDecl& metho
 
         switch (node->astKind) {
             case ASTKind::CALL_EXPR:
-                DesugarCallExpr(ctx, impl, *StaticAs<ASTKind::CALL_EXPR>(node));
-                break;
+                return DesugarCallExpr(ctx, impl, method, *StaticAs<ASTKind::CALL_EXPR>(node));
             case ASTKind::MEMBER_ACCESS:
-                DesugarGetForPropDecl(ctx, impl, *StaticAs<ASTKind::MEMBER_ACCESS>(node));
-                break;
+                return DesugarGetForPropDecl(ctx, impl, method, *StaticAs<ASTKind::MEMBER_ACCESS>(node));
             default:
                 break;
         }
@@ -85,34 +85,107 @@ void DesugarImpls::Desugar(InteropContext& ctx, ClassDecl& impl, PropDecl& prop)
     }
 }
 
-void DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, CallExpr& ce)
+VisitAction DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, FuncDecl& method, CallExpr& ce)
 {
     if (ce.TestAnyAttr(Attribute::UNREACHABLE, Attribute::LEFT_VALUE)) {
-        return;
+        return VisitAction::SKIP_CHILDREN;
     }
 
     if (ce.desugarExpr || !ce.baseFunc || !ce.resolvedFunction) {
-        return;
+        return VisitAction::WALK_CHILDREN;
     }
 
     if (ce.callKind != CallKind::CALL_SUPER_FUNCTION) {
-        return;
+        return VisitAction::WALK_CHILDREN;
     }
 
-    auto fd = StaticAs<ASTKind::FUNC_DECL>(ce.resolvedFunction);
-    if (!ctx.typeMapper.IsObjCMirror(*fd->outerDecl->ty)) {
-        return;
+    auto targetFd = ce.resolvedFunction;
+    if (targetFd->propDecl && targetFd->propDecl->TestAttr(Attribute::DESUGARED_MIRROR_FIELD)) {
+        return VisitAction::WALK_CHILDREN;
     }
-    if (fd->propDecl && fd->propDecl->TestAttr(Attribute::DESUGARED_MIRROR_FIELD)) {
-        return;
-    }
-    auto fdTy = StaticCast<FuncTy>(fd->ty);
+
+    auto targetFdTy = StaticCast<FuncTy>(targetFd->ty);
     auto curFile = ce.curFile;
+    auto isInGeneratedCtor = ctx.factory.IsGeneratedCtor(method);
+    /**
+     * super(...args)
+     * -->
+     * if doesn't have @ObjCImpl super class:
+     * super({
+     *  self = [Impl alloc]; // skipped, if `self` is already provided
+     *  self = [super init:...args];
+     *  [self setRegistryId:putToRegistry(This)];
+     *  self
+     * }, ...args)
+     *
+     * else if has @ObjCImpl super class:
+     * super({
+     *   self = [Impl alloc]; // skipped, if `self` is already provided
+     *   [super init:...args]
+     * }, ...args)
+     */
+    if (IsSuperConstructorCall(ce)) {
+        OwnedPtr<Expr> objCSelf;
+        if (isInGeneratedCtor) {
+            // already have a self ptr
+            auto& methodParams = method.funcBody->paramLists[0]->params;
+            CJC_ASSERT(methodParams.size() > 0);
+            objCSelf = CreateRefExpr(*methodParams[0]);
+        } else {
+            // alloc a new ptr
+            objCSelf = ctx.factory.CreateAllocCall(impl, curFile);
+        }
 
-    // super(...)
-    // need implementation
-    if (auto re = As<ASTKind::REF_EXPR>(ce.baseFunc); re && re->isSuper) {
-        return;
+        auto withMethodEnvCall = WithinFile(
+            ctx.factory.CreateWithMethodEnvScope(std::move(objCSelf), targetFdTy->retTy,
+                [&](auto&& receiver, auto&& objCSuper) {
+                    std::vector<OwnedPtr<Expr>> superInitArgs;
+                    std::transform(ce.args.begin(), ce.args.end(), std::back_inserter(superInitArgs), [&](auto& arg) {
+                        return ctx.factory.UnwrapEntity(WithinFile(ASTCloner::Clone(arg->expr.get()), curFile));
+                    });
+                    auto superInit = ctx.factory.CreateMethodCallViaMsgSendSuper(
+                        *targetFd, std::move(receiver), std::move(objCSuper), std::move(superInitArgs));
+
+                    if (HasImplSuperClass(impl)) {
+                        return Nodes<Node>(std::move(superInit));
+                    }
+
+                    auto tmpSelf = CreateTmpVarDecl(nullptr, std::move(superInit));
+                    auto selfRef = CreateRefExpr(*tmpSelf);
+                    auto putToRegistry =
+                        ctx.factory.CreatePutToRegistryCall(CreateThisRef(Ptr(&impl), impl.ty, curFile));
+                    auto setRegistryId =
+                        ctx.factory.CreateObjCMsgSendCall(ASTCloner::Clone(selfRef.get()), REGISTRY_ID_SETTER_SELECTOR,
+                            TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT), Nodes<Expr>(std::move(putToRegistry)));
+
+                    return Nodes<Node>(std::move(tmpSelf), std::move(setRegistryId), std::move(selfRef));
+                }),
+            curFile);
+        ce.desugarExpr = std::move(withMethodEnvCall);
+
+        return VisitAction::WALK_CHILDREN;
+    }
+
+    /**
+     * this(...args)
+     * -->
+     * if is in generated ctor:
+     * this($obj, ...args)
+     */
+    if (isInGeneratedCtor && IsThisConstructorCall(ce)) {
+        auto& methodParams = method.funcBody->paramLists[0]->params;
+        CJC_ASSERT(methodParams.size() > 0);
+        auto objCSelf = CreateRefExpr(*methodParams[0]);
+
+        std::vector<OwnedPtr<FuncArg>> args;
+        args.push_back(CreateFuncArg(std::move(objCSelf)));
+        args.insert(args.end(), std::make_move_iterator(ce.args.begin()), std::make_move_iterator(ce.args.end()));
+
+        auto realTarget = ctx.factory.GetGeneratedImplCtor(impl, *targetFd);
+        auto realTargetTy = StaticCast<FuncTy>(realTarget->ty);
+        ce.desugarExpr = CreateThisCall(impl, *realTarget, realTargetTy, curFile, std::move(args));
+
+        return VisitAction::WALK_CHILDREN;
     }
 
     std::vector<OwnedPtr<Expr>> msgSendSuperArgs;
@@ -121,37 +194,38 @@ void DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, CallExp
 
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(impl, false, ce.curFile);
     auto withMethodEnvCall = ctx.factory.CreateWithMethodEnvScope(
-        std::move(nativeHandle), fdTy->retTy, [&](auto&& receiver, auto&& objCSuper) {
+        std::move(nativeHandle), targetFdTy->retTy, [&](auto&& receiver, auto&& objCSuper) {
             OwnedPtr<Node> msgSendSuperCall;
-            if (fd->propDecl) {
+            if (targetFd->propDecl) {
                 if (!msgSendSuperArgs.empty()) {
                     msgSendSuperCall = ctx.factory.CreatePropSetterCallViaMsgSendSuper(
-                        *fd->propDecl, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs[0]));
+                        *targetFd->propDecl, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs[0]));
                 } else {
                     msgSendSuperCall = ctx.factory.CreatePropGetterCallViaMsgSendSuper(
-                        *fd->propDecl, std::move(receiver), std::move(objCSuper));
+                        *targetFd->propDecl, std::move(receiver), std::move(objCSuper));
                 }
             } else {
                 msgSendSuperCall = ctx.factory.CreateMethodCallViaMsgSendSuper(
-                    *fd, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs));
+                    *targetFd, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs));
             }
 
             return Nodes<Node>(std::move(msgSendSuperCall));
         });
-    withMethodEnvCall->curFile = ce.curFile;
-
-    ce.desugarExpr = ctx.factory.WrapEntity(std::move(withMethodEnvCall), *fdTy->retTy);
+    withMethodEnvCall->curFile = curFile;
+    ce.desugarExpr = ctx.factory.WrapEntity(std::move(withMethodEnvCall), *targetFdTy->retTy);
+    return VisitAction::WALK_CHILDREN;
 }
 
-void DesugarImpls::DesugarGetForPropDecl(InteropContext& ctx, ClassDecl& impl, MemberAccess& ma)
+VisitAction DesugarImpls::DesugarGetForPropDecl(
+    InteropContext& ctx, ClassDecl& impl, [[maybe_unused]] FuncDecl& method, MemberAccess& ma)
 {
     if (ma.desugarExpr || ma.TestAnyAttr(Attribute::UNREACHABLE, Attribute::LEFT_VALUE)) {
-        return;
+        return VisitAction::SKIP_CHILDREN;
     }
 
     auto target = ma.GetTarget();
     if (!target || target->astKind != ASTKind::PROP_DECL || target->TestAttr(Attribute::DESUGARED_MIRROR_FIELD)) {
-        return;
+        return VisitAction::WALK_CHILDREN;
     }
 
     auto isSuper = false;
@@ -160,12 +234,12 @@ void DesugarImpls::DesugarGetForPropDecl(InteropContext& ctx, ClassDecl& impl, M
     }
 
     if (!isSuper) {
-        return;
+        return VisitAction::WALK_CHILDREN;
     }
 
     auto pd = StaticAs<ASTKind::PROP_DECL>(target);
     if (!ctx.typeMapper.IsObjCMirror(*pd->outerDecl->ty)) {
-        return;
+        return VisitAction::WALK_CHILDREN;
     }
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(impl, false, ma.curFile);
     auto withMethodEnvCall =
@@ -177,4 +251,5 @@ void DesugarImpls::DesugarGetForPropDecl(InteropContext& ctx, ClassDecl& impl, M
         });
     withMethodEnvCall->curFile = ma.curFile;
     ma.desugarExpr = ctx.factory.WrapEntity(std::move(withMethodEnvCall), *ma.ty);
+    return VisitAction::WALK_CHILDREN;
 }

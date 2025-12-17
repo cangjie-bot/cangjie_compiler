@@ -600,6 +600,53 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(const Decl& target, FuncDecl& 
     return wrapper;
 }
 
+
+OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObjectReturningObjCSelf(const Decl& target, FuncDecl& ctor) {
+    auto curFile = ctor.curFile;
+    auto nativeObjCIdTy = bridge.GetNativeObjCIdTy();
+
+    auto wrapperParamList = MakeOwned<FuncParamList>();
+    auto& wrapperParams = wrapperParamList->params;
+    auto& ctorParams = ctor.funcBody->paramLists[0]->params;
+    std::transform(ctorParams.begin(), ctorParams.end(), std::back_inserter(wrapperParams),
+        [this](auto& p) { return CreateFuncParam(p->identifier.Val(), nullptr, nullptr, typeMapper.Cj2CType(p->ty)); });
+
+    std::vector<Ptr<Ty>> wrapperParamTys;
+    std::transform(
+        wrapperParams.begin(), wrapperParams.end(), std::back_inserter(wrapperParamTys), [](auto& p) { return p->ty; });
+
+    auto wrapperTy = typeManager.GetFunctionTy(wrapperParamTys, nativeObjCIdTy, {.isC = true});
+
+    std::vector<OwnedPtr<FuncParamList>> wrapperParamLists;
+    wrapperParamLists.emplace_back(std::move(wrapperParamList));
+
+    std::vector<OwnedPtr<FuncArg>> ctorCallArgs;
+    size_t argIdx = 0;
+    for (auto& wrapperParam: wrapperParams) {
+        auto paramRef = WithinFile(CreateRefExpr(*wrapperParam), curFile);
+        auto ctorCallArg = CreateFuncArg(WrapEntity(std::move(paramRef), *ctorParams[argIdx++]->ty));
+        ctorCallArgs.emplace_back(std::move(ctorCallArg));
+    }
+
+    auto ctorCall = CreateCallExpr(
+        CreateRefExpr(ctor), std::move(ctorCallArgs), Ptr(&ctor), target.ty, CallKind::CALL_OBJECT_CREATION);
+    auto nativeHandleExpr = CreateNativeHandleExpr(std::move(ctorCall));
+
+    auto wrapperBody = CreateFuncBody(std::move(wrapperParamLists), nullptr,
+        CreateBlock(Nodes<Node>(std::move(nativeHandleExpr)), nativeObjCIdTy), wrapperTy);
+
+    auto wrapperName = nameGenerator.GenerateInitCjObjectName(ctor);
+
+    auto wrapper = CreateFuncDecl(wrapperName, std::move(wrapperBody), wrapperTy);
+    wrapper->moduleName = ctor.moduleName;
+    wrapper->fullPackageName = ctor.fullPackageName;
+    wrapper->EnableAttr(Attribute::C, Attribute::GLOBAL, Attribute::PUBLIC, Attribute::NO_MANGLE);
+    wrapper->funcBody->funcDecl = wrapper.get();
+    PutDeclToFile(*wrapper, *ctor.curFile);
+
+    return wrapper;
+}
+
 OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObjectForEnumNoParams(AST::EnumDecl& target, AST::VarDecl& ctor)
 {
     auto curFile = ctor.curFile;
@@ -1110,7 +1157,7 @@ OwnedPtr<FuncDecl> ASTFactory::CreateBaseCtorDecl(ClassDecl& target)
     return ctor;
 }
 
-OwnedPtr<FuncDecl> ASTFactory::CreateImplCtor(ClassDecl& target, FuncDecl& from)
+OwnedPtr<FuncDecl> ASTFactory::CreateImplCtor(FuncDecl& from)
 {
     auto nativeHandleTy = bridge.GetNativeObjCIdTy();
     auto ctor = ASTCloner::Clone(Ptr(&from));
@@ -1120,7 +1167,6 @@ OwnedPtr<FuncDecl> ASTFactory::CreateImplCtor(ClassDecl& target, FuncDecl& from)
 
     implCtorParams.insert(implCtorParams.begin(),
         WithinFile(CreateFuncParam(NATIVE_HANDLE_IDENT, CreateType(nativeHandleTy), nullptr, nativeHandleTy), curFile));
-    auto& nativeHandleParam = *implCtorParams.front();
 
     std::vector<Ptr<Ty>> implCtorParamTys;
     std::transform(implCtorParams.begin(), implCtorParams.end(), std::back_inserter(implCtorParamTys),
@@ -1130,21 +1176,6 @@ OwnedPtr<FuncDecl> ASTFactory::CreateImplCtor(ClassDecl& target, FuncDecl& from)
     ctor->funcBody->ty = ctor->ty;
     ctor->funcBody->funcDecl = ctor.get();
     ctor->constructorCall = ConstructorCall::SUPER;
-
-    CJC_NULLPTR_CHECK(target.GetSuperClassDecl());
-    auto parentCtor = GetGeneratedBaseCtor(*target.GetSuperClassDecl());
-    auto superCall = WithinFile(CreateSuperCall(*target.GetSuperClassDecl(), *parentCtor, parentCtor->ty), curFile);
-    superCall->args.emplace_back(CreateFuncArg(WithinFile(CreateRefExpr(nativeHandleParam), curFile)));
-
-    auto& body = ctor->funcBody->body->body;
-    body.erase(std::remove_if(body.begin(), body.end(), [](auto& node) {
-        if (auto call = As<ASTKind::CALL_EXPR>(node.get())) {
-            return IsSuperConstructorCall(*call);
-        }
-        return false;
-        }), body.end());
-
-    body.insert(body.begin(), std::move(superCall));
 
     return ctor;
 }
@@ -1293,13 +1324,13 @@ void ASTFactory::PutDeclToFile(Decl& decl, File& target)
     decl.end = target.end;
 }
 
-OwnedPtr<CallExpr> ASTFactory::CreatePutToRegistryCall(OwnedPtr<Expr> nativeHandle)
+OwnedPtr<CallExpr> ASTFactory::CreatePutToRegistryCall(OwnedPtr<Expr> expr)
 {
     auto putToRegistryDecl = bridge.GetPutToRegistryDecl();
     auto putToRegistryExpr = CreateRefExpr(*putToRegistryDecl);
 
     std::vector<OwnedPtr<FuncArg>> args;
-    args.emplace_back(CreateFuncArg(std::move(nativeHandle)));
+    args.emplace_back(CreateFuncArg(std::move(expr)));
 
     return CreateCallExpr(std::move(putToRegistryExpr), std::move(args), putToRegistryDecl,
         putToRegistryDecl->funcBody->retType->ty, CallKind::CALL_DECLARED_FUNCTION);

@@ -30,9 +30,9 @@ OwnedPtr<RefExpr> CreateThisRef(Ptr<Decl> target, Ptr<Ty> ty, Ptr<File> curFile)
     return thisRef;
 }
 
-OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile)
+OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile, std::vector<OwnedPtr<FuncArg>> args)
 {
-    auto call = CreateCallExpr(CreateThisRef(Ptr(&baseTarget), funcTy, curFile), {});
+    auto call = CreateCallExpr(CreateThisRef(Ptr(&baseTarget), funcTy, curFile), std::move(args));
     call->callKind = CallKind::CALL_OBJECT_CREATION;
     call->ty = target.ty;
     call->resolvedFunction = Ptr(&baseTarget);
@@ -309,6 +309,15 @@ OwnedPtr<Type> GetGenericInstType(std::string typeStr) {
     // Current only support primitive type.
     auto type = GetPrimitiveType(typeStr, typeKind);
     return type;
+}
+
+bool IsThisConstructorCall(const CallExpr& call)
+{
+    auto baseFunc = As<ASTKind::REF_EXPR>(call.baseFunc.get());
+    if (!baseFunc || !baseFunc->isThis) {
+        return false;
+    }
+    return call.callKind == CallKind::CALL_OBJECT_CREATION || call.callKind == CallKind::CALL_STRUCT_CREATION;
 }
 
 } // namespace Cangjie::Native::FFI

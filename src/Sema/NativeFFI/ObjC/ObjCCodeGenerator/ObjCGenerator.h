@@ -103,6 +103,7 @@ private:
     void GenerateDeleteObject();
     void GenerateDealloc();
     void AddMethods();
+    void AddCallCangjieBeforeInitGuard();
     void WriteToFile();
     void WriteToHeader();
     void WriteToSource();

@@ -58,7 +58,7 @@ enum class ArrayOperationKind: uint8_t {
 
 OwnedPtr<RefExpr> CreateThisRef(Ptr<Decl> target, Ptr<Ty> ty, Ptr<File> curFile);
 
-OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile);
+OwnedPtr<CallExpr> CreateThisCall(Decl& target, FuncDecl& baseTarget, Ptr<Ty> funcTy, Ptr<File> curFile, std::vector<OwnedPtr<FuncArg>> args = {});
 
 OwnedPtr<PrimitiveType> CreateUnitType(Ptr<File> curFile);
 
@@ -173,6 +173,7 @@ Ptr<Annotation> GetAnnotation(const Decl& decl, AnnotationKind annotationKind);
 Ptr<std::string> GetSingleArgumentAnnotationValue(const Decl& target, AnnotationKind annotationKind);
 
 bool IsSuperConstructorCall(const CallExpr& call);
+bool IsThisConstructorCall(const CallExpr& call);
 
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
 OwnedPtr<Type> GetGenericInstType(std::string typeStr);

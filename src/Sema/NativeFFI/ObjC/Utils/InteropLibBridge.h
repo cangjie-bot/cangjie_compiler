@@ -84,8 +84,7 @@ public:
 
     /**
      * Gets ObjCUnreachableCodeException declaration.
-     * An exception that has to be used to mark an unreachable code (e.g instantiation @ObjCImpl objects from Cangjie
-     * side).
+     * An exception that has to be used to mark an unreachable code (e.g call static method on @ObjCMirror interface wrapper).
      */
     Ptr<AST::ClassDecl> GetObjCUnreachableCodeExceptionDecl();
 

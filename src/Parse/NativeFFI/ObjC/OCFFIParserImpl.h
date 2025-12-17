@@ -69,7 +69,6 @@ private:
 
     void DiagObjCMirrorCannotBeSealed(const AST::Node& node) const;
 
-    void DiagObjCImplCannotBeOpen(const AST::Node& node) const;
     void DiagObjCImplCannotBeInterface(const AST::Node& node) const;
     void DiagObjCImplCannotBeAbstract(const AST::Node& node) const;
     void DiagObjCImplCannotBeSealed(const AST::Node& node) const;
