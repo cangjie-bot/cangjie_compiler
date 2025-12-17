@@ -14,11 +14,22 @@
 #define CANGJIE_SEMA_OBJ_C_UTILS_TYPE_MAPPER_H
 
 #include "cangjie/AST/Node.h"
+#include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Utils/SafePointer.h"
 #include "InteropLibBridge.h"
 
 namespace Cangjie::Interop::ObjC {
+struct MappedCType {
+public:
+    std::string usage;
+    std::string decl;
+
+    MappedCType(std::string usage, std::string decl): usage(usage), decl(decl) {}
+    MappedCType(const char* usage): usage(usage) {}
+    MappedCType(std::string usage): usage(usage) {}
+};
+
 class TypeMapper {
 public:
     explicit TypeMapper(InteropLibBridge& bridge, TypeManager& typeManager)
@@ -26,7 +37,10 @@ public:
     {
     }
 
-    std::string Cj2ObjCForObjC(const AST::Ty& from) const;
+    template <class TypeRep, class ToString>
+    MappedCType BuildFunctionalCType(const AST::FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString) const;
+
+    MappedCType Cj2ObjCForObjC(const AST::Ty& from) const;
     Ptr<AST::Ty> Cj2CType(Ptr<AST::Ty> cjty) const;
     static bool IsObjCCompatible(const AST::Ty& ty);
     static bool IsObjCMirror(const AST::Decl& decl);
@@ -70,6 +84,7 @@ public:
 private:
     InteropLibBridge& bridge;
     TypeManager& typeManager;
+    BaseMangler mangler;
 };
 } // namespace Cangjie::Interop::ObjC
 
