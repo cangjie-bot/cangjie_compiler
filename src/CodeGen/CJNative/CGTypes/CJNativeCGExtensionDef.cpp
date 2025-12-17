@@ -435,9 +435,8 @@ bool CGExtensionDef::CreateExtensionDefForType(CGModule& cgMod, const std::strin
 
 bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedType)
 {
-    auto& vtable = chirDef.GetVTable();
-    auto found = vtable.find(const_cast<CHIR::ClassType*>(&inheritedType));
-    auto funcTableSize = found == vtable.end() ? 0 : found->second.size();
+    auto found = chirDef.GetDefVTable().GetExpectedTypeVTable(inheritedType);
+    auto funcTableSize = found.IsEmpty() ? 0 : found.GetMethodNum();
     if (funcTableSize == 0 && inheritedType.GetClassDef()->IsInterface() && &inheritedType == targetType) {
         return false;
     }
@@ -453,8 +452,7 @@ bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedT
         llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()),
         static_cast<uint8_t>(inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000));
     content[static_cast<size_t>(WHERE_CONDITION_FN)] = GenerateWhereConditionFn();
-    content[static_cast<size_t>(FUNC_TABLE)] =
-        GenerateFuncTableForType(funcTableSize == 0 ? std::vector<CHIR::VirtualFuncInfo>() : found->second);
+    content[static_cast<size_t>(FUNC_TABLE)] = GenerateFuncTableForType(found);
     content[static_cast<size_t>(FUNC_TABLE_SIZE)] =
         llvm::ConstantInt::get(llvm::Type::getInt16Ty(cgCtx.GetLLVMContext()), funcTableSize);
 
