@@ -1145,10 +1145,6 @@ void TypeChecker::TypeCheckerImpl::AddSuperClassObjectForClassDecl(ASTContext& c
             continue;
         }
 
-        if (cd->TestAnyAttr(Attribute::OBJ_C_MIRROR, Attribute::OBJ_C_MIRROR_SUBTYPE, Attribute::OBJ_C_MIRROR_SYNTHETIC_WRAPPER)) {
-            continue;
-        }
-
         if (cd->TestAnyAttr(Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR_SUBTYPE)) {
             if (!AddJObjectSuperClassJavaInterop(ctx, *cd)) {
                 AddObjectSuperClass(ctx, *cd);
