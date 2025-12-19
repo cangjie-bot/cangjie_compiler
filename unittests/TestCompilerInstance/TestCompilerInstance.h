@@ -32,12 +32,12 @@ public:
         cangjieHome = FileUtil::JoinPath(FileUtil::JoinPath(".", "build"), "build");
 #endif
         // create modules dir.
-        auto modulesName = FileUtil::JoinPath(cangjieHome, "modules");
-        auto libPathName = invocation.globalOptions.GetCangjieLibTargetPathName();
-        auto cangjieModules = FileUtil::JoinPath(modulesName, libPathName);
-        if (!FileUtil::FileExist(cangjieModules)) {
-            FileUtil::CreateDirs(FileUtil::JoinPath(cangjieModules, ""));
-        }
+        // auto modulesName = FileUtil::JoinPath(cangjieHome, "modules");
+        // auto libPathName = invocation.globalOptions.GetCangjieLibTargetPathName();
+        // auto cangjieModules = FileUtil::JoinPath(modulesName, libPathName);
+        // if (!FileUtil::FileExist(cangjieModules)) {
+        //     FileUtil::CreateDirs(FileUtil::JoinPath(cangjieModules, ""));
+        // }
         CJC_NULLPTR_CHECK(compileStrategy); // Was created in ctor of 'CompilerInstance'.
     }
     bool PerformParse() override;
