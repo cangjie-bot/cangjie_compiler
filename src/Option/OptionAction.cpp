@@ -658,8 +658,15 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
      }},
 #endif
     { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-        opts.commonPartCjo = GlobalOptions::ValidateInputFilePath(
+        auto commonPartCjo = GlobalOptions::ValidateInputFilePath(
             arg.value, DiagKindRefactor::driver_invalid_binary_file);
+        if (commonPartCjo.has_value()) {
+            opts.commonPartCjos.emplace_back(commonPartCjo.value());
+        } else {
+            DiagnosticEngine diag;
+            diag.DiagnoseRefactor(DiagKindRefactor::no_such_file_or_directory, DEFAULT_POSITION, arg.value);
+        }
+
         return true;
     }},
     { Options::ID::INCRE_COMPILE, OPTION_TRUE_ACTION(opts.enIncrementalCompilation = true) },

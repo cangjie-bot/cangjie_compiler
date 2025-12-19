@@ -35,7 +35,7 @@ using namespace TypeCheckUtil;
 MPTypeCheckerImpl::MPTypeCheckerImpl(const CompilerInstance& ci)
     : typeManager(*ci.typeManager), diag(ci.diag),
       compileCommon(ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR),
-      compilePlatform(ci.invocation.globalOptions.commonPartCjo != std::nullopt)
+      compilePlatform(ci.invocation.globalOptions.commonPartCjos.size() > 0)
 {
 }
 

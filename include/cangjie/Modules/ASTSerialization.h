@@ -84,7 +84,7 @@ public:
     const std::vector<std::string> GetDependentPackageNames() const;
     // Add for cjmp
     void PreloadCommonPartOfPackage(AST::Package& pkg) const;
-    std::string PreReadAndSetPackageName();
+    // std::string PreReadAndSetPackageName();
     std::vector<std::string> ReadFileNames() const;
 
     Ptr<AST::Ty> LoadType(FormattedIndex type) const;

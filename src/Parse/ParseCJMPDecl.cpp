@@ -107,7 +107,7 @@ std::string GetDiagKind(const AST::Node& node)
 void MPParserImpl::SetCompileOptions(const GlobalOptions& opts)
 {
     this->compileCommon = (opts.outputMode == GlobalOptions::OutputMode::CHIR);
-    this->compilePlatform = (opts.commonPartCjo != std::nullopt);
+    this->compilePlatform = opts.commonPartCjos.size() > 0;
 }
 
 bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) const

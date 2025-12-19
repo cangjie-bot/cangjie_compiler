@@ -46,7 +46,7 @@ public:
     // Add for CJMP
     void PreloadCommonPartOfPackage(AST::Package& pkg);
     std::vector<OwnedPtr<AST::ImportSpec>> LoadImportSpecs(const PackageFormat::Imports* imports);
-    std::string PreReadAndSetPackageName();
+    // std::string PreReadAndSetPackageName();
     std::vector<std::string> ReadFileNames() const;
     std::unordered_set<std::string> LoadCachedTypeForPackage(
         const AST::Package& sourcePackage, const std::map<std::string, Ptr<AST::Decl>>& mangledName2DeclMap);

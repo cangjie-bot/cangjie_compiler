@@ -169,22 +169,22 @@ std::string ASTLoader::GetImportedPackageName() const
     return pImpl->importedPackageName;
 }
 
-std::string ASTLoader::PreReadAndSetPackageName()
-{
-    return pImpl->PreReadAndSetPackageName();
-}
-
-std::string ASTLoader::ASTLoaderImpl::PreReadAndSetPackageName()
-{
-    if (!package) {
-        package = PackageFormat::GetPackage(data.data());
-    }
-    CJC_NULLPTR_CHECK(package);
-    CJC_NULLPTR_CHECK(package->fullPkgName());
-    importedPackageName = package->fullPkgName()->str();
-
-    return importedPackageName;
-}
+// std::string ASTLoader::PreReadAndSetPackageName()
+// {
+//     return pImpl->PreReadAndSetPackageName();
+// }
+//
+// std::string ASTLoader::ASTLoaderImpl::PreReadAndSetPackageName()
+// {
+//     if (!package) {
+//         package = PackageFormat::GetPackage(data.data());
+//     }
+//     CJC_NULLPTR_CHECK(package);
+//     CJC_NULLPTR_CHECK(package->fullPkgName());
+//     importedPackageName = package->fullPkgName()->str();
+//
+//     return importedPackageName;
+// }
 
 std::vector<std::string> ASTLoader::ReadFileNames() const
 {

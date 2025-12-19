@@ -183,20 +183,20 @@ public:
         }
     }
 
-    bool PreReadCommonPartCjo() const
-    {
-        bool hasInputCHIR = s.ci->invocation.globalOptions.IsCompilingCJMP();
-        if (hasInputCHIR) {
-            auto mbFilesFromCommonPart = s.ci->importManager.GetCjoManager()->PreReadCommonPartCjoFiles();
-            if (!mbFilesFromCommonPart) {
-                return false;
-            }
-            std::vector<std::string> filesFromCommonPart = *mbFilesFromCommonPart;
-            s.ci->GetSourceManager().ReserveCommonPartSources(filesFromCommonPart);
-        }
-
-        return true;
-    }
+    // bool PreReadCommonPartCjo() const
+    // {
+    //     bool hasInputCHIR = s.ci->invocation.globalOptions.IsCompilingCJMP();
+    //     if (hasInputCHIR) {
+    //         auto mbFilesFromCommonPart = s.ci->importManager.GetCjoManager()->PreReadCommonPartCjoFiles();
+    //         if (!mbFilesFromCommonPart) {
+    //             return false;
+    //         }
+    //         std::vector<std::string> filesFromCommonPart = *mbFilesFromCommonPart;
+    //         s.ci->GetSourceManager().ReserveCommonPartSources(filesFromCommonPart);
+    //     }
+    //
+    //     return true;
+    // }
 
     OwnedPtr<AST::Package> GetMultiThreadParseOnePackage(
         std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>>& futureQueue,
@@ -298,7 +298,8 @@ public:
         // Parse source code files to File node list.
         if (s.ci->loadSrcFilesFromCache) {
             for (auto& it : s.ci->bufferCache) {
-                const unsigned int fileID = s.ci->GetSourceManager().AddSource(it.first, it.second);
+                bool isCjmpFile = s.ci->invocation.globalOptions.IsCompilingCJMP();
+                const unsigned int fileID = s.ci->GetSourceManager().AddSource(it.first, it.second, std::nullopt, isCjmpFile);
                 if (s.fileIds.count(fileID) > 0) {
                     (void)s.ci->diag.DiagnoseRefactor(
                         DiagKindRefactor::module_read_file_conflicted, DEFAULT_POSITION, it.first);
@@ -320,7 +321,8 @@ public:
                     success = false;
                     return;
                 }
-                const unsigned int fileID = s.ci->GetSourceManager().AddSource(file | IdenticalFunc, content.value());
+                bool isCjmpFile = s.ci->invocation.globalOptions.IsCompilingCJMP();
+                const unsigned int fileID = s.ci->GetSourceManager().AddSource(file | IdenticalFunc, content.value(), std::nullopt, isCjmpFile);
                 if (s.fileIds.count(fileID) > 0) {
                     (void)s.ci->diag.DiagnoseRefactor(
                         DiagKindRefactor::module_read_file_conflicted, DEFAULT_POSITION, file);
@@ -357,9 +359,9 @@ FullCompileStrategy::~FullCompileStrategy()
 
 bool FullCompileStrategy::Parse()
 {
-    if (!impl->PreReadCommonPartCjo()) {
-        return false;
-    }
+    // if (!impl->PreReadCommonPartCjo()) {
+    //     return false;
+    // }
     bool ret = true;
     if (ci->loadSrcFilesFromCache || ci->compileOnePackageFromSrcFiles) {
         auto package = impl->ParseOnePackage(ci->srcFilePaths, ret, DEFAULT_PACKAGE_NAME);
@@ -407,7 +409,8 @@ void ParseAndMergeCjd(Ptr<CompilerInstance> ci, std::pair<const std::string, std
     SourceManager& sm = ci->diag.GetSourceManager();
     {
         std::lock_guard<std::mutex> guardOfSm(g_sourceManageLock);
-        fileId = sm.AddSource(cjoPath, sourceCode.value(), cjdInfo.first);
+        bool isCjmpFile = ci->invocation.globalOptions.IsCompilingCJMP();
+        fileId = sm.AddSource(cjoPath, sourceCode.value(), cjdInfo.first, isCjmpFile);
     }
     auto fileAst =
         Parser(fileId, sourceCode.value(), ci->diag, ci->diag.GetSourceManager(), false, true).ParseTopLevel();

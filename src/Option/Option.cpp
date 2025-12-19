@@ -768,7 +768,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
 {
     DiagnosticEngine diag;
     bool ret = true;
-    bool needChir = (commonPartCjo != std::nullopt);
+    bool needChir = commonPartCjos.size() > 0;
     std::for_each(inputs.begin(), inputs.end(), [this, &ret, &diag, &needChir](const std::string& value) {
         if (!ret) {
             return;
