@@ -4,6 +4,7 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
+#include <algorithm>
 #include "TypeMapper.h"
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Match.h"
@@ -35,14 +36,31 @@ static constexpr auto BOOL_TYPE = "BOOL";
 static constexpr auto STRUCT_TYPE_PREFIX = "struct ";
 
 static constexpr auto TYPEDEF_PREFIX = "typedef ";
-static constexpr auto TYPEDEF_NAME_PREFIX = "Callback";
 } // namespace
+
+namespace {
+void MangleTypedefName(std::string& name)
+{
+    size_t start_pos = 0;
+    while ((start_pos = name.find("_", start_pos)) != std::string::npos) {
+        name.replace(start_pos, 1, "_1");
+        start_pos += 2;
+    }
+
+    std::replace(name.begin(), name.end(), '.', '_');
+}
+}
 
 template <class TypeRep, class ToString>
 MappedCType TypeMapper::BuildFunctionalCType(
-    const FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString) const
+    const FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, bool isBlock, ToString toString) const
 {
-    auto mangledName = TYPEDEF_NAME_PREFIX + mangler.MangleType(funcType);
+    auto typedefNamePrefix = isBlock ? "__Block" : "__Function";
+    auto designator = isBlock ? '^' : '*';
+    auto mangledName = mangler.MangleType(funcType);
+    MangleTypedefName(mangledName);
+    mangledName = typedefNamePrefix + mangledName;
+
     std::string decl = TYPEDEF_PREFIX;
     decl.append(toString(resultType));
     decl.append({'(', designator});
@@ -142,7 +160,7 @@ MappedCType TypeMapper::Cj2ObjCForObjC(const Ty& from) const
                 if (!actualFuncType) {
                     return UNSUPPORTED_TYPE;
                 }
-                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '*',
+                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, false,
                     [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
             }
             CJC_ABORT();
@@ -153,7 +171,7 @@ MappedCType TypeMapper::Cj2ObjCForObjC(const Ty& from) const
                 if (!actualFuncType) {
                     return UNSUPPORTED_TYPE;
                 }
-                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '^',
+                return BuildFunctionalCType(*actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, true,
                     [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
             }
             if (IsObjCObjectType(from)) {
@@ -180,7 +198,7 @@ MappedCType TypeMapper::Cj2ObjCForObjC(const Ty& from) const
             auto actualFuncType = DynamicCast<FuncTy>(&from);
             CJC_NULLPTR_CHECK(actualFuncType);
             return BuildFunctionalCType(
-                *actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, '*', [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
+                *actualFuncType, actualFuncType->paramTys, actualFuncType->retTy, false, [this](Ptr<Ty> t) { return Cj2ObjCForObjC(*t).usage; });
         }
         case TypeKind::TYPE_ENUM:
             if (IsObjCCJMapping(from)) {
