@@ -482,14 +482,12 @@ bool AST2CHIR::TryToDeserializeCHIR()
     auto& chirFiles = opts.inputChirFiles;
     CJC_ASSERT(chirFiles.size() != 0);
     ToCHIR::Phase phase;
-    if (chirFiles.size() == 1) {
-        bool success = CHIRDeserializer::Deserialize(chirFiles.at(0), builder, phase, true);
+    bool success = true;
+    for (auto chirFile : chirFiles) {
+        success &= CHIRDeserializer::Deserialize(chirFile, builder, phase, true);
         mergingPlatform = true;
-        return success;
     }
-    // synthetic limitation, however need to distinguish different chir sources
-    diag.DiagnoseRefactor(DiagKindRefactor::frontend_can_not_handle_to_many_chir, DEFAULT_POSITION);
-    return false;
+    return success;
 }
 
 static Package::AccessLevel BuildPackageAccessLevel(const AST::AccessLevel& level)

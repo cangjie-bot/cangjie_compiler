@@ -11,6 +11,7 @@
 
 #include "ASTLoaderImpl.h"
 
+#include "cangjie/AST/AttributePack.h"
 #include "flatbuffers/ModuleFormat_generated.h"
 
 #include "cangjie/AST/ASTCasting.h"
@@ -145,6 +146,11 @@ void SetOuterDeclForMemberDecl(Decl& member, Decl& parentDecl)
     } else if (auto func = DynamicCast<FuncDecl*>(&member); func && func->funcBody) {
         SetOuterDeclForParamDecl(*func, parentDecl);
     }
+}
+
+inline bool DeclaredInDifferentFiles(const Decl& d1, const Decl& d2)
+{
+    return d1.curFile && d2.curFile && d1.curFile->fileHash != d2.curFile->fileHash;
 }
 } // namespace
 
@@ -350,7 +356,7 @@ void ASTLoader::ASTLoaderImpl::LoadPackageDecls()
             }
             // NOTE: FormattedIndex is vector offset plus 1.
             auto tmpDecl = LoadDecl(i + 1);
-            if (!tmpDecl) {
+            if (!tmpDecl || tmpDecl->TestAttr(Attribute::ALREADY_LOADED)) {
                 continue;
             }
             auto fileID = tmpDecl->begin.fileID;
@@ -512,16 +518,41 @@ void ASTLoader::ASTLoaderImpl::AddDeclToImportedPackage(Decl& decl)
         exportIdDeclMap->emplace(decl.identifier, &decl);
     } else {
         auto it1 = exportIdDeclMap->find(exportId);
-        if (it1 == exportIdDeclMap->end()) {
-            exportIdDeclMap->emplace(exportId, &decl);
-        } else {
+        // will be added if declaration appears first time
+        bool needAdd = it1 == exportIdDeclMap->end();
+        
+        if (!needAdd) {
             // NOTE: when 'importSrcCode' is disabled, the imported ast cannot to be used for code generation,
             //       this kind of situation is for LSP usage now, so the duplication error can be ignored.
             bool reportError = (it1->second != &decl) && importSrcCode;
             reportError = reportError && !isChirNow;
+            if (decl.TestAttr(Attribute::FROM_COMMON_PART)) {
+                reportError = false;
+                //       A
+                //     /  \
+                //    B    C
+                //    \   /
+                //      D
+                // Declaration defined in A source set was added in B.cjo and C.cjo,
+                // so when compiling child source set D it can be duplicated, it's not an error.
+                
+                if (DeclaredInDifferentFiles(decl, *it1->second)) {
+                    // If declaration `foo` was added in B and in C source sets,
+                    // then it can be not an error at all if `foo` is common/specific,
+                    // Or an error if it's non-CJMP declaration, but it's not an export error,
+                    // It need to be checked later when semantic checking.
+                    needAdd = true;
+                } else {
+                    decl.EnableAttr(Attribute::ALREADY_LOADED);
+                }
+            }
             if (reportError) {
                 InternalError("Found same exportID when import a package.");
-            }
+            } 
+        }
+
+        if (needAdd) {
+            exportIdDeclMap->emplace(exportId, &decl);
         }
     }
 }
