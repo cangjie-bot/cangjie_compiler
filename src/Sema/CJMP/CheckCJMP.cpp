@@ -586,6 +586,9 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
                 auto& platformVar = *StaticCast<VarDecl>(platform);
 
                 CheckMatchedVariableTypes(platformVar, commonVar);
+            } else if (!common->TestAttr(Attribute::INITIALIZED) && common->TestAttr(Attribute::IMPORTED)) {
+                // this has been postponed
+                DiagNotMatchedPlatformDecl(diag, *common);
             }
             return VisitAction::SKIP_CHILDREN;
         }
@@ -1213,6 +1216,9 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
         }
         if (!MustMatchWithPlatform(*decl)) {
             continue;
+        }
+        if (decl->astKind == ASTKind::VAR_DECL) {
+            continue; // postpone the check
         }
         DiagNotMatchedPlatformDecl(diag, *decl);
     }
