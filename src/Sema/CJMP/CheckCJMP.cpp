@@ -26,6 +26,7 @@
 #include "cangjie/Sema/CommonTypeAlias.h"
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Utils/CastingTemplate.h"
+#include "cangjie/Utils/CheckUtils.h"
 #include <optional>
 
 using namespace Cangjie;
@@ -495,44 +496,103 @@ void MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(
 // TypeCheck for CJMP
 void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<FuncDecl>>& candidates)
 {
-    std::vector<Ptr<FuncDecl>> platformDecls;
-    for (auto it = candidates.begin(); it != candidates.end(); ++it) {
-        if ((*it)->TestAttr(Attribute::PLATFORM)) {
-            platformDecls.emplace_back(*it);
+    Utils::EraseIf(candidates, [candidates](const Ptr<FuncDecl> candidate) {
+        if (candidate->TestAttr(Attribute::COMMON) && candidate->platformImplementation) {
+            // erase if the platform decl also contains in the candidates vector
+            return std::find(candidates.begin(), candidates.end(), 
+                candidate->platformImplementation) != candidates.end();
         }
+        return false;
+    });
+}
+
+static Ptr<Ty> CheckFuncReturnType(Ptr<Ty> ty)
+{
+    CJC_ASSERT_WITH_MSG(!!ty, "Function should be already resolved");
+    CJC_ASSERT_WITH_MSG(ty->IsFunc(), "Function's type should be a FuncTy");
+    auto retTy = StaticCast<FuncTy>(ty)->retTy;
+
+    CJC_ASSERT_WITH_MSG(retTy && !Ty::IsInitialTy(retTy), "Function's return type should be already resolved");
+    return retTy;
+}
+
+void MPTypeCheckerImpl::CheckMatchedFunctionReturnTypes(FuncDecl& platformFunc, FuncDecl& commonFunc)
+{
+    auto commonType = commonFunc.funcBody->ty;
+    auto platformType = platformFunc.funcBody->ty;
+
+    auto commonRetTy = CheckFuncReturnType(commonType);
+    auto platformRetTy = CheckFuncReturnType(platformType);
+
+    if (commonRetTy == platformRetTy) return;
+    if (typeManager.IsSubtype(platformRetTy, commonRetTy)) return;
+
+    // the subtype check will handle most of the cases, however in the case of generics, types must 
+    // be substituted properly before checking for subtype that is properly done in MatchCJMPFunction 
+    // that we use as a fallback
+
+    // we need to erase the pointer temporarily to avoid the multiple implementations error
+    commonFunc.platformImplementation = nullptr;
+    if (!MatchCJMPFunction(platformFunc, commonFunc)) {
+        diag.DiagnoseRefactor(
+            DiagKindRefactor::sema_return_type_incompatible,
+            platformFunc,
+            platformFunc.identifier);
     }
-    for (const auto& platformFunc : platformDecls) {
-        Utils::EraseIf(candidates, [&platformFunc, this](const Ptr<FuncDecl> candidate) {
-            if (!candidate->TestAttr(Attribute::COMMON)) {
-                return false;
-            }
-            TypeSubst genericTyMap;
-            MapCJMPGenericTypeArgs(genericTyMap, *candidate, *platformFunc);
-            bool isMatch = false;
-            if (!genericTyMap.empty()) {
-                auto newCommonFuncTy = StaticCast<FuncTy*>(typeManager.GetInstantiatedTy(candidate->ty, genericTyMap));
-                auto platformFuncTy = StaticCast<FuncTy*>(platformFunc->ty);
-                isMatch = typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy);
-            } else {
-                isMatch = typeManager.IsFuncDeclSubType(*platformFunc, *candidate);
-            }
+    commonFunc.platformImplementation = &platformFunc;
+}
 
-            // When functions match, propagate HAS_INITIAL attribute from common to platform
-            if (isMatch && candidate->funcBody && platformFunc->funcBody) {
-                auto& commonParams = candidate->funcBody->paramLists[0]->params;
-                auto& pfParams = platformFunc->funcBody->paramLists[0]->params;
+void MPTypeCheckerImpl::CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST::VarDecl& commonVar)
+{
+    CJC_ASSERT_WITH_MSG(commonVar.ty && !Ty::IsInitialTy(commonVar.ty),
+        "Common variable type must be already resolved");
+    CJC_ASSERT_WITH_MSG(platformVar.ty && !Ty::IsInitialTy(platformVar.ty),
+        "Platform variable type must be already resolved");
 
-                for (size_t i = 0; i < commonParams.size() && i < pfParams.size(); ++i) {
-                    if (commonParams[i]->TestAttr(Attribute::HAS_INITIAL) &&
-                        !pfParams[i]->TestAttr(Attribute::HAS_INITIAL)) {
-                        pfParams[i]->EnableAttr(Attribute::HAS_INITIAL);
-                    }
-                }
+    if (commonVar.ty == platformVar.ty) return;
+    if (typeManager.IsTyEqual(platformVar.ty, commonVar.ty)) return;
+
+    // the type equality check will handle most of the cases except for the generics case when types 
+    // need to be substituted in order to compare them that is handled in MatchCJMPVar
+    //  that is fallback here
+
+    // member variables are paired during the merge, global and statics during the Match function
+    // unlike for functions, we should NOT erase the platform pointer
+    MatchCJMPVar(platformVar, commonVar); // the diagnostic is reported by the function
+}
+
+void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
+{
+    std::function<VisitAction(Ptr<Node>)> visitor = [this](const Ptr<Node> &node) {
+        if (node->astKind == ASTKind::FUNC_DECL && node->TestAttr(Attribute::COMMON)) {
+            auto common = StaticAs<ASTKind::FUNC_DECL>(node);
+            auto platform = common->platformImplementation;
+            if (platform) {
+                CJC_ASSERT_WITH_MSG(platform->astKind == AST::ASTKind::FUNC_DECL, 
+                    "Common function can be only matched to a function but got another kind");
+                auto& commonFunc = *common;
+                auto& platformFunc = *StaticCast<FuncDecl>(platform);
+
+                CheckMatchedFunctionReturnTypes(platformFunc, commonFunc);
             }
+            return VisitAction::SKIP_CHILDREN;
+        } else if (node->astKind == ASTKind::VAR_DECL && node->TestAttr(Attribute::COMMON)) {
+            auto common = StaticAs<ASTKind::VAR_DECL>(node);
+            auto platform = common->platformImplementation;
+            if (platform) {
+                CJC_ASSERT_WITH_MSG(platform->astKind == AST::ASTKind::VAR_DECL, 
+                    "Common variable can be only matched to a variable but got another kind");
+                auto& commonVar = *common;
+                auto& platformVar = *StaticCast<VarDecl>(platform);
 
-            return isMatch;
-        });
-    }
+                CheckMatchedVariableTypes(platformVar, commonVar);
+            }
+            return VisitAction::SKIP_CHILDREN;
+        }
+        return VisitAction::WALK_CHILDREN;
+    };
+    Walker walker(&pkg, visitor);
+    walker.Walk();
 }
 
 namespace {
@@ -726,7 +786,7 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
 
 void MPTypeCheckerImpl::CheckCommonSpecificGenericMatch(const AST::Decl& platformDecl, const AST::Decl& commonDecl)
 {
-    // check generic countraints
+    // check generic constraints
     auto parentBounds = GetAllGenericUpperBounds(typeManager, commonDecl);
     auto childBounds = GetAllGenericUpperBounds(typeManager, platformDecl);
 
@@ -1005,7 +1065,9 @@ bool MPTypeCheckerImpl::MatchCJMPVar(VarDecl& platformVar, VarDecl& commonVar)
         }
     }
     auto pType = platformVar.ty;
-    if (!typeManager.IsTyEqual(cType, pType)) {
+    if (!typeManager.IsTyEqual(cType, pType) && !Ty::IsInitialTy(pType)) {
+        // if the platform type is initial then the check will be restarted after the type get resolved
+        // so we can suppress the check for now
         auto platformKind = platformVar.isVar ? "var" : "let";
         diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_type, platformVar, platformKind);
     }
