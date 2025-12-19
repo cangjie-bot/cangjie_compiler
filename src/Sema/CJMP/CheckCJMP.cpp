@@ -16,6 +16,7 @@
 #include "Collector.h"
 #include "Diags.h"
 #include "TypeCheckUtil.h"
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Clone.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Types.h"
@@ -561,10 +562,23 @@ void MPTypeCheckerImpl::CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST
     MatchCJMPVar(platformVar, commonVar); // the diagnostic is reported by the function
 }
 
+static bool IsCommon(const AST::Node& decl)
+{
+    return decl.TestAttr(Attribute::COMMON);
+}
+
+static bool IsEnumConstructor(const AST::Node& decl)
+{
+    return decl.TestAttr(Attribute::ENUM_CONSTRUCTOR);
+}
+
 void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
 {
     std::function<VisitAction(Ptr<Node>)> visitor = [this](const Ptr<Node> &node) {
-        if (node->astKind == ASTKind::FUNC_DECL && node->TestAttr(Attribute::COMMON)) {
+        if (node->astKind == ASTKind::FUNC_DECL) {
+            if (!IsCommon(*node) || IsEnumConstructor(*node)) {
+                return VisitAction::SKIP_CHILDREN;
+            }
             auto common = StaticAs<ASTKind::FUNC_DECL>(node);
             auto platform = common->platformImplementation;
             if (platform) {
@@ -576,7 +590,10 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
                 CheckMatchedFunctionReturnTypes(platformFunc, commonFunc);
             }
             return VisitAction::SKIP_CHILDREN;
-        } else if (node->astKind == ASTKind::VAR_DECL && node->TestAttr(Attribute::COMMON)) {
+        } else if (node->astKind == ASTKind::VAR_DECL) {
+            if (!IsCommon(*node) || IsEnumConstructor(*node)) {
+                return VisitAction::SKIP_CHILDREN;
+            }
             auto common = StaticAs<ASTKind::VAR_DECL>(node);
             auto platform = common->platformImplementation;
             if (platform) {
@@ -1179,7 +1196,7 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
         if (!MustMatchWithPlatform(*decl)) {
             continue;
         }
-        if (decl->astKind == ASTKind::VAR_DECL) {
+        if (decl->astKind == ASTKind::VAR_DECL && !decl->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
             continue; // postpone the check
         }
         DiagNotMatchedPlatformDecl(diag, *decl);
