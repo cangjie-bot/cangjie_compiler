@@ -30,6 +30,9 @@ public:
     void PreCheck4CJMP(const AST::Package& pkg);
     // TypeCheck for CJMP
     void RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<AST::FuncDecl>>& candidates);
+    void CheckReturnAndVariableTypes(AST::Package& pkg);
+    void CheckMatchedFunctionReturnTypes(AST::FuncDecl& platformFunc, AST::FuncDecl& commonFunc);
+    void CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST::VarDecl& commonVar);
     void MatchPlatformWithCommon(AST::Package& pkg);
 
     static void FilterOutCommonCandidatesIfPlatformExist(std::map<Names, std::vector<Ptr<AST::FuncDecl>>>& candidates);
