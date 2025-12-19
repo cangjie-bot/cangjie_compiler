@@ -326,7 +326,7 @@ Ptr<ClassDecl> TestManager::GenerateMockClassIfNeededAndGet(const CallExpr& call
         if (generated) {
             CJC_ASSERT(classDecl);
             if (auto ifaceDecl = DynamicCast<InterfaceDecl>(declToMock)) {
-                mockSupportManager->PrepareClassWithDefaults(*classDecl, *ifaceDecl);
+                mockSupportManager->PrepareClassLikeWithDefaults(*classDecl, *ifaceDecl, nullptr);
                 mockSupportManager->WriteGeneratedMockDecls();
             }
         }
