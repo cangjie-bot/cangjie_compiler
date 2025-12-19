@@ -165,9 +165,9 @@ void PosSearchApi::UpdatePosLimit(unsigned int fileId, int line, int column)
 
 std::string PosSearchApi::PosToStr(const Position& pos)
 {
-    std::string ret = FillZero(static_cast<int>(pos.fileID), MAX_DIGITS_FILE);
-    ret += FillZero(pos.line, MAX_DIGITS_LINE);
-    ret += FillZero(pos.column, MAX_DIGITS_COLUMN);
+    std::string ret = FillZero(static_cast<int>(pos.fileID), static_cast<int>(MAX_DIGITS_FILE));
+    ret += FillZero(pos.line, static_cast<int>(MAX_DIGITS_LINE));
+    ret += FillZero(pos.column, static_cast<int>(MAX_DIGITS_COLUMN));
     return ret;
 }
 
