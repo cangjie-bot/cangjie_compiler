@@ -341,6 +341,11 @@ public:
         return cjoFilePaths;
     }
 
+    std::unordered_map<std::string, std::string> GetDepPkgCjdPaths()
+    {
+        return cjdFilePaths;
+    }
+
     DiagnosticEngine& GetDiagnosticEngine() const
     {
         return diag;
@@ -473,8 +478,10 @@ private:
     Ptr<AST::Package> curPackage;
     TypeManager& typeManager;
 
-    // Key is cjd fullPackageName, and value is .cjo file path.
+    // Key is fullPackageName, and value is .cjo file path.
     std::unordered_map<std::string, std::string> cjoFilePaths;
+    // Key is fullPackageName, and value is .cjd file path.
+    std::unordered_map<std::string, std::string> cjdFilePaths;
 };
 } // namespace Cangjie
 #endif // CANGJIE_MODULES_IMPORTMANAGER_H
