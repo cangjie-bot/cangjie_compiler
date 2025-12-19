@@ -20,6 +20,7 @@
 #include "InteropLibBridge.h"
 
 namespace Cangjie::Interop::ObjC {
+
 struct MappedCType {
 public:
     std::string usage;
@@ -38,7 +39,7 @@ public:
     }
 
     template <class TypeRep, class ToString>
-    MappedCType BuildFunctionalCType(const AST::FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString) const;
+    MappedCType BuildFunctionalCType(const AST::FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, bool isBlock, ToString toString) const;
 
     MappedCType Cj2ObjCForObjC(const AST::Ty& from) const;
     Ptr<AST::Ty> Cj2CType(Ptr<AST::Ty> cjty) const;

@@ -202,18 +202,8 @@ void ObjCGenerator::Generate()
     }
 
     const auto objCDeclName = ctx.nameGenerator.GetObjCDeclName(*decl);
+
     GenerateImports(objCDeclName);
-
-    // Hack: we now only support sequential generation of header file. As we go through types during code generation,
-    // and in case of function pointers, typedefs are required to be inserted before type usage. Therefore, we collect
-    // them and insert between preamble and all other generated code after we went through all types.
-    AddToPreamble(GenerateImport(FOUNDATION_IMPORT));
-    AddToPreamble(GenerateImport(STDDEF_IMPORT));
-
-    AddWithIndent(GenerateImport("\"" + objCDeclName + ".h\""), GenerationTarget::SOURCE);
-    AddWithIndent(GenerateImport(CJ_IMPORT), GenerationTarget::SOURCE);
-    AddWithIndent(GenerateImport(DLFCN_IMPORT), GenerationTarget::SOURCE);
-    AddWithIndent(GenerateImport(STDLIB_IMPORT), GenerationTarget::SOURCE);
 
     GenerateForwardDeclarations();
     GenerateExternalDeclarations4CJMapping();
@@ -222,7 +212,7 @@ void ObjCGenerator::Generate()
     GenerateInterfaceDecl();
 
     AddConstructors();
-    
+
     GenerateInitializer(objCDeclName);
 
     AddProperties();
@@ -422,8 +412,12 @@ std::string ObjCGenerator::GenerateImport(const std::string& name)
 
 void ObjCGenerator::GenerateImports(const std::string& objCDeclName)
 {
-    AddWithIndent(GenerateImport(FOUNDATION_IMPORT), GenerationTarget::HEADER);
-    AddWithIndent(GenerateImport(STDDEF_IMPORT), GenerationTarget::HEADER);
+    // Hack: we now only support sequential generation of header file. As we go through types during code generation,
+    // and in case of function pointers, typedefs are required to be inserted before type usage. Therefore, we collect
+    // them and insert between preamble and all other generated code after we went through all types.
+    AddToPreamble(GenerateImport(FOUNDATION_IMPORT));
+    AddToPreamble(GenerateImport(STDDEF_IMPORT));
+
     AddWithIndent(GenerateImport("\"" + objCDeclName + ".h\""), GenerationTarget::SOURCE);
     AddWithIndent(GenerateImport(CJ_IMPORT), GenerationTarget::SOURCE);
     AddWithIndent(GenerateImport(DLFCN_IMPORT), GenerationTarget::SOURCE);
@@ -590,7 +584,7 @@ void ObjCGenerator::GenerateInterfaceDecl()
     Ptr<ClassDecl> superClassPtr = classDecl ? classDecl->GetSuperClassDecl() : Ptr<ClassDecl>(nullptr);
     bool isClassInheritedFromClass = superClassPtr && superClassPtr->identifier.Val() != Cangjie::OBJECT_NAME;
     if (isClassInheritedFromClass) {
-        AddWithIndent(GenerateImport("\"" + superClassPtr->identifier.Val() + ".h\""), GenerationTarget::HEADER);
+        AddToPreamble(GenerateImport("\"" + superClassPtr->identifier.Val() + ".h\""));
     }
     if (interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(*decl) && !decl->IsOpen()) {
         AddWithIndent(FINAL_MODIFIER, GenerationTarget::HEADER);
