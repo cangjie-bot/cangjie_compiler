@@ -4,6 +4,7 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
+#include <algorithm>
 #include "TypeMapper.h"
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Match.h"
@@ -43,6 +44,7 @@ MappedCType TypeMapper::BuildFunctionalCType(
     const FuncTy& funcType, const std::vector<TypeRep>& argTypes, const TypeRep& resultType, char designator, ToString toString) const
 {
     auto mangledName = TYPEDEF_NAME_PREFIX + mangler.MangleType(funcType);
+    std::replace(mangledName.begin(), mangledName.end(), '.', '_');
     std::string decl = TYPEDEF_PREFIX;
     decl.append(toString(resultType));
     decl.append({'(', designator});
