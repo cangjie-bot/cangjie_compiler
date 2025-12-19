@@ -336,9 +336,14 @@ public:
     void DeleteASTWriters() noexcept;
     void DeleteASTLoaders() noexcept;
 
-    std::unordered_map<std::string, std::string> GetDepPkgCjoPaths()
+    std::unordered_map<std::string, std::string> GetDepPkgCjoPaths() const
     {
         return cjoFilePaths;
+    }
+
+    std::unordered_map<std::string, std::string> GetDepPkgCjdPaths() const
+    {
+        return cjdFilePaths;
     }
 
     DiagnosticEngine& GetDiagnosticEngine() const
@@ -473,8 +478,12 @@ private:
     Ptr<AST::Package> curPackage;
     TypeManager& typeManager;
 
-    // Key is cjd fullPackageName, and value is .cjo file path.
+    // Key is fullPackageName, and value is .cjo file path.
+    // Save the path of the imported external cjo and the path of binary dependencies' standard library cjo.
     std::unordered_map<std::string, std::string> cjoFilePaths;
+    // Key is fullPackageName, and value is .cj.d file path.
+    // Save the path of the imported external cj.d and the path of the imported standard library cjd.
+    std::unordered_map<std::string, std::string> cjdFilePaths;
 };
 } // namespace Cangjie
 #endif // CANGJIE_MODULES_IMPORTMANAGER_H
