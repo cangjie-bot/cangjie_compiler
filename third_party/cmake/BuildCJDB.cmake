@@ -259,7 +259,10 @@ else()
         -P ${CMAKE_SOURCE_DIR}/cmake/modules/make-symlink.cmake)")
     # Create symbolic link for boundscheck
     set(CJNATIVE_BACKEND "cjnative")
-    string(TOLOWER ${CMAKE_SYSTEM_NAME}_${CMAKE_SYSTEM_PROCESSOR}_${CJNATIVE_BACKEND} output_lib_dir)
+    if (OHOS)
+        set(SYS_NAME "_ohos")
+    endif()
+    string(TOLOWER ${CMAKE_SYSTEM_NAME}${SYS_NAME}_${CMAKE_SYSTEM_PROCESSOR}_${CJNATIVE_BACKEND} output_lib_dir)
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/third_party/lldb/lib/libboundscheck${CMAKE_SHARED_LIBRARY_SUFFIX}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/runtime/lib/${output_lib_dir}

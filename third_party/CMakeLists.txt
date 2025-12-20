@@ -93,25 +93,30 @@ set(LLVM_INSTALL_PATTERN
         PATTERN "bin" EXCLUDE
 )
 # Only the following binaries are needed. The other unused llvm binaries will not be installed.
-set(LLVM_BIN_INSTALL_PATTERN
+set(LLVM_BIN_PRODUCTS_PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ)
+if(OHOS)
+    list(APPEND LLVM_BIN_PRODUCTS_PERMISSIONS WORLD_EXECUTE WORLD_READ)
+endif()
+message(STATUS "LLVM_BIN_PRODUCTS_PERMISSIONS: ${LLVM_BIN_PRODUCTS_PERMISSIONS}")
+set(LLVM_BIN_INSTALL_PATTERN 
         # For cjc general compilation
-        REGEX "bin/(opt|llc)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(opt|llc)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For cjc general compilation (e.g. OHOS) and LTO and lldb related binaries
-        REGEX "bin/(lld|ld64.lld|ld.lld|lld-link)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(lld|ld64.lld|ld.lld|lld-link)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For cjc general compilation (e.g. OHOS)
-        REGEX "bin/(llvm-ar)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-ar)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For LTO
-        REGEX "bin/(llvm-link|llvm-lto|llvm-lto2)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-link|llvm-lto|llvm-lto2)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For cjc --coverage feature
-        REGEX "bin/(llvm-cov)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-cov)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For PGO
-        REGEX "bin/(llvm-profdata|llvm-profgen)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-profdata|llvm-profgen)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For compiler developer debugging
-        REGEX "bin/(llvm-as|llvm-dis)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
-        REGEX "bin/(lli)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
-        REGEX "bin/(llvm-addr2line|llvm-symbolizer)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
-        REGEX "bin/(llvm-otool|llvm-objdump)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
-        REGEX "bin/(llvm-objcopy)" PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ
+        REGEX "bin/(llvm-as|llvm-dis)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
+        REGEX "bin/(lli)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
+        REGEX "bin/(llvm-addr2line|llvm-symbolizer)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
+        REGEX "bin/(llvm-otool|llvm-objdump)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
+        REGEX "bin/(llvm-objcopy)" PERMISSIONS ${LLVM_BIN_PRODUCTS_PERMISSIONS}
         # For Windows
         REGEX "bin/(libclang\\.dll|libclang-cpp\\.dll)"
         REGEX "bin/(libgcc_s_seh-1\\.dll|libssp-0\\.dll|libstdc\\+\\+-6\\.dll|libwinpthread-1\\.dll)"
