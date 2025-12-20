@@ -66,15 +66,21 @@ void GenerateInitCJObjectMethods::HandleImpl(InteropContext& ctx)
             auto& ctorDecl = *StaticAs<ASTKind::FUNC_DECL>(memberDecl);
 
             // skip original ctors
-            if (this->interopType == InteropType::ObjC_Mirror && !ctx.factory.IsGeneratedCtor(ctorDecl)) {
+            if (interopType == InteropType::ObjC_Mirror && !ctx.factory.IsGeneratedCtor(ctorDecl)) {
                 continue;
             }
-            if (this->interopType == InteropType::CJ_Mapping && !ctx.typeMapper.IsObjCCJMappingMember(ctorDecl)) {
+            if (interopType == InteropType::CJ_Mapping && !ctx.typeMapper.IsObjCCJMappingMember(ctorDecl)) {
                 continue;
             }
-            bool forOneWayMapping = false;
-            forOneWayMapping = this->interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(decl);
-            auto initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
+
+            OwnedPtr<FuncDecl> initCjObject;
+            if (interopType == InteropType::CJ_Mapping) {
+                bool forOneWayMapping = false;
+                forOneWayMapping = interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(decl);
+                initCjObject = ctx.factory.CreateInitCjObject(decl, ctorDecl, forOneWayMapping);
+            } else if (interopType == InteropType::ObjC_Mirror) {
+                initCjObject = ctx.factory.CreateInitCjObjectReturningObjCSelf(decl, ctorDecl);
+            }
             CJC_ASSERT(initCjObject);
             ctx.genDecls.emplace_back(std::move(initCjObject));
         }

@@ -7,7 +7,7 @@
 /**
  * @file
  *
- * This file implements desugaring of Objective-C mirror subtypes.
+ * This file generates toplevel C wrappers for Objective-C impls members (except constructors).
  */
 
 #include "NativeFFI/ObjC/Utils/Common.h"

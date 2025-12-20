@@ -85,11 +85,6 @@ void OCFFIParserImpl::DiagObjCOptionalFuncMustBeInMirrorClass(const FuncDecl& fd
     p.ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_optional_method_must_be_in_mirror_class, fd);
 }
 
-void OCFFIParserImpl::DiagObjCImplCannotBeOpen(const Node& node) const
-{
-    p.ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_cannot_be_open, node);
-}
-
 void OCFFIParserImpl::DiagObjCImplCannotBeInterface(const Node& node) const
 {
     p.ParseDiagnoseRefactor(DiagKindRefactor::parse_objc_impl_cannot_be_interface, node);

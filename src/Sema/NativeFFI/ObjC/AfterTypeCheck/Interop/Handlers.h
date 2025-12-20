@@ -15,6 +15,7 @@
 
 #include "Context.h"
 #include "NativeFFI/ObjC/Utils/Handler.h"
+#include "cangjie/AST/Walker.h"
 
 namespace Cangjie::Interop::ObjC {
 
@@ -274,12 +275,9 @@ private:
 /**
  * Desugars all members of every @ObjCImpl declaration.
  * Common steps are:
- * 1. All method/prop accessors bodies wrapped with `ObjC_ISL_withMethodEnv_ret<T>`/`ObjC_ISL_withMethodEnv_retObj`
- * method call.
- * 2. All expressions with Objective-C mirror/mirror subtype declarations involved are desugared to
- * `objc_msgSend`/`objc_msgSendSuper` calls.
- * 3. Desugared bodies are placed in the corresponding mirrors ($objC prefixed) members.
- * 4. Original members bodies are replaced with throwing `ObjC_ISL_UnreachableCodeException`.
+ * 1. All super.* calls are desugared to `objc_msgSendSuper` calls.
+ * 2. All `super(...)` and `this(...)` in generated ctors (w/ $obj and ObjCBypassMarker params) are desugared to `super(..., marker, $obj)`
+ * 3. All `super(...)` in original ctors are desugared.
  */
 class DesugarImpls : public Handler<DesugarImpls, InteropContext> {
 public:
@@ -287,10 +285,9 @@ public:
 
 private:
     void Desugar(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method);
-    // void DesugarCtor(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& ctor);
     void Desugar(InteropContext& ctx, AST::ClassDecl& impl, AST::PropDecl& prop);
-    void DesugarCallExpr(InteropContext& ctx, AST::ClassDecl& impl, AST::CallExpr& ce);
-    void DesugarGetForPropDecl(InteropContext& ctx, AST::ClassDecl& impl, AST::MemberAccess& ma);
+    void DesugarCallExpr(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method, AST::CallExpr& ce);
+    void DesugarGetForPropDecl(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method, AST::MemberAccess& ma);
 };
 
 /**

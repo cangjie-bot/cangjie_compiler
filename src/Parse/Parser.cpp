@@ -460,7 +460,6 @@ void ParserImpl::CheckClassLikePropAbstractness(AST::PropDecl& prop)
         return;
     }
 
-
     if (inAbstractCJMPClass && prop.TestAttr(Attribute::ABSTRACT) &&
         !HasModifier(prop.modifiers, TokenKind::ABSTRACT)) {
         prop.DisableAttr(Attribute::ABSTRACT);

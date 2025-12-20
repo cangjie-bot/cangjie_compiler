@@ -84,8 +84,7 @@ public:
 
     /**
      * Gets ObjCUnreachableCodeException declaration.
-     * An exception that has to be used to mark an unreachable code (e.g instantiation @ObjCImpl objects from Cangjie
-     * side).
+     * An exception that has to be used to mark an unreachable code (e.g call static method on @ObjCMirror interface wrapper).
      */
     Ptr<AST::ClassDecl> GetObjCUnreachableCodeExceptionDecl();
 
@@ -134,6 +133,8 @@ public:
     Ptr<AST::FuncDecl> GetObjCRetainDecl();
 
     Ptr<AST::FuncDecl> GetObjCAutoReleaseDecl();
+
+    Ptr<AST::FuncDecl> GetWithObjCSuperDecl();
 
     /**
      * Get objc.lang.ObjCPointer declaration

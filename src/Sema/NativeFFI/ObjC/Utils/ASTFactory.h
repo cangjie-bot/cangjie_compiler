@@ -78,6 +78,7 @@ public:
     OwnedPtr<AST::Expr> CreateNativeHandleExpr(AST::ClassLikeTy& ty, Ptr<AST::File> curFile);
 
     OwnedPtr<AST::VarDecl> CreateNativeHandleField(AST::ClassDecl& target);
+    OwnedPtr<AST::FuncDecl> CreateInitCjObjectReturningObjCSelf(const AST::Decl& target, AST::FuncDecl& ctor);
     OwnedPtr<AST::FuncDecl> CreateInitCjObject(
         const AST::Decl& target, AST::FuncDecl& ctor, bool generateForOneWayMapping = false);
     /**
@@ -100,12 +101,13 @@ public:
     OwnedPtr<AST::ThrowExpr> CreateThrowUnreachableCodeExpr(AST::File& file);
     OwnedPtr<AST::ThrowExpr> CreateThrowOptionalMethodUnimplemented(AST::File& file);
     std::set<Ptr<AST::FuncDecl>> GetAllParentCtors(AST::ClassDecl& target) const;
-    OwnedPtr<AST::FuncDecl> CreateImplCtor(AST::ClassDecl& target, AST::FuncDecl& from);
+    OwnedPtr<AST::FuncDecl> CreateImplCtor(AST::FuncDecl& from);
     OwnedPtr<AST::FuncDecl> CreateBaseCtorDecl(AST::ClassDecl& target);
     bool IsGeneratedMember(const AST::Decl& decl) const;
     bool IsGeneratedNativeHandleField(const AST::Decl& decl) const;
     bool IsGeneratedHasInitedField(const AST::Decl& decl) const;
     bool IsGeneratedCtor(const AST::Decl& decl) const;
+    bool IsGeneratedBaseCtor(const AST::Decl& decl) const;
     bool IsGeneratedNativeHandleGetter(const AST::Decl& decl) const;
     Ptr<AST::FuncDecl> GetGeneratedBaseCtor(AST::Decl& decl);
     Ptr<AST::FuncDecl> GetGeneratedImplCtor(const AST::Decl& declArg, const AST::FuncDecl& origin);
@@ -185,6 +187,8 @@ public:
     OwnedPtr<AST::Expr> CreateObjCReleaseCall(OwnedPtr<AST::Expr> nativeHandle);
     OwnedPtr<AST::Expr> CreateWithMethodEnvScope(OwnedPtr<AST::Expr> nativeHandle, Ptr<AST::Ty> retTy,
         std::function<std::vector<OwnedPtr<AST::Node>>(OwnedPtr<AST::Expr>, OwnedPtr<AST::Expr>)> bodyFactory);
+    OwnedPtr<AST::Expr> CreateWithObjCSuperScope(OwnedPtr<AST::Expr> nativeHandle, Ptr<AST::Ty> retTy,
+        std::function<std::vector<OwnedPtr<AST::Node>>(OwnedPtr<AST::Expr>, OwnedPtr<AST::Expr>)> bodyFactory);
 
     OwnedPtr<AST::Expr> CreateMethodCallViaMsgSendSuper(AST::FuncDecl& fd, OwnedPtr<AST::Expr> receiver,
         OwnedPtr<AST::Expr> objCSuper, std::vector<OwnedPtr<AST::Expr>> rawArgs);
@@ -193,9 +197,9 @@ public:
     OwnedPtr<AST::Expr> CreatePropSetterCallViaMsgSendSuper(
         AST::PropDecl& pd, OwnedPtr<AST::Expr> receiver, OwnedPtr<AST::Expr> objCSuper, OwnedPtr<AST::Expr> value);
     /**
-     * putToRegistry($obj)
+     * putToRegistry(expr)
      */
-    OwnedPtr<AST::CallExpr> CreatePutToRegistryCall(OwnedPtr<AST::Expr> nativeHandle);
+    OwnedPtr<AST::CallExpr> CreatePutToRegistryCall(OwnedPtr<AST::Expr> expr);
     /**
      * getFromRegistry<typeArg>(registryId)
      */

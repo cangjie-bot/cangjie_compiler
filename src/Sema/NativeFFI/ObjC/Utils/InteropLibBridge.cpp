@@ -43,6 +43,7 @@ constexpr auto INTEROPLIB_OBJ_C_SET_INSTANCE_VARIABLE = "setInstanceVariable";
 constexpr auto INTEROPLIB_OBJ_C_GET_CLASS = "getClass";
 constexpr auto INTEROPLIB_OBJ_C_WITH_METHOD_ENV = "withMethodEnv";
 constexpr auto INTEROPLIB_OBJ_C_WITH_METHOD_ENV_OBJ = "withMethodEnvObj";
+constexpr auto INTEROPLIB_OBJ_C_WITH_OBJ_C_SUPER = "withObjCSuper";
 constexpr auto INTEROPLIB_OBJ_C_MSG_SEND = "objCMsgSend";
 constexpr auto INTEROPLIB_OBJ_C_MSG_SEND_SUPER = "objCMsgSendSuper";
 constexpr auto INTEROPLIB_OBJ_C_RELEASE = "objCRelease";
@@ -318,6 +319,12 @@ Ptr<FuncDecl> InteropLibBridge::GetObjCRetainDecl()
 Ptr<FuncDecl> InteropLibBridge::GetObjCAutoReleaseDecl()
 {
     static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_AUTO_RELEASE);
+    return decl;
+}
+
+Ptr<FuncDecl> InteropLibBridge::GetWithObjCSuperDecl()
+{
+    static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_WITH_OBJ_C_SUPER);
     return decl;
 }
 
