@@ -161,7 +161,9 @@ inline bool NotAssignableVariable(const VarDecl& vd, bool inInitFunction)
 {
     return !vd.isVar &&
         (vd.TestAnyAttr(Attribute::GLOBAL, Attribute::INITIALIZED, Attribute::ENUM_CONSTRUCTOR) ||
-            (vd.TestAnyAttr(Attribute::IN_STRUCT, Attribute::IN_CLASSLIKE) && !inInitFunction));
+            (vd.TestAnyAttr(Attribute::IN_STRUCT, Attribute::IN_CLASSLIKE) && !inInitFunction) ||
+            (vd.TestAnyAttr(Attribute::IN_STRUCT, Attribute::IN_CLASSLIKE) && inInitFunction &&
+                vd.TestAttr(Attribute::COMMON)));
 }
 
 inline bool CanSkipInitCheck(const Node& node)
@@ -660,7 +662,11 @@ void InitializationChecker::CheckLetFlag(const Expr& ae, const Expr& expr)
         case ASTKind::REF_EXPR:
             if (auto vd = DynamicCast<VarDecl*>(expr.GetTarget());
                 vd && (NotAssignableVariable(*vd, inInitFunction) || IsAssignLetDefinedOuterLoop(ctx, *vd, ae))) {
-                DiagCannotAssignToImmutable(diag, ae, expr);
+                if (vd->TestAttr(Attribute::COMMON) && inInitFunction) {
+                    DiagCJMPCannotAssignToImmutableCommonInCtor(diag, ae, expr);
+                } else {
+                    DiagCannotAssignToImmutable(diag, ae, expr);
+                }
             }
             break;
         case ASTKind::MEMBER_ACCESS:

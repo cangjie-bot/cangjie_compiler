@@ -275,6 +275,7 @@ ERROR(parse_common_in_non_common_file, "common declaration must be defined in co
 ERROR(parse_platform_in_non_platform_file, "platform declaration must be defined in platform package part")
 ERROR(parse_cjmp_generic_decl, "generic declaration can not be '%s'")
 ERROR(parse_cjmp_pattern_decl, "%s pattern can not be '%s'")
+ERROR(parse_cjmp_in_common_ctor_required, "at least one constructor is required in common %s '%s'")
 ERROR(parse_explicitly_abstract_only_for_cjmp_abstract_class, "only common/platform or Native FFI mirror abstract classes can have explicitly abstract %s")
 
 // Modifier related.

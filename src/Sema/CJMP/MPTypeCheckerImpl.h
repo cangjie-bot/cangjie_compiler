@@ -60,11 +60,11 @@ private:
     bool TryMatchVarWithPatternWithVarDecls(
         AST::VarWithPatternDecl& platformDecl, const std::vector<Ptr<AST::Decl>>& commonDecls);
 
-    bool IsCJMPDeclMatchable(const AST::Decl& lhsDecl, const AST::Decl& rhsDecl) const;
+    bool IsCJMPDeclMatchable(AST::Decl& lhsDecl, AST::Decl& rhsDecl) const;
     bool MatchCJMPDeclAttrs(
         const std::vector<AST::Attribute>& attrs, const AST::Decl& common, const AST::Decl& platform) const;
     bool MatchCJMPDeclAnnotations(
-        const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, const AST::Decl& platform) const;
+        const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, AST::Decl& platform) const;
 
     bool TrySetPlatformImpl(AST::Decl& platformDecl, AST::Decl& commonDecl, const std::string& kind);
     bool MatchCommonNominalDeclWithPlatform(const AST::InheritableDecl& commonDecl);
