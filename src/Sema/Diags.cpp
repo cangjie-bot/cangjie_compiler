@@ -372,6 +372,18 @@ void DiagCannotAssignToImmutable(DiagnosticEngine& diag, const Expr& ae, const E
             perpetrator, MakeRange(perpetrator.begin, perpetrator.end), "function call returns immutable value");
     }
 }
+// Common 'let' feild can not be assigned in constructor in common CLASS or STRUCT
+void DiagCJMPCannotAssignToImmutableCommonInCtor(DiagnosticEngine& diag, const Expr& ae, const Expr& perpetrator)
+{
+    auto target = perpetrator.GetTarget();
+    auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_common_assign_to_common_immutable_in_ctor, ae, target->identifier);
+    if (target != nullptr && !target->identifier.ZeroPos()) {
+        auto mod = std::find_if(target->modifiers.begin(), target->modifiers.end(),
+            [&](const auto& m) { return m.modifier == TokenKind::COMMON; } );
+        builder.AddNote(*target, MakeRange((*mod).begin, (*mod).end),
+           "'common' let field '" + target->identifier + "' cannot be assigned in constructor");
+    }
+}
 
 void DiagCannotOverride(DiagnosticEngine& diag, const Decl& child, const Decl& parent)
 {

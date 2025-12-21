@@ -655,16 +655,39 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
 }
 
 bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
-    const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, const AST::Decl& platform) const
+    const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, AST::Decl& platform) const
 {
     for (auto anno : annotations) {
-        if (common.HasAnno(anno) != platform.HasAnno(anno)) {
-            // Keep silent due to overloaded common funcs.
-            if (common.astKind != ASTKind::FUNC_DECL) {
-                diag.DiagnoseRefactor(
-                    DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
+        bool commonHas{common.HasAnno(anno)};
+        bool platfromHas{platform.HasAnno(anno)};
+
+        if (commonHas != platfromHas) {
+            if (anno == AnnotationKind::DEPRECATED) {
+                if (commonHas) {
+                    platform.annotations.emplace_back(ASTCloner::Clone(common.GetAnno(anno)));
+                } else {
+                    diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
+                            *platform.GetAnno(anno).get(), "Deprecated", DeclKindToString(platform),
+                            platform.identifier.Val())
+                        .AddNote("platform declarations implicity inherit deprecation from the common declarations");
+                    return false;
+                }
+            } else {
+                // Keep silent due to overloaded common funcs.
+                if (common.astKind != ASTKind::FUNC_DECL) {
+                    diag.DiagnoseRefactor(
+                        DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
+                }
+                return false;
             }
-            return false;
+        } else {
+            if (platfromHas && anno == AnnotationKind::DEPRECATED) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
+                        *platform.GetAnno(anno).get(), "Deprecated", DeclKindToString(platform),
+                        platform.identifier.Val())
+                    .AddNote("platform declarations implicity inherit deprecation from the common declarations");
+                return false;
+            }
         }
     }
 
@@ -778,11 +801,11 @@ static size_t GenericsCount(const Decl& decl)
     return generic->typeParameters.size();
 }
 
-bool MPTypeCheckerImpl::IsCJMPDeclMatchable(const Decl& lhsDecl, const Decl& rhsDecl) const
+bool MPTypeCheckerImpl::IsCJMPDeclMatchable(Decl& lhsDecl, Decl& rhsDecl) const
 {
     bool isLeftCommon = lhsDecl.TestAttr(Attribute::COMMON);
-    const Decl& commonDecl = isLeftCommon ? lhsDecl : rhsDecl;
-    const Decl& platformDecl = isLeftCommon ? rhsDecl : lhsDecl;
+    Decl& commonDecl = isLeftCommon ? lhsDecl : rhsDecl;
+    Decl& platformDecl = isLeftCommon ? rhsDecl : lhsDecl;
     if (commonDecl.identifier.GetRawText() != platformDecl.identifier.GetRawText()) {
         return false;
     }
