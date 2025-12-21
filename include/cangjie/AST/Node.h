@@ -983,6 +983,15 @@ struct Decl : Node {
         return false;
     }
 
+    Ptr<Annotation> GetAnno(AnnotationKind anno) const
+    {
+        for (auto& it : annotations) {
+            if (it->kind == anno)
+                return it;
+        }
+        return nullptr;
+    }
+
     void Clear() noexcept override
     {
         checkFlag = InheritanceVisitStatus::UNVISITED;

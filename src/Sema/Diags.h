@@ -46,6 +46,7 @@ void DiagGenericFuncWithoutTypeArg(DiagnosticEngine& diag, const Expr& expr);
 void DiagStaticAndNonStaticOverload(DiagnosticEngine& diag, const FuncDecl& fd, const FuncDecl& firstNonStatic);
 void DiagImmutableAccessMutableFunc(DiagnosticEngine& diag, const MemberAccess& outerMa, const MemberAccess& ma);
 void DiagCannotAssignToImmutable(DiagnosticEngine& diag, const Expr& ae, const Expr& perpetrator);
+void DiagCJMPCannotAssignToImmutableCommonInCtor(DiagnosticEngine& diag, const Expr& ae, const Expr& perpetrator);
 void DiagCannotOverride(DiagnosticEngine& diag, const Decl& child, const Decl& parent);
 void DiagCannotHaveDefaultParam(DiagnosticEngine& diag, const FuncDecl& fd, const FuncParam& fp);
 void DiagCannotInheritSealed(
