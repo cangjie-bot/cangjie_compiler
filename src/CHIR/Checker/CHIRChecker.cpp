@@ -1302,7 +1302,7 @@ void CHIRChecker::CheckFuncRetValue(
 {
     if (retVal == nullptr) {
         // 1. return value can be null only when return type is Nothing or Void
-        if (!retType.IsNothing() && !retType.IsVoid()) {
+        if (!retType.IsNothing() && !retType.IsVoid() && !retType.IsUnit()) {
             ErrorInLambdaOrFunc(topLevelFunc, lambda, "you should set a return value.");
         }
     } else if (!retVal->GetType()->IsRef()) {

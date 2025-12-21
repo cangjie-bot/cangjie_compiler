@@ -32,6 +32,8 @@ public:
     void CheckCJMPDecl(AST::Decl& decl) const;
     // Check whether the given modifier is a CJMP modifier (COMMON or PLATFORM).
     bool HasCJMPModifiers(const AST::Modifier& modifier) const;
+    // Check presence of ctor in common class/struct
+    void CheckCJMPCtorPresence(const AST::Decl& decl) const;
 
 private:
     bool CheckCJMPModifiersOf(const AST::Decl& decl) const;

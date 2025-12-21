@@ -16,6 +16,7 @@
 #include <functional>
 
 using namespace Cangjie;
+using namespace Utils;
 using namespace AST;
 
 namespace {
@@ -30,13 +31,6 @@ bool HasDefault(const AST::Decl& decl)
         case ASTKind::FUNC_DECL: {
             auto& funcDecl = StaticCast<AST::FuncDecl&>(decl);
             if (funcDecl.funcBody->body) {
-                return true;
-            }
-            break;
-        }
-        case ASTKind::PRIMARY_CTOR_DECL: {
-            auto& pcDecl = StaticCast<AST::PrimaryCtorDecl&>(decl);
-            if (pcDecl.funcBody->body) {
                 return true;
             }
             break;
@@ -186,6 +180,9 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     } else if (decl.astKind == ASTKind::FUNC_DECL) {
         auto& fn = StaticCast<AST::FuncDecl&>(decl);
         CheckCJMPFuncParams(fn, fn.funcBody.get());
+    } else if ((decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::STRUCT_DECL) && 
+        decl.TestAttr(Attribute::COMMON)) {
+        CheckCJMPCtorPresence(decl);
     }
 }
 
@@ -215,8 +212,32 @@ static bool CheckGenericDeclFrozen(const AST::Decl& decl, DiagnosticEngine& diag
     return true;
 }
 
+void MPParserImpl::CheckCJMPCtorPresence(const AST::Decl& decl) const
+{      
+    bool hasCtor{false};
+    if (decl.astKind == ASTKind::CLASS_DECL) {
+        auto& cd = StaticCast<AST::ClassDecl&>(decl);
+        hasCtor = Utils::In(cd.body->decls, [&](const auto& decl) 
+            { return (decl->TestAttr(Attribute::CONSTRUCTOR)) || decl->TestAttr(Attribute::PRIMARY_CONSTRUCTOR); } 
+        );
+    } else if  (decl.astKind == ASTKind::STRUCT_DECL) {
+        auto& sd = StaticCast<AST::StructDecl&>(decl);
+        hasCtor = Utils::In(sd.body->decls, [&](const auto& decl) 
+            { return (decl->TestAttr(Attribute::CONSTRUCTOR)) || decl->TestAttr(Attribute::PRIMARY_CONSTRUCTOR); } 
+        );
+    } else  {
+        return ;
+    }
+    if (!hasCtor) {
+        const Identifier& ident = decl.identifier;
+        std::string declType{(decl.astKind == ASTKind::CLASS_DECL) ? "class" : "struct"};
+        ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_cjmp_in_common_ctor_required,
+            MakeRange(ident.Begin(), ident.End()), declType, ident.Val());
+    }
+}
+
 bool MPParserImpl::CheckCJMPModifiersOf(const AST::Decl& decl) const
-{
+{   
     if (decl.IsCommonOrPlatform()) {
         auto kind = decl.TestAttr(Attribute::COMMON) ? "common" : "platform";
         // generic decl
