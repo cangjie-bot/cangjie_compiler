@@ -699,9 +699,12 @@ bool ObjCGenerator::SkipSetterForValueTypeDecl(Decl& declArg) const
  */
 void ObjCGenerator::AddProperties()
 {
-    auto registryIdType = CreateType(TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
-    AddWithIndent(GeneratePropertyDeclaration(ObjCFunctionType::INSTANCE, READWRITE_MODIFIER, INT64_T,
-        SELF_WEAKLINK_NAME, SELF_WEAKLINK_NAME, NameGenerator::MakeSetterName(SELF_WEAKLINK_NAME)));
+    // generate registryId property only for root @ObjCImpl classes
+    if (auto cd = DynamicCast<ClassDecl>(decl); cd && !HasImplSuperClass(*cd)) {
+        auto registryIdType = CreateType(TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+        AddWithIndent(GeneratePropertyDeclaration(ObjCFunctionType::INSTANCE, READWRITE_MODIFIER, INT64_T,
+            SELF_WEAKLINK_NAME, SELF_WEAKLINK_NAME, NameGenerator::MakeSetterName(SELF_WEAKLINK_NAME)));
+    }
 
     for (OwnedPtr<Decl>& declPtr : decl->GetMemberDecls()) {
         CJC_NULLPTR_CHECK(declPtr);
@@ -976,6 +979,10 @@ void ObjCGenerator::GenerateDeleteObject()
     if (GenerateDeleteObject4CJMapping()) {
         return;
     }
+    // generate only for root @ObjCImpl classes
+    if (auto cd = DynamicCast<ClassDecl>(decl); cd && HasImplSuperClass(*cd)) {
+        return;
+    }
     AddWithIndent(GenerateFunctionDeclaration(ObjCFunctionType::INSTANCE, VOID_TYPE, DELETE_FUNC_NAME),
         GenerationTarget::BOTH, OptionalBlockOp::OPEN);
     AddWithIndent(GenerateDefaultFunctionImplementation(ctx.nameGenerator.GenerateDeleteCjObjectName(*decl),
@@ -986,6 +993,10 @@ void ObjCGenerator::GenerateDeleteObject()
 
 void ObjCGenerator::GenerateDealloc()
 {
+    // generate only for root @ObjCImpl classes
+    if (auto cd = DynamicCast<ClassDecl>(decl); cd && HasImplSuperClass(*cd)) {
+        return;
+    }
     AddWithIndent(GenerateFunctionDeclaration(ObjCFunctionType::INSTANCE, VOID_TYPE, DEALLOC_FUNC_NAME),
         GenerationTarget::BOTH, OptionalBlockOp::OPEN);
     AddWithIndent(
