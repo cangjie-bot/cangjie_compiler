@@ -197,7 +197,12 @@ void SetOptions(SetFuncType setOptionHandler, const DriverOptions& driverOptions
         (!driverOptions.enableCompileDebug && !driverOptions.enableCoverage && driverOptions.displayLineInfo),
         "-disable-debug-info-print");
     setOptionHandler("--relocation-model=pic");
-    setOptionHandler("--frame-pointer=non-leaf");
+    if (driverOptions.target.arch == Triple::ArchType::ARM32 &&
+        driverOptions.optimizationLevel == GlobalOptions::OptimizationLevel::O2) {
+        setOptionHandler("--frame-pointer=all");
+    } else {
+        setOptionHandler("--frame-pointer=non-leaf");
+    }
     setOptionHandler(driverOptions.GetStackTraceFormat());
     SetOptionIf(setOptionHandler, driverOptions.fastMathMode, "-fp-contract=fast");
     SetOptionIf(setOptionHandler, driverOptions.enableFuncSections, "-function-sections");
