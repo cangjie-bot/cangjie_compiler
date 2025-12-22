@@ -16,6 +16,7 @@
 #include <functional>
 
 using namespace Cangjie;
+using namespace Utils;
 using namespace AST;
 
 namespace {
@@ -30,13 +31,6 @@ bool HasDefault(const AST::Decl& decl)
         case ASTKind::FUNC_DECL: {
             auto& funcDecl = StaticCast<AST::FuncDecl&>(decl);
             if (funcDecl.funcBody->body) {
-                return true;
-            }
-            break;
-        }
-        case ASTKind::PRIMARY_CTOR_DECL: {
-            auto& pcDecl = StaticCast<AST::PrimaryCtorDecl&>(decl);
-            if (pcDecl.funcBody->body) {
                 return true;
             }
             break;
@@ -181,6 +175,15 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         // Check that the member of platform interface must have the body
         CheckPlatformInterface(StaticCast<AST::InterfaceDecl&>(decl));
+    } else if (decl.astKind == ASTKind::PRIMARY_CTOR_DECL) {
+        auto& fn = StaticCast<AST::PrimaryCtorDecl&>(decl);
+        CheckCJMPFuncParams(fn, fn.funcBody.get());
+    } else if (decl.astKind == ASTKind::FUNC_DECL) {
+        auto& fn = StaticCast<AST::FuncDecl&>(decl);
+        CheckCJMPFuncParams(fn, fn.funcBody.get());
+    } else if ((decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::STRUCT_DECL) && 
+        decl.TestAttr(Attribute::COMMON)) {
+        CheckCJMPCtorPresence(decl);
     }
 }
 
@@ -208,6 +211,30 @@ static bool CheckGenericDeclFrozen(const AST::Decl& decl, DiagnosticEngine& diag
     }
 
     return true;
+}
+
+void MPParserImpl::CheckCJMPCtorPresence(const AST::Decl& decl) const
+{      
+    bool hasCtor{false};
+    if (decl.astKind == ASTKind::CLASS_DECL) {
+        auto& cd = StaticCast<AST::ClassDecl&>(decl);
+        hasCtor = Utils::In(cd.body->decls, [&](const auto& decl) 
+            { return (decl->TestAttr(Attribute::CONSTRUCTOR)) || decl->TestAttr(Attribute::PRIMARY_CONSTRUCTOR); } 
+        );
+    } else if  (decl.astKind == ASTKind::STRUCT_DECL) {
+        auto& sd = StaticCast<AST::StructDecl&>(decl);
+        hasCtor = Utils::In(sd.body->decls, [&](const auto& decl) 
+            { return (decl->TestAttr(Attribute::CONSTRUCTOR)) || decl->TestAttr(Attribute::PRIMARY_CONSTRUCTOR); } 
+        );
+    } else  {
+        return ;
+    }
+    if (!hasCtor) {
+        const Identifier& ident = decl.identifier;
+        std::string declType{(decl.astKind == ASTKind::CLASS_DECL) ? "class" : "struct"};
+        ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_cjmp_in_common_ctor_required,
+            MakeRange(ident), declType, ident.Val());
+    }
 }
 
 bool MPParserImpl::CheckCJMPModifiersOf(const AST::Decl& decl) const
@@ -261,6 +288,17 @@ bool MPParserImpl::CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::
         return false;
     }
     return true;
+}
+
+void MPParserImpl::CheckCJMPFuncParams(AST::Decl& decl, const Ptr<AST::FuncBody> funcBody) const
+{
+    if (!funcBody || funcBody->paramLists.size() != 1) {
+        return;
+    }
+    auto& params = funcBody->paramLists[0]->params;
+    for (size_t index = 0; index < params.size(); index++) {
+        CheckCJMPModifiersBetween(*params[index], decl);
+    }
 }
 
 void MPParserImpl::CheckPlatformInterface(const AST::InterfaceDecl& decl) const

@@ -875,11 +875,11 @@ static size_t GenericsCount(const Decl& decl)
     return generic->typeParameters.size();
 }
 
-bool MPTypeCheckerImpl::IsCJMPDeclMatchable(const Decl& lhsDecl, const Decl& rhsDecl) const
+bool MPTypeCheckerImpl::IsCJMPDeclMatchable(Decl& lhsDecl, Decl& rhsDecl) const
 {
     bool isLeftCommon = lhsDecl.TestAttr(Attribute::COMMON);
-    const Decl& commonDecl = isLeftCommon ? lhsDecl : rhsDecl;
-    const Decl& platformDecl = isLeftCommon ? rhsDecl : lhsDecl;
+    Decl& commonDecl = isLeftCommon ? lhsDecl : rhsDecl;
+    Decl& platformDecl = isLeftCommon ? rhsDecl : lhsDecl;
     if (commonDecl.identifier.GetRawText() != platformDecl.identifier.GetRawText()) {
         return false;
     }
