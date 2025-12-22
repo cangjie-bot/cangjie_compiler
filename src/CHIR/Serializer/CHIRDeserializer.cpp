@@ -1326,17 +1326,18 @@ IntOpWithException* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const Pa
     auto opKind = obj->opKind();
     auto lhs = GetValue<Value>(obj->base()->base()->operands()->Get(0));
     auto resultTy = GetType<Type>(obj->base()->base()->resultTy());
+    auto ofs = OverflowStrategy(obj->overflowStrategy());
     // Exceptions
     auto sucBlock = GetValue<Block>(obj->base()->successors()->Get(0));
     auto errBlock = GetValue<Block>(obj->base()->successors()->Get(1));
     auto parentBlock = GetValue<Block>(obj->base()->base()->parentBlock());
     if (obj->base()->base()->operands()->size() == 1) {
         return builder.CreateExpression<IntOpWithException>(
-            resultTy, ExprKind(opKind), lhs, sucBlock, errBlock, parentBlock);
+            resultTy, ExprKind(opKind), lhs, ofs, sucBlock, errBlock, parentBlock);
     }
     auto rhs = GetValue<Value>(obj->base()->base()->operands()->Get(1));
     auto intOpWithExcept = builder.CreateExpression<IntOpWithException>(
-        resultTy, ExprKind(opKind), lhs, rhs, sucBlock, errBlock, parentBlock);
+        resultTy, ExprKind(opKind), lhs, rhs, ofs, sucBlock, errBlock, parentBlock);
     return intOpWithExcept;
 }
 
