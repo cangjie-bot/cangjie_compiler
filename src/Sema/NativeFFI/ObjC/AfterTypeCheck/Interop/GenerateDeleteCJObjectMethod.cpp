@@ -11,6 +11,7 @@
  */
 
 #include "Handlers.h"
+#include "NativeFFI/ObjC/Utils/Common.h"
 #include "cangjie/AST/Match.h"
 
 using namespace Cangjie::AST;
@@ -31,6 +32,10 @@ void GenerateDeleteCJObjectMethod::HandleImpl(InteropContext& ctx)
 
     if (interopType == InteropType::ObjC_Mirror) {
         for (auto& impl : ctx.impls) {
+            // generate only for root @ObjCImpl classes
+            if (HasImplSuperClass(*impl)) {
+                continue;
+            }
             genNativeDeleteMethod(*impl);
         }
     } else if (interopType == InteropType::CJ_Mapping) {
