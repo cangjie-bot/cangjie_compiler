@@ -470,16 +470,16 @@ std::string InvokeStaticWithException::ToString([[maybe_unused]] size_t indent) 
 
 // IntOpWithException
 IntOpWithException::IntOpWithException(
-    ExprKind unaryKind, Value* operand, Block* normal, Block* exception, Block* parent)
+    ExprKind unaryKind, Value* operand, OverflowStrategy ofs, Block* normal, Block* exception, Block* parent)
     : ExpressionWithException(ExprKind::INT_OP_WITH_EXCEPTION, {operand}, {normal, exception}, parent),
-    opKind(unaryKind)
+    opKind(unaryKind), overflowStrategy(ofs)
 {
 }
 
 IntOpWithException::IntOpWithException(
-    ExprKind binaryKind, Value* lhs, Value* rhs, Block* normal, Block* exception, Block* parent)
+    ExprKind binaryKind, Value* lhs, Value* rhs, OverflowStrategy ofs, Block* normal, Block* exception, Block* parent)
     : ExpressionWithException(ExprKind::INT_OP_WITH_EXCEPTION, {lhs, rhs}, {normal, exception}, parent),
-    opKind(binaryKind)
+    opKind(binaryKind), overflowStrategy(ofs)
 {
 }
 
@@ -904,11 +904,11 @@ IntOpWithException* IntOpWithException::Clone(CHIRBuilder& builder, Block& paren
     CJC_NULLPTR_CHECK(result);
     IntOpWithException* newNode = nullptr;
     if (GetFirstSuccessorIndex() == 1) {
-        newNode = builder.CreateExpression<IntOpWithException>(
-            result->GetType(), GetOpKind(), GetLHSOperand(), GetSuccessBlock(), GetErrorBlock(), &parent);
+        newNode = builder.CreateExpression<IntOpWithException>(result->GetType(), GetOpKind(), GetLHSOperand(),
+            overflowStrategy, GetSuccessBlock(), GetErrorBlock(), &parent);
     } else {
         newNode = builder.CreateExpression<IntOpWithException>(result->GetType(), GetOpKind(), GetLHSOperand(),
-            GetRHSOperand(), GetSuccessBlock(), GetErrorBlock(), &parent);
+            GetRHSOperand(), overflowStrategy, GetSuccessBlock(), GetErrorBlock(), &parent);
     }
     parent.AppendExpression(newNode);
     newNode->GetResult()->AppendAttributeInfo(result->GetAttributeInfo());
