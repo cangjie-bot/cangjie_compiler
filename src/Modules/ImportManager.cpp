@@ -323,50 +323,50 @@ void ImportManager::SaveDepPkgCjoPath(const std::string& fullPackageName, const 
 bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
 {
     bool success{true};
-    auto curPkg = file.curPackage;
-    CJC_NULLPTR_CHECK(curPkg);
-    bool isMacroRelated = curPkg->isMacroPackage || IsMacroRelatedPackageName(curPkg->fullPackageName);
-    auto relation = Modules::GetPackageRelation(curPackage->fullPackageName, curPkg->fullPackageName);
+    auto curFilePkg = file.curPackage;
+    CJC_NULLPTR_CHECK(curFilePkg);
+    bool isMacroRelated = curFilePkg->isMacroPackage || IsMacroRelatedPackageName(curFilePkg->fullPackageName);
+    auto relation = Modules::GetPackageRelation(curPackage->fullPackageName, curFilePkg->fullPackageName);
     for (auto& import : file.imports) {
         if (import->IsImportMulti() || !import->withImplicitExport) {
             continue;
         }
         auto isVisible = import->IsReExport() && Modules::IsVisible(*import, relation);
-        auto [fullPackageName, cjoPath] = cjoManager->GetPackageCjo(*import);
-        SaveDepPkgCjoPath(fullPackageName, cjoPath);
+        auto [importedfullPkgName, cjoPath] = cjoManager->GetPackageCjo(*import);
+        SaveDepPkgCjoPath(importedfullPkgName, cjoPath);
         // 1. Handle the package which has been parsed before.
-        auto package = cjoManager->GetPackage(fullPackageName);
-        if (package != nullptr) {
+        auto importedPackage = cjoManager->GetPackage(importedfullPkgName);
+        if (importedPackage != nullptr) {
             CJC_ASSERT(
-                !package->TestAttr(Attribute::IMPORTED) || package->TestAttr(Attribute::TOOL_ADD) || !cjoPath.empty());
-            if (!package->TestAttr(Attribute::IMPORTED) && curPkg->TestAttr(Attribute::IMPORTED)) {
+                !importedPackage->TestAttr(Attribute::IMPORTED) || importedPackage->TestAttr(Attribute::TOOL_ADD) || !cjoPath.empty());
+            if (!importedPackage->TestAttr(Attribute::IMPORTED) && curFilePkg->TestAttr(Attribute::IMPORTED)) {
                 // Source package have same name with indirect dependent package. Was reported during loading package.
                 success = false;
                 diag.DiagnoseRefactor(DiagKindRefactor::module_same_name_with_indirect_dependent_pkg, DEFAULT_POSITION,
-                    fullPackageName, curPkg->fullPackageName);
+                    importedfullPkgName, curFilePkg->fullPackageName);
             } else {
-                success = HandleParsedPackage(*package, cjoPath, !isMacroRelated || isVisible, isRecursive) && success;
+                success = HandleParsedPackage(*importedPackage, cjoPath, !isMacroRelated || isVisible, isRecursive) && success;
             }
             continue;
         }
-        auto isMainPartPkgForTestPkg = opts.compileTestsOnly && IsTestPackage(curPkg->fullPackageName) &&
-            GetMainPartPkgNameForTestPkg(curPkg->fullPackageName) == fullPackageName;
+        auto isMainPartPkgForTestPkg = opts.compileTestsOnly && IsTestPackage(curFilePkg->fullPackageName) &&
+            GetMainPartPkgNameForTestPkg(curFilePkg->fullPackageName) == importedfullPkgName;
         // 2. Check and try to load cjo data.
-        if (!CheckCjoPathLegality(import, cjoPath, fullPackageName, isRecursive, isMainPartPkgForTestPkg) ||
-            !cjoManager->LoadPackageHeader(fullPackageName, cjoPath)) {
+        if (!CheckCjoPathLegality(import, cjoPath, importedfullPkgName, isRecursive, isMainPartPkgForTestPkg) ||
+            !cjoManager->LoadPackageHeader(importedfullPkgName, cjoPath)) {
             success = false;
             continue;
         }
-        package = cjoManager->GetPackage(fullPackageName);
-        CJC_NULLPTR_CHECK(package);
+        importedPackage = cjoManager->GetPackage(importedfullPkgName);
+        CJC_NULLPTR_CHECK(importedPackage);
         // 3. Store loaded package node.
         // Do not need to load indirectly dependent macro package which is not re-exported and is macro related.
         // NOTE: since allowing macro package to re-export normal package,
         //       we cannot ignore macro package imported by normal package.
-        if (package->isMacroPackage && isRecursive && !isVisible && isMacroRelated) {
+        if (importedPackage->isMacroPackage && isRecursive && !isVisible && isMacroRelated) {
             // If it's the first time to load `fullPackageName` and current package is macro-related,
             // `fullPackageName` isn't being used now, we need to remove it and then re-import it when it's being used.
-            cjoManager->RemovePackage(fullPackageName, package);
+            cjoManager->RemovePackage(importedfullPkgName, importedPackage);
             continue;
         }
         // Package are needed for CodeGen in the following scenarios:
@@ -374,12 +374,12 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
         // b. In the scenario of compiling a macro package.
         // c. If the package is not a macro package and non-internal reExported by a macro package. If the package is
         //    internal, it's only necessary if current package is its subpackage.
-        auto macroReExportCommonPackage = isVisible && isMacroRelated && !package->isMacroPackage;
-        if ((!IsMacroRelatedPackageName(file.curPackage->fullPackageName) && !package->isMacroPackage) ||
-            curPackage->isMacroPackage || macroReExportCommonPackage) {
+        auto macroReExportCommonPackage = isVisible && isMacroRelated && !importedPackage->isMacroPackage;
+        if ((!IsMacroRelatedPackageName(curFilePkg->fullPackageName) && !importedPackage->isMacroPackage) ||
+            curFilePkg->isMacroPackage || macroReExportCommonPackage) {
             // If package is needed for CodeGen, we also should collect the standard library dependencies.
-            HandleSTDPackage(fullPackageName, cjoPath, isRecursive);
-            for (auto depStdPkg : package->GetAllDependentStdPkgs()) {
+            HandleSTDPackage(importedfullPkgName, cjoPath, isRecursive);
+            for (auto depStdPkg : importedPackage->GetAllDependentStdPkgs()) {
                 auto [it, succ] = cjoFilePaths.emplace(depStdPkg, "");
                 if (succ) {
                     it->second = FileUtil::FindSerializationFile(depStdPkg, SERIALIZED_FILE_EXTENSION, GetSearchPath());
@@ -387,10 +387,10 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
                 HandleSTDPackage(depStdPkg, it->second, true);
             }
         } else {
-            cjoManager->SetOnlyUsedByMacro(fullPackageName, true);
+            cjoManager->SetOnlyUsedByMacro(importedfullPkgName, true);
         }
         // 4. Resolve current package's dependent packages by DFS.
-        success = ResolveImportedPackageHeaders(*package, true) && success;
+        success = ResolveImportedPackageHeaders(*importedPackage, true) && success;
     }
     return success;
 }
