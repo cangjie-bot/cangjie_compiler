@@ -603,8 +603,9 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
                 auto& platformVar = *StaticCast<VarDecl>(platform);
 
                 CheckMatchedVariableTypes(platformVar, commonVar);
-            } else if (!common->TestAttr(Attribute::INITIALIZED) && common->TestAttr(Attribute::IMPORTED)) {
-                // this has been postponed
+            } else if (!common->TestAttr(Attribute::INITIALIZED) && common->TestAttr(Attribute::FROM_COMMON_PART)) {
+                // this has been postponed, we need this to handle the case when a common var has no matched specified
+                // but it does't fail because there is an initializer for it
                 DiagNotMatchedPlatformDecl(diag, *common);
             }
             return VisitAction::SKIP_CHILDREN;
@@ -746,9 +747,9 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
 {
     for (auto anno : annotations) {
         bool commonHas{common.HasAnno(anno)};
-        bool platfromHas{platform.HasAnno(anno)};
+        bool platformHas{platform.HasAnno(anno)};
 
-        if (commonHas != platfromHas) {
+        if (commonHas != platformHas) {
             if (anno == AnnotationKind::DEPRECATED) {
                 if (commonHas) {
                     platform.annotations.emplace_back(ASTCloner::Clone(GetDeprecated(common)));
@@ -756,11 +757,14 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
                             *GetDeprecated(platform), "Deprecated", DeclKindToString(platform),
                             platform.identifier.Val())
-                        .AddNote("platform declarations implicity inherit deprecation from the common declarations");
+                        .AddNote("platform declarations implicitly inherit deprecation from the common declarations");
                     return false;
                 }
             } else {
                 // Keep silent due to overloaded common funcs.
+                // this shouldn't work like this and the rest of the code in this function proves it
+                // instead, we should match functions first by name and parameter types
+                // and after that we should post-check the annotations for already matched pairs
                 if (common.astKind != ASTKind::FUNC_DECL) {
                     diag.DiagnoseRefactor(
                         DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
@@ -768,11 +772,11 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
                 return false;
             }
         } else {
-            if (platfromHas && anno == AnnotationKind::DEPRECATED) {
+            if (platformHas && anno == AnnotationKind::DEPRECATED) {
                 diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
                         *GetDeprecated(platform), "Deprecated", DeclKindToString(platform),
                         platform.identifier.Val())
-                    .AddNote("platform declarations implicity inherit deprecation from the common declarations");
+                    .AddNote("platform declarations implicitly inherit deprecation from the common declarations");
                 return false;
             }
         }
