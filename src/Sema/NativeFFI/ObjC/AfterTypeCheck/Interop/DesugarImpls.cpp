@@ -151,7 +151,7 @@ void DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, FuncDec
         }
 
         auto withMethodEnv = WithinFile(
-            ctx.factory.CreateWithMethodEnvScope(std::move(objCSelf), impl.ty,
+            ctx.factory.CreateWithMethodEnvScope(std::move(objCSelf), impl, impl.ty,
                 [&](auto&& receiver, auto&& objCSuper) {
                     std::vector<OwnedPtr<Expr>> superInitArgs;
                     std::transform(ce.args.begin(), ce.args.end(), std::back_inserter(superInitArgs), [&](auto& arg) {
@@ -203,13 +203,19 @@ void DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, FuncDec
         return;
     }
 
+    // method/prop branch
+    if (!ctx.typeMapper.IsObjCMirror(*targetFd->outerDecl->ty)) {
+        // no need to desugar expr, if the target is not in the @ObjCMirror declaration
+        return;
+    }
+
     std::vector<OwnedPtr<Expr>> msgSendSuperArgs;
     std::transform(ce.args.begin(), ce.args.end(), std::back_inserter(msgSendSuperArgs),
         [&](auto& arg) { return ctx.factory.UnwrapEntity(WithinFile(ASTCloner::Clone(arg->expr.get()), curFile)); });
 
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(impl, false, ce.curFile);
     auto withMethodEnvCall = ctx.factory.CreateWithMethodEnvScope(
-        std::move(nativeHandle), targetFdTy->retTy, [&](auto&& receiver, auto&& objCSuper) {
+        std::move(nativeHandle), impl, targetFdTy->retTy, [&](auto&& receiver, auto&& objCSuper) {
             OwnedPtr<Node> msgSendSuperCall;
             if (targetFd->propDecl) {
                 if (!msgSendSuperArgs.empty()) {
@@ -257,7 +263,7 @@ void DesugarImpls::DesugarGetForPropDecl(
     }
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(impl, false, ma.curFile);
     auto withMethodEnvCall =
-        ctx.factory.CreateWithMethodEnvScope(std::move(nativeHandle), ma.ty, [&](auto&& receiver, auto&& objCSuper) {
+        ctx.factory.CreateWithMethodEnvScope(std::move(nativeHandle), impl, ma.ty, [&](auto&& receiver, auto&& objCSuper) {
             auto msgSendSuperCall =
                 ctx.factory.CreatePropGetterCallViaMsgSendSuper(*pd, std::move(receiver), std::move(objCSuper));
 

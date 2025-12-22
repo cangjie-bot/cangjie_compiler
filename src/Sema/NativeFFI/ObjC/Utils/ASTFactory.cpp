@@ -1216,7 +1216,7 @@ bool ASTFactory::IsGeneratedBaseCtor(const Decl& decl) const
     // taking first param list probably is not the best idea
     auto& params = paramLists[0]->params;
 
-    if (params.empty() || params.size() > 1) {
+    if (params.size() != 1) {
         return false;
     }
 
@@ -1550,7 +1550,7 @@ OwnedPtr<Expr> ASTFactory::CreateObjCRespondsToSelectorCall(OwnedPtr<Expr> id, O
         typeManager.GetBoolTy(), CallKind::CALL_DECLARED_FUNCTION), file);
 }
 
-OwnedPtr<Expr> ASTFactory::CreateWithMethodEnvScope(OwnedPtr<Expr> nativeHandle, Ptr<Ty> retTy,
+OwnedPtr<Expr> ASTFactory::CreateWithMethodEnvScope(OwnedPtr<Expr> nativeHandle, ClassDecl& outerDecl, Ptr<Ty> retTy,
     std::function<std::vector<OwnedPtr<Node>>(OwnedPtr<Expr>, OwnedPtr<Expr>)> bodyFactory)
 {
     CJC_ASSERT(typeMapper.IsObjCCompatible(*retTy));
@@ -1578,7 +1578,9 @@ OwnedPtr<Expr> ASTFactory::CreateWithMethodEnvScope(OwnedPtr<Expr> nativeHandle,
     auto objCSuperRef = WithinFile(CreateRefExpr(*objCSuperParam), nativeHandle->curFile);
 
     auto actionParams = Nodes<FuncParam>(std::move(receiverParam), std::move(objCSuperParam));
-    auto args = Nodes<FuncArg>(CreateFuncArg(std::move(nativeHandle)),
+    auto objcname = nameGenerator.GetObjCDeclName(outerDecl);
+    auto classNameExpr = CreateLitConstExpr(LitConstKind::STRING, objcname, GetStringDecl(importManager).ty);
+    auto args = Nodes<FuncArg>(CreateFuncArg(std::move(nativeHandle)), CreateFuncArg(std::move(classNameExpr)),
         CreateFuncArg(WrapReturningLambdaExpr(
             typeManager, bodyFactory(std::move(receiverRef), std::move(objCSuperRef)), std::move(actionParams))));
 
@@ -1587,7 +1589,7 @@ OwnedPtr<Expr> ASTFactory::CreateWithMethodEnvScope(OwnedPtr<Expr> nativeHandle,
         std::move(withMethodEnvRef), std::move(args), withMethodEnvDecl, realRetTy, CallKind::CALL_DECLARED_FUNCTION);
 }
 
-OwnedPtr<Expr> ASTFactory::CreateWithObjCSuperScope(OwnedPtr<Expr> nativeHandle, Ptr<Ty> retTy,
+OwnedPtr<Expr> ASTFactory::CreateWithObjCSuperScope(OwnedPtr<Expr> nativeHandle, ClassDecl& outerDecl, Ptr<Ty> retTy,
     std::function<std::vector<OwnedPtr<Node>>(OwnedPtr<Expr>, OwnedPtr<Expr>)> bodyFactory)
 {
     CJC_ASSERT(typeMapper.IsObjCCompatible(*retTy));
@@ -1608,7 +1610,10 @@ OwnedPtr<Expr> ASTFactory::CreateWithObjCSuperScope(OwnedPtr<Expr> nativeHandle,
     auto objCSuperRef = WithinFile(CreateRefExpr(*objCSuperParam), nativeHandle->curFile);
 
     auto actionParams = Nodes<FuncParam>(std::move(receiverParam), std::move(objCSuperParam));
+    auto objcname = nameGenerator.GetObjCDeclName(outerDecl);
+    auto classNameExpr = CreateLitConstExpr(LitConstKind::STRING, objcname, GetStringDecl(importManager).ty);
     auto args = Nodes<FuncArg>(CreateFuncArg(std::move(nativeHandle)),
+        CreateFuncArg(std::move(classNameExpr)),
         CreateFuncArg(WrapReturningLambdaExpr(
             typeManager, bodyFactory(std::move(receiverRef), std::move(objCSuperRef)), std::move(actionParams))));
 
