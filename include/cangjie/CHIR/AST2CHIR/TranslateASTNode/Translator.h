@@ -24,6 +24,7 @@
 #include "cangjie/Option/Option.h"
 #include "cangjie/Sema/GenericInstantiationManager.h"
 #include "cangjie/Utils/SafePointer.h"
+#include "cangjie/Utils/Utils.h"
 
 namespace Cangjie::CHIR {
 
@@ -707,7 +708,7 @@ private:
 
     /**
      * @brief Wrapped expression creation to handle both normal context and try-catch context.
-     * For IntOp, typecast with overflow strategy.
+     * For IntOp with overflow strategy.
      */
     template <typename TExpr, typename... Args>
     Expression* TryCreateWithOV(Block* parent, bool mayThrowE, OverflowStrategy ofs, Args&&... args)
@@ -717,11 +718,29 @@ private:
         }
         auto errBB = tryCatchContext.top();
         auto sucBB = CreateBlock();
-        auto ret =
-            CreateAndAppendExpression<CHIRNodeExceptionT<TExpr>>(std::forward<Args>(args)..., sucBB, errBB, parent);
+        auto ret = CreateAndAppendExpression<CHIRNodeExceptionT<TExpr>>(
+            std::forward<Args>(args)..., ofs, sucBB, errBB, parent);
         currentBlock = sucBB;
         return ret;
     }
+
+    /**
+     * @brief Wrapped expression creation to handle both normal context and try-catch context.
+     * For typecast with overflow strategy.
+     */
+     template <typename... Args>
+     Expression* TryCreateCastWithOV(Block* parent, bool mayThrowE, OverflowStrategy ofs, Args&&... args)
+     {
+         if (tryCatchContext.empty() || !mayThrowE) {
+             return CreateAndAppendExpression<TypeCast>(std::forward<Args>(args)..., ofs, parent);
+         }
+         auto errBB = tryCatchContext.top();
+         auto sucBB = CreateBlock();
+         auto ret =
+             CreateAndAppendExpression<TypeCastWithException>(std::forward<Args>(args)..., sucBB, errBB, parent);
+         currentBlock = sucBB;
+         return ret;
+     }
 
     std::vector<Type*> GetFuncInstArgs(const AST::CallExpr& expr);
 
