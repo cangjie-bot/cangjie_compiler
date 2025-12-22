@@ -84,7 +84,7 @@ void CHIRDeserializer::Deserialize(uint8_t* data, int64_t size, CHIRBuilder& chi
     CHIRDeserializerImpl deserializer(chirBuilder, false);
     deserializer.Run(package);
     printf("func size in cpp: %zu\n", chirBuilder.GetCurPackage()->GetGlobalFuncs().size());
-    chirBuilder.GetCurPackage()->GetGlobalFuncs()[0]->Dump();
+    chirBuilder.GetCurPackage()->Dump();
     printf("CHIR plugin run success !!!\n");
 }
 
@@ -92,6 +92,9 @@ template <typename T, typename FBT>
 std::vector<T> CHIRDeserializer::CHIRDeserializerImpl::Create(const flatbuffers::Vector<FBT>* vec)
 {
     std::vector<T> retval;
+    if (vec == nullptr) {
+        return retval;
+    }
     for (auto obj : *vec) {
         retval.emplace_back(Create<T>(obj));
     }
@@ -187,6 +190,9 @@ template <> Position CHIRDeserializer::CHIRDeserializerImpl::Create(const Packag
 
 template <> DebugLocation CHIRDeserializer::CHIRDeserializerImpl::Create(const PackageFormat::DebugLocation* obj)
 {
+    if (obj == nullptr) {
+        return INVALID_LOCATION;
+    }
     auto filePath = obj->filePath()->str();
     auto fileId = obj->fileId();
     auto beginPos = Create<Position>(obj->beginPos());
@@ -278,6 +284,9 @@ VTableInDef CHIRDeserializer::CHIRDeserializerImpl::Create(
     const flatbuffers::Vector<flatbuffers::Offset<PackageFormat::VTableInType>>* obj)
 {
     VTableInDef vtableInDef;
+    if (obj == nullptr) {
+        return vtableInDef;
+    }
     for (auto item : *obj) {
         auto ty = GetType<ClassType>(item->srcParentType());
         std::vector<VirtualMethodInfo> info = Create<VirtualMethodInfo>(item->virtualMethods());
@@ -1803,12 +1812,14 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
             obj.AddAbstractMethod(info, false);
         }
     }
-    std::vector<std::string> names;
-    names.reserve(buffer->allMethodMangledNames()->size());
-    for (const auto& name : *buffer->allMethodMangledNames()) {
-        names.emplace_back(name->str());
+    if (buffer->allMethodMangledNames() != nullptr) {
+        std::vector<std::string> names;
+        names.reserve(buffer->allMethodMangledNames()->size());
+        for (const auto& name : *buffer->allMethodMangledNames()) {
+            names.emplace_back(name->str());
+        }
+        obj.SetAllMethodMangledNames(names);
     }
-    obj.SetAllMethodMangledNames(names);
 }
 
 template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::ExtendDef* buffer, ExtendDef& obj)
