@@ -547,8 +547,12 @@ void MPTypeCheckerImpl::CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST
 {
     CJC_ASSERT_WITH_MSG(commonVar.ty && !Ty::IsInitialTy(commonVar.ty),
         "Common variable type must be already resolved");
-    CJC_ASSERT_WITH_MSG(platformVar.ty && !Ty::IsInitialTy(platformVar.ty),
-        "Platform variable type must be already resolved");
+
+    if (!platformVar.ty || Ty::IsInitialTy(platformVar.ty)) {
+        // this should already be reported as parse_expected_one_of_type_or_initializer
+        // here we skip it
+        return;
+    }
 
     if (commonVar.ty == platformVar.ty) return;
     if (typeManager.IsTyEqual(platformVar.ty, commonVar.ty)) return;
