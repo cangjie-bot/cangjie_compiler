@@ -237,6 +237,14 @@ ERROR(sema_varray_subscript_num, "'VArray' accepts exactly one subscript index w
 ERROR(sema_varray_in_cfunc, "return type of CFunc cannot be 'VArray' type")
 ERROR(sema_varray_arg_type_with_reftype, "'%s' directly or indirectly contains an unsupported type", "contain unsupported instance member variable with type '%s'")
 
+// C FFI Sema Prepare Check
+ERROR(sema_only_cfunc_can_use_annotation, "only CFunc can use '%s'")
+ERROR(sema_annotation_calling_conv_not_support, "'@CallingConv' have not supported '%s' yet")
+ERROR(sema_annotation_invalid_args_type, "'%s' arg should be right type")
+
+// C FFI Sema Check
+ERROR(sema_illegal_scope_use_of_annotation, "'%s' can only be used in top-level scope")
+
 // CFFI
 ERROR(sema_invalid_cfunc_return_type, "return type of CFunc must be instantiated with CType")
 
