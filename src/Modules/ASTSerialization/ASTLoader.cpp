@@ -685,7 +685,7 @@ OwnedPtr<Decl> ASTLoader::ASTLoaderImpl::LoadVarDecl(const PackageFormat::Decl& 
     varDecl->isMemberParam = info->isMemberParam();
     varDecl->isConst = info->isConst();
     LoadDeclBasicInfo(decl, *varDecl);
-    if ((importSrcCode && !varDecl->TestAttr(AST::Attribute::FROM_COMMON_PART)) || deserializingCommon) {
+    if ((importSrcCode && !varDecl->TestAttr(AST::Attribute::COMMON)) || deserializingCommon) {
         varDecl->initializer = LoadExpr(info->initializer());
     }
     if (varDecl->initializer && IsGlobalOrMember(*varDecl)) {
