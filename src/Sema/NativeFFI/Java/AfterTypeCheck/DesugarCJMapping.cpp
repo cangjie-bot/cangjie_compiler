@@ -146,6 +146,136 @@ void JavaDesugarManager::GenerateForCJStructOrClassTypeMapping(const File &file,
     }
 }
 
+void JavaDesugarManager::GenerateTuplesGlueCode(Package& pkg)
+{
+    for (const auto& it : pkg.interopTuples) {
+        std::string result = it;
+        if (!result.empty() && result.front() == '(') {
+            result.erase(0, 1);
+        }
+        if (!result.empty() && result.back() == ')') {
+            result.erase(result.size() - 1, 1);
+        }
+
+        std::vector<std::string> actualTypes;
+        SplitAndTrim(result, actualTypes);
+        std::vector<Ptr<Ty>> elements;
+        for (const auto& typeStr : actualTypes) {
+            auto ty = GetGenericInstTy(typeStr);
+            CJC_ASSERT(ty);
+            elements.push_back(ty);
+        }
+        auto tupleTy = typeManager.GetTupleTy(elements);
+        CJC_ASSERT(tupleTy);
+
+        if (!tupleConfigs.insert(tupleTy).second) {
+            continue;
+        }
+
+        generatedDecls.push_back(GenerateNativeInitCjObjectFunc(tupleTy, pkg));
+        GenerateNativeItemFunc(tupleTy, pkg);
+        auto helperDecl = CreateHelperStructDecl(tupleTy, pkg);
+        generatedDecls.push_back(GenerateCJMappingNativeDeleteCjObjectFunc(*helperDecl));
+        const std::string fileJ = GetCjMappingTupleName(*tupleTy) + ".java";
+        auto codegen = JavaSourceCodeGenerator(helperDecl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
+            GetCangjieLibName(outputLibPath, helperDecl.get()->GetFullPackageName()), tupleTy, true,
+            pkg.isInteropCJPackageConfig);
+        codegen.Generate();
+    }
+    return;
+}
+
+OwnedPtr<StructDecl> JavaDesugarManager::CreateHelperStructDecl(const Ptr<TupleTy>& tupleTy, Package& pkg)
+{
+    auto curFile = pkg.files.at(0).get();
+    CJC_NULLPTR_CHECK(curFile);
+
+    auto helperDecl = MakeOwned<StructDecl>();
+    helperDecl->identifier = GetCjMappingTupleName(*tupleTy);
+    helperDecl->fullPackageName = pkg.fullPackageName;
+    helperDecl->moduleName = ::Cangjie::Utils::GetRootPackageName(pkg.fullPackageName);
+    helperDecl->curFile = curFile;
+    helperDecl->EnableAttr(Attribute::PUBLIC, Attribute::COMPILER_ADD, Attribute::JAVA_CJ_MAPPING);
+    helperDecl->body = MakeOwned<StructBody>();
+
+    std::vector<Ptr<Ty>> typeArgs;
+    helperDecl->ty = typeManager.GetStructTy(*helperDecl, typeArgs);
+    std::vector<OwnedPtr<FuncParam>> params;
+    size_t i = 0;
+    for (const auto& it : tupleTy->typeArgs) {
+        std::string itemName = "item" + std::to_string(i);
+        ++i;
+        auto paramType = MakeOwned<Type>();
+        paramType->ty = it;
+        OwnedPtr<FuncParam> param = CreateFuncParam(itemName, std::move(paramType), nullptr, it);
+        params.push_back(std::move(param));
+    }
+
+    auto retTy = helperDecl->ty;
+    std::vector<OwnedPtr<FuncParamList>> paramLists;
+    paramLists.push_back(CreateFuncParamList(std::move(params)));
+    auto funcBody = CreateFuncBody(std::move(paramLists), nullptr, nullptr, retTy);
+    std::vector<Ptr<Ty>> funcTyParams;
+    for (auto& param : funcBody->paramLists[0]->params) {
+        funcTyParams.push_back(param->ty);
+    }
+    auto funcTy = typeManager.GetFunctionTy(funcTyParams, retTy);
+    auto fdecl = CreateFuncDecl("init", std::move(funcBody), funcTy);
+    fdecl->funcBody->funcDecl = fdecl.get();
+    fdecl->EnableAttr(Attribute::PUBLIC);
+    fdecl->EnableAttr(Attribute::CONSTRUCTOR);
+    fdecl->EnableAttr(Attribute::ABSTRACT);
+    fdecl->curFile = helperDecl->curFile;
+    fdecl->moduleName = helperDecl->moduleName;
+    fdecl->fullPackageName = helperDecl->fullPackageName;
+
+    helperDecl->body->decls.push_back(std::move(fdecl));
+    return std::move(helperDecl);
+}
+
+void JavaDesugarManager::GenerateNativeItemFunc(const Ptr<TupleTy>& tupleTy, Package& pkg)
+{
+    auto curFile = pkg.files.at(0).get();
+    CJC_NULLPTR_CHECK(curFile);
+    size_t i = 0;
+    for (const auto& ty : tupleTy->typeArgs) {
+        Ptr<Ty> retTy = ty;
+        std::vector<OwnedPtr<FuncParam>> params;
+        PushEnvParams(params);
+        // jobject or jclass
+        PushObjParams(params, "_");
+        auto& jniEnvPtrParam = *params[0];
+        PushSelfParams(params);
+
+        auto& selfParam = *params.back();
+
+        OwnedPtr<SubscriptExpr> tupleAccess;
+        OwnedPtr<CallExpr> reg;
+        reg = lib.CreateGetFromRegistryCall(
+            WithinFile(CreateRefExpr(jniEnvPtrParam), curFile), WithinFile(CreateRefExpr(selfParam), curFile), tupleTy);
+        tupleAccess = CreateTupleAccess(std::move(reg), i);
+
+        tupleAccess->curFile = curFile;
+        tupleAccess->indexExprs.at(0)->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+        auto tupleAccessRes = CreateTmpVarDecl(nullptr, std::move(tupleAccess));
+        tupleAccessRes->ty = retTy;
+        OwnedPtr<Expr> retExpr;
+
+        retExpr = WithinFile(CreateRefExpr(*tupleAccessRes), curFile);
+
+        auto wrappedNodesLambda =
+            WrapReturningLambdaExpr(typeManager, Nodes(std::move(tupleAccessRes), std::move(retExpr)));
+        auto funcName = GetJniTupleItemName(tupleTy, pkg, i);
+
+        std::vector<OwnedPtr<FuncParamList>> paramLists;
+        paramLists.push_back(CreateFuncParamList(std::move(params)));
+
+        generatedDecls.push_back(GenerateNativeFuncDeclBylambda(wrappedNodesLambda, paramLists, jniEnvPtrParam, retTy,
+            funcName, curFile, ::Cangjie::Utils::GetRootPackageName(pkg.fullPackageName), pkg.fullPackageName));
+        ++i;
+    }
+}
+
 OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFuncForEnumCtorNoParams(
     AST::EnumDecl& enumDecl, AST::VarDecl& ctor)
 {
@@ -321,14 +451,14 @@ OwnedPtr<AST::MemberAccess> JavaDesugarManager::GenThisMemAcessForSelfMethod(
         std::vector<Ptr<Ty>> tmpParamTys;
         for (auto& param : fd->funcBody->paramLists[0]->params) {
             tmpParamTys.push_back(
-                param->ty->HasGeneric() ? GetGenericInstTy(genericConfig, param->ty->name) : param->ty);
+                param->ty->HasGeneric() ? GetGenericInstTy(genericConfig, param->ty, typeManager) : param->ty);
         }
         Ptr<Ty> retTy = fd->funcBody->retType->ty->HasGeneric()
-            ? GetGenericInstTy(genericConfig, fd->funcBody->retType->ty->name)
+            ? GetGenericInstTy(genericConfig, fd->funcBody->retType->ty, typeManager)
             : fd->funcBody->retType->ty;
         std::vector<Ptr<Ty>> tmpTypeArgs;
         for (auto& typeArg : fd->ty->typeArgs) {
-            tmpTypeArgs.push_back(typeArg->HasGeneric() ? GetGenericInstTy(genericConfig, typeArg->name) : typeArg);
+            tmpTypeArgs.push_back(typeArg->HasGeneric() ? GetGenericInstTy(genericConfig, typeArg, typeManager) : typeArg);
         }
 
         funcTy = typeManager.GetFunctionTy(tmpParamTys, retTy);
@@ -349,9 +479,12 @@ OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassDefaultMethod(
 {
     auto replaceRefCall = [this, &interfaceFuncDecl, genericConfig](const Node&, Node& target) {
         auto targetPtr = Ptr<Node>(&target);
+        if (genericConfig && targetPtr->ty->HasGeneric()) {
+            targetPtr->ty = GetGenericInstTy(genericConfig, targetPtr->ty, typeManager);
+        }
         if (Ptr<CallExpr> call = As<ASTKind::CALL_EXPR>(targetPtr.get())) {
             if (genericConfig && call->ty->HasGeneric()) {
-                call->ty = GetGenericInstTy(genericConfig, call->ty->name);
+                call->ty = GetGenericInstTy(genericConfig, call->ty, typeManager);
             }
             if (Ptr<RefExpr> refE = As<ASTKind::REF_EXPR>(call->baseFunc.get())) {
                 if (Ptr<FuncDecl> fd = As<ASTKind::FUNC_DECL>(refE->GetTarget())) {
@@ -903,14 +1036,14 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
             InitGenericConfigs(file, decl, genericConfigsVector, isGenericGlueCode);
             for (auto& config : genericConfigsVector) {
                 const std::string fileJ = config->declInstName + ".java";
-                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
                     GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), config,
                     file.curPackage.get()->isInteropCJPackageConfig);
                 codegen.Generate();
             }
         } else {
             const std::string fileJ = decl.get()->identifier.Val() + ".java";
-            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
                 GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
                 file.curPackage.get()->isInteropCJPackageConfig);
             codegen.Generate();

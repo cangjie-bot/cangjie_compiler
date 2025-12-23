@@ -550,6 +550,15 @@ OwnedPtr<Expr> InteropLibBridge::CreateJavaEntityCall(OwnedPtr<Expr> arg)
 
     Ptr<FuncDecl> suitableCtor;
 
+    if (arg->ty->IsTuple()) {
+        auto curFile = arg->curFile;
+        auto clazzName = curFile->GetFullPackageName() + "." + GetCjMappingTupleName(*arg->ty);
+        std::replace(clazzName.begin(), clazzName.end(), '.', '/');
+        auto entity = CreateCFFINewJavaCFFINewJavaProxyObjectForCJMappingCall(
+            WithinFile(CreateGetJniEnvCall(curFile), curFile), std::move(arg), clazzName, true);
+        return CreateJavaEntityJobjectCall(std::move(entity));
+    }
+
     for (auto& decl : javaEntityDecl->body->decls) {
         if (auto ctor = As<ASTKind::FUNC_DECL>(decl.get()); ctor && ctor->TestAttr(Attribute::CONSTRUCTOR)) {
             if (ctor->funcBody->paramLists[0]->params.size() != 1) {
@@ -1422,6 +1431,10 @@ OwnedPtr<Expr> InteropLibBridge::UnwrapJavaEntity(OwnedPtr<Expr> entity, Ptr<Ty>
         }
 
         return UnwrapJavaImplOption(CreateGetJniEnvCall(curFile), std::move(entity), ty, *classLikeDecl, toRaw);
+    }
+
+    if (ty->IsTuple()) {
+        return CreateGetFromRegistryByEntityCall(CreateGetJniEnvCall(curFile), std::move(entity), ty, false);
     }
 
     auto classLikeTy = DynamicCast<ClassLikeTy*>(ty.get());

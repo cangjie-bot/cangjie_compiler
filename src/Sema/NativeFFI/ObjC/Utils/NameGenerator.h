@@ -19,7 +19,7 @@
 namespace Cangjie::Interop::ObjC {
 class NameGenerator {
 public:
-    explicit NameGenerator(const BaseMangler& mangler);
+    explicit NameGenerator(const BaseMangler& mangler, TypeManager& typeManager);
     std::string GenerateInitCjObjectName(const AST::VarDecl& target, const std::string* genericActualName = nullptr);
     std::string GenerateInitCjObjectName(const AST::FuncDecl& target, const std::string* genericActualName = nullptr);
     std::string GenerateInitCjObjectName(const AST::Decl& target, const std::string* genericActualName = nullptr);
@@ -61,6 +61,7 @@ public:
 
 private:
     const BaseMangler& mangler;
+    TypeManager& typeManager;
 };
 } // namespace Cangjie::Interop::ObjC
 
