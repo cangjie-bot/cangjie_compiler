@@ -43,6 +43,7 @@ struct PackageConfig {
     std::vector<std::string> interopCJExcludedApis;
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
+    std::vector<std::string> interopTuples;
 };
 
 // Complete Configuration Structure
@@ -66,12 +67,6 @@ public:
 
     // Verify Configuration
     bool Validate() const;
-
-private:
-    // Character string-to-policy type
-    InteropCJStrategy StringToStrategy(const std::string& str) const;
-    // Character string-to-generic-policy type
-    InteropCJGenericStrategyType StringToGenericStrategy(const std::string& str) const;
 };
 } // namespace Cangjie
 #endif // CANGJIE_BASIC_INTEROP_CJ_PACKAGECONFIGREADER_H

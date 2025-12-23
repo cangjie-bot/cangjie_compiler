@@ -90,7 +90,7 @@ struct JavaInteropTypeChecker {
         };
 
         // Use IsCJMapping to check a ty is supported or not.
-        if (isCJMappingTypeCheck && IsCJMapping(ty)) {
+        if (isCJMappingTypeCheck && (IsCJMapping(ty) || ty.IsTuple())) {
             return true;
         }
 

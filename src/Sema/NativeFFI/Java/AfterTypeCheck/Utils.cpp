@@ -68,8 +68,8 @@ namespace Cangjie::Interop::Java {
 using namespace TypeCheckUtil;
 using namespace Cangjie::Native::FFI;
 
-Utils::Utils(ImportManager& importManager, TypeManager& typeManager)
-    : importManager(importManager), typeManager(typeManager)
+Utils::Utils(ImportManager& importManager, TypeManager& typeManager, Package& pkg)
+    : importManager(importManager), typeManager(typeManager), pkg(pkg)
 {
 }
 
@@ -721,6 +721,10 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
             jsig.append(GetJavaTypeSignature(*funcTy.retTy));
             break;
         }
+        case TypeKind::TYPE_TUPLE: {
+            jsig = "L" + NormalizeJavaSignature(pkg.fullPackageName + "." + GetCjMappingTupleName(cjtype)) + ";";
+            break;
+        }
         default:
             CJC_ABORT();
             break; // method must be called only on java-compatible types
@@ -747,6 +751,19 @@ std::string GetMangledJniInitCjObjectFuncName(
             continue;
         }
         auto mangledParam = mangler.MangleType(*param->ty);
+        std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
+        name += mangledParam;
+    }
+
+    return name;
+}
+
+std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler, const std::vector<Ptr<Ty>>& types)
+{
+    std::string name("initCJObject");
+
+    for (auto& ty : types) {
+        auto mangledParam = mangler.MangleType(*ty);
         std::replace(mangledParam.begin(), mangledParam.end(), '.', '_');
         name += mangledParam;
     }
@@ -800,6 +817,17 @@ bool IsCJMapping(const Ty& ty)
 
     if (auto classTy = DynamicCast<ClassTy*>(&ty)) {
         return classTy && classTy->decl && IsCJMapping(*classTy->decl);
+    }
+
+    return false;
+}
+
+bool IsCJMappingTuple(const Ptr<Ty>& ty, std::unordered_set<Ptr<Ty>> tupleConfigs)
+{
+    if (ty->IsTuple()) {
+        if (tupleConfigs.count(ty)) {
+            return true;
+        }
     }
 
     return false;

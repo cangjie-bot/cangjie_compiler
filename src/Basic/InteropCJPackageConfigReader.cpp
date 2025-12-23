@@ -5,12 +5,12 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 /**
-* @file
-*
-* This document aims to parse PackageConfig.toml (interop CJ package configuration information),
-* which primarily involves the symbols that the target language can expose in interoperability scenarios,
-* as well as the specific type sets for generic instantiation.
-*/
+ * @file
+ *
+ * This document aims to parse PackageConfig.toml (interop CJ package configuration information),
+ * which primarily involves the symbols that the target language can expose in interoperability scenarios,
+ * as well as the specific type sets for generic instantiation.
+ */
 
 #include "cangjie/Basic/InteropCJPackageConfigReader.h"
 #include <iostream>
@@ -32,205 +32,350 @@
 namespace Cangjie {
 using namespace toml;
 
-InteropCJStrategy InteropCJPackageConfigReader::StringToStrategy(const std::string& str) const
+namespace {
+const std::string DEFAULT_SECTION = "default";
+const std::string API_STRATEGY = "APIStrategy";
+const std::string GENERIC_TYPE_STRATEGY = "GenericTypeStrategy";
+const std::string PACKAGE_SECTION = "package";
+const std::string PACKAGE_NAME = "name";
+const std::string INCLUDED_APIS = "included_apis";
+const std::string EXCLUDED_APIS = "excluded_apis";
+const std::string GENERIC_OBJECT_CONFIG = "generic_object_configuration";
+const std::string TUPLE_CONFIG = "tuple_configuration";
+const std::string TYPE_ARGUMENTS = "type_arguments";
+const std::string SYMBOLS = "symbols";
+
+const std::string STRATEGY_FULL = "Full";
+const std::string STRATEGY_NONE = "None";
+const std::string GENERIC_STRATEGY_PARTIAL = "Partial";
+const std::string GENERIC_STRATEGY_NONE = "None";
+
+InteropCJStrategy StringToStrategy(const std::string& str)
 {
-    if (str == "Full")
+    if (str == STRATEGY_FULL)
         return InteropCJStrategy::FULL;
-    if (str == "None")
+    if (str == STRATEGY_NONE)
         return InteropCJStrategy::NONE;
     return InteropCJStrategy::UNKNOWN;
 }
 
-InteropCJGenericStrategyType InteropCJPackageConfigReader::StringToGenericStrategy(const std::string& str) const
+InteropCJGenericStrategyType StringToGenericStrategy(const std::string& str)
 {
-    if (str == "None")
+    if (str == GENERIC_STRATEGY_NONE)
         return InteropCJGenericStrategyType::NONE;
-    if (str == "Partial")
+    if (str == GENERIC_STRATEGY_PARTIAL)
         return InteropCJGenericStrategyType::PARTIAL;
     return InteropCJGenericStrategyType::UNKNOWN;
 }
+
+InteropCJStrategy ParseAPIStrategy(toml::Table& packageTable)
+{
+    if (packageTable.find(API_STRATEGY) == packageTable.end() || !packageTable[API_STRATEGY].is<std::string>()) {
+        return InteropCJStrategy::NONE;
+    }
+
+    auto strategy = packageTable[API_STRATEGY].as<std::string>();
+    return StringToStrategy(strategy);
+}
+
+InteropCJGenericStrategyType ParseGenericTypeStrategy(toml::Table& packageTable)
+{
+    if (packageTable.find(GENERIC_TYPE_STRATEGY) == packageTable.end() ||
+        !packageTable[GENERIC_TYPE_STRATEGY].is<std::string>()) {
+        return InteropCJGenericStrategyType::NONE;
+    }
+
+    auto strategy = packageTable[GENERIC_TYPE_STRATEGY].as<std::string>();
+    return StringToGenericStrategy(strategy);
+}
+
+void ParseIncludedAPIs(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    if (packageTable.find(INCLUDED_APIS) == packageTable.end() || !packageTable[INCLUDED_APIS].is<toml::Array>()) {
+        return;
+    }
+
+    auto includedApis = packageTable[INCLUDED_APIS].as<toml::Array>();
+
+    for (const auto& item : includedApis) {
+        if (!item.is<std::string>()) {
+            continue;
+        }
+
+        auto api = item.as<std::string>();
+        pkgConfig.interopCJIncludedApis.push_back(api);
+    }
+}
+
+void ParseExcludedAPIs(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    if (packageTable.find(EXCLUDED_APIS) == packageTable.end() || !packageTable[EXCLUDED_APIS].is<toml::Array>()) {
+        return;
+    }
+
+    auto excludedApis = packageTable[EXCLUDED_APIS].as<toml::Array>();
+
+    for (const auto& item : excludedApis) {
+        if (!item.is<std::string>()) {
+            continue;
+        }
+
+        auto api = item.as<std::string>();
+        pkgConfig.interopCJExcludedApis.push_back(api);
+    }
+}
+
+void ProcessGenericTypeWithSymbols(toml::Table& genTable, const std::string& fullName, size_t angleBracketPos,
+    const std::unordered_map<std::string, std::vector<std::string>>& typeArgumentsMap, PackageConfig& pkgConfig)
+{
+    std::string outerType = fullName.substr(0, angleBracketPos);
+    std::string innerType = fullName.substr(angleBracketPos + 1, fullName.size() - angleBracketPos - 2);
+
+    auto it = typeArgumentsMap.find(outerType);
+    if (it == typeArgumentsMap.end()) {
+        return;
+    }
+
+    const auto& allowedTypes = it->second;
+    if (std::find(allowedTypes.begin(), allowedTypes.end(), innerType) == allowedTypes.end()) {
+        return;
+    }
+
+    if (genTable.find(SYMBOLS) == genTable.end() || !genTable[SYMBOLS].is<toml::Array>()) {
+        return;
+    }
+
+    GenericTypeArguments typeArgs;
+    auto symbolsArray = genTable[SYMBOLS].as<toml::Array>();
+
+    for (const auto& symbol : symbolsArray) {
+        if (!symbol.is<std::string>()) {
+            continue;
+        }
+
+        typeArgs.symbols.insert(symbol.as<std::string>());
+    }
+
+    pkgConfig.allowedInteropCJGenericInstantiations[outerType][innerType] = std::move(typeArgs);
+}
+
+void ProcessNonGenericTypeWithSymbols(toml::Table& genTable, const std::string& name, PackageConfig& pkgConfig)
+{
+    if (genTable.find(SYMBOLS) == genTable.end() || !genTable[SYMBOLS].is<toml::Array>()) {
+        return;
+    }
+
+    GenericTypeArguments typeArgs;
+    auto symbolsArray = genTable[SYMBOLS].as<toml::Array>();
+
+    for (const auto& symbol : symbolsArray) {
+        if (!symbol.is<std::string>()) {
+            continue;
+        }
+
+        typeArgs.symbols.insert(symbol.as<std::string>());
+    }
+
+    pkgConfig.allowedInteropCJGenericInstantiations[name][""] = std::move(typeArgs);
+}
+
+void ParseTupleConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    if (packageTable.find(TUPLE_CONFIG) == packageTable.end() || !packageTable[TUPLE_CONFIG].is<toml::Array>()) {
+        return;
+    }
+
+    auto tuples = packageTable[TUPLE_CONFIG].as<toml::Array>();
+
+    for (const auto& item : tuples) {
+        if (!item.is<std::string>()) {
+            continue;
+        }
+
+        auto name = item.as<std::string>();
+        pkgConfig.interopTuples.push_back(name);
+    }
+}
+
+void CollectTypeArguments(toml::Array& allowedGenerics,
+    std::unordered_map<std::string, std::vector<std::string>>& typeArgumentsMap, PackageConfig& pkgConfig)
+{
+    for (const auto& item : allowedGenerics) {
+        if (!item.is<toml::Table>()) {
+            continue;
+        }
+
+        auto genTable = item.as<toml::Table>();
+
+        if (genTable.find(PACKAGE_NAME) == genTable.end() || !genTable[PACKAGE_NAME].is<std::string>()) {
+            continue;
+        }
+
+        std::string name = genTable[PACKAGE_NAME].as<std::string>();
+
+        // Check if it's a type parameter definition
+        if (genTable.find(TYPE_ARGUMENTS) == genTable.end() || !genTable[TYPE_ARGUMENTS].is<toml::Array>()) {
+            continue;
+        }
+
+        auto typeArgs = genTable[TYPE_ARGUMENTS].as<toml::Array>();
+        std::vector<std::string> types;
+
+        for (const auto& type : typeArgs) {
+            if (!type.is<std::string>()) {
+                continue;
+            }
+
+            std::string typeStr = type.as<std::string>();
+            types.push_back(typeStr);
+
+            // Initialize with empty GenericTypeArguments
+            pkgConfig.allowedInteropCJGenericInstantiations[name][typeStr] = GenericTypeArguments();
+        }
+
+        typeArgumentsMap[name] = std::move(types);
+    }
+}
+
+void ProcessSymbolConfigurations(toml::Array& allowedGenerics,
+    const std::unordered_map<std::string, std::vector<std::string>>& typeArgumentsMap, PackageConfig& pkgConfig)
+{
+    for (const auto& item : allowedGenerics) {
+        if (!item.is<toml::Table>()) {
+            continue;
+        }
+
+        auto genTable = item.as<toml::Table>();
+
+        if (genTable.find(PACKAGE_NAME) == genTable.end() || !genTable[PACKAGE_NAME].is<std::string>()) {
+            continue;
+        }
+
+        std::string name = genTable[PACKAGE_NAME].as<std::string>();
+
+        // Check if it's a generic type with angle brackets (e.g., "List<T>")
+        size_t pos = name.find('<');
+        if (pos != std::string::npos && name.back() == '>') {
+            ProcessGenericTypeWithSymbols(genTable, name, pos, typeArgumentsMap, pkgConfig);
+        }
+        // Non-generic class with symbols
+        else if (genTable.find(SYMBOLS) != genTable.end() && genTable[SYMBOLS].is<toml::Array>()) {
+            ProcessNonGenericTypeWithSymbols(genTable, name, pkgConfig);
+        }
+    }
+}
+
+void ParseGenericObjectConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    if (packageTable.find(GENERIC_OBJECT_CONFIG) == packageTable.end() ||
+        !packageTable[GENERIC_OBJECT_CONFIG].is<toml::Array>()) {
+        return;
+    }
+
+    auto allowedGenerics = packageTable[GENERIC_OBJECT_CONFIG].as<toml::Array>();
+
+    // First pass: collect type parameter definitions
+    std::unordered_map<std::string, std::vector<std::string>> typeArgumentsMap;
+    CollectTypeArguments(allowedGenerics, typeArgumentsMap, pkgConfig);
+
+    // Second pass: process symbol configurations
+    ProcessSymbolConfigurations(allowedGenerics, typeArgumentsMap, pkgConfig);
+}
+
+void ParseDefaultConfig(toml::Table& tbl, InteropCJPackageConfigReader& reader)
+{
+    if (tbl.find(DEFAULT_SECTION) == tbl.end()) {
+        return;
+    }
+
+    const auto& defaultEntry = tbl.find(DEFAULT_SECTION)->second;
+    if (!defaultEntry.is<toml::Table>()) {
+        return;
+    }
+
+    auto defaultTable = defaultEntry.as<toml::Table>();
+
+    if (defaultTable.find(API_STRATEGY) != defaultTable.end() && defaultTable[API_STRATEGY].is<std::string>()) {
+        auto strategy = defaultTable[API_STRATEGY].as<std::string>();
+        reader.defaultApiStrategy = StringToStrategy(strategy);
+    }
+
+    if (defaultTable.find(GENERIC_TYPE_STRATEGY) != defaultTable.end() &&
+        defaultTable[GENERIC_TYPE_STRATEGY].is<std::string>()) {
+        auto strategy = defaultTable[GENERIC_TYPE_STRATEGY].as<std::string>();
+        reader.defaultGenericTypeStrategy = StringToGenericStrategy(strategy);
+    }
+}
+
+bool ParseSinglePackage(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    // Package name is required
+    if (packageTable.find(PACKAGE_NAME) == packageTable.end() || !packageTable[PACKAGE_NAME].is<std::string>()) {
+        return false;
+    }
+
+    pkgConfig.name = packageTable[PACKAGE_NAME].as<std::string>();
+
+    // Parse API Strategy
+    pkgConfig.apiStrategy = ParseAPIStrategy(packageTable);
+
+    // Parse Generic Type Strategy
+    pkgConfig.genericTypeStrategy = ParseGenericTypeStrategy(packageTable);
+
+    // Parse included APIs
+    ParseIncludedAPIs(packageTable, pkgConfig);
+
+    // Parse excluded APIs
+    ParseExcludedAPIs(packageTable, pkgConfig);
+
+    // Parse generic object configuration
+    ParseGenericObjectConfiguration(packageTable, pkgConfig);
+
+    // Parse tuple configuration
+    ParseTupleConfiguration(packageTable, pkgConfig);
+
+    return true;
+}
+
+void ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& reader)
+{
+    if (tbl.find(PACKAGE_SECTION) == tbl.end()) {
+        return;
+    }
+
+    const auto& packageEntry = tbl.find(PACKAGE_SECTION)->second;
+    if (!packageEntry.is<toml::Array>()) {
+        return;
+    }
+
+    auto packageArray = packageEntry.as<toml::Array>();
+
+    for (const auto& packageItem : packageArray) {
+        if (!packageItem.is<toml::Table>()) {
+            continue;
+        }
+
+        PackageConfig pkgConfig;
+        auto packageTable = packageItem.as<toml::Table>();
+        if (!ParseSinglePackage(packageTable, pkgConfig)) {
+            continue;
+        }
+
+        reader.packages[pkgConfig.name] = std::move(pkgConfig);
+    }
+}
+
+} // namespace
 
 bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
 {
     try {
         toml::Table tbl = toml::parseFile(filePath).value.as<toml::Table>();
-        // Analyze default configuration
-        if (tbl.find("default") != tbl.end()) {
-            auto isDefaultTable = tbl.find("default")->second.is<Table>();
-            if (isDefaultTable) {
-                auto defaultTable = tbl.find("default")->second.as<Table>();
-                if (defaultTable["APIStrategy"].is<std::string>()) {
-                    auto strategy = defaultTable["APIStrategy"].as<std::string>();
-                    defaultApiStrategy = StringToStrategy(strategy);
-                }
-                if (defaultTable["GenericTypeStrategy"].is<std::string>()) {
-                    auto strategy = defaultTable["GenericTypeStrategy"].as<std::string>();
-                    defaultGenericTypeStrategy = StringToGenericStrategy(strategy);
-                }
-            }
-        }
 
-        // Parse package configuration
-        if (tbl.find("package") != tbl.end()) {
-            auto isPackageArray = tbl.find("package")->second.is<Array>();
-            if (isPackageArray) {
-                auto packageArray = tbl.find("package")->second.as<Array>();
-                for (const auto& packageItem : packageArray) {
-                    auto isPackageTable = packageItem.is<Table>();
-                    if (isPackageTable) {
-                        PackageConfig pkgConfig;
-                        auto packageTable = packageItem.as<Table>();
-                        // packageName
-                        if (packageTable["name"].is<std::string>()) {
-                            auto name = packageTable["name"].as<std::string>();
-                            pkgConfig.name = name;
-                        } else {
-                            // There must be a package name.
-                            continue;
-                        }
+        ParseDefaultConfig(tbl, *this);
 
-                        // API Strategy
-                        if (packageTable["APIStrategy"].is<std::string>()) {
-                            auto strategy = packageTable["APIStrategy"].as<std::string>();
-                            pkgConfig.apiStrategy = StringToStrategy(strategy);
-                        } else {
-                            pkgConfig.apiStrategy = defaultApiStrategy;
-                        }
+        ParsePackageConfigurations(tbl, *this);
 
-                        // Generic Strategy
-                        if (packageTable["GenericTypeStrategy"].is<std::string>()) {
-                            auto strategy = packageTable["GenericTypeStrategy"].as<std::string>();
-                            pkgConfig.genericTypeStrategy = StringToGenericStrategy(strategy);
-                        } else {
-                            pkgConfig.genericTypeStrategy = defaultGenericTypeStrategy;
-                        }
-
-                        // List of Included APIs
-                        if (packageTable.find("included_apis") != packageTable.end()) {
-                            if (packageTable["included_apis"].is<Array>()) {
-                                auto includedApis = packageTable["included_apis"].as<Array>();
-                                for (const auto& item : includedApis) {
-                                    if (item.is<std::string>()) {
-                                        auto api = item.as<std::string>();
-                                        pkgConfig.interopCJIncludedApis.push_back(api);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Excluded API List
-                        if (packageTable.find("excluded_apis") != packageTable.end()) {
-                            if (packageTable["excluded_apis"].is<Array>()) {
-                                auto excludedApis = packageTable["excluded_apis"].as<Array>();
-                                for (const auto& item : excludedApis) {
-                                    if (item.is<std::string>()) {
-                                        auto api = item.as<std::string>();
-                                        pkgConfig.interopCJExcludedApis.push_back(api);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Generic instanceization
-                        if (packageTable.find("generic_object_configuration") != packageTable.end()) {
-                            if (packageTable["generic_object_configuration"].is<Array>()) {
-                                auto allowedGenerics = packageTable["generic_object_configuration"].as<Array>();
-                                // Temporary Storage Type Paramter List.
-                                std::unordered_map<std::string, std::vector<std::string>> typeArgumentsMap;
-
-                                // Collect all types of paramter lists.
-                                for (const auto& item : allowedGenerics) {
-                                    if (item.is<Table>()) {
-                                        auto genTable = item.as<Table>();
-                                        // Check the name field.
-                                        if (genTable.find("name") != genTable.end() &&
-                                            genTable["name"].is<std::string>()) {
-                                            std::string name = genTable["name"].as<std::string>();
-
-                                            // Check if it is a type parameter definition.
-                                            if (genTable.find("type_arguments") != genTable.end() &&
-                                                genTable["type_arguments"].is<Array>()) {
-                                                auto typeArgs = genTable["type_arguments"].as<Array>();
-                                                std::vector<std::string> types;
-
-                                                for (const auto& type : typeArgs) {
-                                                    if (type.is<std::string>()) {
-                                                        std::string typeStr = type.as<std::string>();
-                                                        types.push_back(typeStr);
-                                                        GenericTypeArguments visibleFuncs;
-                                                        pkgConfig.allowedInteropCJGenericInstantiations[name][typeStr] = visibleFuncs;
-                                                    }
-                                                }
-
-                                                typeArgumentsMap[name] = types;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Processing Symbol Configuration.
-                                for (const auto& item : allowedGenerics) {
-                                    if (item.is<Table>()) {
-                                        auto genTable = item.as<Table>();
-                                        // Check the name field.
-                                        if (genTable.find("name") != genTable.end() &&
-                                            genTable["name"].is<std::string>()) {
-                                            std::string name = genTable["name"].as<std::string>();
-
-                                            // Check if it is a symbol configuration (including angle brackets).
-                                            size_t pos = name.find('<');
-                                            if (pos != std::string::npos && name.back() == '>') {
-                                                // Extract generic type names and types parameters.
-                                                std::string outerType = name.substr(0, pos);
-                                                std::string innerType = name.substr(pos + 1, name.size() - pos - 2);
-
-                                                // Check if there is a corresponding type parameter definition.
-                                                if (typeArgumentsMap.find(outerType) != typeArgumentsMap.end()) {
-                                                    // Check whether the parameter of this type is in the allowed list.
-                                                    const auto& allowedTypes = typeArgumentsMap[outerType];
-                                                    if (std::find(allowedTypes.begin(), allowedTypes.end(),
-                                                        innerType) != allowedTypes.end()) {
-                                                        // Analysis of Symbol Set
-                                                        if (genTable.find("symbols") != genTable.end() &&
-                                                            genTable["symbols"].is<Array>()) {
-                                                            GenericTypeArguments typeArgs;
-                                                            auto symbolsArray = genTable["symbols"].as<Array>();
-                                                            for (const auto& symbol : symbolsArray) {
-                                                                if (symbol.is<std::string>()) {
-                                                                    typeArgs.symbols.insert(symbol.as<std::string>());
-                                                                }
-                                                            }
-                                                            pkgConfig.allowedInteropCJGenericInstantiations[outerType]
-                                                                                                           [innerType] =
-                                                                typeArgs;
-                                                        }
-                                                    }
-                                                } // Handling Symbol Configuration for Non-Generic Classes.
-                                            } else if (genTable.find("symbols") != genTable.end() &&
-                                                genTable["symbols"].is<Array>()) {
-                                                // Non-generic classes use an empty string as the internal type.
-                                                GenericTypeArguments typeArgs;
-                                                auto symbolsArray = genTable["symbols"].as<Array>();
-
-                                                for (const auto& symbol : symbolsArray) {
-                                                    if (symbol.is<std::string>()) {
-                                                        typeArgs.symbols.insert(symbol.as<std::string>());
-                                                    }
-                                                }
-                                                // Non-generic classes use "" as he built-in key.
-                                                pkgConfig.allowedInteropCJGenericInstantiations[name][""] = typeArgs;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // Add to Configuration
-                        packages[pkgConfig.name] = pkgConfig;
-                    }
-                }
-            }
-        }
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Error parsing config: " << e.what() << std::endl;
