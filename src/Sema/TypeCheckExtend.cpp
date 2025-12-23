@@ -349,7 +349,7 @@ void UpdateExtendMap(TypeManager& typeManager, const std::unordered_set<Ptr<AST:
         CJC_NULLPTR_CHECK(extendDecl);
         if (extendDecl->isInMacroCall || !extendDecl->extendedType ||
             (!extendDecl->TestAttr(Attribute::IMPORTED) && extendDecl->TestAttr(Attribute::FROM_COMMON_PART) &&
-                extendDecl->TestAttr(Attribute::COMMON))) {
+                extendDecl->TestAttr(Attribute::COMMON) && extendDecl->platformImplementation)) {
             // The extendDecl in macrocall is only for lsp, and does not need to be updated.
             continue;
         }

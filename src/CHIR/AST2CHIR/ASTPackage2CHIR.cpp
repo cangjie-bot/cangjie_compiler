@@ -1478,42 +1478,79 @@ void ConvertPlatformMemberMethods(
     }
 }
 
-/**
- * Removes redundant deserialized extends, preserving only the most specific platform implementation.
- * Example: Compiling linux-x86 target:
- *   // common.cj (common definitions)
- *   common extend Int64 {}
- *   common extend Int64 {}
- *
- *   // linux.cj (platform-specific)
- *   platform extend Int64 {}
- *
- *   // linux-x86.cj (architecture-specific)
- *   platform extend Int64 {}
- *
- *  Produces after deserialization:
- *   4 extends (2 common, 1 platform from linux.cj, 1 platform from linux-x86.cj)
- *
- *  This function removes the 3 deserialized extends, keeping only linux-x86.cj's version.
- *
- */
-void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg)
+// Helper function to collect all method names from an ExtendDef
+static std::unordered_set<std::string> CollectMethodNames(const ExtendDef* extend)
 {
-    auto removeUnusedExtends = [](std::vector<ExtendDef*>& extends) {
-        auto it = std::remove_if(extends.begin(), extends.end(), [](const ExtendDef* ed) {
-            CJC_NULLPTR_CHECK(ed);
-            return ed->TestAttr(CHIR::Attribute::DESERIALIZED) &&
-                (ed->TestAttr(CHIR::Attribute::COMMON) || ed->TestAttr(CHIR::Attribute::PLATFORM));
+    std::unordered_set<std::string> names;
+
+    if (!extend) {
+        return names;
+    }
+
+    for (const auto* method : extend->GetMethods()) {
+        if (method) {
+            names.insert(method->GetRawMangledName());
+        }
+    }
+
+    return names;
+}
+
+// Process extends: remove common extends if any member exists in platform extends
+static std::vector<ExtendDef*> ProcessExtends(std::vector<ExtendDef*> extends)
+{
+    std::vector<ExtendDef*> commonExtends;
+    std::vector<ExtendDef*> platformExtends;
+
+    // Separate common and platform extends
+    for (const auto& ed : extends) {
+        if (!ed) {
+            continue;
+        }
+        if (ed->TestAttr(CHIR::Attribute::COMMON)) {
+            commonExtends.push_back(ed);
+        } else if (ed->TestAttr(CHIR::Attribute::PLATFORM)) {
+            platformExtends.push_back(ed);
+        }
+    }
+
+    // Collect all platform method names
+    std::unordered_set<std::string> platformMethodNames;
+    for (const auto* platformEd : platformExtends) {
+        auto names = CollectMethodNames(platformEd);
+        platformMethodNames.insert(names.begin(), names.end());
+    }
+
+    // Find common extends to remove (if any method exists in platform)
+    std::unordered_set<ExtendDef*> commonToRemove;
+    for (const auto* commonEd : commonExtends) {
+        // Check if any method exists in platform
+        for (const auto* method : commonEd->GetMethods()) {
+            if (method && platformMethodNames.count(method->GetRawMangledName())) {
+                commonToRemove.insert(const_cast<ExtendDef*>(commonEd));
+                break;
+            }
+        }
+    }
+
+    // Remove common extends that have members in platform extends
+    auto it = std::remove_if(extends.begin(), extends.end(),
+        [&commonToRemove](ExtendDef* ed) {
+            return commonToRemove.find(ed) != commonToRemove.end();
         });
-        extends.erase(it, extends.end());
-        return extends;
-    };
+    extends.erase(it, extends.end());
 
-    auto extends = chirPkg.GetExtends();
-    chirPkg.SetExtends(removeUnusedExtends(extends));
+    return extends;
+}
 
-    auto importedExtends = chirPkg.GetImportedExtends();
-    chirPkg.SetImportedExtends(removeUnusedExtends(importedExtends));
+void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg,
+    [[maybe_unused]] std::vector<Ptr<const AST::Decl>>& commonDecls)
+{
+    // Process package extends
+    chirPkg.SetExtends(ProcessExtends(chirPkg.GetExtends()));
+
+    // Process imported extends
+    chirPkg.SetImportedExtends(ProcessExtends(chirPkg.GetImportedExtends()));
 }
 } // namespace
 
@@ -1594,6 +1631,6 @@ void AST2CHIR::ProcessCommonAndPlatformExtends()
     }
 
     // 2. Clean up unused extends
-    RemoveUnusedCJMPExtends(*package);
+    RemoveUnusedCJMPExtends(*package, commonDecls);
 }
 } // namespace Cangjie::CHIR
