@@ -59,7 +59,6 @@ public:
     }
 
     void SetSerializingCommon();
-    void SetAttributesIfSerializingCommonPartOfPackage(AST::Package &package);
     void PreSaveFullExportDecls(AST::Package& package);
     inline bool NeedToExportDecl(Ptr<const AST::Decl> decl);
     void DFSCollectFilesDeclarations(Ptr<AST::File> file,
