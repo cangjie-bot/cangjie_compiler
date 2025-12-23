@@ -37,6 +37,7 @@
 #include "TypeCheckerImpl.h"
 #include "NativeFFI/Java/TypeCheck/InheritanceChecker.h"
 #include "NativeFFI/ObjC/Utils/OCStructInheritanceCheckerImpl.h"
+#include "CJMP/MPTypeCheckerImpl.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -550,7 +551,7 @@ void StructInheritanceChecker::CollectExtendByInterfaceInherit(const std::set<Pt
 }
 
 std::optional<bool> StructInheritanceChecker::DeterminingSkipExtendByInheritanceRelationship(
-    const ExtendDecl& curDecl, const ExtendDecl& ed, const Ptr<Decl>& extendedDecl)
+    const ExtendDecl& curDecl, ExtendDecl& ed, const Ptr<Decl>& extendedDecl)
 {
     std::optional<bool> skipExtend = std::nullopt;
     std::pair<Ptr<Ty>, Ptr<Ty>> lastInherTy;
@@ -569,7 +570,9 @@ std::optional<bool> StructInheritanceChecker::DeterminingSkipExtendByInheritance
                 GenerateTypeMappingByTy(mappingOfExtended2CurExtend[tyArgGen], mappingOfExtended2Ed[tyArgGen]);
             curDeclSuperInsTy = typeManager.GetInstantiatedTy(curDeclSuperInsTy, mappingOfCurExtend2Extend);
         }
-        for (auto& edSuper : std::as_const(ed.inheritedTypes)) {
+        Cangjie::MPTypeCheckerImpl::GetInheritedTypesWithPlatformImpl(
+            ed.inheritedTypes, ed.platformImplementation != nullptr, opts.commonPartCjo != std::nullopt);
+        for (auto& edSuper : ed.inheritedTypes) {
             if (edSuper->ty == curDeclSuperInsTy) {
                 continue;
             }
