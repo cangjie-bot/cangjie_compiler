@@ -44,11 +44,11 @@ enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IM
 class JavaDesugarManager {
 public:
     JavaDesugarManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
-                       const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath,
-                       const std::string& outputLibPath, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
+        const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath, const std::string& outputLibPath,
+        const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap, Package& pkg)
         : importManager(importManager),
           typeManager(typeManager),
-          utils(importManager, typeManager),
+          utils(importManager, typeManager, pkg),
           diag(diag),
           mangler(mangler),
           lib(importManager, typeManager, diag, utils),
@@ -56,7 +56,7 @@ public:
           outputLibPath(outputLibPath),
           memberMap(memberMap)
     {
-            lib.CheckInteropLibVersion();
+        lib.CheckInteropLibVersion();
     }
 
     /**
@@ -111,6 +111,8 @@ public:
      * Stage 3: desugar in CJMapping data structure
      */
     void DesugarInCJMapping(File& file);
+
+    void GenerateTuplesNativeMethod(Package& pkg);
 
 private:
     /**
@@ -298,7 +300,13 @@ private:
         std::vector<OwnedPtr<FuncParamList>>& paramLists, FuncParam& jniEnvPtrParam, Ptr<Ty>& retTy,
         std::string funcName);
 
+    OwnedPtr<Decl> GenerateNativeFuncDeclBylambda(OwnedPtr<LambdaExpr>& wrappedNodesLambda,
+        std::vector<OwnedPtr<FuncParamList>>& paramLists, FuncParam& jniEnvPtrParam, Ptr<Ty>& retTy,
+        std::string funcName, Ptr<File>& curFile, std::string moduleName, std::string fullPackageName);
+
     std::string GetJniMethodName(const FuncDecl& method, const std::string* genericActualName = nullptr);
+
+    std::string GetJniTupleItemName(const Ptr<TupleTy>& tupleTy, Package& pkg, size_t index);
 
     std::string GetJniMethodNameForProp(const PropDecl& propDecl, bool isSet,
         const std::string* genericActualName = nullptr) const;
@@ -307,6 +315,7 @@ private:
 
     std::string GetJniInitCjObjectFuncName(const FuncDecl& ctor, bool isGeneratedCtor,
         const std::string* genericActualName = nullptr);
+    std::string GetJniInitCjObjectFuncName(const Ptr<TupleTy>& tupleTy, Package& pkg);
 
     std::string GetJniInitCjObjectFuncNameForVarDecl(const VarDecl& ctor) const;
 
@@ -362,6 +371,8 @@ private:
      */
     OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(FuncDecl& ctor, bool isClassLikeDecl, bool isOpenClass = false, Ptr<FuncDecl> fwdCtor = nullptr,
          const GenericConfigInfo* genericConfig = nullptr);
+    
+    OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(const Ptr<TupleTy>& tuple, Package& pkg);
 
     /**
      * for func [fun]:
@@ -542,6 +553,9 @@ private:
     void InsertAttachCJObject(ClassDecl& fwdDecl, ClassDecl& classDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassMethod(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriMethodDecl, int index);
     OwnedPtr<ClassDecl> InitInterfaceFwdClassDecl(AST::InterfaceDecl& interfaceDecl);
+    OwnedPtr<StructDecl> CreateHelperStructDecl(const Ptr<TupleTy>& tupleTy, Package& pkg);
+    void GenerateNativeItemFunc(const Ptr<TupleTy>& tupleTy, Package& pkg);
+
     /**
      * Add this. for interface fwdclass default method that call self method, and replace generic ty to instance ty by genericConfig.
      * from
@@ -565,6 +579,7 @@ private:
     InteropLibBridge lib;
     const std::optional<std::string>& javaCodeGenPath;
     const std::string& outputLibPath;
+    std::unordered_set<Ptr<Ty>> tupleConfigs;
 
     /**
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring

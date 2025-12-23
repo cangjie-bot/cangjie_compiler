@@ -283,6 +283,8 @@ bool IsDeclAppropriateForSyntheticClassGeneration(const Node& decl);
 
 std::string GetSyntheticNameFromClassLike(const ClassLikeDecl& cld);
 
+std::string GetCjMappingTupleName(const Ty& tupleTy);
+
 /**
     * Generates and inserts the synthetic class declaration.
     * The synthetic class implements the given interface or abstract class and has the following structure:

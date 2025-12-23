@@ -861,6 +861,16 @@ std::string GetSyntheticNameFromClassLike(const ClassLikeDecl& cld)
     return cld.identifier.Val() + "$impl";
 }
 
+std::string GetCjMappingTupleName(const Ty& tupleTy)
+{
+    CJC_ASSERT(tupleTy.IsTuple());
+    std::string name("TupleOf");
+    for (auto it : tupleTy.typeArgs) {
+        name += it->String();
+    }
+    return name;
+}
+
 // abstract on parser stage, on sema stage abstractness will be removed
 void InsertSyntheticClassDecl(ClassLikeDecl& decl, File& file)
 {

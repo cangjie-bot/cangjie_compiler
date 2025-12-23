@@ -37,6 +37,9 @@ public:
     JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
         const std::string& outputFileName, std::string cjLibName, GenericConfigInfo* genericConfig,
         bool isInteropCJPackageConfig);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
+        const std::string& outputFileName, std::string cjLibName, Ptr<TupleTy>& tupleTy, bool isCjMappingTuple,
+        bool isInteropCJpackageConfig = false);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -60,6 +63,8 @@ private:
     const BaseMangler& mangler;
     std::vector<Ptr<ExtendDecl>> extendDecls;
     GenericConfigInfo* genericConfig = nullptr;
+    Ptr<TupleTy> tupleTy{nullptr};
+    bool isCjMappingTuple{false};
     bool isInteropCJPackageConfig{false};
 
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
@@ -91,6 +96,7 @@ private:
     void AddStaticMethod(const FuncDecl& funcDecl);
     void AddMethods();
     void AddInterfaceMethods();
+    void AddTupleItemMethod();
 
     /**
      * This Class is used to forward default call to CJ side.

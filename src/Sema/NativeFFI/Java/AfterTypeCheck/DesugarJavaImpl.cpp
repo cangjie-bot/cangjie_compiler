@@ -500,6 +500,9 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (IsCJMapping(*ty)) {
         return jlongTy;
     }
+    if (ty->IsTuple()) {
+        return jlongTy;
+    }
     if (ty->kind == TypeKind::TYPE_GENERICS) {
         return nullptr;
     }
@@ -516,6 +519,14 @@ std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method, const s
     MangleJNIName(mangledFuncName);
 
     return "Java_" + fqname + "_" + mangledFuncName;
+}
+
+std::string JavaDesugarManager::GetJniTupleItemName(const Ptr<TupleTy>& tupleTy, Package& pkg, size_t index)
+{
+    std::string fqname = pkg.fullPackageName + "." + GetCjMappingTupleName(*tupleTy);
+    MangleJNIName(fqname);
+
+    return "Java_" + fqname + "_" + "item" + std::to_string(index);
 }
 
 std::string JavaDesugarManager::GetJniMethodNameForProp(const PropDecl& propDecl, bool isSet,
@@ -550,6 +561,15 @@ std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const FuncDecl& ctor,
         mangledFuncName = ctor.identifier + mangledFuncName;
     }
 
+    return "Java_" + fqname + "_" + mangledFuncName;
+}
+
+std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const Ptr<TupleTy>& tupleTy, Package& pkg)
+{
+    std::string fqname = pkg.fullPackageName + "." + GetCjMappingTupleName(*tupleTy);
+    MangleJNIName(fqname);
+    std::string mangledFuncName = GetMangledJniInitCjObjectFuncName(mangler, tupleTy->typeArgs);
+    MangleJNIName(mangledFuncName);
     return "Java_" + fqname + "_" + mangledFuncName;
 }
 

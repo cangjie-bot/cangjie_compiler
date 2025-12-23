@@ -80,6 +80,9 @@ std::string FuncParamToString(const OwnedPtr<FuncParam>& p)
         bool castToId = IsCJMapping(*ty) && !IsCJMappingInterface(*(p->type->ty));
         res += castToId ? ".self" : "";
     }
+    if (p->type->ty->IsTuple()) {
+        res += ".self";
+    }
     return res;
 }
 
@@ -140,6 +143,20 @@ JavaSourceCodeGenerator::JavaSourceCodeGenerator(Decl* decl, const BaseMangler& 
 {
 }
 
+JavaSourceCodeGenerator::JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler,
+    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+    Ptr<TupleTy>& tupleTy, bool isCjMappingTuple, bool isInteropCJpackageConfig)
+    : AbstractSourceCodeGenerator(
+          outputFolderPath.value_or(JavaSourceCodeGenerator::DEFAULT_OUTPUT_DIR), outputFileName),
+      decl(decl),
+      cjLibName(std::move(cjLibName)),
+      mangler(mangler),
+      tupleTy(tupleTy),
+      isCjMappingTuple(isCjMappingTuple),
+      isInteropCJPackageConfig(isInteropCJpackageConfig)
+{
+}
+
 bool JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(const Decl& declArg)
 {
     return (IsImpl(declArg) &&
@@ -190,6 +207,9 @@ void JavaSourceCodeGenerator::ConstructResult()
     AddProperties();
     AddConstructors();
     AddMethods();
+    if (isCjMappingTuple) {
+        AddTupleItemMethod();
+    }
     AddNativeDeleteCJObject();
     AddFinalize();
     AddEndClassParenthesis();
@@ -274,6 +294,12 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
                 return "long";
             }
             javaType = ty->name;
+            break;
+        case TypeKind::TYPE_TUPLE:
+            if (isNativeMethod) {
+                return "long";
+            }
+            javaType = GetCjMappingTupleName(*ty);
             break;
         default:
             if (ty->name == "String") {
@@ -954,6 +980,35 @@ void JavaSourceCodeGenerator::AddInterfaceMethods()
                 }
             }
         }
+    }
+}
+
+void JavaSourceCodeGenerator::AddTupleItemMethod()
+{
+    size_t i = 0;
+    for (auto& ty : tupleTy->typeArgs) {
+        std::string funcIdentifier = "item" + std::to_string(i);
+        const std::string retType = MapCJTypeToJavaType(ty, &imports, &decl->fullPackageName);
+        std::string methodSignature;
+        methodSignature += JAVA_PUBLIC;
+        methodSignature += JAVA_WHITESPACE;
+        methodSignature += retType;
+        methodSignature += JAVA_WHITESPACE;
+        methodSignature += funcIdentifier + "() {";
+        AddWithIndent(TAB, methodSignature);
+        auto funcCall = "return " + funcIdentifier + "(this.self);";
+        AddWithIndent(TAB2, funcCall);
+        AddWithIndent(TAB, "}\n");
+        std::string nativeSignature;
+        nativeSignature += JAVA_PUBLIC;
+        nativeSignature += JAVA_WHITESPACE;
+        nativeSignature += JAVA_NATIVE;
+        nativeSignature += JAVA_WHITESPACE;
+        nativeSignature += retType;
+        nativeSignature += JAVA_WHITESPACE;
+        nativeSignature += funcIdentifier + "(long self);\n";
+        AddWithIndent(TAB, nativeSignature);
+        ++i;
     }
 }
 
