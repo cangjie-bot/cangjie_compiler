@@ -225,6 +225,18 @@ bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
                                 }
                             }
                         }
+
+                        if (packageTable.find("tuple_configuration") != packageTable.end()) {
+                            if (packageTable["tuple_configuration"].is<Array>()) {
+                                auto tuples = packageTable["tuple_configuration"].as<Array>();
+                                for (const auto& item : tuples) {
+                                    if (item.is<std::string>()) {
+                                        auto name = item.as<std::string>();
+                                        pkgConfig.interopTuples.push_back(name);
+                                    }
+                                }
+                            }
+                        }
                         // Add to Configuration
                         packages[pkgConfig.name] = pkgConfig;
                     }
