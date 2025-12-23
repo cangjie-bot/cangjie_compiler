@@ -73,6 +73,10 @@ private:
     bool MatchCommonNominalDeclWithPlatform(const AST::InheritableDecl& commonDecl);
     void CheckCommonSpecificGenericMatch(const AST::Decl& platformDecl, const AST::Decl& commonDecl);
 
+public:
+    static std::vector<Ptr<AST::Type>> GetInheritedTypesWithPlatformImpl(
+        const std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasPlatformImpl, bool compilePlatform);
+
 private:
     TypeManager& typeManager;
     DiagnosticEngine& diag;
