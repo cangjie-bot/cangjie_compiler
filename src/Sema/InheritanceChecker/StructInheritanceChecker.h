@@ -59,7 +59,7 @@ private:
     void CollectExtendByInterfaceInherit(const std::set<Ptr<ExtendDecl>>& otherExtends, const ExtendDecl& curDecl,
         std::set<Ptr<ExtendDecl>, CmpNodeByPos>& ordered);
     std::optional<bool> DeterminingSkipExtendByInheritanceRelationship(
-        const AST::ExtendDecl& curDecl, const AST::ExtendDecl& ed, const Ptr<AST::Decl>& extendedDecl);
+        const AST::ExtendDecl& curDecl, AST::ExtendDecl& ed, const Ptr<AST::Decl>& extendedDecl);
     std::pair<MemberMap, MemberMap> GetVisibleExtendMembersForExtend(const InheritableDecl& decl);
     void CheckExtendExportDependence(
         const InheritableDecl& curExtend, const MemberSignature& interface, const MemberMap& implDecl);

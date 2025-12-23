@@ -70,6 +70,22 @@ private:
     bool MatchCommonNominalDeclWithPlatform(const AST::InheritableDecl& commonDecl);
     void CheckCommonSpecificGenericMatch(const AST::Decl& platformDecl, const AST::Decl& commonDecl);
 
+public:
+    /**
+     * @brief Get inherited types, replacing common types with platform implementations when compiling platform code
+     *
+     * This function processes the inherited types list and replaces any common types
+     * with their corresponding platform implementations when compiling platform code.
+     * The replacement only occurs if the current declaration has a platform implementation
+     * available.
+     *
+     * @param inheritedTypes The list of inherited types to process
+     * @param hasPlatformImpl Whether the current declaration has a platform implementation
+     * @param compilePlatform Whether we are currently compiling platform code
+     */
+    static void GetInheritedTypesWithPlatformImpl(
+        std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasPlatformImpl, bool compilePlatform);
+
 private:
     TypeManager& typeManager;
     DiagnosticEngine& diag;
