@@ -1488,17 +1488,26 @@ void ConvertPlatformMemberMethods(
  *   // linux.cj (platform-specific)
  *   platform extend Int64 {}
  *
- *   // linux-x86.cj (architecture-specific)
- *   platform extend Int64 {}
- *
  *  Produces after deserialization:
- *   4 extends (2 common, 1 platform from linux.cj, 1 platform from linux-x86.cj)
+ *   3 extends (2 common, 1 platform from linux.cj, 1 platform from linux-x86.cj)
  *
  *  This function removes the 3 deserialized extends, keeping only linux-x86.cj's version.
  *
  */
-void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg)
+void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg, std::vector<Ptr<const AST::Decl>>& commonDecls)
 {
+    std::unordered_set<std::string> commonMangleNames;
+    for (const auto& decl : commonDecls) {
+        commonMangleNames.insert(decl->mangledName);
+    }
+
+    auto extends = chirPkg.GetExtends();
+    auto it = std::remove_if(extends.begin(), extends.end(), [&commonMangleNames](const ExtendDef* ed) {
+        CJC_NULLPTR_CHECK(ed);
+        return commonMangleNames.find(ed->GetIdentifierWithoutPrefix()) != commonMangleNames.end();
+    });
+    extends.erase(it, extends.end());
+    chirPkg.SetExtends(std::move(extends));
     auto removeUnusedExtends = [](std::vector<ExtendDef*>& extends) {
         auto it = std::remove_if(extends.begin(), extends.end(), [](const ExtendDef* ed) {
             CJC_NULLPTR_CHECK(ed);
@@ -1508,9 +1517,6 @@ void RemoveUnusedCJMPExtends(CHIR::Package& chirPkg)
         extends.erase(it, extends.end());
         return extends;
     };
-
-    auto extends = chirPkg.GetExtends();
-    chirPkg.SetExtends(removeUnusedExtends(extends));
 
     auto importedExtends = chirPkg.GetImportedExtends();
     chirPkg.SetImportedExtends(removeUnusedExtends(importedExtends));
@@ -1594,6 +1600,6 @@ void AST2CHIR::ProcessCommonAndPlatformExtends()
     }
 
     // 2. Clean up unused extends
-    RemoveUnusedCJMPExtends(*package);
+    RemoveUnusedCJMPExtends(*package, commonDecls);
 }
 } // namespace Cangjie::CHIR
