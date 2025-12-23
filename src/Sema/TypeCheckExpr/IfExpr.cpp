@@ -54,6 +54,11 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIfExpr(ASTContext& ctx, IfExpr& ie)
     ReplaceIdealTy(*ie.elseBody);
     ie.thenBody->ty = ReplaceThisTy(ie.thenBody->ty);
     ie.elseBody->ty = ReplaceThisTy(ie.elseBody->ty);
+    if (ie.TestAttr(AST::Attribute::DISCARDED_EXPR)) {
+        // Result is not used; skip common supertype requirement.
+        ie.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+        return ie.ty;
+    }
     auto thenTy = ie.thenBody->ty;
     auto elseTy = ie.elseBody->ty;
     if (Ty::IsTyCorrect(thenTy) && Ty::IsTyCorrect(elseTy)) {

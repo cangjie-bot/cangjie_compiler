@@ -82,6 +82,9 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryExpr(ASTContext& ctx, TryExpr& te)
 std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynTryExprCatchesAndHandles(ASTContext& ctx, TryExpr& te)
 {
     CJC_NULLPTR_CHECK(te.tryBlock);
+    if (te.TestAttr(AST::Attribute::DISCARDED_EXPR)) {
+        return std::make_optional(TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY));
+    }
     Ptr<Ty> jTy = Ty::IsTyCorrect(te.tryBlock->ty) ? te.tryBlock->ty : TypeManager::GetNothingTy();
     if (te.tryLambda && Ty::IsTyCorrect(te.tryLambda->ty)) {
         jTy = DynamicCast<FuncTy*>(te.tryLambda->ty)->retTy;
@@ -157,6 +160,11 @@ bool TypeChecker::TypeCheckerImpl::SynHandler(ASTContext& ctx, Handler& handler,
     }
     if (!SynthesizeAndReplaceIdealTy(ctx, *handler.block)) {
         return false;
+    }
+    if (te.TestAttr(AST::Attribute::DISCARDED_EXPR)) {
+        // Result is not used; set type to Any and skip further checks.
+        tgtTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+        return true;
     }
 
     auto joinRes = JoinAndMeet(
