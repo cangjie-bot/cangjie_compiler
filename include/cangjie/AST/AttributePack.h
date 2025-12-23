@@ -674,6 +674,13 @@ enum class Attribute {
      */
     CJ_MIRROR_OBJC_INTERFACE_FWD,
 
+    /**
+     * Mark expressions whose result value is discarded.
+     * W: DesugarBeforeTypeCheck.
+     * R: TypeChecker.
+     */
+    DISCARDED_EXPR,
+
     AST_ATTR_END,
 };
 
