@@ -1,0 +1,57 @@
+name: Bug
+description: When you find a bug and need to report it to the community, please use this template.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for your support and attention to the Cangjie community. Please feel free to report bugs.
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Please provide as much information as possible to describe what went wrong.
+      placeholder: ""
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What is the expected behavior?
+      description: Please describe how the expected behavior or effect should be.
+      placeholder: ""
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How to reproduce the bug?
+      description: Please provide as much information as possible to describe how to reproduce the bug.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional information?
+      description: Please provide any other information you think is necessary.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Cjc version information
+      description: Please fill in the output of cjc -v below in the form of a picture or text.
+      placeholder: ""
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Branch version information
+      description: In which branch versions does this bug exist?
+      options:
+        - label: dev
+          required: false
+        - label: main
+          required: false
+        - label: release/1.0
+          required: false
+        - label: release/OpenHarmony-release-6.0
+          required: false
+    validations:
+      required: true

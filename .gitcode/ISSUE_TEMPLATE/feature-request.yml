@@ -1,4 +1,4 @@
-name: 新需求|Feature
+name: 新需求
 description: 您需要反馈或实现一个新需求时，使用此模板。
 title: "[新需求]: "
 labels: ["enhancement"]
