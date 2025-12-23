@@ -348,10 +348,9 @@ void UpdateExtendMap(TypeManager& typeManager, const std::unordered_set<Ptr<AST:
     // For single package or file compilation case: clear right before invocation of this function is OK.
     for (const auto& extendDecl : extends) {
         CJC_NULLPTR_CHECK(extendDecl);
-        if (extendDecl->isInMacroCall || !extendDecl->extendedType ||
-            (!extendDecl->TestAttr(Attribute::IMPORTED) && extendDecl->TestAttr(Attribute::FROM_COMMON_PART) &&
-                extendDecl->TestAttr(Attribute::COMMON))) {
+        if (extendDecl->isInMacroCall || !extendDecl->extendedType || extendDecl->platformImplementation) {
             // The extendDecl in macrocall is only for lsp, and does not need to be updated.
+            // The common extend with platformImplementation is skipped because its platform version already exists.
             continue;
         }
         auto extendTy = extendDecl->extendedType->ty;
