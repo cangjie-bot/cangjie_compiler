@@ -47,6 +47,13 @@ enum class Attribute {
     UNREACHABLE,
 
     /**
+     * Mark expressions whose result value is discarded.
+     * W: DesugarBeforeTypeCheck.
+     * R: TypeChecker.
+     */
+    DISCARDED_EXPR,
+
+    /**
      * Mark whether the decl will be implicit used by other package.
      * W: Sema.
      * R: ASTSerialization.

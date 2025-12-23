@@ -81,6 +81,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryExpr(ASTContext& ctx, TryExpr& te)
 
 std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynTryExprCatchesAndHandles(ASTContext& ctx, TryExpr& te)
 {
+    bool isDiscarded = te.TestAttr(AST::Attribute::DISCARDED_EXPR);
     CJC_NULLPTR_CHECK(te.tryBlock);
     Ptr<Ty> jTy = Ty::IsTyCorrect(te.tryBlock->ty) ? te.tryBlock->ty : TypeManager::GetNothingTy();
     if (te.tryLambda && Ty::IsTyCorrect(te.tryLambda->ty)) {
@@ -105,6 +106,10 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynTryExprCatchesAndHandles
         // Do not overwrite the previous jTy immediately for the sake of error reporting. Use a fresh type here.
         Ptr<Ty> tmpJTy{};
         if (auto optErrs = JoinAndMeet::SetJoinedType(tmpJTy, joinRes)) {
+            if (isDiscarded) {
+                jTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+                continue;
+            }
             isWellTyped = false;
             if (te.ShouldDiagnose()) {
                 diag.Diagnose(*catchBlock, DiagKind::sema_diag_report_error_message,
@@ -124,7 +129,8 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynTryExprCatchesAndHandles
             isWellTyped = false;
         }
     }
-    return isWellTyped ? std::make_optional(jTy) : std::nullopt;
+    Ptr<Ty> finalTy = isDiscarded ? TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY) : jTy;
+    return isWellTyped ? std::make_optional(finalTy) : std::nullopt;
 }
 
 std::optional<Ptr<ClassTy>> TypeChecker::TypeCheckerImpl::PromoteToCommandTy(const AST::Node& cause, AST::Ty& cmdTy)
@@ -150,6 +156,7 @@ std::optional<Ptr<ClassTy>> TypeChecker::TypeCheckerImpl::PromoteToCommandTy(con
 
 bool TypeChecker::TypeCheckerImpl::SynHandler(ASTContext& ctx, Handler& handler, Ptr<Ty> tgtTy, TryExpr& te)
 {
+    bool isDiscarded = te.TestAttr(AST::Attribute::DISCARDED_EXPR);
     // We need to validate the handler before synthesizing since it's necessary for
     // resume expressions
     if (!ValidateHandler(handler)) {
@@ -165,6 +172,10 @@ bool TypeChecker::TypeCheckerImpl::SynHandler(ASTContext& ctx, Handler& handler,
     // Do not overwrite the previous jTy immediately for the sake of error reporting. Use a fresh type here.
     Ptr<Ty> tmpJTy{};
     if (auto optErrs = JoinAndMeet::SetJoinedType(tmpJTy, joinRes)) {
+        if (isDiscarded) {
+            tgtTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+            return true;
+        }
         if (te.ShouldDiagnose()) {
             diag.DiagnoseRefactor(DiagKindRefactor::sema_mismatching_handle_block, *handler.block,
                 Ty::ToString(handler.block->ty), tgtTy->String())

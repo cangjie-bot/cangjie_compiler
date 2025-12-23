@@ -555,92 +555,13 @@ struct DiscardedHelper {
         return !ctxt.parentStack.empty() && IsDiscarded(n, *(ctxt.parentStack.back()), ctxt.isDiscardedStack.back());
     }
 
-    /*
-     * Try to find branch expressions to desuger in a block.
-     * Branch expressions include: IfExpr, TryExpr, MatchExpr.
-     * If the return value of the entire exprssion is not used,
-     * add () to the end of each branch to skip lowest common
-     * parent type check.
-     * An example:
-     * ************** before desugar ****************
-        if (true) {
-            1
-        } else {
-            1.0
-        } // Fail. Can't find a return type.
-     * *************** after desugar ****************
-        if (true) {
-            1
-            ()
-        } else {
-            1.0
-            ()
-        } // Succeed. Return type is Unit.
-     * **********************************************
-     */
+    // Mark branch expressions whose results are discarded so the type checker
+    // can relax branch join requirements without mutating the AST.
     static void DesugarBrExpr(Node& node)
     {
-        auto isUnitExpr = [](Node& n) -> bool {
-            return n.astKind == ASTKind::LIT_CONST_EXPR &&
-                StaticAs<ASTKind::LIT_CONST_EXPR>(&n)->kind == LitConstKind::UNIT;
-        };
-
-        auto isNothingExpr = [](const Node& n) -> bool {
-            return std::set<ASTKind>{ASTKind::JUMP_EXPR,
-                ASTKind::THROW_EXPR, ASTKind::RETURN_EXPR}.count(n.astKind) > 0;
-        };
-
-        auto unitifyBlock = [&isUnitExpr, &isNothingExpr](Block& b) -> void {
-            if (b.body.empty() || (b.body.back() &&
-                (!isUnitExpr(*b.body.back())) &&
-                (!isNothingExpr(*b.body.back())))) {
-                b.body.push_back(CreateUnitExpr());
-            }
-        };
-
-        auto unitifyIf = [&unitifyBlock](const IfExpr& ie) -> void {
-            if (ie.thenBody && ie.elseBody) {
-                unitifyBlock(*StaticAs<ASTKind::BLOCK>(ie.thenBody.get()));
-                if (ie.elseBody->astKind == ASTKind::BLOCK) {
-                    unitifyBlock(*StaticAs<ASTKind::BLOCK>(ie.elseBody.get()));
-                }
-            }
-        };
-
-        auto unitifyTry = [&unitifyBlock](TryExpr& te) {
-            if (te.tryLambda) {
-                unitifyBlock(*(te.tryLambda->funcBody->body));
-            } else {
-                unitifyBlock(*(te.tryBlock));
-            }
-            for (auto& cb : te.catchBlocks) {
-                unitifyBlock(*cb);
-            }
-
-            for (auto& h : te.handlers) {
-                if (h.desugaredLambda) {
-                    unitifyBlock(*h.desugaredLambda->funcBody->body);
-                }
-                CJC_NULLPTR_CHECK(h.block);
-                unitifyBlock(*h.block);
-            }
-        };
-
-        auto unitifyMatch = [&unitifyBlock](MatchExpr& me) {
-            for (auto& mc : me.matchCases) {
-                unitifyBlock(*(mc->exprOrDecls));
-            }
-            for (auto& mc : me.matchCaseOthers) {
-                unitifyBlock(*(mc->exprOrDecls));
-            }
-        };
-
-        if (node.astKind == ASTKind::IF_EXPR) {
-            unitifyIf(*StaticAs<ASTKind::IF_EXPR>(&node));
-        } else if (node.astKind == ASTKind::TRY_EXPR) {
-            unitifyTry(*StaticAs<ASTKind::TRY_EXPR>(&node));
-        } else if (node.astKind == ASTKind::MATCH_EXPR) {
-            unitifyMatch(*StaticAs<ASTKind::MATCH_EXPR>(&node));
+        if (node.astKind == ASTKind::IF_EXPR || node.astKind == ASTKind::TRY_EXPR ||
+            node.astKind == ASTKind::MATCH_EXPR) {
+            node.EnableAttr(Attribute::DISCARDED_EXPR);
         }
     }
 

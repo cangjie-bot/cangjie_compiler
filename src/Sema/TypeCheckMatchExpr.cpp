@@ -91,6 +91,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchExprHasSelector(ASTContext& ctx, M
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynNormalMatchCaseBody(ASTContext& ctx, MatchExpr& me)
 {
+    bool isDiscarded = me.TestAttr(AST::Attribute::DISCARDED_EXPR);
     std::set<Ptr<Ty>> matchCaseTyVec;
     CJC_NULLPTR_CHECK(me.selector);
     auto selectorTy = me.selector->ty;
@@ -127,7 +128,9 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynNormalMatchCaseBody(ASTContext& ctx, Ma
     auto joinAndMeet = JoinAndMeet(typeManager, matchCaseTyVec, {}, &importManager, me.curFile);
     auto joinRes = joinAndMeet.JoinAsVisibleTy();
     if (auto optErrs = JoinAndMeet::SetJoinedType(me.ty, joinRes)) {
-        if (me.sugarKind == Expr::SugarKind::IF_LET) {
+        if (isDiscarded) {
+            me.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+        } else if (me.sugarKind == Expr::SugarKind::IF_LET) {
             auto builder = diag.Diagnose(me, DiagKind::sema_diag_report_error_message,
                 "types " + Ty::ToString(me.matchCases[0]->ty) + " and " + Ty::ToString(me.matchCases[1]->ty) +
                     " of the two branches of this 'if' expression mismatch");
@@ -187,6 +190,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynQuestSugarMatchCaseBody(ASTContext& ctx
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchExprNoSelector(ASTContext& ctx, MatchExpr& me)
 {
+    bool isDiscarded = me.TestAttr(AST::Attribute::DISCARDED_EXPR);
     std::set<Ptr<Ty>> matchCaseTyVec;
     bool hasInvalidCase = false;
     for (auto& mco : me.matchCaseOthers) {
@@ -205,8 +209,12 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchExprNoSelector(ASTContext& ctx, Ma
     auto joinAndMeet = JoinAndMeet(typeManager, matchCaseTyVec, {}, &importManager, me.curFile);
     auto joinRes = joinAndMeet.JoinAsVisibleTy();
     if (auto optErrs = JoinAndMeet::SetJoinedType(me.ty, joinRes)) {
-        auto builder = diag.Diagnose(me, DiagKind::sema_type_incompatible, "MatchCase");
-        builder.AddNote(*optErrs);
+        if (isDiscarded) {
+            me.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_ANY);
+        } else {
+            auto builder = diag.Diagnose(me, DiagKind::sema_type_incompatible, "MatchCase");
+            builder.AddNote(*optErrs);
+        }
     }
 
     // Check exhaustiveness and set unreachable attr of match cases.
