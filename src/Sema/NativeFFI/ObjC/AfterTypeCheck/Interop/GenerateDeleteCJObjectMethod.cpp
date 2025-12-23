@@ -30,6 +30,20 @@ void GenerateDeleteCJObjectMethod::HandleImpl(InteropContext& ctx)
         ctx.genDecls.emplace_back(std::move(deleteCjObject));
     };
 
+    auto genNativeDeleteMethodForGeneric = [this, &ctx](Decl& decl,
+            const std::vector<Native::FFI::GenericConfigInfo*>& genericConfigsVector) {
+        if (decl.TestAttr(Attribute::IS_BROKEN)) {
+            return;
+        }
+        bool forOneWayMapping = false;
+        forOneWayMapping = this->interopType == InteropType::CJ_Mapping && ctx.typeMapper.IsOneWayMapping(decl);
+        for (auto genericConfig : genericConfigsVector) {
+            auto deleteCjObject = ctx.factory.CreateDeleteCjObject(decl, forOneWayMapping, genericConfig);
+            CJC_ASSERT(deleteCjObject);
+            ctx.genDecls.emplace_back(std::move(deleteCjObject));
+        }
+    };
+
     if (interopType == InteropType::ObjC_Mirror) {
         for (auto& impl : ctx.impls) {
             // generate only for root @ObjCImpl classes
@@ -40,7 +54,14 @@ void GenerateDeleteCJObjectMethod::HandleImpl(InteropContext& ctx)
         }
     } else if (interopType == InteropType::CJ_Mapping) {
         for (auto& cjmapping : ctx.cjMappings) {
-            genNativeDeleteMethod(*cjmapping);
+            std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
+            bool isGenericGlueCode = false;
+            Native::FFI::InitGenericConfigs(*cjmapping->curFile, cjmapping.get(), genericConfigsVector, isGenericGlueCode);
+            if (isGenericGlueCode) {
+                genNativeDeleteMethodForGeneric(*cjmapping, genericConfigsVector);
+            } else {
+                genNativeDeleteMethod(*cjmapping);
+            }
         }
     }
 }
