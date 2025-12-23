@@ -319,7 +319,7 @@ llvm::Constant* CGExtensionDef::GenerateWhereConditionFn()
     return whereCondFn;
 }
 
-llvm::Constant* CGExtensionDef::GenerateFuncTableForType(const std::vector<CHIR::VirtualFuncInfo>& virtualFuncInfos)
+llvm::Constant* CGExtensionDef::GenerateOuterTi(const CHIR::VirtualMethodInfo& funcInfo)
 {
     auto& llvmCtx = cgMod.GetLLVMContext();
     if (funcInfo.GetVirtualMethod() == nullptr) {
@@ -374,22 +374,27 @@ llvm::Constant* CGExtensionDef::GenerateFuncTableForType(
     if (vtableInType.IsEmpty()) {
         return llvm::Constant::getNullValue(i8PtrType);
     }
-    auto tableType = llvm::ArrayType::get(i8PtrType, funcTableSize);
+
+    auto funcTableSize = vtableInType.GetMethodNum();
+    CJC_ASSERT(funcTableSize != 0);
+    auto tableType = llvm::ArrayType::get(i8PtrType, 2 * funcTableSize);
     auto funcTableGV =
         llvm::cast<llvm::GlobalVariable>(cgMod.GetLLVMModule()->getOrInsertGlobal(extendDefName + ".ft", tableType));
     if (funcTableGV->hasInitializer()) {
         return llvm::ConstantExpr::getBitCast(funcTableGV, i8PtrType);
     }
     funcTableGV->setLinkage(llvm::GlobalVariable::PrivateLinkage);
-    std::vector<llvm::Constant*> funcTable(funcTableSize);
+    std::vector<llvm::Constant*> funcTable(2 * funcTableSize);
     for (size_t i = 0; i < funcTableSize; ++i) {
         auto funcInfo = virtualFuncInfos[i];
         if (funcInfo.instance) {
             auto function = cgMod.GetOrInsertCGFunction(funcInfo.instance)->GetRawFunction();
             funcTable[i] = llvm::ConstantExpr::getBitCast(function, i8PtrType);
         } else {
-            funcTable[i] = llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(cgMod.GetLLVMContext()));
+            funcTable[i] = llvm::ConstantPointerNull::get(i8PtrType);
         }
+        funcTable[funcTableSize + i] = targetType->GetTypeArgs().empty() ? GenerateOuterTi(funcInfo)
+                                                                         : GenerateOuterTiFn(funcInfo);
     }
 
     funcTableGV->setInitializer(llvm::ConstantArray::get(tableType, funcTable));
@@ -483,9 +488,8 @@ bool CGExtensionDef::CreateExtensionDefForType(CGModule& cgMod, const std::strin
 
 bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedType)
 {
-    auto& vtable = chirDef.GetVTable();
-    auto found = vtable.find(const_cast<CHIR::ClassType*>(&inheritedType));
-    auto funcTableSize = found == vtable.end() ? 0 : found->second.size();
+    auto vTable = chirDef.GetDefVTable().GetExpectedTypeVTable(inheritedType);
+    auto funcTableSize = vTable.IsEmpty() ? 0 : vTable.GetMethodNum();
     if (funcTableSize == 0 && inheritedType.GetClassDef()->IsInterface() && &inheritedType == targetType) {
         return false;
     }
@@ -497,12 +501,12 @@ bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedT
     content[static_cast<size_t>(INTERFACE_FN_OR_INTERFACE_TI)] = iFnOrTi;
     content[static_cast<size_t>(IS_INTERFACE_TI)] =
         llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(isTi));
+    auto flag = 0b00000001;
+    flag |= inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000;
     content[static_cast<size_t>(FLAG)] =
-        llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()),
-        static_cast<uint8_t>(inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000));
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(flag));
     content[static_cast<size_t>(WHERE_CONDITION_FN)] = GenerateWhereConditionFn();
-    content[static_cast<size_t>(FUNC_TABLE)] =
-        GenerateFuncTableForType(funcTableSize == 0 ? std::vector<CHIR::VirtualFuncInfo>() : found->second);
+    content[static_cast<size_t>(FUNC_TABLE)] = GenerateFuncTableForType(inheritedType, vTable);
     content[static_cast<size_t>(FUNC_TABLE_SIZE)] =
         llvm::ConstantInt::get(llvm::Type::getInt16Ty(cgCtx.GetLLVMContext()), funcTableSize);
 
