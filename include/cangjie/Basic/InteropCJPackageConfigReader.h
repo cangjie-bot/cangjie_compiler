@@ -43,6 +43,7 @@ struct PackageConfig {
     std::vector<std::string> interopCJExcludedApis;
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
+    std::vector<std::string> interopTuples;
 };
 
 // Complete Configuration Structure

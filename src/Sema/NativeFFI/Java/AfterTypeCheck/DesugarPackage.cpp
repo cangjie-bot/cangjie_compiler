@@ -44,6 +44,8 @@ void JavaDesugarManager::ProcessJavaMirrorImplStage(DesugarJavaMirrorImplStage s
 void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file)
 {
     switch (stage) {
+        case DesugarCJImplStage::PRE_GENERATE:
+            break;
         case DesugarCJImplStage::FWD_GENERATE:
             GenerateFwdClassInCJMapping(file);
             break;
@@ -69,7 +71,8 @@ void JavaInteropManager::DesugarPackage(Package& pkg, const std::unordered_map<P
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
     }
-    JavaDesugarManager desugarer{importManager, typeManager, diag, mangler, javagenOutputPath, outputPath, memberMap};
+    JavaDesugarManager desugarer{
+        importManager, typeManager, diag, mangler, javagenOutputPath, outputPath, memberMap, pkg};
 
     if (hasMirrorOrImpl) {
         auto nbegin = static_cast<uint8_t>(DesugarJavaMirrorImplStage::BEGIN);
@@ -93,6 +96,9 @@ void JavaInteropManager::DesugarPackage(Package& pkg, const std::unordered_map<P
             auto stage = static_cast<DesugarCJImplStage>(nstage);
             if (stage == DesugarCJImplStage::BEGIN) {
                 continue;
+            }
+            if (stage == DesugarCJImplStage::PRE_GENERATE) {
+                desugarer.GenerateTuplesGlueCode(pkg);
             }
             for (auto& file : pkg.files) {
                 desugarer.ProcessCJImplStage(stage, *file);
