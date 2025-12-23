@@ -1225,11 +1225,11 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
         }
         MatchPlatformDeclWithCommonDecls(*platformDecl, commonDecls);
     }
-    std::unordered_set<std::string> matchedIds;
+    std::unordered_set<Decl*> matchedIds;
     // Report error for common decl having no matched platform decl.
     for (auto& decl : commonDecls) {
         if (decl->IsNominalDecl() && MatchCommonNominalDeclWithPlatform(*StaticCast<InheritableDecl>(decl))) {
-            matchedIds.insert(decl->platformImplementation->identifier.Val());
+            matchedIds.insert(decl->platformImplementation.get());
         }
         if (!MustMatchWithPlatform(*decl)) {
             continue;
@@ -1241,7 +1241,7 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     }
     // Report error for platform nominal decl having no matched common decl.
     for (auto& decl : platformDecls) {
-        if (decl->IsNominalDecl() && matchedIds.find(decl->identifier.Val()) == matchedIds.end()) {
+        if (decl->IsNominalDecl() && matchedIds.find(decl.get()) == matchedIds.end()) {
             DiagNotMatchedCommonDecl(diag, *decl);
         }
         if (decl->IsNominalDecl()) {
@@ -1364,4 +1364,31 @@ void MPTypeCheckerImpl::UpdatePlatformMemberGenericTy(
             }
         }
     }
+}
+
+
+// Get inherited types, replacing common types with platform implementations when compiling platform code.
+std::vector<Ptr<AST::Type>> MPTypeCheckerImpl::GetInheritedTypesWithPlatformImpl(
+    const std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasPlatformImpl, bool compilePlatform)
+{
+    std::vector<Ptr<AST::Type>> result;
+    result.reserve(inheritedTypes.size());
+
+    if (!compilePlatform || hasPlatformImpl) {
+        for (auto& inhType : inheritedTypes) {
+            result.push_back(inhType.get());
+        }
+        return result;
+    }
+
+    for (auto& inhType : inheritedTypes) {
+        auto newType = MakeOwned<Type>();
+        newType->ty = inhType->ty;
+        auto decl = Ty::GetDeclOfTy(inhType->ty);
+        if (decl && decl->platformImplementation) {
+            newType->ty = decl->platformImplementation->ty;
+        }
+        result.push_back(newType.get());
+    }
+    return result;
 }

@@ -37,6 +37,7 @@
 #include "TypeCheckerImpl.h"
 #include "NativeFFI/Java/TypeCheck/InheritanceChecker.h"
 #include "NativeFFI/ObjC/Utils/OCStructInheritanceCheckerImpl.h"
+#include "CJMP/MPTypeCheckerImpl.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -569,7 +570,9 @@ std::optional<bool> StructInheritanceChecker::DeterminingSkipExtendByInheritance
                 GenerateTypeMappingByTy(mappingOfExtended2CurExtend[tyArgGen], mappingOfExtended2Ed[tyArgGen]);
             curDeclSuperInsTy = typeManager.GetInstantiatedTy(curDeclSuperInsTy, mappingOfCurExtend2Extend);
         }
-        for (auto& edSuper : std::as_const(ed.inheritedTypes)) {
+        auto inheritedTypes = Cangjie::MPTypeCheckerImpl::GetInheritedTypesWithPlatformImpl(
+            ed.inheritedTypes, ed.platformImplementation != nullptr, opts.commonPartCjo != std::nullopt);
+        for (auto& edSuper : inheritedTypes) {
             if (edSuper->ty == curDeclSuperInsTy) {
                 continue;
             }
