@@ -23,6 +23,7 @@ ASTKIND(BUILTIN_DECL, "builtin_decl", BuiltInDecl, 736)
 ASTKIND(VAR_DECL, "var_decl", VarDecl, 808) // begin of subtypes of VarDecl and VarDeclAbstract.
 ASTKIND(PROP_DECL, "prop_decl", PropDecl, 896)
 ASTKIND(MACRO_EXPAND_PARAM, "macro_expand_param", MacroExpandParam, 1608)
+ASTKIND(THIS_PARAM, "this_param", ThisParam, 872)
 ASTKIND(FUNC_PARAM, "func_param", FuncParam, 872)                                // end of subtypes of VarDecl.
 ASTKIND(VAR_WITH_PATTERN_DECL, "var_with_pattern_decl", VarWithPatternDecl, 800) // end of subtypes of VarDeclAbstract.
 ASTKIND(GENERIC_PARAM_DECL, "generic_param_decl", GenericParamDecl, 752)
@@ -86,6 +87,7 @@ ASTKIND(QUOTE_EXPR, "quote_expr", QuoteExpr, 512)
 ASTKIND(TRY_EXPR, "try_expr", TryExpr, 752)
 ASTKIND(WHILE_EXPR, "while_expr", WhileExpr, 512)
 ASTKIND(JUMP_EXPR, "jump_expr", JumpExpr, 448)
+ASTKIND(EXCLAVE_EXPR, "exclave_expr", ExclaveExpr, 488)
 ASTKIND(LAMBDA_EXPR, "lambda_expr", LambdaExpr, 464)
 ASTKIND(TRAIL_CLOSURE_EXPR, "trailing_closure_expr", TrailingClosureExpr, 496)
 ASTKIND(FOR_IN_EXPR, "for_in_expr", ForInExpr, 560)

@@ -11,10 +11,10 @@
 #include "Diags.h"
 #include "TypeCheckUtil.h"
 
+#include "DiagSuppressor.h"
 #include "cangjie/AST/RecoverDesugar.h"
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Utils/CheckUtils.h"
-#include "DiagSuppressor.h"
 
 using namespace Cangjie;
 using namespace Sema;
@@ -113,7 +113,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynBuiltinUnaryExpr(ASTContext& ctx, Unary
     }
     const auto& typeCandidate = GetUnaryOpTypeCandidates(ue.op);
     if (auto tv = DynamicCast<TyVar*>(ty); tv && tv->isPlaceholder) {
-        switch (PickConstaintFromTys(*tv, TypeMapToTys(typeCandidate, true), true)) {
+        switch (PickConstaintFromTys(*tv, TypeMapToTys(typeCandidate, true, ue.expr->ty->modal), true)) {
             case MatchResult::UNIQUE:
                 ue.ty = typeManager.TryGreedySubst(tv);
                 return ue.ty;

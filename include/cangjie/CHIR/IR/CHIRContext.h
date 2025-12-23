@@ -88,11 +88,13 @@ public:
         }
     }
 
-    StructType* GetStructType(
-        const std::string& package, const std::string& name, const std::vector<std::string>& genericType = {}) const;
+    StructType* GetStructType(const std::string& package, const std::string& name,
+        const std::vector<std::string>& genericType, ModalInfo modal) const;
 
-    StructType* GetStringTy() const;
+    StructType* GetStringTy(ModalInfo modal) const;
 
+    /// For builtin types that implement Copy, the modal info is not used.
+    /// that includes Int/Float, Unit, Nothing, Bool, Rune, Void
     NothingType* GetNothingType() const
     {
         return nothingTy;
@@ -161,35 +163,37 @@ public:
     {
         return float64Ty;
     }
-    CStringType* GetCStringTy() const
+    CStringType* GetCStringTy(ModalInfo modal) const
     {
-        return cstringTy;
+        return cstringTy[ToIndex(modal)];
     }
     VoidType* GetVoidTy() const
     {
         return voidTy;
     }
     // Need refactor: object may be a new type and not inherited from Class
-    void SetObjectTy(ClassType* ty)
+    void SetObjectTy(ClassType* ty, ModalInfo modal = {})
     {
-        objectTy = ty;
+        objectTy[ToIndex(modal)] = ty;
     }
-    ClassType* GetObjectTy() const
+    ClassType* GetObjectTy(ModalInfo modal = {}) const
     {
-        CJC_ASSERT(objectTy != nullptr);
-        return objectTy;
-    }
-
-    void SetAnyTy(ClassType* ty)
-    {
-        anyTy = ty;
+        CJC_ASSERT(objectTy[ToIndex(modal)] != nullptr);
+        return objectTy[ToIndex(modal)];
     }
 
-    ClassType* GetAnyTy() const
+    void SetAnyTy(ClassType* ty, ModalInfo modal = {})
     {
-        CJC_ASSERT(anyTy != nullptr);
-        return anyTy;
+        anyTy[ToIndex(modal)] = ty;
     }
+
+    ClassType* GetAnyTy(ModalInfo modal = {}) const
+    {
+        CJC_ASSERT(anyTy[ToIndex(modal)] != nullptr);
+        return anyTy[ToIndex(modal)];
+    }
+
+    Type* SubstituteModal(Type* ty, ModalInfo modal);
 
     // get enum selector type based on type kind
     Type* ToSelectorType(Type::TypeKind kind) const;
@@ -303,9 +307,10 @@ private:
     IntType *int8Ty{nullptr}, *int16Ty{nullptr}, *int32Ty{nullptr}, *int64Ty{nullptr}, *intNativeTy{nullptr};
     IntType *uint8Ty{nullptr}, *uint16Ty{nullptr}, *uint32Ty{nullptr}, *uint64Ty{nullptr}, *uintNativeTy{nullptr};
     FloatType *float16Ty{nullptr}, *float32Ty{nullptr}, *float64Ty{nullptr};
-    CStringType* cstringTy{nullptr};
-    ClassType* objectTy{nullptr};
-    ClassType* anyTy{nullptr};
+    static constexpr int MODAL_INFO_COUNT = AST::MODAL_INFO_COUNT;
+    CStringType* cstringTy[MODAL_INFO_COUNT]{};
+    ClassType* objectTy[MODAL_INFO_COUNT]{};
+    ClassType* anyTy[MODAL_INFO_COUNT]{};
     VoidType* voidTy{nullptr};
     static std::mutex dynamicAllocatedTysMtx;
 

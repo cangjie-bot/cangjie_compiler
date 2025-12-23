@@ -1014,8 +1014,8 @@ std::pair<Value*, Apply*> ToCHIR::DoCFFIFuncWrapper(T& curFunc, bool isForeign, 
     wrapperFunc->SetReturnValue(*retAlloc->GetResult());
 
     // create exit
-    entry->AppendExpression(builder.CreateExpression<Store>(
-        builder.GetType<UnitType>(), res->GetResult(), retAlloc->GetResult(), entry));
+    entry->AppendExpression(
+        builder.CreateExpression<Store>(builder.GetUnitTy(), res->GetResult(), retAlloc->GetResult(), entry));
     entry->AppendExpression(builder.CreateTerminator<Exit>(entry));
     return std::make_pair(wrapperFunc, res);
 }

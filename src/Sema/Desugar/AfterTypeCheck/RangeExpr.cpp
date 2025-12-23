@@ -40,18 +40,18 @@ std::vector<OwnedPtr<FuncArg>> CreateRangeExprArgs(const RangeExpr& re)
     } else {
         // If stepExpr does not exist, set LitConst "1" as default value.
         auto stepExpr =
-            CreateLitConstExpr(LitConstKind::INTEGER, "1", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+            CreateLitConstExpr(LitConstKind::INTEGER, "1", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {}));
         args.push_back(CreateFuncArg(std::move(stepExpr)));
     }
     std::string hasStart = re.startExpr ? "true" : "false";
     std::string hasStop = re.stopExpr ? "true" : "false";
     std::string isClosed = re.isClosed ? "true" : "false";
     auto hasStartExpr =
-        CreateLitConstExpr(LitConstKind::BOOL, hasStart, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN));
+        CreateLitConstExpr(LitConstKind::BOOL, hasStart, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {}));
     auto hasStopExpr =
-        CreateLitConstExpr(LitConstKind::BOOL, hasStop, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN));
+        CreateLitConstExpr(LitConstKind::BOOL, hasStop, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {}));
     auto isClosedExpr =
-        CreateLitConstExpr(LitConstKind::BOOL, isClosed, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN));
+        CreateLitConstExpr(LitConstKind::BOOL, isClosed, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {}));
     args.push_back(CreateFuncArg(std::move(hasStartExpr)));
     args.push_back(CreateFuncArg(std::move(hasStopExpr)));
     args.push_back(CreateFuncArg(std::move(isClosedExpr)));

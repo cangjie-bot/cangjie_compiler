@@ -191,6 +191,7 @@ Ptr<Value> Translator::Visit(const AST::FuncDecl& func)
     CJC_ASSERT(!isLifted || IsTopLevel(func));
     // translateTopLevel
     Func* curFunc = VirtualCast<Func*>(globalSymbolTable.Get(func));
+    funcContext.PushFunc(func, *curFunc);
     if (IsCopiedSrcFuncFromInterface(&func)) {
         curFunc->Set<SkipCheck>(SkipKind::SKIP_DCE_WARNING);
     }
@@ -204,6 +205,9 @@ Ptr<Value> Translator::Visit(const AST::FuncDecl& func)
     auto body = curFunc->GetBody();
     blockGroupStack.emplace_back(body);
     auto entry = builder.CreateBlock(body);
+    if (func.needsRegion) {
+        CreateAndAppendExpression<StartRegion>(TranslateLocation(func), builder.GetUnitTy(), entry);
+    }
     body->SetEntryBlock(entry);
     if (NeedCreateDebugForFirstParam(*curFunc)) {
         auto thisVar = curFunc->GetParam(0);
@@ -223,6 +227,7 @@ Ptr<Value> Translator::Visit(const AST::FuncDecl& func)
     auto block = Visit(*func.funcBody.get());
     CreateAndAppendTerminator<GoTo>(StaticCast<Block*>(block.get()), entry);
     blockGroupStack.pop_back();
+    funcContext.Pop();
     return curFunc;
 }
 
@@ -482,6 +487,10 @@ Ptr<Value> Translator::TranslateNestedFunc(const AST::FuncDecl& func)
     Lambda* lambda = CreateAndAppendExpression<Lambda>(
         loc, funcTy, funcTy, currentBlock, true, lambdaMangleName, func.identifier, genericTys);
     CJC_ASSERT(lambda);
+    funcContext.PushFunc(func, *lambda);
+    if (func.needsRegion) {
+        CreateAndAppendExpression<StartRegion>(TranslateLocation(func), builder.GetUnitTy(), lambda->GetEntryBlock());
+    }
     lambda->InitBody(*body);
     if (func.isConst) {
         lambda->SetCompileTimeValue();

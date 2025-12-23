@@ -76,6 +76,7 @@ public:
         ScopeKind scopeKind, std::set<AST::Modifier> modifiers = {}, std::vector<OwnedPtr<AST::Annotation>> annos = {});
     OwnedPtr<AST::Expr> ParseExpr(ExprKind ek = ExprKind::ALL);
     OwnedPtr<AST::Type> ParseType();
+    ModalASTInfo ParseModalInfo();
     OwnedPtr<AST::Pattern> ParsePattern(
         const std::set<AST::Attribute>& attributes = {}, bool isVar = false, bool inDecl = false);
     std::vector<OwnedPtr<AST::Node>> ParseNodes(std::variant<ScopeKind, ExprKind> scope, AST::Node& currentMacroCall,
@@ -299,7 +300,7 @@ private:
     {
         return Seeing({TokenKind::AT, TokenKind::IDENTIFIER, TokenKind::LCURL}) && SeeingBuiltinAnnotation();
     }
-    bool SeeingPrimTypes()
+    bool SeeingPrimitiveType()
     {
         return (Peek().kind >= TokenKind::INT8) && (Peek().kind <= TokenKind::UNIT);
     }
@@ -324,28 +325,6 @@ private:
             TokenKind::STRING_LITERAL, TokenKind::JSTRING_LITERAL, TokenKind::MULTILINE_STRING,
             TokenKind::MULTILINE_RAW_STRING, TokenKind::RUNE_LITERAL, TokenKind::FLOAT_LITERAL,
             TokenKind::UNIT_LITERAL});
-    }
-    bool SeeingPrimitiveTypeAndLParen()
-    {
-        return Seeing({TokenKind::INT8, TokenKind::LPAREN}) || Seeing({TokenKind::INT16, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::INT32, TokenKind::LPAREN}) || Seeing({TokenKind::INT64, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::INTNATIVE, TokenKind::LPAREN}) || Seeing({TokenKind::UINT8, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::UINT16, TokenKind::LPAREN}) || Seeing({TokenKind::UINT32, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::UINT64, TokenKind::LPAREN}) || Seeing({TokenKind::UINTNATIVE, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::FLOAT16, TokenKind::LPAREN}) || Seeing({TokenKind::FLOAT32, TokenKind::LPAREN}) ||
-            Seeing({TokenKind::FLOAT64, TokenKind::LPAREN}) || Seeing({TokenKind::RUNE, TokenKind::LPAREN});
-    }
-    bool SeeingPrimitiveTypeAndDot()
-    {
-        return Seeing({TokenKind::INT8, TokenKind::DOT}) || Seeing({TokenKind::INT16, TokenKind::DOT}) ||
-            Seeing({TokenKind::INT32, TokenKind::DOT}) || Seeing({TokenKind::INT64, TokenKind::DOT}) ||
-            Seeing({TokenKind::INTNATIVE, TokenKind::DOT}) || Seeing({TokenKind::UINT8, TokenKind::DOT}) ||
-            Seeing({TokenKind::UINT16, TokenKind::DOT}) || Seeing({TokenKind::UINT32, TokenKind::DOT}) ||
-            Seeing({TokenKind::UINT64, TokenKind::DOT}) || Seeing({TokenKind::UINTNATIVE, TokenKind::DOT}) ||
-            Seeing({TokenKind::FLOAT16, TokenKind::DOT}) || Seeing({TokenKind::FLOAT32, TokenKind::DOT}) ||
-            Seeing({TokenKind::FLOAT64, TokenKind::DOT}) || Seeing({TokenKind::RUNE, TokenKind::DOT}) ||
-            Seeing({TokenKind::BOOLEAN, TokenKind::DOT}) || Seeing({TokenKind::UNIT, TokenKind::DOT}) ||
-            Seeing({TokenKind::NOTHING, TokenKind::DOT});
     }
 
     bool SkipOperator()
@@ -530,6 +509,7 @@ private:
     void ParseFuncGenericConstraints(const AST::FuncBody& fb);
     void ParsePropMemberBody(const ScopeKind& scopeKind, AST::FuncBody& fb);
     void ParseFuncParameters(const ScopeKind& scopeKind, AST::FuncBody& fb);
+    void DiagThisParamNotAllowed(const ThisParam& thisParam);
     OwnedPtr<AST::MacroDecl> ParseMacroDecl(ScopeKind scopeKind, const std::set<AST::Modifier>& modifiers,
         std::vector<OwnedPtr<AST::Annotation>> annos = {});
     bool ParseMacroCallTokens(TokenKind left, std::vector<Token>& tokens);
@@ -558,6 +538,7 @@ private:
     void ParseParameter(ScopeKind scopeKind, AST::FuncParam& fp);
     void ParseAssignInParam(AST::FuncParam& fp);
     OwnedPtr<AST::FuncParamList> ParseParameterList(ScopeKind scopeKind = ScopeKind::UNKNOWN_SCOPE);
+    OwnedPtr<AST::ThisParam> ParseThisParam();
     void CheckSetterAnnotations(std::vector<OwnedPtr<AST::Annotation>>& annos, const Ptr<AST::Node> setter);
     void CheckGetterAnnotations(std::vector<OwnedPtr<AST::Annotation>>& annos, const Ptr<AST::Node> getter);
     void CheckModifierInParamList(
@@ -649,7 +630,8 @@ private:
      * Parses expressions starting with '[': array literals. like: [1, 2, 3]
      */
     OwnedPtr<AST::Expr> ParseArrayLitExpr();
-    OwnedPtr<AST::Expr> ParseTypeConvExpr();
+    OwnedPtr<AST::Expr> ParseTypeConvExprWith(Token&& tok, ModalASTInfo&& modal);
+    OwnedPtr<AST::Expr> ParsePrimitiveTypeDotExprWith(Token&& tok, ModalASTInfo&& modal);
     OwnedPtr<AST::Expr> ParseBreakJumpExpr();
     OwnedPtr<AST::Expr> ParseContinueJumpExpr();
     OwnedPtr<AST::Expr> ParseLitConst();
@@ -671,8 +653,11 @@ private:
     OwnedPtr<AST::FuncBody> ParseFuncBodyInLambdaExpr(bool isTailClosure = false);
     OwnedPtr<AST::LambdaExpr> ParseLambdaExpr();
     OwnedPtr<AST::Expr> ParseVArrayExpr();
+    OwnedPtr<AST::Expr> ParseExclaveExpr();
     OwnedPtr<AST::LambdaExpr> ParseLambdaExprWithTrailingClosure();
     OwnedPtr<AST::Expr> ParseIfExpr();
+    /// Parse expr starting with PrimitiveType token, that is, a TypeConvExpr or a CallExpr starting with PrimitiveType
+    OwnedPtr<Expr> ParsePrimitiveTypeExpr();
     void ParseElse(AST::IfExpr& ret);
     void ConsumeUntilIfExprEnd();
     /// Check if the given condition is has a condition subclause.
@@ -824,6 +809,7 @@ private:
     // Move this to sema.
     void CheckNoDeprecatedAnno(const PtrVector<AST::Annotation>& annos, const std::string& invalidTarget);
     void CheckDeprecationOfFuncParam(const AST::FuncParam& param);
+    void CheckMakeCopy(AST::Decl& decl);
     std::string GetSingleLineContent(const Position& begin, const Position& end) const;
     void DiagExpectedIdentifier(const Range& range, const std::string& expectedName = "a name",
         const std::string& afterName = "after this", const bool callHelp = true);
@@ -866,7 +852,7 @@ private:
     void DiagOrPattern();
     void DiagDeclarationInMacroPackage(const OwnedPtr<AST::Decl>& decl);
     void DiagIllegalFunc(const OwnedPtr<AST::FuncDecl>& funcDecl);
-    void DiagParseExpectedParenthis(const OwnedPtr<AST::Type>& postType);
+    void DiagParseExpectedParenthesis(const OwnedPtr<AST::Type>& postType);
     void DiagParseIllegalDeclarationPattern(const OwnedPtr<AST::VarWithPatternDecl>& decl, ScopeKind scopeKind);
     void DiagThisTypeNotAllow();
     void DiagInvalidUnicodeScalar(const Position& startPos, const std::string& str);
@@ -964,6 +950,7 @@ private:
     // ASTLoader.
     OwnedPtr<AST::FuncDecl> ParseFuncDecl(
         ScopeKind scopeKind, const std::set<AST::Modifier>& modifiers, std::vector<OwnedPtr<AST::Annotation>> annos);
+    void DiagLocalFuncNotLocal(const FuncDecl& funcDecl);
     OwnedPtr<AST::EnumDecl> ParseEnumDecl(ScopeKind scopeKind, const std::set<AST::Modifier>& modifiers,
         std::vector<OwnedPtr<AST::Annotation>> annos = {});
     OwnedPtr<AST::StructDecl> ParseStructDecl(ScopeKind scopeKind, const std::set<AST::Modifier>& modifiers,
@@ -1054,7 +1041,7 @@ private:
     friend class Parser;
 
     template <typename... Args>
-    DiagnosticBuilder ParseDiagnoseRefactor(DiagKindRefactor kind, const Position pos, Args&&... args)
+    DiagnosticBuilder ParseDiagnoseRefactor(DiagKindRefactor kind, const Position& pos, Args&&... args)
     {
         auto n = MakeOwned<AST::Node>();
         n->begin = pos;
@@ -1067,7 +1054,7 @@ private:
     }
 
     template <typename... Args>
-    DiagnosticBuilder ParseDiagnoseRefactor(DiagKindRefactor kind, const Range range, Args&&... args)
+    DiagnosticBuilder ParseDiagnoseRefactor(DiagKindRefactor kind, const Range& range, Args&&... args)
     {
         auto n = MakeOwned<AST::Node>();
         n->begin = range.begin;
@@ -1104,6 +1091,8 @@ private:
         }
         return diag.DiagnoseRefactor(kind, *n, std::forward<Args>(args)...);
     }
+
+    void DiagUnexpectedModal(const Range& range);
 };
 
 extern template OwnedPtr<AST::MacroExpandDecl> ParserImpl::ParseMacroCall<AST::MacroExpandDecl>(

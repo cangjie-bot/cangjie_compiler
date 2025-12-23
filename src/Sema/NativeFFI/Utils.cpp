@@ -555,19 +555,19 @@ Ptr<Ty> GetInstantyForGenericTy(
     Ptr<Ty> instantTy;
     auto classDecl = As<ASTKind::CLASS_DECL>(&decl);
     if (classDecl) {
-        instantTy = typeManager.GetClassTy(*classDecl, actualTypeArgs);
+        instantTy = typeManager.GetClassTy(*classDecl, actualTypeArgs, {});
     }
     auto structDecl = As<ASTKind::STRUCT_DECL>(&decl);
     if (structDecl) {
-        instantTy = typeManager.GetStructTy(*structDecl, actualTypeArgs);
+        instantTy = typeManager.GetStructTy(*structDecl, actualTypeArgs, {});
     }
     auto enumDecl = As<ASTKind::ENUM_DECL>(&decl);
     if (enumDecl) {
-        instantTy = typeManager.GetEnumTy(*enumDecl, actualTypeArgs);
+        instantTy = typeManager.GetEnumTy(*enumDecl, actualTypeArgs, {});
     }
     auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(&decl);
     if (interfaceDecl) {
-        instantTy = typeManager.GetInterfaceTy(*interfaceDecl, actualTypeArgs);
+        instantTy = typeManager.GetInterfaceTy(*interfaceDecl, actualTypeArgs, {});
     }
     return instantTy;
 }

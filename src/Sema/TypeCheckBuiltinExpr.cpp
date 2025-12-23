@@ -41,7 +41,7 @@ Ptr<Ty> GetArrayElementTy(TypeManager& typeManager, ArrayTy& arrayTy)
     if (arrayTy.dims == 1) {
         return arrayTy.typeArgs[0];
     }
-    return typeManager.GetArrayTy(arrayTy.typeArgs[0], arrayTy.dims - 1);
+    return typeManager.GetArrayTy(arrayTy.typeArgs[0], arrayTy.dims - 1, arrayTy.modal);
 }
 
 bool HasInheritGivenDecl(const std::unordered_set<Ptr<AST::Ty>>& superTys, const ClassLikeDecl& decl)
@@ -157,7 +157,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynArrayLit(ASTContext& ctx, ArrayLit& al)
 
     auto joinRes = JoinAndMeet(typeManager, arrayElemTys, {}, &importManager, al.curFile).JoinAsVisibleTy();
     if (auto ty = std::get_if<Ptr<Ty>>(&joinRes)) {
-        al.ty = typeManager.GetStructTy(*arrayStruct, {*ty});
+        al.ty = typeManager.GetStructTy(*arrayStruct, {*ty}, al.ty->modal);
     } else {
         al.ty = TypeManager::GetInvalidTy();
         auto errMsg = JoinAndMeet::CombineErrMsg(std::get<std::stack<std::string>>(joinRes));
@@ -226,7 +226,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSizedArrayWithoutElemTy(ASTContext& ctx, T
             }
             elementTy = funcTy->retTy;
         }
-        ae.ty = typeManager.GetArrayTy(elementTy, arrayTy->dims);
+        ae.ty = typeManager.GetArrayTy(elementTy, arrayTy->dims, elementTy->modal);
         return target.IsInvalid() || typeManager.IsSubtype(ae.ty, &target);
     }
     // Target type is given, check with expression.
@@ -290,7 +290,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSingeArgArrayWithoutElemTy(ASTContext& ctx
         CJC_NULLPTR_CHECK(collectionDecl->ty);
         auto promotedTys = promotion.Promote(*exprTy, *collectionDecl->ty);
         auto collectionTy = *promotedTys.begin(); // Previous check guarantees 'promotedTys' has at least one value.
-        ae.ty = typeManager.GetArrayTy(collectionTy->typeArgs[0], arrayTy->dims);
+        ae.ty = typeManager.GetArrayTy(collectionTy->typeArgs[0], arrayTy->dims, collectionTy->typeArgs[0]->modal);
         ae.initFunc = importManager.GetCoreDecl<FuncDecl>("arrayInitByCollection");
         CJC_NULLPTR_CHECK(ae.initFunc);
         Synthesize({ctx, SynPos::EXPR_ARG}, ae.initFunc); // Non-public decl should synthesize manually.
@@ -313,10 +313,11 @@ bool TypeChecker::TypeCheckerImpl::ChkSingeArgArrayExpr(ASTContext& ctx, Ty& tar
         return ChkSingeArgArrayWithoutElemTy(ctx, target, ae);
     }
 
-    auto elemTy =
-        (arrayTy->dims > 1) ? typeManager.GetArrayTy(arrayTy->typeArgs[0], arrayTy->dims - 1) : arrayTy->typeArgs[0];
+    auto elemTy = (arrayTy->dims > 1)
+        ? typeManager.GetArrayTy(arrayTy->typeArgs[0], arrayTy->dims - 1, arrayTy->typeArgs[0]->modal)
+        : arrayTy->typeArgs[0];
     // Check for Array<T>(Collection).
-    auto collectionTy = typeManager.GetInterfaceTy(*collectionDecl, {elemTy});
+    auto collectionTy = typeManager.GetInterfaceTy(*collectionDecl, {elemTy}, elemTy->modal);
     if (Check(ctx, collectionTy, ae.args[0].get())) {
         ae.initFunc = importManager.GetCoreDecl<FuncDecl>("arrayInitByCollection");
         CJC_NULLPTR_CHECK(ae.initFunc);
@@ -649,7 +650,8 @@ bool TypeChecker::TypeCheckerImpl::ChkCStringCall(ASTContext& ctx, Ty& target, C
 {
     if (IsCallOfBuiltInType(ce, AST::TypeKind::TYPE_CSTRING)) {
         // Check arg.
-        auto cptrTy = typeManager.GetPointerTy(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT8));
+        auto cptrTy = typeManager.GetPointerTy(
+            TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT8, ce.baseFunc->ty->modal), ce.baseFunc->ty->modal);
         if (ce.args.size() != 1) {
             DiagWrongNumberOfArguments(diag, ce, {cptrTy});
             ce.ty = TypeManager::GetInvalidTy();
@@ -668,7 +670,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCStringCall(ASTContext& ctx, Ty& target, C
             return false;
         }
 #endif
-        ce.ty = TypeManager::GetCStringTy();
+        ce.ty = TypeManager::GetCStringTy(ce.baseFunc->ty->modal);
         return true;
     }
     return false;

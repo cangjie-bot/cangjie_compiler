@@ -147,8 +147,7 @@ std::vector<SubstPack> ExpandMultiTypeSubst(const SubstPack& maps, const std::se
 /**
  * Reduce type mapping to only contains direct mapping from given generic ty vars to instantiated tys.
  */
-MultiTypeSubst ReduceMultiTypeSubst(TypeManager& tyMgr, const TyVars& tyVars,
-    const MultiTypeSubst& mts);
+MultiTypeSubst ReduceMultiTypeSubst(TypeManager& tyMgr, const TyVars& tyVars, const MultiTypeSubst& mts);
 TypeSubst MultiTypeSubstToTypeSubst(const MultiTypeSubst& mts);
 TypeSubst GenerateTypeMappingByTy(const Ptr<AST::Ty> genericTy, const Ptr<AST::Ty> instantTy);
 TypeSubst GenerateTypeMapping(const AST::Decl& decl, const std::vector<Ptr<AST::Ty>>& typeArgs);
@@ -269,7 +268,8 @@ Ptr<AST::Ty> FindSmallestTy(
 bool LessThanAll(Ptr<AST::Ty> ty, const std::set<Ptr<AST::Ty>>& tys,
     const std::function<bool(Ptr<AST::Ty>, Ptr<AST::Ty>)>& lessThan);
 void TryEnforceCandidate(TyVar& tv, const std::set<Ptr<AST::Decl>>& candidates, TypeManager& tyMgr);
-std::set<Ptr<AST::Ty>> TypeMapToTys(const std::map<AST::TypeKind, AST::TypeKind>& m, bool fromKey);
+std::set<Ptr<AST::Ty>> TypeMapToTys(
+    const std::map<AST::TypeKind, AST::TypeKind>& m, bool fromKey, AST::ModalInfo modalInfo);
 // get generic params for the decl and outer decl(if there is) and extended decl(if there is)
 std::set<Ptr<AST::Ty>> GetGenericParamsForDecl(const AST::Decl& decl);
 // get generic params for the decl of the type
@@ -277,19 +277,16 @@ std::set<Ptr<AST::Ty>> GetGenericParamsForTy(const AST::Ty& ty);
 // get generic params for all decls used in the call
 std::set<Ptr<AST::Ty>> GetGenericParamsForCall(const AST::CallExpr& ce, const AST::FuncDecl& fd);
 
-OwnedPtr<AST::ThrowExpr> CreateThrowException(
-    const AST::ClassDecl& exceptionDecl, std::vector<OwnedPtr<AST::Expr>> args,
-    AST::File& curFile, TypeManager& typeManager);
-std::optional<std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>>> FindInitDecl(
-    const AST::InheritableDecl& decl, TypeManager& typeManager,
-    std::vector<OwnedPtr<AST::Expr>>& valueArgs, const std::vector<Ptr<AST::Ty>> instTys = {});
-std::optional<std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>>> FindInitDecl(
-    const AST::InheritableDecl& decl, TypeManager& typeManager,
-    const std::vector<Ptr<AST::Ty>> valueParamTys, const std::vector<Ptr<AST::Ty>> instTys = {});
-OwnedPtr<AST::CallExpr> CreateInitCall(
-    const std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>> initDeclInfo,
-    std::vector<OwnedPtr<AST::Expr>>& valueArgs,
-    AST::File& curFile, const std::vector<Ptr<AST::Ty>> instTys = {});
+OwnedPtr<AST::ThrowExpr> CreateThrowException(const AST::ClassDecl& exceptionDecl,
+    std::vector<OwnedPtr<AST::Expr>> args, AST::File& curFile, TypeManager& typeManager);
+std::optional<std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>>> FindInitDecl(const AST::InheritableDecl& decl,
+    TypeManager& typeManager, std::vector<OwnedPtr<AST::Expr>>& valueArgs,
+    const std::vector<Ptr<AST::Ty>> instTys = {});
+std::optional<std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>>> FindInitDecl(const AST::InheritableDecl& decl,
+    TypeManager& typeManager, const std::vector<Ptr<AST::Ty>> valueParamTys,
+    const std::vector<Ptr<AST::Ty>> instTys = {});
+OwnedPtr<AST::CallExpr> CreateInitCall(const std::pair<Ptr<AST::FuncDecl>, Ptr<AST::Ty>> initDeclInfo,
+    std::vector<OwnedPtr<AST::Expr>>& valueArgs, AST::File& curFile, const std::vector<Ptr<AST::Ty>> instTys = {});
 
 Ptr<AST::FuncDecl> GenerateGetTypeForTypeParamIntrinsic(
     AST::Package& pkg, TypeManager& typeManager, Ptr<AST::Ty> strTy);
@@ -310,7 +307,8 @@ static bool const IS_GENERIC_INSTANTIATION_ENABLED =
     false;
 #endif
 
-template <typename T> T* GetMemberDecl(
+template <typename T>
+T* GetMemberDecl(
     const AST::Decl& decl, const std::string& identifier, std::vector<Ptr<AST::Ty>> paramTys, TypeManager& typeManager)
 {
     for (auto& member : decl.GetMemberDecls()) {

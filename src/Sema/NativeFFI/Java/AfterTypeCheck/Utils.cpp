@@ -68,7 +68,7 @@ Utils::Utils(ImportManager& importManager, TypeManager& typeManager, Package& pk
 
 Ptr<Ty> Utils::GetOptionTy(Ptr<Ty> ty)
 {
-    return typeManager.GetEnumTy(*GetOptionDecl(), {ty});
+    return typeManager.GetEnumTy(*GetOptionDecl(), {ty}, ty->modal);
 }
 
 Ptr<EnumDecl> Utils::GetOptionDecl()

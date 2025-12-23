@@ -85,10 +85,10 @@ void Translator::TranslateAnnotationsArrayBody(const Decl& decl, Func& func)
         CreateAndAppendConstantExpression<IntLiteral>(builder.GetInt64Ty(), *currentBlock, annoInsts.size())
             ->GetResult();
     auto objectTy = builder.GetType<RefType>(builder.GetObjectTy());
-    auto rawArrayTy = builder.GetType<RawArrayType>(objectTy, 1u);
+    auto rawArrayTy = builder.GetType<RawArrayType>(objectTy, 1u, ModalInfo{});
     auto rawArray = CreateAndAppendExpression<RawArrayAllocate>(
         builder.GetType<RefType>(rawArrayTy), objectTy, annoArrSize, currentBlock);
-    auto arrayGeneric = builder.GetStructType("std.core", "Array");
+    auto arrayGeneric = builder.GetStructType("std.core", "Array", {}, {});
     auto genericType = StaticCast<GenericType*>(arrayGeneric->GetGenericArgs()[0]);
     std::unordered_map<const GenericType*, Type*> table{{genericType, objectTy}};
     auto arrayType = ReplaceRawGenericArgType(*arrayGeneric, table, builder);
@@ -188,7 +188,7 @@ AnnoInfo Translator::CreateAnnoFactoryFuncSig(const AST::Decl& decl, CustomTypeD
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     returnTy = TranslateType(*annosArray->ty);
 #endif
-    auto funcType = builder.GetType<FuncType>(std::vector<Type*>{}, returnTy);
+    auto funcType = builder.GetType<FuncType>(std::vector<Type*>{}, returnTy, false, false, ModalInfo{});
     const auto& loc = TranslateLocation(*decl.annotationsArray->children[0]);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     std::string mangledName = CHIRMangling::GenerateAnnotationFuncMangleName(decl.mangledName);

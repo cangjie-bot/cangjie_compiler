@@ -55,7 +55,7 @@ static const std::string PrintArgTys(const std::string& prefix,
     return ss.str();
 }
 
-Type::Type(TypeKind kind) : kind(kind)
+Type::Type(TypeKind kind, ModalInfo modal) : kind(kind), modal(modal)
 {
     for (auto ty : argTys) {
         CJC_NULLPTR_CHECK(ty);
@@ -135,7 +135,7 @@ bool Type::IsBuiltinType() const
 std::string Type::ToString() const
 {
     auto ite = TYPEKIND_TO_STRING.find(kind);
-    return ite == TYPEKIND_TO_STRING.end() ? "UnknownType" : ite->second;
+    return (ite == TYPEKIND_TO_STRING.end() ? "UnknownType" : ite->second) + modal.AsTypeSuffixString();
 }
 
 std::string Type::ToSrcCodeString() const
@@ -221,6 +221,7 @@ size_t Type::Hash() const
 {
     std::size_t hashVal = HashArgTypes(argTys);
     HashValue(hashVal, kind);
+    HashValue(hashVal, ToIndex(modal));
     return hashVal;
 }
 
@@ -259,12 +260,12 @@ bool Type::IsBoxRefTypeOf(const Type& baseType) const
     return StaticCast<BoxType*>(boxType)->GetBaseType() == &baseType;
 }
 
-IntType::IntType(TypeKind kind) : NumericType(kind)
+IntType::IntType(TypeKind kind, ModalInfo modal) : NumericType(kind, modal)
 {
     CJC_ASSERT(kind >= TYPE_INT8 && kind <= TYPE_UINT_NATIVE);
 }
 
-FloatType::FloatType(TypeKind kind) : NumericType(kind)
+FloatType::FloatType(TypeKind kind, ModalInfo modal) : NumericType(kind, modal)
 {
     CJC_ASSERT(kind >= TYPE_FLOAT16 && kind <= TYPE_FLOAT64);
 }
@@ -285,7 +286,7 @@ std::string FuncType::ToString() const
     }
     ss << ")";
     ss << " -> " << GetReturnType()->ToString();
-    return isCFunc ? "CFunc<" + ss.str() + ">" : ss.str();
+    return (isCFunc ? "CFunc<" + ss.str() + ">" : ss.str()) + modal.AsTypeSuffixString();
 }
 
 std::string FuncType::ToSrcCodeString() const
@@ -304,7 +305,7 @@ std::string FuncType::ToSrcCodeString() const
     }
     ss << ")";
     ss << " -> " << GetReturnType()->ToSrcCodeString();
-    return isCFunc ? "CFunc<" + ss.str() + ">" : ss.str();
+    return (isCFunc ? "CFunc<" + ss.str() + ">" : ss.str()) + modal.AsTypeSuffixString();
 }
 
 size_t FuncType::Hash() const
@@ -313,6 +314,7 @@ size_t FuncType::Hash() const
     HashValue(hashVal, isCFunc);
     HashValue(hashVal, hasVarArg);
     HashValue(hashVal, kind);
+    HashValue(hashVal, ToIndex(modal));
     return hashVal;
 }
 
@@ -322,8 +324,8 @@ bool FuncType::operator==(const Type& other) const
     return it && argTys == it->argTys && (isCFunc == it->isCFunc) && (hasVarArg == it->hasVarArg);
 }
 
-CustomType::CustomType(TypeKind kind, CustomTypeDef* def, const std::vector<Type*>& typeArgs = {})
-    : Type(kind), def(def)
+CustomType::CustomType(TypeKind kind, CustomTypeDef* def, const std::vector<Type*>& typeArgs, ModalInfo modal)
+    : Type(kind, modal), def(def)
 {
     CJC_NULLPTR_CHECK(def);
     CJC_ASSERT((kind == TYPE_CLASS && def->GetCustomKind() == CustomDefKind::TYPE_CLASS) ||
@@ -525,7 +527,7 @@ std::string CustomType::ToSrcCodeString() const
 {
     std::stringstream ss;
     ss << def->GetSrcCodeIdentifier();
-    ss << PrintArgTys("<", argTys, ">", true);
+    ss << PrintArgTys("<", argTys, ">", true) << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -533,6 +535,7 @@ size_t CustomType::Hash() const
 {
     std::size_t hashVal = HashArgTypes(argTys);
     HashValue(hashVal, def);
+    HashValue(hashVal, ToIndex(modal));
     return hashVal;
 }
 
@@ -542,8 +545,8 @@ bool CustomType::operator==(const Type& other) const
     return it && argTys == it->argTys && (def == it->def);
 }
 
-ClassType::ClassType(ClassDef* classDef, const std::vector<Type*>& genericArgs)
-    : CustomType(TypeKind::TYPE_CLASS, classDef, genericArgs)
+ClassType::ClassType(ClassDef* classDef, const std::vector<Type*>& genericArgs, ModalInfo modal)
+    : CustomType(TypeKind::TYPE_CLASS, classDef, genericArgs, modal)
 {
 }
 
@@ -554,7 +557,7 @@ std::string ClassType::ToString() const
     if (def != nullptr) {
         ss << "-" << def->GetIdentifierWithoutPrefix();
     }
-    ss << PrintArgTys("<", argTys, ">");
+    ss << PrintArgTys("<", argTys, ">") << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -959,8 +962,8 @@ std::vector<ClassType*> CustomType::GetImplementedInterfaceTysWithoutExtend(CHIR
     return instSuperInterfaceTys;
 }
 
-StructType::StructType(StructDef* structDef, const std::vector<Type*>& genericArgs)
-    : CustomType(TypeKind::TYPE_STRUCT, structDef, genericArgs)
+StructType::StructType(StructDef* structDef, const std::vector<Type*>& genericArgs, ModalInfo modal)
+    : CustomType(TypeKind::TYPE_STRUCT, structDef, genericArgs, modal)
 {
 }
 
@@ -977,12 +980,12 @@ std::string StructType::ToString() const
     if (def != nullptr) {
         ss << "-" << def->GetIdentifierWithoutPrefix();
     }
-    ss << PrintArgTys("<", argTys, ">");
+    ss << PrintArgTys("<", argTys, ">") << modal.AsTypeSuffixString();
     return ss.str();
 }
 
-EnumType::EnumType(EnumDef* enumDef, const std::vector<Type*>& genericArgs)
-    : CustomType(TypeKind::TYPE_ENUM, enumDef, genericArgs)
+EnumType::EnumType(EnumDef* enumDef, const std::vector<Type*>& genericArgs, ModalInfo modal)
+    : CustomType(TypeKind::TYPE_ENUM, enumDef, genericArgs, modal)
 {
 }
 
@@ -1019,7 +1022,7 @@ std::string EnumType::ToString() const
     if (def != nullptr) {
         ss << "-" << def->GetIdentifierWithoutPrefix();
     }
-    ss << PrintArgTys("<", argTys, ">");
+    ss << PrintArgTys("<", argTys, ">") << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1070,14 +1073,14 @@ std::string TupleType::ToString() const
 {
     std::stringstream ss;
     ss << "Tuple";
-    ss << PrintArgTys("(", argTys, ")");
+    ss << PrintArgTys("(", argTys, ")") << modal.AsTypeSuffixString();
     return ss.str();
 }
 
 std::string TupleType::ToSrcCodeString() const
 {
     std::stringstream ss;
-    ss << PrintArgTys("(", argTys, ")", true);
+    ss << PrintArgTys("(", argTys, ")", true) << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1095,7 +1098,7 @@ std::string RawArrayType::ToString() const
     }
     ss << prefix;
     ss << elemTy->ToString();
-    ss << suffix;
+    ss << suffix << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1113,7 +1116,7 @@ std::string RawArrayType::ToSrcCodeString() const
     }
     ss << prefix;
     ss << elemTy->ToSrcCodeString();
-    ss << suffix;
+    ss << suffix << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1122,6 +1125,7 @@ size_t RawArrayType::Hash() const
     std::size_t hashVal = HashArgTypes(argTys);
     HashValue(hashVal, dims);
     HashValue(hashVal, kind);
+    HashValue(hashVal, ToIndex(modal));
     return hashVal;
 }
 
@@ -1134,14 +1138,15 @@ bool RawArrayType::operator==(const Type& other) const
 std::string VArrayType::ToString() const
 {
     std::stringstream ss;
-    ss << "VArray<" << argTys[0]->ToString() << ", $" << std::to_string(size) << ">";
+    ss << "VArray<" << argTys[0]->ToString() << ", $" << std::to_string(size) << ">" << modal.AsTypeSuffixString();
     return ss.str();
 }
 
 std::string VArrayType::ToSrcCodeString() const
 {
     std::stringstream ss;
-    ss << "VArray<" << argTys[0]->ToSrcCodeString() << ", $" << std::to_string(size) << ">";
+    ss << "VArray<" << argTys[0]->ToSrcCodeString() << ", $" << std::to_string(size) << ">"
+       << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1150,6 +1155,7 @@ size_t VArrayType::Hash() const
     std::size_t hashVal = HashArgTypes(argTys);
     HashValue(hashVal, size);
     HashValue(hashVal, kind);
+    HashValue(hashVal, ToIndex(modal));
     return hashVal;
 }
 
@@ -1163,7 +1169,7 @@ const std::vector<ExtendDef*>& CPointerType::GetExtends(CHIRBuilder* builder) co
 {
     if (!GetElementType()->IsUnit()) {
         CJC_NULLPTR_CHECK(builder);
-        return builder->GetType<CPointerType>(builder->GetUnitTy())->GetExtends(builder);
+        return builder->GetType<CPointerType>(builder->GetUnitTy(), ModalInfo{})->GetExtends(builder);
     } else {
         return extends;
     }
@@ -1173,7 +1179,7 @@ std::string CPointerType::ToString() const
 {
     std::stringstream ss;
     ss << "CPointer";
-    ss << PrintArgTys("<", argTys, ">");
+    ss << PrintArgTys("<", argTys, ">") << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1181,7 +1187,7 @@ std::string CPointerType::ToSrcCodeString() const
 {
     std::stringstream ss;
     ss << "CPointer";
-    ss << PrintArgTys("<", argTys, ">", true);
+    ss << PrintArgTys("<", argTys, ">", true) << modal.AsTypeSuffixString();
     return ss.str();
 }
 
@@ -1199,28 +1205,33 @@ std::string RefType::ToSrcCodeString() const
     return ss.str();
 }
 
+ModalInfo RefType::Modal() const
+{
+    return argTys[0]->Modal();
+}
+
 std::string BoxType::ToString() const
 {
     std::stringstream ss;
-    ss << "Box<" << argTys[0]->ToString() << ">";
+    ss << "Box<" << argTys[0]->ToString() << ">" << modal.AsTypeSuffixString();
     return ss.str();
 }
 
 std::string BoxType::ToSrcCodeString() const
 {
     std::stringstream ss;
-    ss << argTys[0]->ToSrcCodeString();
+    ss << argTys[0]->ToSrcCodeString() << modal.AsTypeSuffixString();
     return ss.str();
 }
 
 std::string ThisType::ToString() const
 {
-    return "This";
+    return "This" + modal.AsTypeSuffixString();
 }
 
 std::string ThisType::ToSrcCodeString() const
 {
-    return "This";
+    return "This" + modal.AsTypeSuffixString();
 }
 
 void GenericType::SetUpperBounds(const std::vector<Type*>& args)
@@ -1280,13 +1291,13 @@ bool GenericType::operator==(const Type& other) const
 std::string GenericType::ToString() const
 {
     std::stringstream ss;
-    ss << "Generic-" << identifier;
+    ss << "Generic-" << identifier << modal.AsTypeSuffixString();
     return ss.str();
 }
 
 std::string GenericType::ToSrcCodeString() const
 {
-    return srcCodeIdentifier;
+    return srcCodeIdentifier + modal.AsTypeSuffixString();
 }
 
 namespace Cangjie::CHIR {
@@ -1533,6 +1544,10 @@ bool Type::IsEqualOrSubTypeOf(const Type& parentType, CHIRBuilder& builder,
         auto subBaseType = StaticCast<const RefType*>(this)->GetBaseType();
         auto parentBaseType = StaticCast<const RefType&>(parentType).GetBaseType();
         return subBaseType->IsEqualOrSubTypeOf(*parentBaseType, builder, visited);
+    }
+    if (this->Modal() != parentType.Modal() && this->Modal().IsSubModal(parentType.Modal())) {
+        return builder.SubstituteModal(const_cast<Type*>(this), parentType.Modal())
+            ->IsEqualOrSubTypeOf(parentType, builder, visited);
     }
     auto thisDeref = this->StripAllRefs();
     auto parentDeref = parentType.StripAllRefs();

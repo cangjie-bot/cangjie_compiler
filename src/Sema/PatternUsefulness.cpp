@@ -512,6 +512,7 @@ public:
         }
         bool goalIsSubtype = typeManager.IsSubtype(&goalTy_, &patternTy, true, false);
         bool patternIsSubtype = typeManager.IsSubtype(&patternTy, &goalTy_, true, false);
+
         return !goalIsSubtype && !patternIsSubtype;
     }
 

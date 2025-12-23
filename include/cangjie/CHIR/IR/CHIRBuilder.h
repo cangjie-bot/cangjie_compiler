@@ -42,20 +42,21 @@ public:
         return context.GetType<TType>(args...);
     }
 
-    StructType* GetStructType(
-        const std::string& package, const std::string& name, const std::vector<std::string>& genericType = {}) const
+    StructType* GetStructType(const std::string& package, const std::string& name,
+        const std::vector<std::string>& genericType, ModalInfo modal) const
     {
-        return context.GetStructType(package, name, genericType);
+        return context.GetStructType(package, name, genericType, modal);
     }
 
-    StructType* GetStringTy()
+    /// Use default modal for builtin types, because when getting them by name, it is usually for builtin exprs/types.
+    StructType* GetStringTy(ModalInfo modal = {}) const
     {
-        return context.GetStringTy();
+        return context.GetStringTy(modal);
     }
 
     VArrayType* GetZeroSizedTy()
     {
-        return GetType<VArrayType>(GetInt8Ty(), 0U);
+        return GetType<VArrayType>(GetInt8Ty(), 0U, ModalInfo{});
     }
     NothingType* GetNothingType() const
     {
@@ -125,9 +126,9 @@ public:
     {
         return context.GetFloat64Ty();
     }
-    CStringType* GetCStringTy() const
+    CStringType* GetCStringTy(ModalInfo modal = {}) const
     {
-        return context.GetCStringTy();
+        return context.GetCStringTy(modal);
     }
     VoidType* GetVoidTy() const
     {
@@ -135,22 +136,27 @@ public:
     }
 
     // Need refactor: object may be a new type and not inherited from Class
-    void SetObjectTy(ClassType* ty)
+    void SetObjectTy(ClassType* ty, ModalInfo modal = {})
     {
-        context.SetObjectTy(ty);
+        context.SetObjectTy(ty, modal);
     }
-    ClassType* GetObjectTy() const
+    ClassType* GetObjectTy(ModalInfo modal = {}) const
     {
-        return context.GetObjectTy();
+        return context.GetObjectTy(modal);
     }
 
-    void SetAnyTy(ClassType* ty)
+    void SetAnyTy(ClassType* ty, ModalInfo modal = {})
     {
-        context.SetAnyTy(ty);
+        context.SetAnyTy(ty, modal);
     }
-    ClassType* GetAnyTy() const
+    ClassType* GetAnyTy(ModalInfo modal = {}) const
     {
-        return context.GetAnyTy();
+        return context.GetAnyTy(modal);
+    }
+
+    Type* SubstituteModal(Type* ty, ModalInfo modal) const
+    {
+        return context.SubstituteModal(ty, modal);
     }
 
     // ===--------------------------------------------------------------------===//

@@ -281,7 +281,7 @@ bool TypeChecker::TypeCheckerImpl::ChkConstPattern(ASTContext& ctx, Ty& target, 
 
 bool TypeChecker::TypeCheckerImpl::ChkOpOverloadForConstPattern(ASTContext& ctx, Ty& target, ConstPattern& p)
 {
-    auto boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    auto boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     auto callExpr = MakeOwnedNode<CallExpr>();
     ctx.RemoveTypeCheckCache(*callExpr);
     auto callBase = MakeOwnedNode<MemberAccess>();
@@ -311,12 +311,43 @@ bool TypeChecker::TypeCheckerImpl::ChkOpOverloadForConstPattern(ASTContext& ctx,
     return false;
 }
 
+static Ptr<Expr> GetSelector(ASTContext& ctx, AST::TypePattern& p)
+{
+    auto sym = ScopeManager::GetCurSatisfiedSymbolUntilTopLevel(ctx, p.scopeName, [](Symbol& symbol) {
+        auto k = symbol.node->astKind;
+        return k == ASTKind::MATCH_EXPR || k == ASTKind::IF_EXPR || k == ASTKind::WHILE_EXPR;
+    });
+    if (!sym || !sym->node) {
+        return nullptr;
+    }
+    auto node = sym->node;
+    if (node->astKind == ASTKind::MATCH_EXPR) {
+        return DynamicCast<MatchExpr>(node)->selector.get();
+    } else if (node->astKind == ASTKind::IF_EXPR) {
+        return DynamicCast<IfExpr>(node)->condExpr.get();
+    } else if (node->astKind == ASTKind::WHILE_EXPR) {
+        return DynamicCast<WhileExpr>(node)->condExpr.get();
+    }
+    return nullptr;
+}
+
 bool TypeChecker::TypeCheckerImpl::ChkTypePattern(ASTContext& ctx, Ty& target, TypePattern& p)
 {
     CJC_NULLPTR_CHECK(p.pattern);
     CJC_NULLPTR_CHECK(p.type);
     p.type->ty = Synthesize({ctx, SynPos::NONE}, p.type.get());
     CJC_NULLPTR_CHECK(p.type->ty);
+    bool checked = typeManager.IsSubtype(&target, p.type->ty, true, false);
+    if (checked) {
+        if (auto selector = GetSelector(ctx, p)) {
+            if (selector->ty->modal.local == LocalModal::FULL && IsExternalLocal(ctx, *selector)) {
+                // cannot match external local! type with local! local variable, it only matches local?
+                if (p.type->ty->modal.local == LocalModal::FULL) {
+                    checked = false;
+                }
+            }
+        }
+    }
     if (typeManager.IsSubtype(&target, p.type->ty, true, false)) {
         p.needRuntimeTypeCheck = false;
         p.matchBeforeRuntime = true;

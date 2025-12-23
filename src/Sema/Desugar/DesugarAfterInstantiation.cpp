@@ -277,7 +277,7 @@ void AutoBoxing::AddOptionBoxHandleBlock(Block& block, Ty& ty)
     // If the block is empty or end with declaration, the last type is 'Unit',
     // otherwise the last type is the type of last expression.
     auto lastExprOrDecl = block.GetLastExprOrDecl();
-    Ptr<Ty> lastTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    Ptr<Ty> lastTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     if (auto expr = DynamicCast<Expr*>(lastExprOrDecl)) {
         lastTy = expr->ty;
     }
@@ -286,7 +286,7 @@ void AutoBoxing::AddOptionBoxHandleBlock(Block& block, Ty& ty)
     }
     // If the block is empty or end with declaration, we need to insert a unitExpr for box.
     if (Is<Decl>(lastExprOrDecl) || block.body.empty()) {
-        auto unitExpr = CreateUnitExpr(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
+        auto unitExpr = CreateUnitExpr(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}));
         unitExpr->curFile = block.curFile;
         lastExprOrDecl = unitExpr.get();
         block.body.emplace_back(std::move(unitExpr));

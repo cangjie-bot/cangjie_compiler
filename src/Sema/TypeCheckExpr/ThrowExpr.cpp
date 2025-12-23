@@ -13,6 +13,10 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynThrowExpr(ASTContext& ctx, ThrowExpr& t
 {
     CJC_NULLPTR_CHECK(te.expr); // Parser guarantees.
     Synthesize({ctx, SynPos::EXPR_ARG}, te.expr.get());
+    // throw expr must be @~local
+    if (Ty::IsTyCorrect(te.expr->ty)) {
+        CheckHasLocalMod(*te.expr, LocalModal::NOT);
+    }
     te.ty = TypeManager::GetNothingTy();
     if (!Ty::IsTyCorrect(te.expr->ty)) {
         return TypeManager::GetInvalidTy();

@@ -339,35 +339,44 @@ template <> ExtendDef* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
 
 // =========================== Type Deserializer ==============================
 
+namespace {
+ModalInfo ToModalInfo(uint32_t modal)
+{
+    using namespace Cangjie;
+    return AST::ToModalInfo(static_cast<int>(modal));
+}
+} // namespace
+
 template <>
 RuneType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::RuneType* obj)
 {
-    return builder.GetType<RuneType>();
+    return builder.GetRuneTy();
 }
 
 template <>
 BooleanType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::BooleanType* obj)
 {
-    return builder.GetType<BooleanType>();
+    return builder.GetBoolTy();
 }
 
 template <>
 UnitType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::UnitType* obj)
 {
-    return builder.GetType<UnitType>();
+    return builder.GetUnitTy();
 }
 
 template <>
 NothingType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::NothingType* obj)
 {
-    return builder.GetType<NothingType>();
+    return builder.GetNothingType();
 }
 
 template <> TupleType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::TupleType* obj)
 {
     CJC_NULLPTR_CHECK(obj->base()->argTys());
     auto argTys = GetType<Type>(obj->base()->argTys());
-    return builder.GetType<TupleType>(argTys);
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<TupleType>(argTys, modal);
 }
 
 template <> RawArrayType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::RawArrayType* obj)
@@ -375,7 +384,8 @@ template <> RawArrayType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(co
     CJC_NULLPTR_CHECK(obj->base()->argTys());
     auto elemTy = GetType<Type>(obj->base()->argTys()->Get(0));
     auto dims = obj->dims();
-    return builder.GetType<RawArrayType>(elemTy, static_cast<unsigned>(dims));
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<RawArrayType>(elemTy, static_cast<unsigned>(dims), modal);
 }
 
 template <> VArrayType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::VArrayType* obj)
@@ -383,7 +393,8 @@ template <> VArrayType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(cons
     CJC_NULLPTR_CHECK(obj->base()->argTys());
     auto elemTy = GetType<Type>(obj->base()->argTys()->Get(0));
     auto size = obj->size();
-    return builder.GetType<VArrayType>(elemTy, size);
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<VArrayType>(elemTy, size, modal);
 }
 
 template <> FuncType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::FuncType* obj)
@@ -406,20 +417,22 @@ template <> CustomType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(cons
     auto kind = Type::TypeKind(obj->base()->kind());
     auto def = GetCustomTypeDef<CustomTypeDef>(obj->customTypeDef());
     auto typeArgs = GetType<Type>(obj->base()->argTys());
-    return builder.GetType<CustomType>(kind, def, typeArgs);
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<CustomType>(kind, def, typeArgs, modal);
 }
 
-template <>
-CStringType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::CStringType* obj)
+template <> CStringType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::CStringType* obj)
 {
-    return builder.GetType<CStringType>();
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<CStringType>(modal);
 }
 
 template <> CPointerType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::CPointerType* obj)
 {
     CJC_NULLPTR_CHECK(obj->base()->argTys());
     auto elemTy = GetType<Type>(obj->base()->argTys()->Get(0));
-    return builder.GetType<CPointerType>(elemTy);
+    auto modal = ToModalInfo(obj->base()->modal());
+    return builder.GetType<CPointerType>(elemTy, modal);
 }
 
 template <> GenericType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::GenericType* obj)
@@ -454,7 +467,7 @@ ThisType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] c
 template <>
 VoidType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize([[maybe_unused]] const PackageFormat::VoidType* obj)
 {
-    return builder.GetType<VoidType>();
+    return builder.GetVoidTy();
 }
 
 // =========================== Custom Type Deserializer ==============================
@@ -463,14 +476,16 @@ template <> EnumType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const 
 {
     auto def = GetCustomTypeDef<EnumDef>(obj->base()->customTypeDef());
     auto argTys = GetType<Type>(obj->base()->base()->argTys());
-    return builder.GetType<EnumType>(def, argTys);
+    auto modal = ToModalInfo(obj->base()->base()->modal());
+    return builder.GetType<EnumType>(def, argTys, modal);
 }
 
 template <> StructType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::StructType* obj)
 {
     auto def = GetCustomTypeDef<StructDef>(obj->base()->customTypeDef());
     auto argTys = GetType<Type>(obj->base()->base()->argTys());
-    return builder.GetType<StructType>(def, argTys);
+    auto modal = ToModalInfo(obj->base()->base()->modal());
+    return builder.GetType<StructType>(def, argTys, modal);
 }
 
 template <> ClassType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::ClassType* obj)
@@ -478,7 +493,8 @@ template <> ClassType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
     [[maybe_unused]] auto tyId = obj->base()->base()->typeID();
     auto def = GetCustomTypeDef<ClassDef>(obj->base()->customTypeDef());
     auto argTys = GetType<Type>(obj->base()->base()->argTys());
-    return builder.GetType<ClassType>(def, argTys);
+    auto modal = ToModalInfo(obj->base()->base()->modal());
+    return builder.GetType<ClassType>(def, argTys, modal);
 }
 
 // =========================== Numeric Type Deserializer ==============================
@@ -486,13 +502,15 @@ template <> ClassType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
 template <> IntType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::IntType* obj)
 {
     auto kind = Type::TypeKind(obj->base()->base()->kind());
-    return builder.GetType<IntType>(kind);
+    auto modal = ToModalInfo(obj->base()->base()->modal());
+    return builder.GetType<IntType>(kind, modal);
 }
 
 template <> FloatType* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::FloatType* obj)
 {
     auto kind = Type::TypeKind(obj->base()->base()->kind());
-    return builder.GetType<FloatType>(kind);
+    auto modal = ToModalInfo(obj->base()->base()->modal());
+    return builder.GetType<FloatType>(kind, modal);
 }
 
 // =========================== Value Deserializer ==============================
@@ -955,6 +973,20 @@ GetInstantiateValue* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const P
     auto insTypes = GetType<Type>(obj->instantiateTys());
     auto resultTy = GetType<Type>(obj->base()->resultTy());
     return builder.CreateExpression<GetInstantiateValue>(resultTy, val, insTypes, parentBlock);
+}
+
+template <> StartRegion* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::StartRegion* obj)
+{
+    auto parentBlock = GetValue<Block>(obj->base()->parentBlock());
+    auto resultTy = GetType<Type>(obj->base()->resultTy());
+    return builder.CreateExpression<StartRegion>(resultTy, parentBlock);
+}
+
+template <> EndRegion* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const PackageFormat::EndRegion* obj)
+{
+    auto parentBlock = GetValue<Block>(obj->base()->parentBlock());
+    auto resultTy = GetType<Type>(obj->base()->resultTy());
+    return builder.CreateExpression<EndRegion>(resultTy, parentBlock);
 }
 
 template <>
@@ -2122,6 +2154,20 @@ Expression* CHIRDeserializer::CHIRDeserializerImpl::GetExpression(uint32_t id)
                 id2Expression[id] =
                     Deserialize<GoTo>(static_cast<const PackageFormat::GoTo*>(pool->exprs()->Get(id - 1)));
                 ConfigExpression(static_cast<const PackageFormat::GoTo*>(pool->exprs()->Get(id - 1))->base()->base(),
+                    *id2Expression[id]);
+                break;
+            case PackageFormat::ExpressionElem_StartRegion:
+                id2Expression[id] = Deserialize<StartRegion>(
+                    static_cast<const PackageFormat::StartRegion*>(pool->exprs()->Get(id - 1)));
+                ConfigExpression(
+                    static_cast<const PackageFormat::StartRegion*>(pool->exprs()->Get(id - 1))->base(),
+                    *id2Expression[id]);
+                break;
+            case PackageFormat::ExpressionElem_EndRegion:
+                id2Expression[id] =
+                    Deserialize<EndRegion>(static_cast<const PackageFormat::EndRegion*>(pool->exprs()->Get(id - 1)));
+                ConfigExpression(
+                    static_cast<const PackageFormat::EndRegion*>(pool->exprs()->Get(id - 1))->base(),
                     *id2Expression[id]);
                 break;
             case PackageFormat::ExpressionElem_Branch:

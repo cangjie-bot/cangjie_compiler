@@ -173,11 +173,11 @@ OwnedPtr<AssignExpr> CreateIllegalTokensDecl(const std::string argName, const Po
     tokensAttrArgs.emplace_back(std::move(tok));
 
     auto fileID = CreateFuncArg(CreateLitConstExpr(
-        LitConstKind::INTEGER, std::to_string(pos.fileID), TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32)));
+        LitConstKind::INTEGER, std::to_string(pos.fileID), TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32, {})));
     auto line = CreateFuncArg(CreateLitConstExpr(
-        LitConstKind::INTEGER, std::to_string(pos.line), TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32)));
+        LitConstKind::INTEGER, std::to_string(pos.line), TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32, {})));
     auto column = CreateFuncArg(CreateLitConstExpr(
-        LitConstKind::INTEGER, std::to_string(pos.column), TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32)));
+        LitConstKind::INTEGER, std::to_string(pos.column), TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32, {})));
     auto refExpr = CreateRefExprInAST("Token");
     refExpr->begin = pos;
     refExpr->end = pos;
@@ -623,8 +623,8 @@ OwnedPtr<Expr> CreateToTokensMethod(const OwnedPtr<Expr>& expr)
         if (ce->baseFunc && ce->baseFunc->astKind == ASTKind::REF_EXPR) {
             auto re = StaticAs<ASTKind::REF_EXPR>(ce->baseFunc.get());
             if (re->ref.identifier == "Token") {
-                auto uint32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32);
-                auto int32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32);
+                auto uint32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32, {});
+                auto int32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32, {});
                 std::vector<OwnedPtr<FuncArg>> args;
                 args.emplace_back(CreateFuncArg(ASTCloner::Clone(Ptr(ce))));
                 args.emplace_back(CreateFuncArg(

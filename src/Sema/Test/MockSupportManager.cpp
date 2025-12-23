@@ -353,7 +353,7 @@ std::vector<OwnedPtr<MatchCase>> MockSupportManager::GenerateHandlerMatchCases(
 
     auto arrayLitOfGetTypeCalls = mockUtils->WrapCallTypeArgsIntoArray(funcDecl);
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
 
     std::vector<OwnedPtr<MatchCase>> handlerResultCases;
     auto handlerResultPattern = MakeOwned<EnumPattern>();
@@ -430,14 +430,15 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
     auto isMethod = !decl.IsStaticOrGlobal();
 
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
-    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { typeManager.GetAnyTy() });
-    auto toStrArrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { mockUtils->toStringDecl->ty });
-    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {});
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
+    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, {typeManager.GetAnyTy()}, {LocalModal::NOT});
+    auto toStrArrayTy =
+        typeManager.GetStructTy(*mockUtils->arrayDecl, {mockUtils->toStringDecl->ty}, {LocalModal::NOT});
+    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {}, {LocalModal::NOT});
     auto funcTy = isMethod
         ? typeManager.GetFunctionTy({objectTy, arrayTy, toStrArrayTy}, optionFuncRetTy)
         : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
-    auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { funcTy });
+    auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {funcTy}, {LocalModal::NOT});
     auto optionFunc = mockUtils->GetInstantiatedDecl(optionFuncTy->decl, {funcTy}, IS_GENERIC_INSTANTIATION_ENABLED);
     auto noneCtor = CreateRefExpr(*LookupEnumMember(optionFunc, OPTION_NONE_CTOR));
     noneCtor->curFile = decl.curFile;
@@ -559,7 +560,7 @@ Ptr<Decl> MockSupportManager::GenerateSpiedObjectVar(const Decl& decl)
 {
     auto declTy = typeManager.GetAnyTy();
     auto mangledName = mockUtils->Mangle(decl);
-    auto optionDeclTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { declTy });
+    auto optionDeclTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {declTy}, {LocalModal::NOT});
     auto noneRef = CreateRefExpr(
         *LookupEnumMember(
             mockUtils->GetInstantiatedDecl(optionDeclTy->decl, {declTy}, IS_GENERIC_INSTANTIATION_ENABLED),
@@ -1671,7 +1672,7 @@ void MockSupportManager::PrepareInterfaceDecl(InterfaceDecl& interfaceDecl)
     CopyBasicInfo(&interfaceDecl, accessorInterface);
     accessorInterface->CloneAttrs(interfaceDecl);
     accessorInterface->identifier = interfaceDecl.identifier + MockUtils::defaultAccessorSuffix;
-    accessorInterface->ty = typeManager.GetInterfaceTy(*accessorInterface, {});
+    accessorInterface->ty = typeManager.GetInterfaceTy(*accessorInterface, {}, {});
     accessorInterface->fullPackageName = interfaceDecl.fullPackageName;
     accessorInterface->linkage = interfaceDecl.linkage;
 

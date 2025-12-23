@@ -59,7 +59,8 @@ TypeChecker::TypeCheckerImpl::TypeCheckerImpl(CompilerInstance* ci)
       diag(ci->diag),
       importManager(ci->importManager),
       backendType(ci->invocation.globalOptions.backend),
-      mpImpl(new MPTypeCheckerImpl(*ci))
+      mpImpl(new MPTypeCheckerImpl(*ci)),
+      modalTypeChecker(NewModalTypeChecker())
 {
 }
 
@@ -69,6 +70,7 @@ TypeChecker::TypeCheckerImpl::~TypeCheckerImpl()
         delete mpImpl;
         mpImpl = nullptr;
     }
+    DeleteModalTypeChecker();
 }
 
 bool TypeChecker::TypeCheckerImpl::CheckThisTypeOfFuncBody(const FuncBody& fb) const
@@ -174,7 +176,7 @@ void TypeChecker::TypeCheckerImpl::ReplaceFuncRetTyWithThis(FuncBody& fb, Ptr<Ty
         rt->curFile = fb.curFile;
         rt->ref.target = ct->decl;
         rt->ref.identifier = "This";
-        rt->ty = typeManager.GetClassThisTy(*ct->declPtr, ct->typeArgs);
+        rt->ty = typeManager.GetClassThisTy(*ct->declPtr, ct->typeArgs, ct->modal);
         rt->EnableAttr(Attribute::COMPILER_ADD);
         if (fb.retType) {
             CJC_ASSERT(fb.curFile);
@@ -219,7 +221,7 @@ void TypeChecker::TypeCheckerImpl::AddRetTypeNode(FuncBody& fb) const
         fb.retType = MakeOwned<RefType>();
     }
     fb.retType->EnableAttr(Attribute::COMPILER_ADD);
-    fb.retType->ty = TypeManager::GetQuestTy();
+    fb.retType->ty = TypeManager::GetQuestTy({});
     // Set compiler added retType as visited to avoid being checked by `CheckReferenceTypeLegality`.
     fb.retType->EnableAttr(Attribute::IS_CHECK_VISITED);
 }
@@ -289,7 +291,7 @@ void AddUnitType(const AST::FuncDecl& fd)
         type->begin = fd.funcBody->paramLists[0]->end;
         type->end = fd.funcBody->paramLists[0]->end;
     }
-    type->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    type->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     fd.funcBody->retType = std::move(type);
     fd.funcBody->retType->EnableAttr(Attribute::COMPILER_ADD);
 }
@@ -443,7 +445,7 @@ void TypeChecker::TypeCheckerImpl::CheckCtorFuncBody(ASTContext& ctx, FuncBody& 
     Ptr<Ty> ctorTy = TypeManager::GetInvalidTy();
     if (fb.funcDecl->TestAttr(Attribute::STATIC)) {
         // Static init always has type of 'Unit' as return type.
-        ctorTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+        ctorTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     } else {
         if (fb.parentStruct) {
             ctorTy = fb.parentStruct->ty;
@@ -457,7 +459,7 @@ void TypeChecker::TypeCheckerImpl::CheckCtorFuncBody(ASTContext& ctx, FuncBody& 
     }
     CheckFuncParamList(ctx, *fb.paramLists[0].get());
     auto paramTys = GetFuncBodyParamTys(fb);
-    fb.ty = typeManager.GetFunctionTy(paramTys, ctorTy);
+    fb.ty = typeManager.GetFunctionTy(paramTys, ctorTy, {}, {});
     fb.funcDecl->ty = fb.ty;
     fb.retType->ty = ctorTy;
     Synthesize({ctx, SynPos::UNUSED}, fb.body.get());
@@ -468,7 +470,7 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
     // We use the tupleType to handle the type of FuncParamList.
     std::vector<Ptr<Ty>> paramTys;
     if (fpl.params.empty()) {
-        fpl.ty = typeManager.GetTupleTy(paramTys);
+        fpl.ty = typeManager.GetTupleTy(paramTys, {}, {});
         return;
     }
     for (auto& param : fpl.params) {
@@ -494,7 +496,7 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
             }
         }
     }
-    fpl.ty = typeManager.GetTupleTy(paramTys);
+    fpl.ty = typeManager.GetTupleTy(paramTys, false, {});
 }
 
 bool TypeChecker::TypeCheckerImpl::ChkFuncArg(ASTContext& ctx, Ty& target, FuncArg& fa)
@@ -530,7 +532,7 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncArgWithInout(ASTContext& ctx, Ty& targ
     // Case 2: 'argTy' is VArray<T...>, target is VArray<R...>. 'realTarget' is VArray<R...>.
     // Other case: 'argTy' is T, target is CPointer<T>. 'realTarget' trans to T.
     if (argTy && ptrParamTy) {
-        realTarget = typeManager.GetVArrayTy(*ptrParamTy->typeArgs[0], argTy->size);
+        realTarget = typeManager.GetVArrayTy(*ptrParamTy->typeArgs[0], argTy->size, argTy->modal);
     } else if (argTy && varrParamTy) {
         realTarget = &target;
     } else if (ptrParamTy) {
@@ -548,7 +550,8 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncArgWithInout(ASTContext& ctx, Ty& targ
         fa.ty = TypeManager::GetInvalidTy();
         return false;
     }
-    fa.ty = typeManager.GetPointerTy(Is<VArrayTy>(realTarget) ? realTarget->typeArgs[0].get() : realTarget);
+    fa.ty = typeManager.GetPointerTy(
+        Is<VArrayTy>(realTarget) ? realTarget->typeArgs[0].get() : realTarget, realTarget->modal);
     return true;
 }
 
@@ -670,9 +673,9 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncArg(ASTContext& ctx, FuncArg& fa)
                 diag.DiagnoseRefactor(DiagKindRefactor::sema_inout_modify_cstring_or_zerosized, fa, "type 'CString'");
                 fa.ty = TypeManager::GetInvalidTy();
             } else if (Is<VArrayTy>(fa.expr->ty)) {
-                fa.ty = typeManager.GetPointerTy(fa.expr->ty->typeArgs[0]);
+                fa.ty = typeManager.GetPointerTy(fa.expr->ty->typeArgs[0], fa.expr->ty->modal);
             } else {
-                fa.ty = typeManager.GetPointerTy(fa.expr->ty);
+                fa.ty = typeManager.GetPointerTy(fa.expr->ty, fa.expr->ty->modal);
             }
         } else {
             fa.ty = fa.expr->ty;
@@ -710,24 +713,25 @@ Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SubstituteTypeAliasInTy(
     switch (ty.kind) {
         case TypeKind::TYPE_CLASS: {
             if (auto ctt = DynamicCast<ClassThisTy*>(&ty); ctt) {
-                return typeManager.GetClassThisTy(*ctt->declPtr, typeArgs);
+                return typeManager.GetClassThisTy(*ctt->declPtr, typeArgs, ty.modal);
             }
-            return typeManager.GetClassTy(*static_cast<ClassTy&>(ty).declPtr, typeArgs);
+            return typeManager.GetClassTy(*static_cast<ClassTy&>(ty).declPtr, typeArgs, ty.modal);
         }
         case TypeKind::TYPE_STRUCT: {
-            return typeManager.GetStructTy(*static_cast<StructTy&>(ty).declPtr, typeArgs);
+            return typeManager.GetStructTy(*static_cast<StructTy&>(ty).declPtr, typeArgs, ty.modal);
         }
         case TypeKind::TYPE_INTERFACE: {
-            return typeManager.GetInterfaceTy(*static_cast<InterfaceTy&>(ty).declPtr, typeArgs);
+            return typeManager.GetInterfaceTy(*static_cast<InterfaceTy&>(ty).declPtr, typeArgs, ty.modal);
         }
         case TypeKind::TYPE_ENUM: {
-            return typeManager.GetEnumTy(*static_cast<EnumTy&>(ty).declPtr, typeArgs);
+            return typeManager.GetEnumTy(*static_cast<EnumTy&>(ty).declPtr, typeArgs, ty.modal);
         }
         case TypeKind::TYPE_FUNC: {
             auto returnTy = typeArgs.back();
             typeArgs.pop_back();
             auto& funcTy = static_cast<FuncTy&>(ty);
-            return typeManager.GetFunctionTy(typeArgs, returnTy, {funcTy.isC, false, funcTy.hasVariableLenArg});
+            return typeManager.GetFunctionTy(
+                typeArgs, returnTy, {funcTy.isC, false, funcTy.hasVariableLenArg}, ty.modal);
         }
         case TypeKind::TYPE: {
             auto inner = GetUnaliasedTypeFromTypeAlias(static_cast<TypeAliasTy&>(ty), typeArgs);
@@ -737,24 +741,25 @@ Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SubstituteTypeAliasInTy(
                 if (type && type->TestAttr(Attribute::IN_REFERENCE_CYCLE)) {
                     return nestedAlias;
                 }
-                return SubstituteTypeAliasInTy(*nestedAlias, needSubstituteGeneric, typeMapping);
+                auto aliasWithMod = typeManager.GetTypeAliasTy(*StaticCast<TypeAliasDecl>(type), typeArgs, ty.modal);
+                return SubstituteTypeAliasInTy(*aliasWithMod, needSubstituteGeneric, typeMapping);
             }
             return inner;
         }
         case TypeKind::TYPE_TUPLE: {
-            return typeManager.GetTupleTy(typeArgs);
+            return typeManager.GetTupleTy(typeArgs, false, ty.modal);
         }
         case TypeKind::TYPE_ARRAY: {
             auto& arrayTy = static_cast<ArrayTy&>(ty);
-            return typeManager.GetArrayTy(typeArgs[0], arrayTy.dims);
+            return typeManager.GetArrayTy(typeArgs[0], arrayTy.dims, ty.modal);
         }
         case TypeKind::TYPE_VARRAY: {
             auto& varrayTy = static_cast<VArrayTy&>(ty);
             CJC_ASSERT(!typeArgs.empty() && typeArgs[0] != nullptr);
-            return typeManager.GetVArrayTy(*typeArgs[0], varrayTy.size);
+            return typeManager.GetVArrayTy(*typeArgs[0], varrayTy.size, ty.modal);
         }
         case TypeKind::TYPE_POINTER: {
-            return typeManager.GetPointerTy(typeArgs[0]);
+            return typeManager.GetPointerTy(typeArgs[0], ty.modal);
         }
         case TypeKind::TYPE_GENERICS: {
             if (!needSubstituteGeneric) {
@@ -975,7 +980,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(const CheckerContext& ctx, Ptr<
             break;
         }
         case ASTKind::TRY_EXPR: {
-            node->ty = SynTryExpr(*curCtx, *StaticAs<ASTKind::TRY_EXPR>(node));
+            node->ty = InferRefExpr(*curCtx, *StaticAs<ASTKind::TRY_EXPR>(node));
             break;
         }
         case ASTKind::REF_EXPR: {
@@ -985,7 +990,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(const CheckerContext& ctx, Ptr<
         }
         case ASTKind::PRIMITIVE_TYPE_EXPR: {
             auto te = StaticAs<ASTKind::PRIMITIVE_TYPE_EXPR>(node);
-            te->ty = TypeManager::GetPrimitiveTy(te->typeKind);
+            te->ty = TypeManager::GetPrimitiveTy(te->typeKind, te->modal.ToModalInfo());
             break;
         }
         case ASTKind::CALL_EXPR: {
@@ -1146,6 +1151,10 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(const CheckerContext& ctx, Ptr<
         }
         case ASTKind::INVALID_EXPR: {
             node->ty = TypeManager::GetInvalidTy();
+            break;
+        }
+        case ASTKind::EXCLAVE_EXPR: {
+            node->ty = SynExclaveExpr(*curCtx, *StaticAs<ASTKind::EXCLAVE_EXPR>(node));
             break;
         }
         default: {
@@ -1378,6 +1387,10 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
             case ASTKind::MACRO_EXPAND_PARAM:
             case ASTKind::MACRO_EXPAND_DECL: {
                 CheckMacroCall(*curCtx, *node);
+                break;
+            }
+            case ASTKind::EXCLAVE_EXPR: {
+                chkRet = ChkExclaveExpr(*curCtx, *realTarget, *StaticAs<ASTKind::EXCLAVE_EXPR>(node));
                 break;
             }
             default: {
@@ -1932,6 +1945,15 @@ void AddBuiltInCStringDecl(Package& pkg)
     pkg.files[0]->decls.emplace_back(std::move(bid)); // Caller guarantees file not empty.
 }
 
+void AddBuiltInCopyDecl(Package& pkg)
+{
+    auto copy = MakeOwned<BuiltInDecl>(BuiltInType::COPY);
+    copy->identifier = COPY_NAME;
+    copy->EnableAttr(Attribute::PUBLIC, Attribute::GLOBAL);
+    CopyFileID(copy.get(), pkg.files[0].get());
+    pkg.files[0]->decls.emplace_back(std::move(copy));
+}
+
 void AddBuiltInVArrayDecl(Package& pkg)
 {
     auto bid = MakeOwned<BuiltInDecl>(BuiltInType::VARRAY);
@@ -2155,6 +2177,7 @@ void TypeChecker::TypeCheckerImpl::PostTypeCheck(std::vector<Ptr<ASTContext>>& c
         AddAttrForDefaultFuncParam(*ctx->curPackage);
         // Because of the cjlint checking policy, desugar of propDecl should be done in sema stage for now.
         DesugarForPropDecl(*ctx->curPackage);
+        CheckModalType(*ctx, *ctx->curPackage);
         CheckConstEvaluation(*ctx->curPackage);
         MarkImplicitUsedFunctions(*ctx->curPackage);
         // Collect program entry separately.
@@ -2191,6 +2214,7 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
         AddBuiltInPointerDecl(pkg);
         AddBuiltinCFuncDecl(pkg);
         AddBuiltInCStringDecl(pkg);
+        AddBuiltInCopyDecl(pkg);
     }
 
     // Phase: build symbol table.
@@ -2834,11 +2858,11 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::CalcFuncRetTyFromBody(const FuncBody& fb)
     }
 
     if (fb.body->body.empty()) {
-        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     }
 
     auto& lastNode = fb.body->body.back();
-    Ptr<Ty> bodyTy = lastNode->IsDecl() ? TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT) : lastNode->ty;
+    Ptr<Ty> bodyTy = lastNode->IsDecl() ? TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}) : lastNode->ty;
     Ptr<Ty> retTy = bodyTy;
     std::set<Ptr<Ty>> retTys;
     Walker(fb.body.get(), [&retTys](auto node) {
@@ -2848,6 +2872,10 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::CalcFuncRetTyFromBody(const FuncBody& fb)
         } else if (auto re = DynamicCast<ReturnExpr*>(node); re && re->expr) {
             if (Ty::IsTyCorrect(re->expr->ty)) {
                 retTys.emplace(re->expr->ty);
+            }
+        } else if (auto exclave = DynamicCast<ExclaveExpr>(node)) {
+            if (auto exclaveBodyTy = DynamicCast<FuncTy>(exclave->body->ty)) {
+                retTys.emplace(exclaveBodyTy->retTy);
             }
         }
         return VisitAction::WALK_CHILDREN;

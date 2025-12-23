@@ -423,7 +423,7 @@ protected:
         // If ctx is empty, return primitive type, otherwise nothing to do here.
         std::unordered_set<Ptr<Ty>> tys;
         if (ctxExprs.empty()) {
-            tys.emplace(TypeManager::GetPrimitiveTy(pte.typeKind));
+            tys.emplace(TypeManager::GetPrimitiveTy(pte.typeKind, pte.modal.ToModalInfo()));
         }
         return SynResult(tys);
     }
@@ -643,7 +643,7 @@ protected:
         auto joinRes =
             JoinAndMeet(checker.typeManager, arrayElemTys, {}, &checker.importManager, al.curFile).JoinAsVisibleTy();
         if (auto ty = std::get_if<Ptr<Ty>>(&joinRes)) {
-            al.ty = checker.typeManager.GetStructTy(*arrayStruct, {*ty});
+            al.ty = checker.typeManager.GetStructTy(*arrayStruct, {*ty}, (*arrayElemTys.begin())->modal);
         } else {
             tys.emplace(TypeManager::GetInvalidTy());
             return SynResult(tys);

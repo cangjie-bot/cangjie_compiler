@@ -87,6 +87,12 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
             auto succ = goTo.GetSuccessors()[0];
             return irBuilder.CreateBr(cgMod.GetMappedBB(succ));
         }
+        case CHIR::ExprKind::ENTER_EXCLAVE: {
+            auto& exclave = StaticCast<CHIR::EnterExclave>(chirExpr);
+            auto succ = exclave.GetDestination();
+            // TODO: implement enter exclave, treat it as a goto
+            return irBuilder.CreateBr(cgMod.GetMappedBB(succ));
+        }
         case CHIR::ExprKind::EXIT: {
             auto& exitExpr = StaticCast<const CHIR::Exit&>(chirExpr);
             return HandleExitExpression(irBuilder, exitExpr);

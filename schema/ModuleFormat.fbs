@@ -251,6 +251,7 @@ enum BuiltInType : uint8 {
   CPointer,
   CString,
   CFunc,
+  Copy,
 }
 table BuiltInInfo {
   builtInType:BuiltInType;

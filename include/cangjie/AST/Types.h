@@ -62,6 +62,43 @@ inline const std::map<TokenKind, TokenKind> COMPOUND_ASSIGN_EXPR_MAP = {{TokenKi
     {TokenKind::BITOR_ASSIGN, TokenKind::BITOR}, {TokenKind::BITXOR_ASSIGN, TokenKind::BITXOR},
     {TokenKind::LSHIFT_ASSIGN, TokenKind::LSHIFT}, {TokenKind::RSHIFT_ASSIGN, TokenKind::RSHIFT}};
 
+enum class LocalModal : uint8_t {
+    NOT = 1,  // @~local
+    FULL = 2, // @local!
+    HALF = 3, // @local?
+};
+std::string_view ToString(LocalModal modal);
+/// Returns the LocalModal that both \ref lhs and \ref rhs can be converted to.
+LocalModal operator|(LocalModal lhs, LocalModal rhs);
+
+struct ModalInfo {
+    LocalModal local;
+    /// Construct ModalInfo that does not care about local modal, which can be converted to any other one.
+    ModalInfo() : local(LocalModal::NOT)
+    {
+    }
+    ModalInfo(LocalModal modal) : local(modal)
+    {
+    }
+    bool operator==(const ModalInfo& other) const
+    {
+        return local == other.local;
+    }
+    bool operator!=(const ModalInfo& other) const
+    {
+        return local != other.local;
+    }
+    std::string ToString() const;
+    std::string LocalString() const;
+    std::string AsTypeSuffixString() const;
+    /// Returns the ModalInfo that both \ref lhs and \ref rhs can be converted to.
+    ModalInfo operator|(ModalInfo other) const;
+    bool IsSubModal(ModalInfo other) const;
+};
+constexpr int MODAL_INFO_COUNT = 3;
+int ToIndex(ModalInfo modal);
+ModalInfo ToModalInfo(int index);
+
 /**
  * Base type.
  */
@@ -81,6 +118,8 @@ struct Ty {
      * R: ImportManager, Sema, GenericInstantiator, AST2CHIR, CHIR, HLIRCodeGen, LLVMCodeGen.
      */
     std::vector<Ptr<Ty>> typeArgs{};
+    /** Modal type info. */
+    const ModalInfo modal;
     /** Destructor.
      * U: no.
      */
@@ -401,7 +440,7 @@ protected:
     /** Constructor.
      * U: Sema.
      */
-    explicit Ty(TypeKind k) : kind(k)
+    explicit Ty(TypeKind k, ModalInfo modalInfo) : kind(k), modal(modalInfo)
     {
     }
     bool invalid{false}; // Type is invalid if any of element is invalid.
@@ -412,7 +451,7 @@ protected:
  * Initial type.
  */
 struct InitialTy : Ty {
-    InitialTy() noexcept : Ty(TypeKind::TYPE_INITIAL)
+    InitialTy() noexcept : Ty(TypeKind::TYPE_INITIAL, ModalInfo())
     {
         invalid = true; // Initial ty is used instead of nullptr, so also marked as invalid.
     }
@@ -433,7 +472,7 @@ struct InvalidTy : Ty {
     /** Constructor.
      * U: no.
      */
-    InvalidTy() noexcept : Ty(TypeKind::TYPE_INVALID)
+    InvalidTy() noexcept : Ty(TypeKind::TYPE_INVALID, {})
     {
         invalid = true;
     }
@@ -453,7 +492,7 @@ struct QuestTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    QuestTy() noexcept : Ty(TypeKind::TYPE_QUEST)
+    QuestTy(ModalInfo modalInfo) noexcept : Ty(TypeKind::TYPE_QUEST, modalInfo)
     {
     }
     /** Return the unique name of a ty.
@@ -483,7 +522,7 @@ struct PrimitiveTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    explicit PrimitiveTy(TypeKind k) noexcept : Ty(k)
+    explicit PrimitiveTy(TypeKind k, ModalInfo modalInfo) noexcept : Ty(k, modalInfo)
     {
     }
     /** Return the unique name of a ty.
@@ -502,7 +541,7 @@ struct NothingTy : PrimitiveTy {
     /** Constructor.
      * U: TypeManager.
      */
-    explicit NothingTy() noexcept : PrimitiveTy(TypeKind::TYPE_NOTHING)
+    explicit NothingTy() noexcept : PrimitiveTy(TypeKind::TYPE_NOTHING, {})
     {
     }
 };
@@ -514,7 +553,7 @@ struct AnyTy : Ty {
     /** Constructor.
      * U: no.
      */
-    explicit AnyTy() noexcept : Ty(TypeKind::TYPE_ANY)
+    explicit AnyTy() noexcept : Ty(TypeKind::TYPE_ANY, {})
     {
     }
     /** Return the unique name of a ty.
@@ -538,7 +577,7 @@ struct ArrayTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    ArrayTy(Ptr<Ty> elemTy, unsigned int dims) : Ty(TypeKind::TYPE_ARRAY), dims(dims)
+    ArrayTy(Ptr<Ty> elemTy, unsigned int dims, ModalInfo modalInfo) : Ty(TypeKind::TYPE_ARRAY, modalInfo), dims(dims)
     {
         name = "RawArray";
         typeArgs.emplace_back(elemTy);
@@ -565,7 +604,7 @@ struct VArrayTy : public Ty {
     /** Constructor.
      * U: Sema.
      */
-    VArrayTy(Ptr<Ty> elemTy, int64_t size) : Ty(TypeKind::TYPE_VARRAY), size(size)
+    VArrayTy(Ptr<Ty> elemTy, int64_t size, ModalInfo modalInfo) : Ty(TypeKind::TYPE_VARRAY, modalInfo), size(size)
     {
         name = "VArray";
         typeArgs.emplace_back(elemTy);
@@ -591,7 +630,7 @@ struct PointerTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    PointerTy(Ptr<Ty> elemTy) : Ty(TypeKind::TYPE_POINTER)
+    PointerTy(Ptr<Ty> elemTy, ModalInfo modalInfo) : Ty(TypeKind::TYPE_POINTER, modalInfo)
     {
         name = "CPointer";
         typeArgs.emplace_back(elemTy);
@@ -613,7 +652,7 @@ struct CStringTy : Ty {
     /** Constructor.
      * U: Sema, Mangle
      */
-    CStringTy() noexcept : Ty(TypeKind::TYPE_CSTRING)
+    CStringTy(ModalInfo modalInfo) noexcept : Ty(TypeKind::TYPE_CSTRING, modalInfo)
     {
         name = "CString";
     }
@@ -637,8 +676,8 @@ struct TupleTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    explicit TupleTy(std::vector<Ptr<Ty>> elemTys, bool isClosureTy = false)
-        : Ty(TypeKind::TYPE_TUPLE), isClosureTy(isClosureTy)
+    explicit TupleTy(std::vector<Ptr<Ty>> elemTys, bool isClosureTy = false, ModalInfo modalInfo = {})
+        : Ty(TypeKind::TYPE_TUPLE, modalInfo), isClosureTy(isClosureTy)
     {
         name = "Tuple";
         typeArgs = elemTys;
@@ -699,8 +738,9 @@ struct FuncTy : Ty {
         const bool hasVariableLenArg{false};
         const bool noCast{false};
     };
-    FuncTy(std::vector<Ptr<Ty>> paramVector, Ptr<Ty> rType, const Config cfg = {false, false, false, false})
-        : Ty(TypeKind::TYPE_FUNC),
+    FuncTy(std::vector<Ptr<Ty>> paramVector, Ptr<Ty> rType, const Config cfg = {false, false, false, false},
+        ModalInfo modalInfo = {})
+        : Ty(TypeKind::TYPE_FUNC, modalInfo),
           paramTys(std::move(paramVector)),
           retTy(rType),
           isC(cfg.isC),
@@ -745,7 +785,7 @@ struct UnionTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    UnionTy(std::set<Ptr<Ty>> tys) : Ty(TypeKind::TYPE_UNION)
+    UnionTy(std::set<Ptr<Ty>> tys, ModalInfo modalInfo) : Ty(TypeKind::TYPE_UNION, modalInfo)
     {
         this->tys = std::move(tys);
     }
@@ -773,7 +813,7 @@ struct IntersectionTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    IntersectionTy(std::set<Ptr<Ty>> tys) : Ty(TypeKind::TYPE_INTERSECTION)
+    IntersectionTy(std::set<Ptr<Ty>> tys, ModalInfo modalInfo) : Ty(TypeKind::TYPE_INTERSECTION, modalInfo)
     {
         this->tys = std::move(tys);
     }
@@ -825,7 +865,7 @@ protected:
     /** Constructor.
      * U: no.
      */
-    ClassLikeTy(TypeKind k, ClassLikeDecl& cld) : Ty(k), commonDecl(&cld)
+    ClassLikeTy(TypeKind k, ClassLikeDecl& cld, ModalInfo modalInfo) : Ty(k, modalInfo), commonDecl(&cld)
     {
     }
 };
@@ -850,7 +890,7 @@ struct InterfaceTy : ClassLikeTy {
     /** Constructor.
      * U: Sema.
      */
-    InterfaceTy(const std::string& name, InterfaceDecl& id, const std::vector<Ptr<Ty>>& typeArgs);
+    InterfaceTy(const std::string& name, InterfaceDecl& id, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo);
     /** Return all the super interface types.
      * U: Sema, GenericInstantiator, CHIR.
      */
@@ -893,7 +933,7 @@ struct ClassTy : ClassLikeTy {
     /** Constructor.
      * U: Sema.
      */
-    ClassTy(const std::string& name, ClassDecl& cd, const std::vector<Ptr<Ty>>& typeArgs);
+    ClassTy(const std::string& name, ClassDecl& cd, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo);
     /** Return all the super interface types.
      * U: Sema, GenericInstantiator, CHIR.
      */
@@ -916,7 +956,8 @@ struct ClassThisTy : ClassTy {
     /** Constructor.
      * U: Sema.
      */
-    ClassThisTy(std::string name, ClassDecl& cd, std::vector<Ptr<Ty>> typeArgs) : ClassTy(name, cd, typeArgs)
+    ClassThisTy(std::string name, ClassDecl& cd, std::vector<Ptr<Ty>> typeArgs, ModalInfo modalInfo)
+        : ClassTy(name, cd, typeArgs, modalInfo)
     {
     }
     /** Return the unique name of a ty.
@@ -940,8 +981,8 @@ struct TypeAliasTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    TypeAliasTy(const std::string& name, TypeAliasDecl& tad, const std::vector<Ptr<Ty>>& typeArgs)
-        : Ty(TypeKind::TYPE), declPtr(&tad)
+    TypeAliasTy(const std::string& name, TypeAliasDecl& tad, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo)
+        : Ty(TypeKind::TYPE, modalInfo), declPtr(&tad)
     {
         this->name = name;
         this->typeArgs = typeArgs;
@@ -1046,7 +1087,7 @@ struct EnumTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    EnumTy(const std::string& name, EnumDecl& ed, const std::vector<Ptr<Ty>>& typeArgs);
+    EnumTy(const std::string& name, EnumDecl& ed, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo);
     /** Return the unique name of a ty.
      * U: ImportManager, Sema, AST2CHIR, CHIR, HLIRCodeGen, LLVMCodeGen.
      */
@@ -1073,7 +1114,8 @@ struct EnumTy : Ty {
 };
 
 struct RefEnumTy : EnumTy {
-    RefEnumTy(const std::string& name, EnumDecl& ed, const std::vector<Ptr<Ty>>& typeArgs) : EnumTy(name, ed, typeArgs)
+    RefEnumTy(const std::string& name, EnumDecl& ed, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo)
+        : EnumTy(name, ed, typeArgs, modalInfo)
     {
         this->hasCorrespondRefEnumTy = true;
     }
@@ -1105,7 +1147,7 @@ struct StructTy : Ty {
     /** Constructor.
      * U: Sema.
      */
-    StructTy(const std::string& name, StructDecl& sd, const std::vector<Ptr<Ty>>& typeArgs);
+    StructTy(const std::string& name, StructDecl& sd, const std::vector<Ptr<Ty>>& typeArgs, ModalInfo modalInfo);
     /** Return the unique name of a ty.
      * U: ImportManager, Sema, AST2CHIR, CHIR, HLIRCodeGen, LLVMCodeGen.
      */

@@ -72,11 +72,11 @@ void InsertUnitForFuncBody(FuncBody& fb, bool enableCoverage)
         return;
     }
 
-    auto ue = CreateUnitExpr(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
+    auto ue = CreateUnitExpr(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}));
     ue->curFile = fb.curFile;
     auto re = CreateReturnExpr(std::move(ue));
     re->curFile = fb.curFile;
-    re->ty = TypeManager::GetNothingTy();
+    re->ty = TypeManager::GetNothingTy({});
     re->refFuncBody = &fb;
     bool notHaveRightCurlPos = fb.funcDecl && fb.body->rightCurlPos.IsZero();
     // If compiled with `--coverage`, the inserted `return ()` should contain the line no of funcDecl,
@@ -118,8 +118,8 @@ void MakeLastNodeReturn(FuncBody& funcBody)
         auto lastExpr = OwnedPtr<Expr>(StaticAs<ASTKind::EXPR>(lastNode->release()));
         auto re = CreateReturnExpr(std::move(lastExpr));
         CopyBasicInfo(e, re.get());
-        re->ty = TypeManager::GetNothingTy();
-        funcBody.body->ty = TypeManager::GetNothingTy();
+        re->ty = TypeManager::GetNothingTy({});
+        funcBody.body->ty = TypeManager::GetNothingTy({});
         re->refFuncBody = &funcBody;
         AddCurFile(*re, funcBody.curFile);
         *lastNode = std::move(re);
@@ -142,7 +142,7 @@ void InsertStaticInitCall(InheritableDecl& decl, FuncDecl& staticInit)
         return;
     }
     // Create and insert static initializing as the static member "let $init = static_init()" into typedecl.
-    auto unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    auto unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     std::vector<OwnedPtr<FuncArg>> args;
     auto initializer = CreateCallExpr(CreateRefExpr(staticInit), std::move(args), &staticInit, unitTy);
     initializer->begin = decl.begin;

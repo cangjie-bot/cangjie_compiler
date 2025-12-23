@@ -199,7 +199,7 @@ MockManager::GeneratedClassResult MockManager::GenerateMockClassIfNeededAndGet(
     }
 
     if (IS_GENERIC_INSTANTIATION_ENABLED || !mockedDecl->generic) {
-        mockedDecl->ty = typeManager.GetClassTy(*mockedDecl, {});
+        mockedDecl->ty = typeManager.GetClassTy(*mockedDecl, {}, {LocalModal::NOT});
     }
 
     mockedDecl->moduleName = Utils::GetRootPackageName(curPkg.fullPackageName);
@@ -480,14 +480,12 @@ OwnedPtr<MatchExpr> MockManager::CreateTypeCastForOnCallReturnValue(
     return CreateMatchExpr(std::move(exprToCast), std::move(matchCases), castTy);
 }
 
-OwnedPtr<AssignExpr> MockManager::CreateMemberAssignment(
-    VarDecl& member, OwnedPtr<Expr> rhsExpr) const
+OwnedPtr<AssignExpr> MockManager::CreateMemberAssignment(VarDecl& member, OwnedPtr<Expr> rhsExpr, ModalInfo modal) const
 {
     static const auto UNIT_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
     auto decl = RawStaticCast<ClassDecl*>(member.outerDecl);
-    auto thisExpr = CreateRefExpr(
-        {"this", DEFAULT_POSITION, DEFAULT_POSITION, false},
-        typeManager.GetClassThisTy(*decl, decl->ty->typeArgs));
+    auto thisExpr = CreateRefExpr({"this", DEFAULT_POSITION, DEFAULT_POSITION, false},
+        typeManager.GetClassThisTy(*decl, decl->ty->typeArgs, modal));
     thisExpr->ref.target = decl;
     return CreateAssignExpr(CreateMemberAccess(std::move(thisExpr), member), std::move(rhsExpr), UNIT_TY);
 }
@@ -605,14 +603,14 @@ OwnedPtr<MatchCase> MockManager::CreateOnCallCallBaseMatchCase(
     static const auto BOOL_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
 
     auto thisRef = CreateRefExpr(
-        SrcIdentifier{"this"}, typeManager.GetClassThisTy(*mockedClass, mockedClass->ty->typeArgs));
+        SrcIdentifier{"this"}, typeManager.GetClassThisTy(*mockedClass, mockedClass->ty->typeArgs, {LocalModal::NOT}));
     thisRef->ref.target = mockedClass;
 
     auto enumMember = mockUtils->GetInstantiatedDecl(
         mockUtils->optionDecl, {typeManager.GetAnyTy()}, IS_GENERIC_INSTANTIATION_ENABLED);
     auto someOuterDecl = Sema::Desugar::AfterTypeCheck::LookupEnumMember(enumMember, OPTION_VALUE_CTOR);
     auto someOuterDeclRef = CreateRefExpr(*someOuterDecl);
-    auto optionOuterDeclTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {typeManager.GetAnyTy()});
+    auto optionOuterDeclTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {typeManager.GetAnyTy()}, {LocalModal::NOT});
     someOuterDeclRef->ty = typeManager.GetFunctionTy({ typeManager.GetAnyTy() }, optionOuterDeclTy);
 
     std::vector<OwnedPtr<FuncArg>> someOuterDeclCallArgs {};
@@ -809,7 +807,7 @@ OwnedPtr<FuncDecl> MockManager::CreateConstructorDecl(
         } else {
             rhsExpr = mockUtils->CreateZeroValue(memberDecl->ty, *(mockedClass.curFile));
         }
-        constructorBody.emplace_back(CreateMemberAssignment(*memberDecl, std::move(rhsExpr)));
+        constructorBody.emplace_back(CreateMemberAssignment(*memberDecl, std::move(rhsExpr), {LocalModal::NOT}));
     }
 
     auto constructorDecl = CreateEmptyConstructorDecl(mockedClass, std::move(constructorParams), curFile);
@@ -851,7 +849,7 @@ void MockManager::AddAssignmentsForSuperFields(const FuncDecl& constructorOfMock
             auto rhsExpr = CreateMemberAccess(std::move(objToSpyOnRef), fieldDecl->identifier);
 
             constructorOfMockedDecl.funcBody->body->body.emplace_back(
-                CreateMemberAssignment(*fieldDecl, std::move(rhsExpr)));
+                CreateMemberAssignment(*fieldDecl, std::move(rhsExpr), {LocalModal::NOT}));
         }
     }
 }
@@ -913,8 +911,8 @@ OwnedPtr<ArrayLit> MockManager::CreateParamsInfo(const FuncDecl& decl, File& cur
         paramInfoArgs.emplace_back(CreateParamInfo(*param, paramNumber, curFile));
         paramNumber++;
     }
-    auto paramInfoArray = CreateArrayLit(
-        std::move(paramInfoArgs), typeManager.GetStructTy(*mockUtils->arrayDecl, { parameterInfoDecl->ty }));
+    auto paramInfoArray = CreateArrayLit(std::move(paramInfoArgs),
+        typeManager.GetStructTy(*mockUtils->arrayDecl, {parameterInfoDecl->ty}, {LocalModal::NOT}));
     AddArrayLitConstructor(*paramInfoArray);
     paramInfoArray->curFile = &curFile;
     return paramInfoArray;
@@ -930,8 +928,8 @@ OwnedPtr<ArrayLit> MockManager::CreateTypeParamsInfo(const FuncDecl& decl, File&
             );
         }
     }
-    auto typeParamInfoArray = CreateArrayLit(
-        std::move(typeParamInfoArgs), typeManager.GetStructTy(*mockUtils->arrayDecl, { mockUtils->stringDecl->ty }));
+    auto typeParamInfoArray = CreateArrayLit(std::move(typeParamInfoArgs),
+        typeManager.GetStructTy(*mockUtils->arrayDecl, {mockUtils->stringDecl->ty}, {LocalModal::NOT}));
     AddArrayLitConstructor(*typeParamInfoArray);
     typeParamInfoArray->curFile = &curFile;
     return typeParamInfoArray;
@@ -981,7 +979,7 @@ OwnedPtr<Expr> MockManager::CreateOuterDeclInfo(FuncDecl& funcDecl, File& curFil
 {
     OwnedPtr<Expr> outerDeclExpr;
     auto optionDecl = mockUtils->optionDecl;
-    auto optionOuterIdDeclTy = typeManager.GetEnumTy(*optionDecl, {declIdDecl->ty});
+    auto optionOuterIdDeclTy = typeManager.GetEnumTy(*optionDecl, {declIdDecl->ty}, {});
     if (funcDecl.outerDecl) {
         auto someOuterDeclIdDecl = Sema::Desugar::AfterTypeCheck::LookupEnumMember(optionDecl, OPTION_VALUE_CTOR);
         auto someInstanceRef = CreateRefExpr(*someOuterDeclIdDecl);
@@ -1074,7 +1072,7 @@ OwnedPtr<CallExpr> MockManager::CreateCallInfo(
     OwnedPtr<RefExpr> objRef)
 {
     OwnedPtr<Expr> instanceExpr;
-    auto optionObjectTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { objectDecl->ty });
+    auto optionObjectTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {objectDecl->ty}, {LocalModal::NOT});
     if (objRef) {
         auto someInstanceDecl = Sema::Desugar::AfterTypeCheck::LookupEnumMember(
             mockUtils->optionDecl, OPTION_VALUE_CTOR);
@@ -1171,7 +1169,7 @@ OwnedPtr<FuncDecl> MockManager::CreateMockedMethod(
     auto retTy = mockedMethod->funcBody->retType->ty;
 
     auto thisRef = CreateRefExpr(
-        SrcIdentifier{"this"}, typeManager.GetClassThisTy(mockedDecl, mockedDecl.ty->typeArgs));
+        SrcIdentifier{"this"}, typeManager.GetClassThisTy(mockedDecl, mockedDecl.ty->typeArgs, {LocalModal::NOT}));
     thisRef->ref.target = &mockedDecl;
 
     std::vector<OwnedPtr<MatchCase>> matchCasesForOnCallReturnedValue;
@@ -1322,7 +1320,7 @@ std::vector<OwnedPtr<MatchCase>> MockManager::GenerateCallHandlerCases(FuncDecl&
     std::vector<OwnedPtr<MatchCase>> matchCasesForOnCallReturnedValue;
 
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
     auto optionFuncRet = optionFuncRetTy->decl;
 
     for (auto& constructor : onCallEnumDecl->constructors) {
@@ -1363,7 +1361,7 @@ OwnedPtr<Expr> MockManager::GetMockedObjectHandler(OwnedPtr<RefExpr> objRef, con
     static const auto NOTHING_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_NOTHING);
 
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
 
     auto noneRef = CreateRefExpr(
         *Sema::Desugar::AfterTypeCheck::LookupEnumMember(mockUtils->optionDecl, OPTION_NONE_CTOR));
@@ -1429,10 +1427,11 @@ OwnedPtr<LambdaExpr> MockManager::GenerateCallHandlerLambda(
     auto isMethod = !decl.IsStaticOrGlobal();
 
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
-    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { typeManager.GetAnyTy() });
-    auto toStrArrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { mockUtils->toStringDecl->ty });
-    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {});
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
+    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, {typeManager.GetAnyTy()}, {LocalModal::NOT});
+    auto toStrArrayTy =
+        typeManager.GetStructTy(*mockUtils->arrayDecl, {mockUtils->toStringDecl->ty}, {LocalModal::NOT});
+    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {}, {LocalModal::NOT});
     auto funcTy = isMethod
         ? typeManager.GetFunctionTy({objectTy, arrayTy, toStrArrayTy}, optionFuncRetTy)
         : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
@@ -1582,14 +1581,15 @@ void MockManager::GenerateCallHandlerForStaticDecl(FuncDecl& decl, Expr& injectT
     auto isMethod = !decl.IsStaticOrGlobal();
 
     auto handlerRetTy = typeManager.GetAnyTy();
-    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { handlerRetTy });
-    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { typeManager.GetAnyTy() });
-    auto toStrArrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, { mockUtils->toStringDecl->ty });
-    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {});
+    auto optionFuncRetTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {handlerRetTy}, {LocalModal::NOT});
+    auto arrayTy = typeManager.GetStructTy(*mockUtils->arrayDecl, {typeManager.GetAnyTy()}, {LocalModal::NOT});
+    auto toStrArrayTy =
+        typeManager.GetStructTy(*mockUtils->arrayDecl, {mockUtils->toStringDecl->ty}, {LocalModal::NOT});
+    auto objectTy = typeManager.GetClassTy(*mockUtils->objectDecl, {}, {LocalModal::NOT});
     auto funcTy = isMethod
         ? typeManager.GetFunctionTy({objectTy, arrayTy, toStrArrayTy}, optionFuncRetTy)
         : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
-    auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { funcTy });
+    auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, {funcTy}, {LocalModal::NOT});
     auto optionFunc = mockUtils->GetInstantiatedDecl(
         optionFuncTy->decl, {optionFuncTy}, IS_GENERIC_INSTANTIATION_ENABLED);
     auto handlerSomeDecl = Sema::Desugar::AfterTypeCheck::LookupEnumMember(optionFunc, OPTION_VALUE_CTOR);

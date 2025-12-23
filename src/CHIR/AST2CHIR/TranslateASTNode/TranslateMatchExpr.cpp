@@ -520,7 +520,8 @@ Ptr<Value> Translator::CastEnumValueToConstructorTupleType(Ptr<Value> enumValue,
     for (auto ty : paramTys) {
         resTypes.emplace_back(TranslateType(*ty));
     }
-    auto res = TypeCastOrBoxIfNeeded(*enumValue, *builder.GetType<TupleType>(resTypes), enumValue->GetDebugLocation());
+    auto res = TypeCastOrBoxIfNeeded(
+        *enumValue, *builder.GetType<TupleType>(resTypes, ModalInfo{}), enumValue->GetDebugLocation());
     auto enumId = GetEnumPatternID(enumPattern);
     res->Set<EnumCaseIndex>(enumId);
     return res;

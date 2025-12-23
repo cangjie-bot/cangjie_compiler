@@ -82,8 +82,8 @@ bool RefExprTargetIsFuncDeclAndHasNamedParam(const RefExpr& re)
     const FuncDecl& funcDecl = *StaticCast<FuncDecl*>(re.ref.target);
     CJC_NULLPTR_CHECK(funcDecl.funcBody);
     auto& params = funcDecl.funcBody->paramLists[0]->params;
-    return std::any_of(params.cbegin(), params.cend(),
-        [](const OwnedPtr<FuncParam>& param) { return param && param->isNamedParam; });
+    return std::any_of(
+        params.cbegin(), params.cend(), [](const OwnedPtr<FuncParam>& param) { return param && param->isNamedParam; });
 }
 
 void MarkOutermostBinaryExpr(bool setOutermost, Node& node)
@@ -695,7 +695,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynArithmeticOrRelationalEx
     ty = Ty::GetPrimitiveUpperBound(ty); // If the ty is generic, it must be subtype of primitive.
     // placeholder without any info
     if (auto tv = DynamicCast<TyVar*>(ty); tv && tv->isPlaceholder) {
-        switch (PickConstaintFromTys(*tv, TypeMapToTys(typeCandidates, true), true)) {
+        switch (PickConstaintFromTys(*tv, TypeMapToTys(typeCandidates, true, tv->modal), true)) {
             case MatchResult::UNIQUE:
                 be.ty = typeManager.TryGreedySubst(tv);
                 return {be.ty};

@@ -371,25 +371,27 @@ Type* CreateNewTypeWithArgs(Type& oldType, const std::vector<Type*>& newArgs, CH
     Type* newType = nullptr;
     switch (oldType.GetTypeKind()) {
         case Type::TypeKind::TYPE_TUPLE:
-            newType = builder.GetType<TupleType>(newArgs);
+            newType = builder.GetType<TupleType>(newArgs, oldType.Modal());
             break;
         case Type::TypeKind::TYPE_STRUCT:
-            newType = builder.GetType<StructType>(StaticCast<const StructType&>(oldType).GetStructDef(), newArgs);
+            newType = builder.GetType<StructType>(
+                StaticCast<const StructType&>(oldType).GetStructDef(), newArgs, oldType.Modal());
             break;
         case Type::TypeKind::TYPE_ENUM: {
             auto& enumType = StaticCast<const EnumType&>(oldType);
-            newType = builder.GetType<EnumType>(enumType.GetEnumDef(), newArgs);
+            newType = builder.GetType<EnumType>(enumType.GetEnumDef(), newArgs, oldType.Modal());
             break;
         }
         case Type::TypeKind::TYPE_FUNC: {
             std::vector<Type*> paramTys{newArgs.begin(), newArgs.end() - 1};
             Type* retTy = newArgs.back();
             auto hasVarArg = StaticCast<const FuncType&>(oldType).HasVarArg();
-            newType = builder.GetType<FuncType>(paramTys, retTy, hasVarArg, oldType.IsCFunc());
+            newType = builder.GetType<FuncType>(paramTys, retTy, hasVarArg, oldType.IsCFunc(), oldType.Modal());
             break;
         }
         case Type::TypeKind::TYPE_CLASS:
-            newType = builder.GetType<ClassType>(StaticCast<const ClassType&>(oldType).GetClassDef(), newArgs);
+            newType = builder.GetType<ClassType>(
+                StaticCast<const ClassType&>(oldType).GetClassDef(), newArgs, oldType.Modal());
             break;
         case Type::TypeKind::TYPE_REFTYPE:
             CJC_ASSERT(newArgs.size() == 1);
@@ -397,15 +399,17 @@ Type* CreateNewTypeWithArgs(Type& oldType, const std::vector<Type*>& newArgs, CH
             break;
         case Type::TypeKind::TYPE_CPOINTER:
             CJC_ASSERT(newArgs.size() == 1);
-            newType = builder.GetType<CPointerType>(newArgs[0]);
+            newType = builder.GetType<CPointerType>(newArgs[0], oldType.Modal());
             break;
         case Type::TypeKind::TYPE_RAWARRAY:
             CJC_ASSERT(newArgs.size() == 1);
-            newType = builder.GetType<RawArrayType>(newArgs[0], StaticCast<const RawArrayType&>(oldType).GetDims());
+            newType = builder.GetType<RawArrayType>(
+                newArgs[0], StaticCast<const RawArrayType&>(oldType).GetDims(), oldType.Modal());
             break;
         case Type::TypeKind::TYPE_VARRAY:
             CJC_ASSERT(newArgs.size() == 1);
-            newType = builder.GetType<VArrayType>(newArgs[0], StaticCast<const VArrayType&>(oldType).GetSize());
+            newType = builder.GetType<VArrayType>(
+                newArgs[0], StaticCast<const VArrayType&>(oldType).GetSize(), oldType.Modal());
             break;
         case Type::TypeKind::TYPE_BOXTYPE:
             CJC_ASSERT(newArgs.size() == 1);
@@ -464,7 +468,7 @@ FuncType* ConvertRealFuncTypeToVirtualFuncType(const FuncType& type, CHIRBuilder
     auto realParams = type.GetParamTypes();
     CJC_ASSERT(!realParams.empty());
     auto paramInVtable = std::vector<Type*>{realParams.begin() + 1, realParams.end()};
-    return builder.GetType<FuncType>(paramInVtable, builder.GetType<UnitType>());
+    return builder.GetType<FuncType>(paramInVtable, builder.GetUnitTy());
 }
 
 Value* TypeCastIfNeeded(
@@ -1432,7 +1436,7 @@ std::vector<VTableSearchRes> GetFuncIndexInVTable(Type& root, const FuncCallType
 BuiltinType* GetBuiltinTypeWithVTable(BuiltinType& type, CHIRBuilder& builder)
 {
     if (type.IsCPointer()) {
-        return builder.GetType<CPointerType>(builder.GetUnitTy());
+        return builder.GetType<CPointerType>(builder.GetUnitTy(), ModalInfo{});
     }
     return &type;
 }

@@ -214,7 +214,8 @@ InvokeCallContext Translator::GenerateInvokeCallContext(const InstCalleeInfo& in
         parentType = AddRefIfFuncIsMutOrClass(*parentType, *originalFuncDecl, builder);
         auto paramTypes = originalFuncType->GetParamTypes();
         paramTypes.insert(paramTypes.begin(), parentType);
-        originalFuncType = builder.GetType<FuncType>(paramTypes, originalFuncType->GetReturnType());
+        originalFuncType = builder.GetType<FuncType>(
+            paramTypes, originalFuncType->GetReturnType(), false, false, originalFuncType->Modal());
     }
     std::vector<GenericType*> originalGenericTypeParams;
     if (originalFuncDecl->TestAttr(AST::Attribute::GENERIC)) {
@@ -255,6 +256,7 @@ Value* Translator::WrapMemberMethodByLambda(
     if (!funcDecl.TestAttr(AST::Attribute::STATIC)) {
         lambdaParamTypes.erase(lambdaParamTypes.begin());
     }
+    // TODO: consider modal ty
     auto lambdaType = builder.GetType<FuncType>(lambdaParamTypes, instFuncType.instRetTy);
     Lambda* lambda = CreateAndAppendExpression<Lambda>(
         lambdaType, lambdaType, currentBlock, false, lambdaMangledName, funcDecl.identifier);

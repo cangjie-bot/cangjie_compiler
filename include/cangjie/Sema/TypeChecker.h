@@ -66,6 +66,7 @@ private:
     /** The class for checking enum sugar. */
     class EnumSugarChecker;
     class TypeCheckerImpl;
+    friend struct ModalTypeChecker;
     std::unique_ptr<TypeCheckerImpl> impl;
 }; // class TypeChecker
 } // namespace Cangjie

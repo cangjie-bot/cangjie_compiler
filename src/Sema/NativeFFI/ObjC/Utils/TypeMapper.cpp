@@ -91,7 +91,7 @@ Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
 
     if (IsObjCPointer(*cjty)) {
         CJC_ASSERT(cjty->typeArgs.size() == 1);
-        return typeManager.GetPointerTy(Cj2CType(cjty->typeArgs[0]));
+        return typeManager.GetPointerTy(Cj2CType(cjty->typeArgs[0]), cjty->modal);
     }
 
     if (IsObjCFunc(*cjty)) {
@@ -103,7 +103,7 @@ Ptr<Ty> TypeMapper::Cj2CType(Ptr<Ty> cjty) const
             realTypeArgs.push_back(Cj2CType(paramTy));
         }
         return typeManager.GetPointerTy(
-            typeManager.GetFunctionTy(realTypeArgs, Cj2CType(actualFuncType->retTy), {.isC = true}));
+            typeManager.GetFunctionTy(realTypeArgs, Cj2CType(actualFuncType->retTy), {.isC = true}), cjty->modal);
     }
     if (IsObjCBlock(*cjty)) {
         return bridge.GetNativeObjCIdTy();

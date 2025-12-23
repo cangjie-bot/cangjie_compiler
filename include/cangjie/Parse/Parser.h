@@ -49,11 +49,10 @@ std::string ConvertToken(const Token& t);
 /// Record the correspondence between AnnotationKinds and identifiers.
 const std::unordered_map<std::string, AST::AnnotationKind> NAME_TO_ANNO_KIND = {
     {"JavaMirror", AST::AnnotationKind::JAVA_MIRROR}, {"JavaImpl", AST::AnnotationKind::JAVA_IMPL},
-    {"JavaHasDefault", AST::AnnotationKind::JAVA_HAS_DEFAULT},
-    {"ObjCMirror", AST::AnnotationKind::OBJ_C_MIRROR}, {"ObjCImpl", AST::AnnotationKind::OBJ_C_IMPL},
-    {"ForeignGetterName", AST::AnnotationKind::FOREIGN_GETTER_NAME}, {"ForeignSetterName", AST::AnnotationKind::FOREIGN_SETTER_NAME},
-    {"ObjCInit", AST::AnnotationKind::OBJ_C_INIT}, {"ObjCOptional", AST::AnnotationKind::OBJ_C_OPTIONAL},
-    {"ForeignName", AST::AnnotationKind::FOREIGN_NAME},
+    {"JavaHasDefault", AST::AnnotationKind::JAVA_HAS_DEFAULT}, {"ObjCMirror", AST::AnnotationKind::OBJ_C_MIRROR},
+    {"ObjCImpl", AST::AnnotationKind::OBJ_C_IMPL}, {"ForeignGetterName", AST::AnnotationKind::FOREIGN_GETTER_NAME},
+    {"ForeignSetterName", AST::AnnotationKind::FOREIGN_SETTER_NAME}, {"ObjCInit", AST::AnnotationKind::OBJ_C_INIT},
+    {"ObjCOptional", AST::AnnotationKind::OBJ_C_OPTIONAL}, {"ForeignName", AST::AnnotationKind::FOREIGN_NAME},
     {"CallingConv", AST::AnnotationKind::CALLING_CONV}, {"C", AST::AnnotationKind::C},
     {"Attribute", AST::AnnotationKind::ATTRIBUTE}, {"Intrinsic", AST::AnnotationKind::INTRINSIC},
     {"OverflowThrowing", AST::AnnotationKind::NUMERIC_OVERFLOW},
@@ -62,7 +61,7 @@ const std::unordered_map<std::string, AST::AnnotationKind> NAME_TO_ANNO_KIND = {
     {"FastNative", AST::AnnotationKind::FASTNATIVE}, {"Annotation", AST::AnnotationKind::ANNOTATION},
     {"ConstSafe", AST::AnnotationKind::CONSTSAFE}, {"Deprecated", AST::AnnotationKind::DEPRECATED},
     {"Frozen", AST::AnnotationKind::FROZEN}, {"EnsurePreparedToMock", AST::AnnotationKind::ENSURE_PREPARED_TO_MOCK},
-    {"NonProduct", AST::AnnotationKind::NON_PRODUCT}};
+    {"NonProduct", AST::AnnotationKind::NON_PRODUCT}, {"MakeCopy", AST::AnnotationKind::MAKE_COPY}};
 
 extern const std::unordered_map<AST::AnnotationKind, std::string> ANNO_KIND_TO_NAME;
 

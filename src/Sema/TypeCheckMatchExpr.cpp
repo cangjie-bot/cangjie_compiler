@@ -282,9 +282,9 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchCaseNoSelector(ASTContext& ctx, Ma
 {
     // Type of patternGuard (matchExpr) is boolean.
     if (Is<WildcardExpr>(mco.matchExpr.get())) {
-        mco.matchExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+        mco.matchExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     } else {
-        if (!Check(ctx, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN), mco.matchExpr.get())) {
+        if (!Check(ctx, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {}), mco.matchExpr.get())) {
             mco.matchExpr->ty = TypeManager::GetInvalidTy();
         }
     }
@@ -298,7 +298,7 @@ bool TypeChecker::TypeCheckerImpl::ChkMatchCasePatGuard(ASTContext& ctx, const M
 {
     bool ret = true;
     if (mc.patternGuard) {
-        Ptr<Ty> boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+        Ptr<Ty> boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
         ret = Check(ctx, boolTy, mc.patternGuard.get());
     }
     return ret;
@@ -421,9 +421,9 @@ bool TypeChecker::TypeCheckerImpl::ChkMatchCaseNoSelector(ASTContext& ctx, Ty& t
     bool ret = true;
     // Type of patternGuard (matchExpr) is boolean.
     if (Is<WildcardExpr>(mco.matchExpr.get())) {
-        mco.matchExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+        mco.matchExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     } else {
-        if (!Check(ctx, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN), mco.matchExpr.get())) {
+        if (!Check(ctx, TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {}), mco.matchExpr.get())) {
             mco.matchExpr->ty = TypeManager::GetInvalidTy();
             ret = false;
         }

@@ -580,7 +580,7 @@ void TypeChecker::TypeCheckerImpl::DesugarPointerCall(ASTContext& ctx, CallExpr&
     } else if (!baseArgs.empty()) {
         argTy = baseArgs[0]->ty;
     }
-    pointerExpr->type->ty = typeManager.GetPointerTy(argTy);
+    pointerExpr->type->ty = typeManager.GetPointerTy(argTy, argTy ? argTy->modal : ModalInfo{});
     if (!ce.args.empty()) {
         pointerExpr->arg = std::move(ce.args[0]);
     }
@@ -615,19 +615,19 @@ void TypeChecker::TypeCheckerImpl::DesugarArrayCall(ASTContext& ctx, CallExpr& c
         if (typeArgs[0]->IsGeneric() && !baseArgs.empty()) {
             argTy = baseArgs[0]->ty;
         }
-        arrayExpr->type->ty = typeManager.GetVArrayTy(*argTy, varrTy->size);
+        arrayExpr->type->ty = typeManager.GetVArrayTy(*argTy, varrTy->size, varrTy->modal);
         arrayExpr->isValueArray = true;
     } else {
         // Eg: type A<T> = Array<T>; A(size, v), type args of this A is not useful.
         bool usefulTypeArg = !typeArgs.empty() && (!typeArgs[0]->IsGeneric() || !baseArgs.empty());
         if (usefulTypeArg) {
-            arrayExpr->type->ty = typeManager.GetArrayTy(typeArgs[0], 1);
+            arrayExpr->type->ty = typeManager.GetArrayTy(typeArgs[0], 1, {});
         } else {
             Ptr<Ty> argTy = TypeManager::GetInvalidTy();
             if (!baseArgs.empty()) {
                 argTy = baseArgs[0]->ty;
             }
-            arrayExpr->type->ty = typeManager.GetArrayTy(argTy, 1);
+            arrayExpr->type->ty = typeManager.GetArrayTy(argTy, 1, {});
         }
     }
     for (auto& it : ce.args) {

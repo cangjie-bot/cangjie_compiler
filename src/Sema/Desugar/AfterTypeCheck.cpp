@@ -245,7 +245,7 @@ void DesugarSetForPropDecl(TypeManager& tyMgr, Expr& expr)
         ? CreateMemberAccess(ASTCloner::Clone(RawStaticCast<MemberAccess*>(subExpr)->baseExpr.get()), *setFunc)
         : OwnedPtr<Expr>(CreateRefExpr(*setFunc).release());
     // 'setFunc' may be generic type, which need to be update to real used type.
-    baseExpr->ty = tyMgr.GetFunctionTy({subExpr->ty}, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
+    baseExpr->ty = tyMgr.GetFunctionTy({subExpr->ty}, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}));
     CopyBasicInfo(subExpr, baseExpr.get());
     Ptr<Expr> basePtr = nullptr;
     // For refExpr case, 'a += b' is desugared to aSet(aGet() + b), there is no side effect to be handle.
@@ -270,7 +270,7 @@ void DesugarSetForPropDecl(TypeManager& tyMgr, Expr& expr)
     lastCallExpr->callKind = isMemberAccessSuperCall ? CallKind::CALL_SUPER_FUNCTION : CallKind::CALL_DECLARED_FUNCTION;
     lastCallExpr->resolvedFunction = setFunc;
     // Setter of propDecl must be unit type.
-    lastCallExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    lastCallExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     AddCurFile(*lastCallExpr, expr.curFile);
     if (isCompound) {
         lastCallExpr->EnableAttr(Attribute::SIDE_EFFECT);
@@ -481,7 +481,7 @@ void TypeChecker::TypeCheckerImpl::GenerateMainInvoke()
         return;
     }
     auto mainTy = funcTy->retTy;
-    auto int64Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+    auto int64Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {});
     auto mainInvokeTy = typeManager.GetFunctionTy(funcTy->paramTys, int64Ty);
 
     // Creat mainInvoke function: "func $mainInvoke(v:Array<String>)" or "func $mainInvoke()".
@@ -509,7 +509,7 @@ void TypeChecker::TypeCheckerImpl::GenerateMainInvoke()
     OwnedPtr<ReturnExpr> retExpr = mainTy->IsInteger()
         ? CreateReturnExpr(CreateConvInt64(*retVal, *int64Ty), funcBody.get())
         : CreateReturnExpr(CreateLitConstExpr(LitConstKind::INTEGER, "0", int64Ty), funcBody.get());
-    retExpr->ty = TypeManager::GetNothingTy();
+    retExpr->ty = TypeManager::GetNothingTy({});
     funcBody->body->body.emplace_back(std::move(retVal));
     funcBody->body->body.emplace_back(std::move(retExpr));
     mainFunc->curFile->decls.emplace_back(CreateMainInvokeDecl(std::move(funcBody), *mainFunc, *mainInvokeTy));
@@ -642,7 +642,7 @@ OwnedPtr<AST::FuncDecl> TypeChecker::TypeCheckerImpl::CreateToAny(AST::Decl& out
     CJC_NULLPTR_CHECK(anyDecl);
     funcBody->retType = CreateRefType(*anyDecl);
 
-    funcBody->ty = typeManager.GetFunctionTy({}, typeManager.GetAnyTy());
+    funcBody->ty = typeManager.GetFunctionTy({}, typeManager.GetAnyTy(), {}, {});
 
     auto fromTy = outerDecl.ty;
     auto funcParamList = MakeOwned<FuncParamList>();
@@ -652,7 +652,7 @@ OwnedPtr<AST::FuncDecl> TypeChecker::TypeCheckerImpl::CreateToAny(AST::Decl& out
     xRef->ty = fromTy;
     xRef->EnableAttr(Attribute::NO_REFLECT_INFO);
     auto returnExpr = CreateReturnExpr(std::move(xRef), funcBody.get());
-    returnExpr->ty = TypeManager::GetNothingTy();
+    returnExpr->ty = TypeManager::GetNothingTy({});
     funcBody->body->body.push_back(std::move(returnExpr));
 
     auto toAnyFunc = CreateFuncDecl(std::string(TO_ANY), std::move(funcBody));

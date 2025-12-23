@@ -77,6 +77,7 @@ private:
     static OwnedPtr<TokenPart> CloneTokenPart(const TokenPart& tp, const VisitFunc& visitor);
     static OwnedPtr<QuoteExpr> CloneQuoteExpr(const QuoteExpr& qe, const VisitFunc& visitor);
     static OwnedPtr<IfExpr> CloneIfExpr(const IfExpr& ie, const VisitFunc& visitor);
+    static OwnedPtr<PrimitiveTypeExpr> ClonePrimitiveTypeExpr(const PrimitiveTypeExpr& ie);
     static OwnedPtr<TryExpr> CloneTryExpr(const TryExpr& te, const VisitFunc& visitor);
     static OwnedPtr<ThrowExpr> CloneThrowExpr(const ThrowExpr& te, const VisitFunc& visitor);
     static OwnedPtr<PerformExpr> ClonePerformExpr(const PerformExpr& pe, const VisitFunc& visitor);
@@ -119,6 +120,8 @@ private:
     static OwnedPtr<LetPatternDestructor> CloneLetPatternDestructor(
         const LetPatternDestructor& ldp, const VisitFunc& visitor);
     static OwnedPtr<IfAvailableExpr> CloneIfAvailableExpr(const IfAvailableExpr& e, const VisitFunc& visitor);
+    static OwnedPtr<ThisParam> CloneThisParam(const ThisParam& tp, const VisitFunc& visitor);
+    static OwnedPtr<ExclaveExpr> CloneExclaveExpr(const ExclaveExpr& ee, const VisitFunc& visitor);
     static OwnedPtr<ConstPattern> CloneConstPattern(const ConstPattern& cp, const VisitFunc& visitor);
     static OwnedPtr<VarPattern> CloneVarPattern(const VarPattern& vp, const VisitFunc& visitor);
     static OwnedPtr<TuplePattern> CloneTuplePattern(const TuplePattern& tp, const VisitFunc& visitor);

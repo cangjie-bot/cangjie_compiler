@@ -272,10 +272,11 @@ void TypeChecker::TypeCheckerImpl::DesugarTryWithResourcesExpr(ASTContext& ctx, 
     CJC_NULLPTR_CHECK(exceptionDecl);
     auto optionDecl = StaticCast<EnumDecl*>(importManager.GetCoreDecl("Option"));
     CJC_NULLPTR_CHECK(optionDecl);
-    auto noneTy = typeManager.GetEnumTy(*optionDecl, {exceptionDecl->ty});
+    ModalInfo mod{LocalModal::NOT};
+    auto noneTy = typeManager.GetEnumTy(*optionDecl, {exceptionDecl->ty}, mod);
     CJC_NULLPTR_CHECK(noneTy);
     auto someTy = typeManager.GetFunctionTy({exceptionDecl->ty}, noneTy);
-    auto unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    auto unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, mod);
     // try-with-resources expression is of type Unit.
     if (!typeManager.IsSubtype(te.tryBlock->ty, unitTy)) {
         (void)te.tryBlock->body.emplace_back(CreateUnitExpr(unitTy));
@@ -294,7 +295,8 @@ void TypeChecker::TypeCheckerImpl::DesugarTryWithResourcesExpr(ASTContext& ctx, 
         }
     }
     auto emptyCatchAndFinally = te.catchBlocks.empty() && te.finallyBlock == nullptr;
-    auto finallyBlock = CreateBlock(std::vector<OwnedPtr<Node>>{}, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
+    auto finallyBlock =
+        CreateBlock(std::vector<OwnedPtr<Node>>{}, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}));
     auto tryExpr = MakeOwnedNode<TryExpr>();
     tryExpr->tryBlock = std::move(tryBlock);
     tryExpr->catchPatterns = std::move(te.catchPatterns);

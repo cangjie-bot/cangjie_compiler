@@ -36,8 +36,7 @@ static bool IsUnnecessarySuperCall(const AST::Node& node)
 }
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-static std::vector<Ptr<AST::Node>> CollectBlockBodyNodes(
-    const AST::Block& block, const GenericInstantiationManager* gim)
+std::vector<Ptr<AST::Node>> Translator::CollectBlockBodyNodes(const AST::Block& block)
 {
     std::vector<Ptr<AST::Node>> nodes;
     for (const auto& body : block.body) {
@@ -71,7 +70,7 @@ Ptr<Value> Translator::Visit(const AST::Block& b)
     currentBlock = block;
     // Since cangjie's block has value, return the value of last block node.
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    std::vector<Ptr<AST::Node>> nodes = CollectBlockBodyNodes(b, gim);
+    std::vector<Ptr<AST::Node>> nodes = CollectBlockBodyNodes(b);
 #endif
     for (size_t i = 0; i < nodes.size(); ++i) {
         if (i == nodes.size() - 1) {

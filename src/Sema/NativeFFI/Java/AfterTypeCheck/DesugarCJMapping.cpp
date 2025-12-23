@@ -198,7 +198,7 @@ OwnedPtr<StructDecl> JavaDesugarManager::CreateHelperStructDecl(const Ptr<TupleT
     helperDecl->body = MakeOwned<StructBody>();
 
     std::vector<Ptr<Ty>> typeArgs;
-    helperDecl->ty = typeManager.GetStructTy(*helperDecl, typeArgs);
+    helperDecl->ty = typeManager.GetStructTy(*helperDecl, typeArgs, {});
     std::vector<OwnedPtr<FuncParam>> params;
     size_t i = 0;
     for (const auto& it : tupleTy->typeArgs) {
@@ -455,7 +455,7 @@ OwnedPtr<AST::MemberAccess> JavaDesugarManager::GenThisMemAcessForSelfMethod(
             auto ty = GetTyByName(typeStr);
             typeArgs.push_back(ty);
         }
-        interfaceTy = typeManager.GetInterfaceTy(*interfaceDecl, typeArgs);
+        interfaceTy = typeManager.GetInterfaceTy(*interfaceDecl, typeArgs, {});
 
         // init funtTy for generic method.
         std::vector<Ptr<Ty>> tmpParamTys;
@@ -586,9 +586,9 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::Interfac
                 auto priType = GetTypeByName(typeStr);
                 interfaceRefType->typeArguments.emplace_back(std::move(priType));
             }
-            interfaceRefType->ty = typeManager.GetInterfaceTy(interfaceDecl, typeArgs);
+            interfaceRefType->ty = typeManager.GetInterfaceTy(interfaceDecl, typeArgs, {});
             fwdclassDecl->inheritedTypes.emplace_back(std::move(interfaceRefType));
-            fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, {});
+            fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, {}, {});
 
             auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
             CJC_ASSERT(classLikeTy);
@@ -600,7 +600,7 @@ void JavaDesugarManager::GenerateForCJInterfaceMapping(File& file, AST::Interfac
     } else {
         auto fwdclassDecl = InitInterfaceFwdClassDecl(interfaceDecl);
         fwdclassDecl->inheritedTypes.emplace_back(CreateRefType(interfaceDecl));
-        fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs);
+        fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, interfaceDecl.ty->typeArgs, {});
         auto classLikeTy = DynamicCast<ClassLikeTy*>(interfaceDecl.ty);
         CJC_ASSERT(classLikeTy);
         classLikeTy->directSubtypes.insert(fwdclassDecl->ty);
@@ -614,8 +614,8 @@ void JavaDesugarManager::InsertJavaObjectControllerVarDecl(ClassDecl& fwdClassDe
     auto& javaObjectControllerDecl = *lib.GetJavaObjectControllerDecl();
     auto controllerRefType = CreateRefType(javaObjectControllerDecl);
 
-    auto instantTy = typeManager.GetClassTy(classDecl, classDecl.ty->typeArgs);
-    auto varTy = typeManager.GetClassTy(javaObjectControllerDecl, {std::move(instantTy)});
+    auto instantTy = typeManager.GetClassTy(classDecl, classDecl.ty->typeArgs, classDecl.ty->modal);
+    auto varTy = typeManager.GetClassTy(javaObjectControllerDecl, {std::move(instantTy)}, classDecl.ty->modal);
     controllerRefType->ty = varTy;
 
     auto instantiationRefType = CreateRefType(classDecl);
@@ -920,7 +920,7 @@ void JavaDesugarManager::GenerateForCJOpenClassMapping(AST::ClassDecl& classDecl
 
     fwdclassDecl->inheritedTypes.emplace_back(CreateRefType(classDecl));
 
-    fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, classDecl.ty->typeArgs);
+    fwdclassDecl->ty = typeManager.GetClassTy(*fwdclassDecl, classDecl.ty->typeArgs, classDecl.ty->modal);
     auto classLikeTy = DynamicCast<ClassLikeTy*>(classDecl.ty);
     CJC_ASSERT(classLikeTy);
     classLikeTy->directSubtypes.insert(fwdclassDecl->ty);

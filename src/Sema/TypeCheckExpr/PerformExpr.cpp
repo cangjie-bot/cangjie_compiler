@@ -20,6 +20,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynPerformExpr(ASTContext& ctx, PerformExp
         pe.ty = TypeManager::GetInvalidTy();
         return pe.ty;
     }
+    // perform expr must be @~local
+    CheckHasLocalMod(*pe.expr, LocalModal::NOT);
     if (auto commandTy = PromoteToCommandTy(*pe.expr, *exprTy); commandTy) {
         pe.ty = (*commandTy)->typeArgs[0];
     } else {

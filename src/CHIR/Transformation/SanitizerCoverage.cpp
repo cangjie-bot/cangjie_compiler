@@ -320,7 +320,7 @@ void SanitizerCoverage::InjectTraceForCmp(BinaryExpression& binary, bool isDebug
     auto parent = binary.GetParentBlock();
     if (auto intTy = StaticCast<IntType*>(lhs->GetType()); intTy && intTy->IsSigned()) {
         // Note: If the operand type is int8, convert it to uint8. int16, int32, int64 is similar.
-        auto unsignedType = builder.GetType<IntType>(GetTraceCompareType(lhs->GetType()->GetTypeKind()));
+        auto unsignedType = builder.GetType<IntType>(GetTraceCompareType(lhs->GetType()->GetTypeKind()), ModalInfo{});
         auto lhsCast = builder.CreateExpression<TypeCast>(binary.GetDebugLocation(), unsignedType, lhs, parent);
         auto rhsCast = builder.CreateExpression<TypeCast>(binary.GetDebugLocation(), unsignedType, rhs, parent);
         lhs = lhsCast->GetResult();
@@ -370,7 +370,7 @@ void SanitizerCoverage::InjectTraceForSwitch(MultiBranch& mb, bool isDebug)
     }
     auto& callName = SanCovTraceSwitchName;
     const auto& u64Ty = builder.GetUInt64Ty();
-    auto cPointTy = builder.GetType<CPointerType>(u64Ty);
+    auto cPointTy = builder.GetType<CPointerType>(u64Ty, ModalInfo{});
     // 1. create trace function type for switch
     auto funcTy = builder.GetType<FuncType>(std::vector<Type*>{u64Ty, cPointTy}, builder.GetUnitTy(), false, true);
     auto callee = GenerateForeignFunc(callName, mb.GetDebugLocation(), *funcTy, packageName);
@@ -417,7 +417,7 @@ std::vector<Value*> SanitizerCoverage::GenerateCStringMemCmp(
     auto parent = apply.GetParentBlock();
     auto loc = apply.GetDebugLocation();
     std::vector<Value*> res;
-    auto cPointerType = builder.GetType<CPointerType>(builder.GetUInt8Ty());
+    auto cPointerType = builder.GetType<CPointerType>(builder.GetUInt8Ty(), ModalInfo{});
     auto callContext1 = IntrisicCallContext {
         .kind = IntrinsicKind::CSTRING_CONVERT_CSTR_TO_PTR,
         .args = std::vector<Value*>{&oper1}
@@ -432,7 +432,7 @@ std::vector<Value*> SanitizerCoverage::GenerateCStringMemCmp(
     cPointer2->MoveBefore(&apply);
     if (fuzzName == SAN_COV_TRACE_MEM_CMP) {
         // __cj_sanitizer_weak_hook_memcmp function need void* input
-        auto typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy());
+        auto typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy(), ModalInfo{});
         auto callContext3 = IntrisicCallContext {
             .kind = IntrinsicKind::CPOINTER_INIT1,
             .args = std::vector<Value*>{cPointer->GetResult()}
@@ -482,7 +482,7 @@ Expression* SanitizerCoverage::CreateOneCPointFromList(Value& array, Apply& appl
         castToInt64->MoveBefore(&apply);
         startRes = castToInt64->GetResult();
     }
-    auto origPointerType = builder.GetType<CPointerType>(&elementType);
+    auto origPointerType = builder.GetType<CPointerType>(&elementType, ModalInfo{});
     auto callContext1 = IntrisicCallContext {
         .kind = IntrinsicKind::ARRAY_ACQUIRE_RAW_DATA,
         .args = std::vector<Value*>{rawArray->GetResult()},
@@ -531,7 +531,7 @@ std::vector<Value*> SanitizerCoverage::GenerateStringMemCmp(
     auto cPoint2 = CreateOneCPointFromList(oper2, apply, *builder.GetUInt8Ty(), *builder.GetUInt32Ty());
     if (fuzzName == SAN_COV_TRACE_MEM_CMP) {
         // __cj_sanitizer_weak_hook_memcmp function need void* input
-        auto typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy());
+        auto typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy(), ModalInfo{});
         auto callContext1 = IntrisicCallContext {
             .kind = IntrinsicKind::CPOINTER_INIT1,
             .args = std::vector<Value*>{cPoint1->GetResult()}
@@ -588,9 +588,9 @@ std::vector<Value*> SanitizerCoverage::GenerateArrayCmp(
     auto elementType = arrayType->GetGenericArgs()[0];
     auto cPointer1 = CreateOneCPointFromList(oper1, apply, *elementType, *builder.GetInt64Ty());
     auto cPointer2 = CreateOneCPointFromList(oper2, apply, *elementType, *builder.GetInt64Ty());
-    auto typeTarget = builder.GetType<CPointerType>(builder.GetUInt8Ty());
+    auto typeTarget = builder.GetType<CPointerType>(builder.GetUInt8Ty(), ModalInfo{});
     if (fuzzName == SAN_COV_TRACE_MEM_CMP) {
-        typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy());
+        typeTarget = builder.GetType<CPointerType>(builder.GetVoidTy(), ModalInfo{});
     }
     // __cj_sanitizer_weak_hook_memcmp function need void* input
     auto callContext1 = IntrisicCallContext {
@@ -645,7 +645,7 @@ std::pair<Value*, Value*> SanitizerCoverage::CastArrayListToArray(Value& oper1, 
     CJC_ASSERT(rawArrayType->GetGenericArgs().size() == 1);
     auto elementType = rawArrayType->GetGenericArgs()[0];
     // Get Array type from builder
-    auto arrayGeneric = builder.GetStructType("std.core", "Array");
+    auto arrayGeneric = builder.GetStructType("std.core", "Array", {}, {});
     CJC_NULLPTR_CHECK(arrayGeneric);
     CJC_ASSERT(arrayGeneric->GetGenericArgs().size() == 1);
     auto genericType = StaticCast<GenericType*>(arrayGeneric->GetGenericArgs()[0]);
@@ -753,10 +753,10 @@ void SanitizerCoverage::InjectTraceMemCmp(Expression& expr, bool isDebug)
     Expression* syscall;
     auto parent = expr.GetParentBlock();
     if (intrinsicName == SAN_COV_TRACE_MEM_CMP) {
-        auto voidPointerType = builder.GetType<CPointerType>(builder.GetVoidTy());
+        auto voidPointerType = builder.GetType<CPointerType>(builder.GetVoidTy(), ModalInfo{});
         syscall = CreateMemCmpFunc(intrinsicName, *voidPointerType, params, expr.GetDebugLocation(), parent);
     } else {
-        auto charPointerType = builder.GetType<CPointerType>(builder.GetUInt8Ty());
+        auto charPointerType = builder.GetType<CPointerType>(builder.GetUInt8Ty(), ModalInfo{});
         syscall = CreateMemCmpFunc(intrinsicName, *charPointerType, params, expr.GetDebugLocation(), parent);
     }
     syscall->MoveBefore(&expr);
@@ -836,7 +836,7 @@ RawArrayAllocate* SanitizerCoverage::CreateArrayForSwitchCaseList(MultiBranch& m
 
 Intrinsic* SanitizerCoverage::CreateRawDataAcquire(const Expression& dataList, Type& elementType) const
 {
-    auto cPointerTy = builder.GetType<CPointerType>(&elementType);
+    auto cPointerTy = builder.GetType<CPointerType>(&elementType, ModalInfo{});
     auto callContext = IntrisicCallContext {
         .kind = IntrinsicKind::ARRAY_ACQUIRE_RAW_DATA,
         .args = std::vector<Value*>{dataList.GetResult()},
@@ -870,12 +870,12 @@ std::vector<Expression*> SanitizerCoverage::GeneratePCGuardExpr(const DebugLocat
     auto& callName = SAN_COV_PC_GUARD;
     auto& initItem = SanCovUInt32ArrayInitName;
     // generate pc guard function
-    auto cPointTy = builder.GetType<CPointerType>(builder.GetUInt32Ty());
+    auto cPointTy = builder.GetType<CPointerType>(builder.GetUInt32Ty(), ModalInfo{});
     auto funcTy = builder.GetType<FuncType>(std::vector<Type*>{cPointTy}, builder.GetUnitTy(), false, true);
     auto pcGuardFunc = GenerateForeignFunc(callName, loc, *funcTy, packageName);
 
     // generate global var
-    auto globalVarType = builder.GetType<CPointerType>(builder.GetUInt32Ty());
+    auto globalVarType = builder.GetType<CPointerType>(builder.GetUInt32Ty(), ModalInfo{});
     auto mangleName = SAN_COV_CTOR2_GLOBAL_VAR_NAME.at(initItem);
     GlobalVar* charArrayTest = GenerateGlobalVar(mangleName, loc, *globalVarType);
 
@@ -908,7 +908,7 @@ std::vector<Expression*> SanitizerCoverage::GenerateInline8bitExpr(
 {
     // generate global var
     auto& initItem = SanCovCharArrayInitName;
-    auto globalVarType = builder.GetType<CPointerType>(builder.GetUInt8Ty());
+    auto globalVarType = builder.GetType<CPointerType>(builder.GetUInt8Ty(), ModalInfo{});
     auto mangleName = SAN_COV_CTOR2_GLOBAL_VAR_NAME.at(initItem);
     GlobalVar* charArrayTest = GenerateGlobalVar(mangleName, loc, *globalVarType);
 
@@ -950,7 +950,7 @@ std::vector<Expression*> SanitizerCoverage::GenerateInlineBoolExpr(
 {
     // generate global var
     auto& initItem = SanCovBoolFlagInitName;
-    auto globalVarType = builder.GetType<CPointerType>(builder.GetBoolTy());
+    auto globalVarType = builder.GetType<CPointerType>(builder.GetBoolTy(), ModalInfo{});
     auto mangleName = SAN_COV_CTOR2_GLOBAL_VAR_NAME.at(initItem);
     GlobalVar* charArrayTest = GenerateGlobalVar(mangleName, loc, *globalVarType);
 
@@ -1060,7 +1060,7 @@ Func* SanitizerCoverage::CreateArrayInitFunc(const std::string& initItemName, Ty
     auto counterVal = builder.CreateConstantExpression<IntLiteral>(
         INVALID_LOCATION, builder.GetUInt64Ty(), block0, static_cast<uint64_t>(bbCounter));
     block0->AppendExpression(counterVal);
-    auto cPointTy = builder.GetType<CPointerType>(&initType);
+    auto cPointTy = builder.GetType<CPointerType>(&initType, ModalInfo{});
     auto guardCtorTy = builder.GetType<FuncType>(std::vector<Type*>{builder.GetUInt64Ty()}, cPointTy, false, true);
     auto guardCtorFunc = GenerateForeignFunc(initItemName, INVALID_LOCATION, *guardCtorTy, packageName);
     auto apply = CreateNonMemberApply(
@@ -1095,7 +1095,7 @@ Func* SanitizerCoverage::CreatePCTableInitFunc()
     auto packExpr = builder.CreateConstantExpression<StringLiteral>(
         INVALID_LOCATION, builder.GetStringTy(), block0, packageName);
     block0->AppendExpression(packExpr);
-    auto libc = builder.GetStructType("std.core", "LibC");
+    auto libc = builder.GetStructType("std.core", "LibC", {}, ModalInfo{});
     auto libcRef = builder.GetType<RefType>(libc);
     auto packCString = CreateMemberApply(builder.GetCStringTy(), mallocStringFunc, libcRef,
         {packExpr->GetResult()}, block0, builder, INVALID_LOCATION);
@@ -1154,7 +1154,7 @@ Intrinsic* SanitizerCoverage::CreateRawDataAcquire(
     block.AppendExpression(expr);
     auto arrayVar = expr->GetResult();
     block.AppendExpression(builder.CreateExpression<RawArrayLiteralInit>(builder.GetUnitTy(), arrayVar, list, &block));
-    auto cPointerTy = builder.GetType<CPointerType>(&type);
+    auto cPointerTy = builder.GetType<CPointerType>(&type, ModalInfo{});
     auto callContext = IntrisicCallContext {
         .kind = IntrinsicKind::ARRAY_ACQUIRE_RAW_DATA,
         .args = std::vector<Value*>{arrayVar},

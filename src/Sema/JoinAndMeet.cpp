@@ -360,7 +360,7 @@ Ptr<Ty> JoinAndMeet::ToUserVisibleTy(Ptr<Ty> ty)
         }
         auto res = BatchJoin(uTys);
         // Dual of the above comments.
-        return res->IsAny() ? TypeManager::GetNothingTy() : res;
+        return res->IsAny() ? TypeManager::GetNothingTy(res->modal) : res;
     } else if (ty->IsFunc()) {
         auto funcTy = RawStaticCast<FuncTy*>(ty);
         auto retTy = ToUserVisibleTy(funcTy->retTy);

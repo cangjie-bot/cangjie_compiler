@@ -354,7 +354,8 @@ template <> flatbuffers::Offset<PackageFormat::Type> CHIRSerializer::CHIRSeriali
     auto typeId = GetId<Type>(&obj);
     auto kind = PackageFormat::CHIRTypeKind(obj.GetTypeKind());
     auto argTys = GetId<Type>(obj.GetTypeArgs());
-    return PackageFormat::CreateTypeDirect(builder, kind, typeId, argTys.empty() ? nullptr : &argTys);
+    auto modal = static_cast<uint32_t>(ToIndex(obj.Modal()));
+    return PackageFormat::CreateTypeDirect(builder, kind, typeId, argTys.empty() ? nullptr : &argTys, modal);
 }
 
 template <>
@@ -957,6 +958,20 @@ template <> flatbuffers::Offset<PackageFormat::Exit> CHIRSerializer::CHIRSeriali
 }
 
 template <>
+flatbuffers::Offset<PackageFormat::StartRegion> CHIRSerializer::CHIRSerializerImpl::Serialize(const StartRegion& obj)
+{
+    auto base = Serialize<PackageFormat::Expression>(static_cast<const Expression&>(obj));
+    return PackageFormat::CreateStartRegion(builder, base);
+}
+
+template <>
+flatbuffers::Offset<PackageFormat::EndRegion> CHIRSerializer::CHIRSerializerImpl::Serialize(const EndRegion& obj)
+{
+    auto base = Serialize<PackageFormat::Expression>(static_cast<const Expression&>(obj));
+    return PackageFormat::CreateEndRegion(builder, base);
+}
+
+template <>
 flatbuffers::Offset<PackageFormat::RaiseException> CHIRSerializer::CHIRSerializerImpl::Serialize(
     const RaiseException& obj)
 {
@@ -1556,6 +1571,12 @@ template <> flatbuffers::Offset<void> CHIRSerializer::CHIRSerializerImpl::Dispat
             return Serialize<PackageFormat::RawArrayAllocateWithException>(
                 static_cast<const RawArrayAllocateWithException&>(obj))
                 .Union();
+        case ExprKind::START_REGION:
+            exprKind[GetId<Expression>(&obj) - 1] = PackageFormat::ExpressionElem_StartRegion;
+            return Serialize<PackageFormat::StartRegion>(static_cast<const StartRegion&>(obj)).Union();
+        case ExprKind::END_REGION:
+            exprKind[GetId<Expression>(&obj) - 1] = PackageFormat::ExpressionElem_EndRegion;
+            return Serialize<PackageFormat::EndRegion>(static_cast<const EndRegion&>(obj)).Union();
         case ExprKind::NEG:
         case ExprKind::NOT:
         case ExprKind::BITNOT:

@@ -220,6 +220,12 @@ struct ASTHasherImpl {
         }
     }
 
+    template <int whatTypeToHash = 0> void CombineHash(const ModalASTInfo& modal)
+    {
+        CombineHash<whatTypeToHash>(modal.LocalBegin());
+        CombineHash<whatTypeToHash>(static_cast<uint8_t>(modal.Local()));
+    }
+
     template <int whatTypeToHash, typename Arg> inline void SuperHash(const Arg& input)
     {
         if constexpr ((whatTypeToHash == ONLY_POSITION && std::is_same<Arg, Position>::value) ||
@@ -528,7 +534,7 @@ struct ASTHasherImpl {
     {
         HashExpr<whatTypeToHash>(re);
         SUPERHash<whatTypeToHash>(
-            re.ref.identifier.Val(), re.typeArguments, re.isThis, re.isSuper, re.isQuoteDollar);
+            re.ref.identifier.Val(), re.typeArguments, re.isThis, re.isSuper, re.isQuoteDollar, re.modal);
         if (auto refTarget = re.ref.target) {
             SUPERHash<whatTypeToHash>(refTarget->rawMangleName);
             CJC_ASSERT(refTarget->ty);
@@ -679,7 +685,7 @@ struct ASTHasherImpl {
     template <int whatTypeToHash> void HashPrimitiveType(const PrimitiveType& pt)
     {
         HashType<whatTypeToHash>(pt);
-        SUPERHash<whatTypeToHash>(static_cast<int64_t>(pt.kind));
+        SUPERHash<whatTypeToHash>(static_cast<int64_t>(pt.kind), pt.modal);
     }
     template <int whatTypeToHash> void HashQualifiedType(const QualifiedType& qt)
     {
@@ -728,7 +734,7 @@ struct ASTHasherImpl {
     }
     template <int whatTypeToHash> void HashType(const Type& type)
     {
-        SUPERHash<whatTypeToHash>(type.typeParameterName);
+        SUPERHash<whatTypeToHash>(type.typeParameterName, type.modal);
     }
 
     template <int whatTypeToHash> void HashThisType(const ThisType& tt)
@@ -776,6 +782,16 @@ struct ASTHasherImpl {
     {
         HashExpr<whatTypeToHash>(expr);
         SUPERHash<whatTypeToHash>(expr.GetArg(), expr.GetLambda1(), expr.GetLambda2());
+    }
+    template <int whatTypeToHash> void HashExclaveExpr(const ExclaveExpr& expr)
+    {
+        HashExpr<whatTypeToHash>(expr);
+        SUPERHash<whatTypeToHash>(expr.exclavePos, expr.body);
+    }
+    template <int whatTypeToHash> void HashThisParam(const ThisParam& tp)
+    {
+        HashNode<whatTypeToHash>(tp);
+        SUPERHash<whatTypeToHash>(tp.thisPos, tp.modal, tp.commaPos);
     }
 
     template <int whatTypeToHash> hash_type Hash(Ptr<const AST::Node> node)

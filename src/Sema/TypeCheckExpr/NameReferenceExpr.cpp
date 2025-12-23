@@ -455,6 +455,11 @@ void TypeChecker::TypeCheckerImpl::InferRefExpr(ASTContext& ctx, RefExpr& re)
         decl = targets.front();
     }
     ModifyTargetOfRef(re, decl, targets);
+    if (!Is<InheritableDecl>(decl) && !Is<BuiltInDecl>(decl) && !Is<TypeAliasDecl>(decl) && re.modal) {
+        ReportUnexpectedModalType(re);
+        re.ty = TypeManager::GetInvalidTy();
+        return;
+    }
     // Legality of using refExpr will be checked after typecheck in 'CheckLegalityOfReference'.
     CJC_ASSERT(re.ref.target); // 're.ref.target' should be set in 'ModifyTargetOfRef'.
 
@@ -477,6 +482,9 @@ void TypeChecker::TypeCheckerImpl::InferRefExpr(ASTContext& ctx, RefExpr& re)
     if (!decl->IsFunc() || re.isAlone) {
         // Only check non-function or non-call target. Functions will be check after function overload resolution.
         InstantiateReferenceType(ctx, re);
+    }
+    if (re.modal) {
+        re.ty = typeManager.SubstituteModal(re.ty, re.modal.ToModalInfo());
     }
     if (Ty::IsInitialTy(re.ty)) {
         re.ty = TypeManager::GetInvalidTy();
@@ -507,7 +515,7 @@ void TypeChecker::TypeCheckerImpl::InferCFuncExpr(ASTContext& ctx, RefExpr& re)
         paramTys.push_back(param->ty = GetTyFromASTType(ctx, &*param));
     }
     Ptr<Ty> retTy = funcType->retType->ty = GetTyFromASTType(ctx, funcType->retType.get());
-    auto resTy = typeManager.GetFunctionTy(std::move(paramTys), retTy, {.isC = true});
+    auto resTy = typeManager.GetFunctionTy(std::move(paramTys), retTy, {.isC = true}, re.modal.ToModalInfo());
     re.ty = resTy;
 }
 
@@ -625,7 +633,7 @@ void TypeChecker::TypeCheckerImpl::InferArrayStaticAccess(const ASTContext& ctx,
         ma.ty = TypeManager::GetInvalidTy();
         return;
     }
-    ma.baseExpr->ty = typeManager.GetArrayTy(typeArgs[0]->ty, 1);
+    ma.baseExpr->ty = typeManager.GetArrayTy(typeArgs[0]->ty, 1, typeArgs[0]->ty->modal);
     auto targets = ExtendFieldLookup(ctx, *ma.curFile, ma.baseExpr->ty, ma.field);
     if (!FilterAndCheckTargetsOfNameAccess(ctx, ma, targets)) {
         return;

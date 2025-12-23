@@ -147,9 +147,9 @@ void ProcessParamToArg(TypeManager& tyMgr, ArgumentTypeUnit& atu)
         CJC_ASSERT(argTy && paramTy);
         paramTy = tyMgr.InstOf(paramTy);
         if (argTy->IsInteger() && paramTy->IsNumeric()) {
-            argTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_INT);
+            argTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_INT, {});
         } else if (argTy->IsFloating() && paramTy->IsNumeric()) {
-            argTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_FLOAT);
+            argTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_FLOAT, {});
         }
     }
 }
@@ -1443,7 +1443,10 @@ OwnedPtr<FunctionMatchingUnit> TypeChecker::TypeCheckerImpl::CheckCandidate(
         DynamicBindingThisType(*ce.baseFunc, fd, typeMapping);
         auto instRet = typeManager.ApplySubstPack(retTy, typeMapping);
         // Should delete ideal type in the future.
-        if (!instRet->HasIdealTy() && !typeManager.IsSubtype(instRet, targetRet)) {
+        // a created object can be converted to any modal
+        auto modalMode =
+            candidate.ce.callKind == CallKind::CALL_OBJECT_CREATION ? ModalMatchMode::IGNORE : ModalMatchMode::SUBTYPE;
+        if (!instRet->HasIdealTy() && !typeManager.IsSubtype(instRet, targetRet, true, true, modalMode)) {
             if (!ce.sourceExpr) {
                 DiagMismatchedTypesWithFoundTy(diag, ce, *targetRet, *instRet);
             }
@@ -1524,7 +1527,7 @@ Ty* TypeChecker::TypeCheckerImpl::GetCallTy(ASTContext& ctx, const CallExpr& ce,
         CJC_ASSERT(sym->node);
         // return ThisTy if symbol target is ClassTy/ClassThisTy
         if (auto classTy = DynamicCast<ClassTy>(sym->node->ty)) {
-            return typeManager.GetClassThisTy(*classTy->decl, classTy->typeArgs);
+            return typeManager.GetClassThisTy(*classTy->decl, classTy->typeArgs, classTy->modal);
         }
         return sym->node->ty;
     }
@@ -2008,11 +2011,15 @@ std::vector<Ptr<FuncDecl>> TypeChecker::TypeCheckerImpl::MatchFunctionForCall(
     if (!ce.args.empty() && argCombinations.empty()) {
         return {};
     }
-    auto filterSum = [this, &ce](std::vector<Ptr<FuncDecl>> ret) {
+    auto filterSum = [this, &ce, target](std::vector<Ptr<FuncDecl>> ret) {
         if (auto ma = DynamicCast<MemberAccess*>(ce.baseFunc.get())) {
             if (ma->baseExpr->ty->IsPlaceholder() && ret.size() == 1) {
                 FilterSumUpperbound(*ma, *RawStaticCast<GenericsTy*>(ma->baseExpr->ty), *ret[0]);
             }
+        }
+        // for constructor call, convert ce.ty to target modal
+        if (Ty::IsTyCorrect(ce.ty) && Ty::IsTyCorrect(target) && ce.callKind == CallKind::CALL_OBJECT_CREATION) {
+            ce.ty = typeManager.SubstituteModal(ce.ty, target->modal);
         }
         return ret;
     };
@@ -2454,7 +2461,7 @@ bool CanReachFuncCallByQuestable(Node& root)
 bool TypeChecker::TypeCheckerImpl::ChkCurryCallBase(ASTContext& ctx, CallExpr& ce, Ptr<Ty>& targetRet)
 {
     std::vector<Ptr<Ty>> paramTys;
-    Ptr<Ty> retTy = targetRet ? targetRet : TypeManager::GetQuestTy();
+    Ptr<Ty> retTy = targetRet ? targetRet : TypeManager::GetQuestTy({});
     {
         auto ds = DiagSuppressor(diag);
         for (auto& arg: ce.args) {
@@ -2464,7 +2471,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCurryCallBase(ASTContext& ctx, CallExpr& c
             if (Ty::IsTyCorrect(arg->ty)) {
                 paramTys.push_back(arg->ty);
             } else {
-                paramTys.push_back(TypeManager::GetQuestTy());
+                paramTys.push_back(TypeManager::GetQuestTy({}));
             }
         }
     }
@@ -2750,7 +2757,8 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::DynamicBindingThisType(
     }
     auto declOfThisType = GetDeclOfThisType(baseExpr);
     if (auto cd = DynamicCast<ClassDecl*>(declOfThisType); cd && Ty::IsTyCorrect(cd->ty)) {
-        auto instTy = typeManager.ApplySubstPack(typeManager.GetClassThisTy(*cd, cd->ty->typeArgs), typeMapping);
+        auto instTy =
+            typeManager.ApplySubstPack(typeManager.GetClassThisTy(*cd, cd->ty->typeArgs, cd->ty->modal), typeMapping);
         baseExpr.ty = typeManager.GetFunctionTy(funcTy->paramTys, instTy);
         return instTy;
     } else if (auto ma = DynamicCast<MemberAccess*>(&baseExpr); ma && ma->baseExpr) {
@@ -3068,7 +3076,8 @@ bool TypeChecker::TypeCheckerImpl::SynArgsOfNothingBaseExpr(ASTContext& ctx, Cal
         ReplaceIdealTy(*arg);
         ReplaceIdealTy(*arg->expr);
     });
-    ce.ty = isWellTyped ? RawStaticCast<Ty*>(TypeManager::GetNothingTy()) : TypeManager::GetInvalidTy();
+    ce.ty = isWellTyped ? RawStaticCast<Ty*>(TypeManager::GetNothingTy(ce.baseFunc->ty->modal))
+                        : TypeManager::GetInvalidTy();
     return isWellTyped;
 }
 

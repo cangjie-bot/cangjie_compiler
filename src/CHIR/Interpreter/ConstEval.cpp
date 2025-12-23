@@ -306,7 +306,7 @@ Cangjie::CHIR::ClassType* IVal2CHIR::FindClassType(const std::string& mangledNam
     if (resultClassDef->GetGenericTypeParams().size() != 0) {
         return nullptr;
     }
-    return chirBuilder.GetType<ClassType>(resultClassDef);
+    return chirBuilder.GetType<ClassType>(resultClassDef, std::vector<Type*>{}, ModalInfo{});
 }
 
 Cangjie::CHIR::Value* IVal2CHIR::ConvertArrayToChir(

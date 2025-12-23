@@ -30,6 +30,11 @@ Ptr<Value> Translator::Visit(const AST::LambdaExpr& lambdaExpr)
     // cjdb need src code name to show the stack, or core dump will occurred in some case
     auto lambda = CreateAndAppendExpression<Lambda>(loc, funcTy, funcTy, currentBlock, true, mangledName, "$lambda");
     lambda->InitBody(*body);
+    funcContext.PushFunc(lambdaExpr, *lambda);
+    if (lambdaExpr.needsRegion) {
+        CreateAndAppendExpression<StartRegion>(
+            TranslateLocation(lambdaExpr), builder.GetUnitTy(), lambda->GetEntryBlock());
+    }
 
     std::vector<DebugLocation> paramLoc;
     for (auto& astParam : lambdaExpr.funcBody->paramLists[0]->params) {
@@ -46,13 +51,20 @@ Ptr<Value> Translator::Visit(const AST::LambdaExpr& lambdaExpr)
     }
 
     // lambda never has default parameter value
-    return lambdaTrans.TranslateLambdaBody(lambda, *lambdaExpr.funcBody, {});
+    auto ret = lambdaTrans.TranslateLambdaBody(lambda, *lambdaExpr.funcBody, {});
+    if (lambdaExpr.needsRegion) {
+        CreateAndAppendExpression<EndRegion>(
+            TranslateLocation(lambdaExpr), builder.GetUnitTy(), lambda->GetEntryBlock());
+    }
+    return ret;
 }
 
 Translator Translator::Copy() const
 {
-    return {builder, chirTy, opts, gim, globalSymbolTable, localConstVars, localConstFuncs, increKind,
+    Translator ret{builder, chirTy, opts, gim, globalSymbolTable, localConstVars, localConstFuncs, increKind,
         deserializedVals, annoFactoryFuncs, maybeUnreachable, isComputingAnnos, initFuncsForAnnoFactory, typeManager};
+    ret.funcContext = funcContext;
+    return ret;
 }
 
 Translator Translator::SetupContextForLambda(const AST::Block& body)

@@ -33,8 +33,8 @@ void TypeChecker::TypeCheckerImpl::DesugarTokenCallExpr(ASTContext& ctx, CallExp
         return;
     }
     std::vector<OwnedPtr<FuncArg>> args;
-    auto uint32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32);
-    auto int32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32);
+    auto uint32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UINT32, {});
+    auto int32Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32, {});
     auto fileID = CreateLitConstExpr(LitConstKind::INTEGER, std::to_string(ce.begin.fileID), uint32Ty);
     // the `sugarKind` is also cloned, to prevent infinite loop in Walker
     // COMPILE_ADD attribute is not sufficent in this scenario
@@ -63,7 +63,7 @@ void DesugarComparableIntrinsic(AST::CallExpr& expr, TokenKind op)
 {
     CJC_ASSERT(expr.desugarExpr == nullptr && expr.args.size() == 2); // compare intrinsic has exactly 2 args
     auto binExpr = CreateBinaryExpr(std::move(expr.args[0]->expr), std::move(expr.args[1]->expr), op);
-    binExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    binExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     CopyBasicInfo(&expr, binExpr);
     expr.desugarExpr = std::move(binExpr);
 }

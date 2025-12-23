@@ -1013,3 +1013,14 @@ void ParserImpl::ParseBaseExprPostfix(OwnedPtr<AST::Expr>& baseExpr, ExprKind ek
         baseExpr->hasQuestSuffix = true;
     }
 }
+
+OwnedPtr<Expr> ParserImpl::ParseExclaveExpr()
+{
+    OwnedPtr<ExclaveExpr> ret = MakeOwned<ExclaveExpr>();
+    ChainScope cs(*this, ret.get());
+    ret->begin = lastToken.Begin();
+    ret->exclavePos = lastToken.Begin();
+    ret->body = ParseBlock();
+    ret->end = lastToken.End();
+    return ret;
+}

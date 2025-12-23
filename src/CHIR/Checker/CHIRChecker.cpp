@@ -538,7 +538,7 @@ void CHIRChecker::ShouldNotHaveResult(const Terminator& expr, const Func& topLev
     }
 }
 
-bool CHIRChecker::TypeIsExpected(const Type& srcType, const Type& dstType)
+bool CHIRChecker::TypeIsExpected(Type& srcType, Type& dstType)
 {
     if (&srcType == &dstType) {
         return true;
@@ -1756,41 +1756,73 @@ void CHIRChecker::CheckExpression(const Expression& expr, const Func& topLevelFu
 void CHIRChecker::CheckTerminator(const Expression& expr, const Func& topLevelFunc)
 {
     const std::unordered_map<ExprKind, std::function<void()>> actionMap = {
-        {ExprKind::GOTO, [this, &expr, &topLevelFunc]() {
-            CheckGoTo(StaticCast<const GoTo&>(expr), topLevelFunc); }},
-        {ExprKind::EXIT, [this, &expr, &topLevelFunc]() {
-            CheckExit(StaticCast<const Exit&>(expr), topLevelFunc); }},
-        {ExprKind::RAISE_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckRaiseException(StaticCast<const RaiseException&>(expr), topLevelFunc); }},
-        {ExprKind::BRANCH, [this, &expr, &topLevelFunc]() {
-            CheckBranch(StaticCast<const Branch&>(expr), topLevelFunc); }},
-        {ExprKind::MULTIBRANCH, [this, &expr, &topLevelFunc]() {
-            CheckMultiBranch(StaticCast<const MultiBranch&>(expr), topLevelFunc); }},
-        {ExprKind::APPLY_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckApplyWithException(StaticCast<const ApplyWithException&>(expr), topLevelFunc); }},
-        {ExprKind::INVOKE_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckInvokeWithException(StaticCast<const InvokeWithException&>(expr), topLevelFunc); }},
-        {ExprKind::INVOKESTATIC_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckInvokeStaticWithException(StaticCast<const InvokeStaticWithException&>(expr), topLevelFunc); }},
-        {ExprKind::INT_OP_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckIntOpWithException(StaticCast<const IntOpWithException&>(expr), topLevelFunc); }},
-        {ExprKind::SPAWN_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckSpawnWithException(StaticCast<const SpawnWithException&>(expr), topLevelFunc); }},
-        {ExprKind::TYPECAST_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckTypeCastWithException(StaticCast<const TypeCastWithException&>(expr), topLevelFunc); }},
-        {ExprKind::INTRINSIC_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckIntrinsicWithException(StaticCast<const IntrinsicWithException&>(expr), topLevelFunc); }},
-        {ExprKind::ALLOCATE_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckAllocateWithException(StaticCast<const AllocateWithException&>(expr), topLevelFunc); }},
-        {ExprKind::RAW_ARRAY_ALLOCATE_WITH_EXCEPTION, [this, &expr, &topLevelFunc]() {
-            CheckRawArrayAllocateWithException(
-                StaticCast<const RawArrayAllocateWithException&>(expr), topLevelFunc); }},
+        {ExprKind::GOTO, [this, &expr, &topLevelFunc]() { CheckGoTo(StaticCast<const GoTo&>(expr), topLevelFunc); }},
+        {ExprKind::EXIT, [this, &expr, &topLevelFunc]() { CheckExit(StaticCast<const Exit&>(expr), topLevelFunc); }},
+        {ExprKind::RAISE_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckRaiseException(StaticCast<const RaiseException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::BRANCH,
+            [this, &expr, &topLevelFunc]() { CheckBranch(StaticCast<const Branch&>(expr), topLevelFunc); }},
+        {ExprKind::MULTIBRANCH,
+            [this, &expr, &topLevelFunc]() { CheckMultiBranch(StaticCast<const MultiBranch&>(expr), topLevelFunc); }},
+        {ExprKind::APPLY_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckApplyWithException(StaticCast<const ApplyWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::INVOKE_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckInvokeWithException(StaticCast<const InvokeWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::INVOKESTATIC_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckInvokeStaticWithException(StaticCast<const InvokeStaticWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::INT_OP_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckIntOpWithException(StaticCast<const IntOpWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::SPAWN_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckSpawnWithException(StaticCast<const SpawnWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::TYPECAST_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckTypeCastWithException(StaticCast<const TypeCastWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::INTRINSIC_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckIntrinsicWithException(StaticCast<const IntrinsicWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::ALLOCATE_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckAllocateWithException(StaticCast<const AllocateWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::RAW_ARRAY_ALLOCATE_WITH_EXCEPTION,
+            [this, &expr, &topLevelFunc]() {
+                CheckRawArrayAllocateWithException(
+                    StaticCast<const RawArrayAllocateWithException&>(expr), topLevelFunc);
+            }},
+        {ExprKind::START_REGION,
+            [this, &expr, &topLevelFunc]() { CheckStartRegion(StaticCast<const StartRegion&>(expr), topLevelFunc); }},
+        {ExprKind::END_REGION,
+            [this, &expr, &topLevelFunc]() { CheckEndRegion(StaticCast<const EndRegion&>(expr), topLevelFunc); }},
     };
     if (auto it = actionMap.find(expr.GetExprKind()); it != actionMap.end()) {
         it->second();
     } else {
-        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + ".");
+        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + "`.");
     }
+}
+
+void CHIRChecker::CheckStartRegion(const StartRegion& expr, const Func& topLevelFunc)
+{
+    OperandNumIsEqual(0, expr, topLevelFunc);
+}
+
+void CHIRChecker::CheckEndRegion(const EndRegion& expr, const Func& topLevelFunc)
+{
+    OperandNumIsEqual(0, expr, topLevelFunc);
 }
 
 void CHIRChecker::CheckGoTo(const GoTo& expr, const Func& topLevelFunc)
@@ -1992,7 +2024,7 @@ void CHIRChecker::CheckApplyBase(const ApplyBase& expr, const Func& topLevelFunc
     auto instFuncType = CalculateInstFuncType(
         *calleeType, instTypeArgs, genericTypeParams, expr.GetInstParentCustomTyOfCallee(builder));
     CheckApplyFuncArgs(
-        expr.GetArgs(), instFuncType->GetParamTypes(), calleeType->HasVarArg(), *expr.GetRawExpr(), topLevelFunc);
+        expr.GetArgs(), instFuncType->GetParamTypes(), calleeType->HasVarArg(), *expr.GetRawExpr(), *expr.GetCallee(), topLevelFunc);
 
     // 6. check return value
     CheckApplyFuncRetValue(*instFuncType->GetReturnType(), *expr.GetRawExpr(), topLevelFunc);
@@ -2144,7 +2176,7 @@ FuncType* CHIRChecker::CalculateInstFuncType(
 }
 
 void CHIRChecker::CheckApplyFuncArgs(const std::vector<Value*>& args,
-    const std::vector<Type*>& instParamTypes, bool varArgs, const Expression& expr, const Func& topLevelFunc)
+    const std::vector<Type*>& instParamTypes, bool varArgs, const Expression& expr, const Value& callee, const Func& topLevelFunc)
 {
     // 1. don't check variable args's size
     // 2. func args' size must be func params' size
@@ -2155,20 +2187,33 @@ void CHIRChecker::CheckApplyFuncArgs(const std::vector<Value*>& args,
         ErrorInFunc(topLevelFunc, errMsg);
         return;
     }
+
+    bool ctorCall{false};
+    if (auto func = DynamicCast<FuncBase*>(&callee)) {
+        ctorCall = func->IsConstructor();
+    }
     // 3. func arg can set to func param
     for (size_t i = 0; i < instParamTypes.size(); ++i) {
-        if (!TypeIsExpected(*args[i]->GetType(), *instParamTypes[i])) {
+        auto srcType = args[i]->GetType();
+        if (ctorCall && i == 0) {
+            srcType = builder.SubstituteModal(srcType, callee.GetType()->Modal());
+        }
+        if (!TypeIsExpected(*srcType, *instParamTypes[i])) {
             TypeCheckError(expr, *args[i], instParamTypes[i]->ToString(), topLevelFunc);
         }
     }
 }
 
-void CHIRChecker::CheckApplyFuncRetValue(const Type& instRetType, const Expression& expr, const Func& topLevelFunc)
+void CHIRChecker::CheckApplyFuncRetValue(Type& instRetType, const Expression& expr, const Func& topLevelFunc)
 {
     // 1. check func return value's type, `instRetType` should be src, the second condition is a hack,
     // because some functions' return type is `This`, need to fix
     auto retValue = expr.GetResult();
     CJC_NULLPTR_CHECK(retValue);
+    if (instRetType.Modal() != retValue->GetType()->Modal() && topLevelFunc.IsConstructor()) {
+        return CheckApplyFuncRetValue(
+            *builder.SubstituteModal(&instRetType, retValue->GetType()->Modal()), expr, topLevelFunc);
+    }
     if (!TypeIsExpected(instRetType, *retValue->GetType()) && !TypeIsExpected(*retValue->GetType(), instRetType)) {
         TypeCheckError(expr, *retValue, instRetType.ToString(), topLevelFunc);
     }
@@ -2705,7 +2750,7 @@ void CHIRChecker::CheckIntOpWithException(const IntOpWithException& expr, const 
     } else if (exprKind >= ExprKind::ADD && exprKind <= ExprKind::OR) {
         CheckBinaryExprBase(BinaryExprBase(&expr), topLevelFunc);
     } else {
-        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind " + expr.GetOpKindName() + ".");
+        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetOpKindName() + "`.");
     }
 }
 
@@ -2763,7 +2808,7 @@ void CHIRChecker::CheckBinaryExprBase(const BinaryExprBase& expr, const Func& to
     } else if (exprKind >= ExprKind::AND && exprKind <= ExprKind::OR) {
         CheckLogicExpression(expr, topLevelFunc);
     } else {
-        WarningInExpr(topLevelFunc, *expr.GetRawExpr(), "find unrecongnized ExprKind " + expr.GetExprKindName() + ".");
+        WarningInExpr(topLevelFunc, *expr.GetRawExpr(), "find unrecongnized ExprKind `" + expr.GetExprKindName() + "`.");
     }
 }
 
@@ -3263,7 +3308,7 @@ void CHIRChecker::CheckControlFlowExpression(const Expression& expr, const Func&
     if (auto it = actionMap.find(expr.GetExprKind()); it != actionMap.end()) {
         it->second();
     } else {
-        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + ".");
+        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + "`.");
     }
 }
 
@@ -3358,11 +3403,15 @@ void CHIRChecker::CheckOtherExpression(const Expression& expr, const Func& topLe
             CheckGetRTTI(StaticCast<const GetRTTI&>(expr), topLevelFunc); }},
         {ExprKind::GET_RTTI_STATIC, [this, &expr, &topLevelFunc]() {
             CheckGetRTTIStatic(StaticCast<const GetRTTIStatic&>(expr), topLevelFunc); }},
+        {ExprKind::START_REGION, [this, &expr, &topLevelFunc]() {
+            CheckStartRegion(StaticCast<const StartRegion&>(expr), topLevelFunc); }},
+        {ExprKind::END_REGION, [this, &expr, &topLevelFunc]() {
+            CheckEndRegion(StaticCast<const EndRegion&>(expr), topLevelFunc); }},
     };
     if (auto it = actionMap.find(expr.GetExprKind()); it != actionMap.end()) {
         it->second();
     } else {
-        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + ".");
+        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + "`.");
     }
 }
 
@@ -4067,7 +4116,7 @@ void CHIRChecker::CheckMemoryExpression(const Expression& expr, const Func& topL
     if (auto it = actionMap.find(expr.GetExprKind()); it != actionMap.end()) {
         it->second();
     } else {
-        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + ".");
+        WarningInExpr(topLevelFunc, expr, "find unrecongnized ExprKind `" + expr.GetExprKindName() + "`.");
     }
 }
 

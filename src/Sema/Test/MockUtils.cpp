@@ -131,7 +131,7 @@ OwnedPtr<ArrayLit> MockUtils::WrapCallArgsIntoArray(const FuncDecl& mockedFunc)
         mockedMethodArgRefs.emplace_back(std::move(paramRef));
     }
 
-    auto baseTy = typeManager.GetStructTy(*arrayDecl, { typeManager.GetAnyTy() });
+    auto baseTy = typeManager.GetStructTy(*arrayDecl, {typeManager.GetAnyTy()}, {LocalModal::NOT});
     auto argRefsArray = CreateArrayLit(std::move(mockedMethodArgRefs), baseTy);
     AddArrayLitConstructor(*argRefsArray);
     argRefsArray->curFile = mockedFunc.curFile;
@@ -575,7 +575,7 @@ OwnedPtr<Expr> MockUtils::WrapCallTypeArgsIntoArray(const Decl& decl)
         }
     }
 
-    auto baseTy = typeManager.GetStructTy(*arrayDecl, { toStringDecl->ty });
+    auto baseTy = typeManager.GetStructTy(*arrayDecl, {toStringDecl->ty}, {LocalModal::NOT});
     auto arrayLitOfGetTypeCalls = CreateArrayLit(std::move(getTypeCalls), baseTy);
     AddArrayLitConstructor(*arrayLitOfGetTypeCalls);
     arrayLitOfGetTypeCalls->curFile = decl.curFile;
@@ -736,9 +736,9 @@ std::vector<Ptr<Ty>> MockUtils::AddGenericIfNeeded(Decl& originalDecl, Decl& moc
     } else {
         mockedDecl.generic = std::move(newGeneric);
         if (auto classDecl = As<ASTKind::CLASS_DECL>(&mockedDecl); classDecl) {
-            mockedDecl.ty = typeManager.GetClassTy(*classDecl, std::move(typeParamTys));
+            mockedDecl.ty = typeManager.GetClassTy(*classDecl, std::move(typeParamTys), {LocalModal::NOT});
         } else if (auto interfaceDecl = As<ASTKind::INTERFACE_DECL>(&mockedDecl); interfaceDecl) {
-            mockedDecl.ty = typeManager.GetInterfaceTy(*interfaceDecl, std::move(typeParamTys));
+            mockedDecl.ty = typeManager.GetInterfaceTy(*interfaceDecl, std::move(typeParamTys), {LocalModal::NOT});
         }
     }
 
@@ -795,7 +795,7 @@ OwnedPtr<RefExpr> MockUtils::CreateDeclBasedReferenceExpr(
             break;
         }
         case ASTKind::CLASS_DECL: {
-            ty = typeManager.GetClassTy(*StaticAs<ASTKind::CLASS_DECL>(&target), instTys);
+            ty = typeManager.GetClassTy(*StaticAs<ASTKind::CLASS_DECL>(&target), instTys, {LocalModal::NOT});
             break;
         }
         default:

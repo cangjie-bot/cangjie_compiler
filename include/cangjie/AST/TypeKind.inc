@@ -42,6 +42,7 @@ TYPE_KIND(TYPE_ARRAY, ArrayTy, "RawArray")             /**< Array. */
 TYPE_KIND(TYPE_VARRAY, VArrayTy, "VArray")             /**< VArray. */
 TYPE_KIND(TYPE_POINTER, PointerTy, "CPointer")         /**< Pointer. */
 TYPE_KIND(TYPE_CSTRING, CStringTy, "CString")          /**< CString. */
+TYPE_KIND(TYPE_COPY, Copy, "Copy")                     /**< Copy. */
 TYPE_KIND(TYPE_CLASS, ClassTy, "Class")                /**< Class. */
 TYPE_KIND(TYPE_INTERFACE, InterfaceTy, "Interface")    /**< Interface. */
 TYPE_KIND(TYPE, TypeAliasTy, "TypeAlias")              /**< Type alias ty. */

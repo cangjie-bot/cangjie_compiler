@@ -12,11 +12,11 @@
 
 #include "MergeAnnoFromCjd.h"
 
+#include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/PrintNode.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/AST/Walker.h"
-#include "cangjie/Utils/Casting.h"
 #include "cangjie/Utils/ICEUtil.h"
 #include "cangjie/Utils/SafePointer.h"
 

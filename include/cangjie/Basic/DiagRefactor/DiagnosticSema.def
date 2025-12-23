@@ -413,6 +413,19 @@ ERROR(sema_hide_compile_time_invisible, "'@!Hide' annotation must be visible at 
 ERROR(sema_hide_diff_param, "the parameter 'isChecked' of '@!Hide' is %s")
 WARNING(sema_hide_must_at_end, APILEVEL_CHECK, "annotation '%s' must be placed below all macros and annotations")
 
+// modal type
+ERROR(sema_global_var_local_modal, "%s variable '%s' cannot have local modal '%s', must be @~local")
+ERROR(sema_bad_external_local_arg, "cannot pass argument of external '%s' to @local! parameter '%s'")
+ERROR(sema_bad_internal_local_return, "cannot return expression of internal @local! type")
+ERROR(sema_exclave_outside_function, "exclave must used in a function")
+ERROR(sema_nested_exclave, "exclave cannot be nested", {"outer exclave is here"})
+ERROR(sema_unexpected_modal_type, "cannot use modal type on this element")
+ERROR(sema_copy_struct_bad_field, "cannot declare non-Copy type field '%s' in Copy struct '%s'")
+ERROR(sema_capture_bad_local, "cannot capture %s variable '%s' in %s %s")
+ERROR(sema_local_modal_not_satisfied, "expected expression of '%s' here, got '%s'")
+ERROR(sema_bad_local_assignment, "cannot assign%s to expression of '%s' type")
+ERROR(sema_exclave_in_ctor, "cannot use exclave expression in %s")
+
 WARNING(sema_unused_import, UNUSED, "unused import '%s'", "unused import")
 
 ERROR(sema_diag_end, "")

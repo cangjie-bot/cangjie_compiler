@@ -1198,6 +1198,18 @@ VisitAction WalkerT<NodeT>::Walk(Ptr<NodeT> curNode) const
                 action = VisitAction::WALK_CHILDREN;
                 break;
             }
+            case ASTKind::THIS_PARAM: {
+                action = VisitAction::WALK_CHILDREN;
+                break;
+            }
+            case ASTKind::EXCLAVE_EXPR: {
+                auto ee = StaticAs<ASTKind::EXCLAVE_EXPR>(curNode);
+                if (Walk(ee->body.get()) == VisitAction::STOP_NOW) {
+                    return VisitAction::STOP_NOW;
+                }
+                action = VisitAction::WALK_CHILDREN;
+                break;
+            }
             default: {
                 action = VisitAction::WALK_CHILDREN;
             }

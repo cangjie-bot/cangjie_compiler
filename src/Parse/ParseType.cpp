@@ -28,7 +28,7 @@ OwnedPtr<AST::Type> ParserImpl::ParseBaseType()
     if (Skip(TokenKind::LPAREN)) {
         return ParseTypeWithParen();
     }
-    if (SeeingPrimTypes()) {
+    if (SeeingPrimitiveType()) {
         OwnedPtr<PrimitiveType> primType = MakeOwned<PrimitiveType>();
         primType->begin = lookahead.Begin();
         primType->end = lookahead.End();
@@ -298,14 +298,37 @@ OwnedPtr<AST::Type> ParserImpl::ParseType()
 {
     auto postType = ParsePrefixType();
     if (Seeing(TokenKind::ARROW)) {
-            if (postType->astKind == ASTKind::FUNC_TYPE) {
-                DiagRedundantArrowAfterFunc(*postType);
-                ConsumeUntilAny({TokenKind::RCURL, TokenKind::NL}, false);
-            } else {
-                DiagParseExpectedParenthis(postType);
-            }
+        if (postType->astKind == ASTKind::FUNC_TYPE) {
+            DiagRedundantArrowAfterFunc(*postType);
+            ConsumeUntilAny({TokenKind::RCURL, TokenKind::NL}, false);
+        } else {
+            DiagParseExpectedParenthesis(postType);
+        }
+    }
+    postType->modal = ParseModalInfo();
+    if (postType->modal) {
+        postType->end = postType->modal.End();
     }
     return postType;
+}
+
+ModalASTInfo ParserImpl::ParseModalInfo()
+{
+    bool hasLocal{false};
+    ModalASTInfo modalInfo{};
+    if (!hasLocal) {
+        if (Skip(TokenKind::LOCAL_NOT)) {
+            hasLocal = true;
+            modalInfo.SetLocal(LocalModalAST::NOT, lastToken.Begin());
+        } else if (Skip(TokenKind::LOCAL_QUES)) {
+            hasLocal = true;
+            modalInfo.SetLocal(LocalModalAST::HALF, lastToken.Begin());
+        } else if (Skip(TokenKind::LOCAL_EXCL)) {
+            hasLocal = true;
+            modalInfo.SetLocal(LocalModalAST::FULL, lastToken.Begin());
+        }
+    }
+    return modalInfo;
 }
 
 OwnedPtr<AST::RefType> ParserImpl::ParseRefType(bool onlyRef)

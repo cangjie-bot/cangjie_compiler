@@ -60,7 +60,7 @@ bool IsContextualKeyword(std::string_view s)
     }
     return names.count(s) == 1;
 }
-}
+} // namespace Cangjie
 
 bool LexerImpl::IsCurrentCharLineTerminator() const
 {
@@ -310,6 +310,10 @@ TokenKind LexerImpl::LookupKeyword(const std::string& literal)
         map[TOKENS[static_cast<unsigned char>(TokenKind::RESUME)]] = TokenKind::RESUME;
         map[TOKENS[static_cast<unsigned char>(TokenKind::THROWING)]] = TokenKind::THROWING;
         map[TOKENS[static_cast<unsigned char>(TokenKind::HANDLE)]] = TokenKind::HANDLE;
+        map[TOKENS[static_cast<unsigned char>(TokenKind::LOCAL_NOT)]] = TokenKind::LOCAL_NOT;
+        map[TOKENS[static_cast<unsigned char>(TokenKind::LOCAL_EXCL)]] = TokenKind::LOCAL_EXCL;
+        map[TOKENS[static_cast<unsigned char>(TokenKind::LOCAL_QUES)]] = TokenKind::LOCAL_QUES;
+        map[TOKENS[static_cast<unsigned char>(TokenKind::EXCLAVE)]] = TokenKind::EXCLAVE;
         return map;
     }();
     auto it = tokenMap.find(literal);
@@ -1622,11 +1626,55 @@ void LexerImpl::ScanSymbolGreaterThan()
 
 void LexerImpl::ScanSymbolAt()
 {
+    auto cur = pCurrent;
+    auto nex = pNext;
     ReadUTF8Char();
     if (currentChar == '!') {
         return;
     }
-    Back();
+    // read if there is ~local, local!, or local? after '@', return if yes, rollback if no
+    bool hasTilde{false};
+    if (currentChar == '~') {
+        hasTilde = true;
+    } else if (currentChar != 'l') {
+        Back();
+        // not local modal, restore the current char, return only '@'
+        return;
+    } else {
+        Back();
+    }
+    const std::string_view local{"local"};
+    if (pInputEnd - pNext < static_cast<long>(local.size())) {
+        Back();
+        return;
+    }
+    if (std::string_view(pNext, local.size()) == local) {
+        pNext += local.size();
+        pCurrent += local.size();
+    } else {
+        // scan local failed
+        if (hasTilde) {
+            // @~ is not a valid token, rollback to where only '@' is scanned
+            Back();
+        }
+        // otherwise only '@' is scanned
+        return;
+    }
+    const size_t localLen = local.size() + 1;
+    if (!hasTilde) {
+        ReadUTF8Char();
+        if (currentChar == '!' || currentChar == '?') {
+            CJC_ASSERT(std::string_view(nex, localLen) == "local?" || std::string_view(nex, localLen) == "local!");
+            return;
+        }
+        Back();
+    } else {
+        CJC_ASSERT(std::string_view(nex, localLen) == "~local");
+        return;
+    }
+    // scan local? failed, rollback to where only '@' is scanned
+    pCurrent = cur;
+    pNext = nex;
 }
 
 void LexerImpl::ScanSymbolEqual()
@@ -1689,7 +1737,7 @@ void LexerImpl::ScanSymbolQuest()
         ReadUTF8Char();
     }
 }
- 
+
 void LexerImpl::ScanSymbolColon()
 {
     ReadUTF8Char();

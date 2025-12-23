@@ -2300,5 +2300,30 @@ private:
 
     std::vector<Type*> instantiateTys;
 };
+
+/// @brief Mark the beginning of a region. This happens normally in the entry block of a function, otherwise it is
+/// because of a function inline.
+class StartRegion : public Expression {
+    friend class CHIRContext;
+    friend class CHIRBuilder;
+
+public:
+    explicit StartRegion(Block* parent);
+    ~StartRegion() override = default;
+    StartRegion* Clone(CHIRBuilder& builder, Block& parent) const override;
+};
+
+/// @brief Mark the end of a region. This happens normally in the exit block of a function, otherwise it is because of a
+/// function inline or exclave expr.
+class EndRegion : public Expression {
+    friend class CHIRContext;
+    friend class CHIRBuilder;
+
+public:
+    explicit EndRegion(Block* parent);
+    ~EndRegion() override = default;
+    EndRegion* Clone(CHIRBuilder& builder, Block& parent) const override;
+};
+
 } // namespace Cangjie::CHIR
 #endif // CANGJIE_CHIR_EXPRESSION_H

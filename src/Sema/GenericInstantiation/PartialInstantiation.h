@@ -101,6 +101,7 @@ private:
     static OwnedPtr<AST::TokenPart> InstantiateTokenPart(const AST::TokenPart& tp, const VisitFunc& visitor);
     static OwnedPtr<AST::QuoteExpr> InstantiateQuoteExpr(const AST::QuoteExpr& qe, const VisitFunc& visitor);
     static OwnedPtr<AST::IfExpr> InstantiateIfExpr(const AST::IfExpr& ie, const VisitFunc& visitor);
+    static OwnedPtr<AST::PrimitiveTypeExpr> InstantiatePrimitiveTypeExpr(const AST::PrimitiveTypeExpr& pte);
     static OwnedPtr<AST::TryExpr> InstantiateTryExpr(const AST::TryExpr& te, const VisitFunc& visitor);
     static OwnedPtr<AST::ThrowExpr> InstantiateThrowExpr(const AST::ThrowExpr& te, const VisitFunc& visitor);
     static OwnedPtr<AST::ReturnExpr> InstantiateReturnExpr(const AST::ReturnExpr& re, const VisitFunc& visitor);
@@ -137,6 +138,7 @@ private:
         const AST::StrInterpolationExpr& sie, const VisitFunc& visitor);
     static OwnedPtr<AST::TrailingClosureExpr> InstantiateTrailingClosureExpr(
         const AST::TrailingClosureExpr& tc, const VisitFunc& visitor);
+    static OwnedPtr<AST::ExclaveExpr> InstantiateExclaveExpr(const AST::ExclaveExpr& ee, const VisitFunc& visitor);
     static OwnedPtr<AST::IsExpr> InstantiateIsExpr(const AST::IsExpr& ie, const VisitFunc& visitor);
     static OwnedPtr<AST::AsExpr> InstantiateAsExpr(const AST::AsExpr& ae, const VisitFunc& visitor);
     static OwnedPtr<AST::OptionalExpr> InstantiateOptionalExpr(const AST::OptionalExpr& oe, const VisitFunc& visitor);
@@ -162,6 +164,7 @@ private:
         const AST::GenericConstraint& gc, const VisitFunc& visitor);
     static OwnedPtr<AST::FuncBody> InstantiateFuncBody(const AST::FuncBody& fb, const VisitFunc& visitor);
     static OwnedPtr<AST::VarDecl> InstantiateFuncParam(const AST::FuncParam& fp, const VisitFunc& visitor);
+    static OwnedPtr<AST::ThisParam> InstantiateThisParam(const AST::ThisParam& tp, const VisitFunc& visitor);
     static OwnedPtr<AST::FuncParamList> InstantiateFuncParamList(
         const AST::FuncParamList& fpl, const VisitFunc& visitor);
     static OwnedPtr<AST::FuncArg> InstantiateFuncArg(const AST::FuncArg& fa, const VisitFunc& visitor);

@@ -74,6 +74,11 @@ void TypeChecker::TypeCheckerImpl::CheckThisOrSuper(const ASTContext& ctx, RefEx
     // Legality of using this/super will be checked after typecheck in 'CheckLegalityOfReference'.
 }
 
+void TypeChecker::TypeCheckerImpl::ReportUnexpectedModalType(const RefExpr& re)
+{
+    diag.DiagnoseRefactor(DiagKindRefactor::sema_unexpected_modal_type, re);
+}
+
 Ptr<Ty> TypeChecker::TypeCheckerImpl::InferTypeOfThis(RefExpr& re, InheritableDecl& objDecl)
 {
     Ptr<InheritableDecl> outerDecl = &objDecl;
@@ -95,7 +100,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::InferTypeOfThis(RefExpr& re, InheritableDe
     // all this reference are checked as This type if possible (i.e. it is instance of class decl).
     auto ret = ReplaceWithGenericTyInInheritableDecl(outerDecl->ty, *outerDecl, *typeDecl);
     if (auto cd = DynamicCast<ClassTy>(ret)) {
-        ret = typeManager.GetClassThisTy(*cd->decl, cd->typeArgs);
+        ret = typeManager.GetClassThisTy(*cd->decl, cd->typeArgs, re.modal.ToModalInfo());
     }
     return ret;
 }

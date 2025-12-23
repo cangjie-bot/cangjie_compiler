@@ -75,7 +75,7 @@ OwnedPtr<VarDecl> CreateStopVar(const RangeExpr& rangeExpr)
 
 OwnedPtr<VarDecl> CreateFirstFlag(const RangeExpr& rangeExpr)
 {
-    auto boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    auto boolTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     auto firstFlag = CreateVarDecl("$isFirst-compiler", CreateLitConstExpr(LitConstKind::BOOL, "true", boolTy));
     firstFlag->isVar = true;
     firstFlag->begin = rangeExpr.begin;
@@ -88,7 +88,7 @@ OwnedPtr<BinaryExpr> CreateRangeCond(
 {
     auto rangeCond = CreateBinaryExpr(GetVarRef(index, rangeStop), GetVarRef(rangeStop, rangeStop), opToken);
     rangeCond->curFile = forInExpr.curFile;
-    rangeCond->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    rangeCond->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     rangeCond->begin = forInExpr.inExpression->begin;
     rangeCond->end = forInExpr.inExpression->end;
     return rangeCond;
@@ -106,7 +106,7 @@ OwnedPtr<IfExpr> CreateGuard(ForInExpr& forInExpr, BinaryExpr& rangeCond, const 
             auto andCond =
                 CreateBinaryExpr(ASTCloner::Clone(Ptr(&rangeCond)), std::move(forInExpr.patternGuard), TokenKind::AND);
             andCond->curFile = forInExpr.curFile;
-            andCond->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+            andCond->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
             andCond->begin = andCond->rightExpr->begin;
             andCond->end = andCond->rightExpr->end;
             condBody->condExpr = std::move(andCond);
@@ -118,14 +118,14 @@ OwnedPtr<IfExpr> CreateGuard(ForInExpr& forInExpr, BinaryExpr& rangeCond, const 
             condBody->condExpr = ASTCloner::Clone(Ptr(&rangeCond));
         } else {
             condBody->condExpr = MakeOwned<AST::LitConstExpr>(LitConstKind::BOOL, "true");
-            condBody->condExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+            condBody->condExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
             condBody->condExpr->begin = rangeCond.begin;
             condBody->condExpr->end = rangeCond.end;
             condBody->condExpr->EnableAttr(Attribute::COMPILER_ADD);
         }
     }
     condBody->thenBody = std::move(forInExpr.body);
-    condBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    condBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     condBody->EnableAttr(Attribute::IMPLICIT_ADD);
     return condBody;
 }
@@ -161,7 +161,7 @@ OwnedPtr<IfExpr> CreateFirstIf(const ForInExpr& forInExpr, VarDecl& firstFlag, O
     firstRun->condExpr->begin = firstRun->begin = forInExpr.inPos;
     firstRun->condExpr->end = firstRun->end = forInExpr.inPos + inLen;
     firstRun->thenBody = MakeOwnedNode<Block>();
-    firstRun->thenBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    firstRun->thenBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     firstRun->thenBody->begin = forInExpr.body->begin;
     firstRun->thenBody->end = forInExpr.body->end;
     // first = false
@@ -169,23 +169,23 @@ OwnedPtr<IfExpr> CreateFirstIf(const ForInExpr& forInExpr, VarDecl& firstFlag, O
     assignFalse->op = TokenKind::ASSIGN;
     assignFalse->curFile = forInExpr.curFile;
     assignFalse->leftValue = GetVarRef(firstFlag, *forInExpr.inExpression);
-    assignFalse->leftValue->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    assignFalse->leftValue->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     assignFalse->rightExpr = MakeOwned<AST::LitConstExpr>(LitConstKind::BOOL, "false");
     assignFalse->rightExpr->curFile = forInExpr.curFile;
-    assignFalse->rightExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
-    assignFalse->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    assignFalse->rightExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
+    assignFalse->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     assignFalse->begin = forInExpr.inPos;
     assignFalse->end = forInExpr.inPos + inLen;
     firstRun->thenBody->body.push_back(std::move(assignFalse));
 
     auto elseBody = MakeOwnedNode<Block>();
     elseBody->body.push_back(std::move(update));
-    elseBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    elseBody->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     firstRun->begin = elseBody->begin = forInExpr.body->begin;
     firstRun->end = elseBody->end = forInExpr.body->end;
     firstRun->elseBody = std::move(elseBody);
 
-    firstRun->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    firstRun->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     return firstRun;
 }
 
@@ -215,13 +215,13 @@ OwnedPtr<MatchCase> CreateNoneCaseForForInIter(Ptr<Decl> optionDecl, Expr& refLo
     auto breakExpr = MakeOwnedNode<JumpExpr>();
     breakExpr->isBreak = true;
     breakExpr->refLoop = &refLoop;
-    breakExpr->ty = TypeManager::GetNothingTy();
+    breakExpr->ty = TypeManager::GetNothingTy({});
     nonePattern->constructor = std::move(noneRef);
     caseNone->patterns.emplace_back(std::move(nonePattern));
     caseNone->exprOrDecls = MakeOwnedNode<Block>();
     caseNone->exprOrDecls->body.push_back(std::move(breakExpr));
-    caseNone->exprOrDecls->ty = TypeManager::GetNothingTy();
-    caseNone->ty = TypeManager::GetNothingTy();
+    caseNone->exprOrDecls->ty = TypeManager::GetNothingTy({});
+    caseNone->ty = TypeManager::GetNothingTy({});
     return caseNone;
 }
 
@@ -270,17 +270,17 @@ OwnedPtr<MatchCase> CreateSomeCaseForForInIter(
     auto continueExpr = MakeOwnedNode<JumpExpr>();
     continueExpr->refLoop = &refLoop;
     continueExpr->isBreak = false;
-    continueExpr->ty = TypeManager::GetNothingTy();
+    continueExpr->ty = TypeManager::GetNothingTy({});
     wildCase->exprOrDecls = MakeOwnedNode<Block>();
     wildCase->exprOrDecls->body.push_back(std::move(continueExpr));
-    wildCase->exprOrDecls->ty = TypeManager::GetNothingTy();
-    wildCase->ty = TypeManager::GetNothingTy();
+    wildCase->exprOrDecls->ty = TypeManager::GetNothingTy({});
+    wildCase->ty = TypeManager::GetNothingTy({});
     insideMatch->matchCases.push_back(std::move(wildCase));
 
     caseSome->exprOrDecls = MakeOwnedNode<Block>();
     caseSome->exprOrDecls->body.push_back(std::move(insideMatch));
-    caseSome->exprOrDecls->ty = TypeManager::GetNothingTy();
-    caseSome->ty = TypeManager::GetNothingTy();
+    caseSome->exprOrDecls->ty = TypeManager::GetNothingTy({});
+    caseSome->ty = TypeManager::GetNothingTy({});
     return caseSome;
 }
 } // namespace
@@ -358,8 +358,8 @@ void TypeChecker::TypeCheckerImpl::DesugarForInCloseRange(ASTContext& ctx, AST::
     auto rangeCond = CreateRangeCond(forInExpr, *index, *rangeStop, increasing ? TokenKind::LE : TokenKind::GE);
     auto condBody = CreateGuard(forInExpr, *rangeCond, true);
     whileExpr->body->body.push_back(std::move(condBody));
-    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
-    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
+    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     auto refWhile = whileExpr.get();
 
     auto blockExpr = MakeOwnedNode<Block>();
@@ -439,8 +439,8 @@ void TypeChecker::TypeCheckerImpl::DesugarForInNonCloseRange(ASTContext& ctx, AS
     whileExpr->body->body.push_back(std::move(update));
     CopyBasicInfo(condBody->thenBody.get(), whileExpr->body.get());
     whileExpr->body->body.push_back(std::move(condBody));
-    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
-    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
+    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     auto refWhile = whileExpr.get();
 
     auto blockExpr = MakeOwnedNode<Block>();
@@ -500,7 +500,7 @@ void TypeChecker::TypeCheckerImpl::ReArrangeForInRangeExpr(ASTContext& ctx, ForI
     blockExpr->body.push_back(std::move(rangeStop));
     blockExpr->body.push_back(std::move(update));
     blockExpr->body.push_back(std::move(rangeCond));
-    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     forInExpr.inExpression = std::move(blockExpr);
     forInExpr.forInKind = ForInKind::FORIN_RANGE;
     /* setup flag for jumpExpr: continue/break */
@@ -510,7 +510,8 @@ void TypeChecker::TypeCheckerImpl::ReArrangeForInRangeExpr(ASTContext& ctx, ForI
 void TypeChecker::TypeCheckerImpl::ReArrangeForInStringExpr(ASTContext& ctx, ForInExpr& forInExpr)
 {
     // To : var iter = 0
-    auto litZero = CreateLitConstExpr(LitConstKind::INTEGER, "0", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+    auto litZero =
+        CreateLitConstExpr(LitConstKind::INTEGER, "0", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {}));
     auto index = CreateVarDecl(ITER_COMPILER, std::move(litZero));
     ctx.AddDeclName(std::make_pair(ITER_COMPILER, forInExpr.scopeName), *index);
     CopyBasicInfo(forInExpr.pattern, index.get());
@@ -561,7 +562,7 @@ void TypeChecker::TypeCheckerImpl::ReArrangeForInStringExpr(ASTContext& ctx, For
     blockExpr->body.push_back(std::move(index));
     blockExpr->body.push_back(std::move(tmp));
     blockExpr->body.push_back(std::move(end));
-    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     forInExpr.inExpression = std::move(blockExpr);
     forInExpr.forInKind = ForInKind::FORIN_STRING;
     /* setup flag for jumpExpr: continue/break */
@@ -625,7 +626,7 @@ void TypeChecker::TypeCheckerImpl::ReArrangeForInIterExpr(ASTContext& ctx, ForIn
     blockExpr->end = inExprEnd;
     blockExpr->body.push_back(std::move(iterator));
     blockExpr->body.push_back(std::move(matchExpr));
-    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     forInExpr.inExpression = std::move(blockExpr);
     forInExpr.forInKind = ForInKind::FORIN_ITER;
     /* setup flag for jumpExpr: continue/break */
@@ -676,7 +677,7 @@ void TypeChecker::TypeCheckerImpl::DesugarForInIter(ASTContext& ctx, AST::ForInE
     whileExpr->condExpr = MakeOwned<LitConstExpr>(LitConstKind::BOOL, "true");
     whileExpr->condExpr->begin = inExprBegin;
     whileExpr->condExpr->end = inExprEnd;
-    whileExpr->condExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    whileExpr->condExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     whileExpr->EnableAttr(Attribute::IMPLICIT_ADD);
 
     auto matchExpr = MakeOwnedNode<MatchExpr>();
@@ -712,14 +713,14 @@ void TypeChecker::TypeCheckerImpl::DesugarForInIter(ASTContext& ctx, AST::ForInE
 
     whileExpr->body = MakeOwnedNode<Block>();
     whileExpr->body->body.push_back(std::move(matchExpr));
-    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
-    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
+    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     // Connect vardecl and while expr.
     auto blockExpr = MakeOwnedNode<Block>();
     blockExpr->body.push_back(std::move(iterator));
     blockExpr->body.push_back(std::move(whileExpr));
     CopyBasicInfo(&forInExpr, blockExpr.get());
-    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    blockExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     AddCurFile(*blockExpr, forInExpr.curFile);
     forInExpr.desugarExpr = std::move(blockExpr);
 }
@@ -745,7 +746,8 @@ void TypeChecker::TypeCheckerImpl::DesugarForInIter(ASTContext& ctx, AST::ForInE
 void TypeChecker::TypeCheckerImpl::DesugarForInString(ASTContext& ctx, AST::ForInExpr& forInExpr)
 {
     // To : var iter = 0
-    auto litZero = CreateLitConstExpr(LitConstKind::INTEGER, "0", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+    auto litZero =
+        CreateLitConstExpr(LitConstKind::INTEGER, "0", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {}));
     auto index = CreateVarDecl(ITER_COMPILER, std::move(litZero));
     ctx.AddDeclName(std::make_pair(ITER_COMPILER, forInExpr.scopeName), *index);
     CopyBasicInfo(&forInExpr, index.get());
@@ -770,7 +772,7 @@ void TypeChecker::TypeCheckerImpl::DesugarForInString(ASTContext& ctx, AST::ForI
     CJC_ASSERT(end->ty && end->ty->kind != TypeKind::TYPE_INVALID);
     // To : where (iter < end)
     auto condition = CreateBinaryExpr(GetVarRef(*index), GetVarRef(*end), TokenKind::LT);
-    condition->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    condition->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     // To: if (guard) { body }
     auto condBody = CreateGuard(forInExpr, *condition, false);
 
@@ -803,7 +805,7 @@ void TypeChecker::TypeCheckerImpl::DesugarForInString(ASTContext& ctx, AST::ForI
     auto update = MakeOwnedNode<AssignExpr>();
     update->leftValue = GetVarRef(*index);
     update->rightExpr =
-        CreateLitConstExpr(LitConstKind::INTEGER, "1", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64));
+        CreateLitConstExpr(LitConstKind::INTEGER, "1", TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {}));
     update->op = TokenKind::ADD_ASSIGN;
     update->isCompound = true;
     AddCurFile(*update, forInExpr.curFile);
@@ -811,8 +813,8 @@ void TypeChecker::TypeCheckerImpl::DesugarForInString(ASTContext& ctx, AST::ForI
     CJC_ASSERT(updateTy && updateTy->kind != TypeKind::TYPE_INVALID);
     whileExpr->body->body.push_back(std::move(update));
     whileExpr->body->body.push_back(std::move(condBody));
-    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
-    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    whileExpr->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
+    whileExpr->body->ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     auto refWhile = whileExpr.get();
 
     auto blockExpr = MakeOwnedNode<Block>();
@@ -889,7 +891,7 @@ static bool IsCallRangeConstructor(const CallExpr& call)
     if (params.size() != rangeConstructorParamSize) {
         return false;
     }
-    auto b = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    auto b = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     constexpr size_t rangeConstructorIntLength{3};
     for (size_t i{0}; i < rangeConstructorIntLength; ++i) {
         if (!call.args[i]->ty->IsInteger()) {

@@ -55,7 +55,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryWithResourcesExpr(ASTContext& ctx, T
     return te.ty;
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryExpr(ASTContext& ctx, TryExpr& te)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::InferRefExpr(ASTContext& ctx, TryExpr& te)
 {
     if (!te.resourceSpec.empty()) {
         return SynTryWithResourcesExpr(ctx, te);

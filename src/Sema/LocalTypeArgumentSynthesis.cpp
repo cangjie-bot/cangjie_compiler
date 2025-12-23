@@ -323,7 +323,7 @@ bool LocalTypeArgumentSynthesis::UnifyTyVar(const Tracked<Ty>& argTTy, const Tra
             cms.front().hasAnyTy = true;
         } else if (auto ctt = DynamicCast<ClassThisTy*>(one)) {
             // For inferred type, the class this type should be substituted as original class type.
-            one = tyMgr.GetClassTy(*ctt->declPtr, ctt->typeArgs);
+            one = tyMgr.GetClassTy(*ctt->declPtr, ctt->typeArgs, ctt->modal);
         }
 
         if (deterministic && IsGreedySolution(*tyVar, *one, isUb)) {
@@ -582,8 +582,8 @@ void LocalTypeArgumentSynthesis::UpdateIdealTysInConstraints(PrimitiveTy& tgtTy)
         return;
     }
 
-    Ptr<Ty> idealInt = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_INT);
-    Ptr<Ty> idealFloat = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_FLOAT);
+    Ptr<Ty> idealInt = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_INT, {});
+    Ptr<Ty> idealFloat = TypeManager::GetPrimitiveTy(TypeKind::TYPE_IDEAL_FLOAT, {});
     auto& lbs = c[this->curTyVar].lbs;
     // Actually only one of the contains is true otherwise errors will be reported beforehand when checking
     // argTy <: paramTy and the program will not run up to here.
@@ -786,7 +786,7 @@ std::optional<TypeSubst> LocalTypeArgumentSynthesis::FindSolution(
             Ptr<Ty> tyM = MeetUpperBounds(tyMgr, tyVar, thisM[tyVar].ubs, tyVarsOfThisM);
             bool validAnyTy = hasAnyTy || (deterministic && thisM[tyVar].ubs.count(tyMgr.GetAnyTy()) > 0);
             bool validNothingTy =
-                hasNothingTy || (deterministic && thisM[tyVar].lbs.count(TypeManager::GetNothingTy()) > 0);
+                hasNothingTy || (deterministic && thisM[tyVar].lbs.count(TypeManager::GetNothingTy({})) > 0);
             if (IsValidSolution(*tyJ, validNothingTy, validAnyTy)) {
                 thisSubst.emplace(std::make_pair(tyVar, tyJ));
                 newInfo = true;

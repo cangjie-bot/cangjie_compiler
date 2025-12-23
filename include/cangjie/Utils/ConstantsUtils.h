@@ -77,6 +77,7 @@ inline const std::string CTYPE_NAME = "CType";
 inline const std::string RAW_ARRAY_NAME = "RawArray";
 constexpr std::string_view CPOINTER_NAME = "CPointer";
 constexpr std::string_view CSTRING_NAME = "CString";
+constexpr std::string_view COPY_NAME = "Copy";
 constexpr std::string_view CFUNC_NAME = "CFunc";
 inline const std::string VARRAY_NAME = "VArray";
 inline const std::string TOSTRING_NAME = "ToString";

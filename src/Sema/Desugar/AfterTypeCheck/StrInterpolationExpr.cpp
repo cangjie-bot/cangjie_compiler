@@ -28,7 +28,7 @@ std::vector<OwnedPtr<FuncArg>> EstimatingLengthOfString(const StrInterpolationEx
             size += lce->stringValue.size();
         }
     }
-    auto int64Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+    auto int64Ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, {});
     auto ctorArg = CreateLitConstExpr(LitConstKind::INTEGER, std::to_string(size), int64Ty);
     std::vector<OwnedPtr<FuncArg>> args;
     args.emplace_back(CreateFuncArg(std::move(ctorArg)));
@@ -124,7 +124,7 @@ OwnedPtr<CallExpr> TypeChecker::TypeCheckerImpl::DesugarStrPartExpr(
     CopyBasicInfo(&expr, appendFunc.get());
     // sb.append() return type is unit.
     auto appendCall = CreateCallExpr(
-        std::move(appendFunc), std::move(appendArgs), nullptr, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
+        std::move(appendFunc), std::move(appendArgs), nullptr, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {}));
     appendCall->resolvedFunction = DynamicCast<FuncDecl*>(appendDecl);
     return appendCall;
 }

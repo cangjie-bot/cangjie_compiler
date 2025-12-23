@@ -285,7 +285,7 @@ OwnedPtr<Expr> ASTFactory::WrapEntity(OwnedPtr<Expr> expr, Ty& wrapTy)
 // OptionType
 Ptr<Ty> ASTFactory::GetOptionTy(Ptr<Ty> ty)
 {
-    return typeManager.GetEnumTy(*GetOptionDecl(), {ty});
+    return typeManager.GetEnumTy(*GetOptionDecl(), {ty}, ty->modal);
 }
 
 Ptr<EnumDecl> ASTFactory::GetOptionDecl()
@@ -372,7 +372,7 @@ OwnedPtr<Expr> ASTFactory::CreateOptionMatch(
 
 Ptr<Ty> ASTFactory::GetObjCTy()
 {
-    return typeManager.GetPointerTy(typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT));
+    return typeManager.GetPointerTy(typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT), {});
 }
 
 OwnedPtr<Expr> ASTFactory::CreateObjCobjectNull()
@@ -420,7 +420,7 @@ OwnedPtr<Expr> ASTFactory::WrapObjCMirrorOption(
     const Ptr<Expr> entity, Ptr<ClassLikeDecl> mirror, const Ptr<File> curFile)
 {
     std::vector<OwnedPtr<Node>> nodes;
-    auto baseTy = typeManager.GetPointerTy(typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT));
+    auto baseTy = typeManager.GetPointerTy(typeManager.GetPrimitiveTy(TypeKind::TYPE_UNIT), {});
     auto tmpVar = CreateTmpVarDecl(CreateType(baseTy), entity);
     CopyBasicInfo(tmpVar->initializer.get(), tmpVar.get());
     tmpVar->begin = entity->begin;
@@ -500,7 +500,7 @@ OwnedPtr<Expr> ASTFactory::CreateMirrorConstructorCall(OwnedPtr<Expr> entity, Pt
 OwnedPtr<Expr> ASTFactory::CreateGetObjcEntityOrNullCall(VarDecl &entity, Ptr<File> file)
 {
     // CPointer<Unit>()
-    auto baseTy = typeManager.GetPointerTy(typeManager.GetInvalidTy());
+    auto baseTy = typeManager.GetPointerTy(typeManager.GetInvalidTy(), {});
     auto extendTy = typeManager.GetTyForExtendMap(*baseTy);
     auto extends = typeManager.GetBuiltinTyExtends(*extendTy);
     CJC_ASSERT(extends.size() != 0);
@@ -583,7 +583,7 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(Decl& target, FuncDecl& ctor, 
     std::transform(
         wrapperParams.begin(), wrapperParams.end(), std::back_inserter(wrapperParamTys), [](auto& p) { return p->ty; });
 
-    auto wrapperTy = typeManager.GetFunctionTy(wrapperParamTys, registryIdTy, {.isC = true});
+    auto wrapperTy = typeManager.GetFunctionTy(wrapperParamTys, registryIdTy, {.isC = true}, {LocalModal::NOT});
 
     std::vector<OwnedPtr<FuncParamList>> wrapperParamLists;
     wrapperParamLists.emplace_back(std::move(wrapperParamList));
@@ -1529,7 +1529,7 @@ OwnedPtr<Expr> ASTFactory::CreateNativeLambdaForBlockType(Ty& ty, Ptr<File> curF
     const auto fty = DynamicCast<FuncTy>(&ty);
     CJC_NULLPTR_CHECK(fty);
 
-    std::vector<Ptr<Ty>> cArgTys { typeManager.GetPointerTy(bridge.GetNativeBlockABIDecl()->ty) };
+    std::vector<Ptr<Ty>> cArgTys{typeManager.GetPointerTy(bridge.GetNativeBlockABIDecl()->ty, {})};
     for (auto aty : fty->paramTys) {
         cArgTys.push_back(typeMapper.Cj2CType(aty));
     }
@@ -1598,7 +1598,7 @@ OwnedPtr<Expr> ASTFactory::CreateObjCBlockFromLambdaCall(OwnedPtr<Expr> funcExpr
     creatorFuncArgs.push_back(CreateFuncArg(
         CreateUnsafePointerCast(
             std::move(cfuncLambda), nativeAbiErasedFuncTy)));
-    auto pointerToAbiTy = typeManager.GetPointerTy(bridge.GetCangjieBlockABIDecl()->ty);
+    auto pointerToAbiTy = typeManager.GetPointerTy(bridge.GetCangjieBlockABIDecl()->ty, {});
     auto objcBlockDecl = bridge.GetObjCBlockDecl();
     CJC_NULLPTR_CHECK(objcBlockDecl);
     auto objcBlockTy = typeManager.GetInstantiatedTy(
@@ -2059,7 +2059,7 @@ OwnedPtr<Expr> ASTFactory::CreateUnsafePointerCast(OwnedPtr<Expr> expr, Ptr<Ty> 
     CJC_ASSERT(expr->ty->IsPointer() || expr->ty->IsCFunc());
     CJC_ASSERT(Ty::IsMetCType(*elementType));
     auto ptrExpr = MakeOwned<PointerExpr>();
-    auto pointerType = typeManager.GetPointerTy(elementType);
+    auto pointerType = typeManager.GetPointerTy(elementType, elementType->modal);
     CopyBasicInfo(expr, ptrExpr);
     ptrExpr->arg = CreateFuncArg(std::move(expr));
     ptrExpr->ty = pointerType;

@@ -62,7 +62,7 @@ private:
      * 3. get element ref from declared type(`srcType`) to user point type(`dstType`)
      * 4. store element ref from user point type(`srcType`) to declared type(`dstType`)
      */
-    bool TypeIsExpected(const Type& srcType, const Type& dstType);
+    bool TypeIsExpected(Type& srcType, Type& dstType);
     bool InstTypeArgsSatisfyGenericConstraints(
         const std::vector<Type*>& instTypeArgs, const std::vector<Type*>& genericTypeArgs);
     bool InstTypeCanSetToGenericRelatedType(Type& instType, const Type& genericRelatedType);
@@ -158,6 +158,8 @@ private:
     void CheckInvokeStaticWithException(const InvokeStaticWithException& expr, const Func& topLevelFunc);
     void CheckInvokeStaticBase(const InvokeStaticBase& expr, const Func& topLevelFunc);
     void CheckIntOpWithException(const IntOpWithException& expr, const Func& topLevelFunc);
+    void CheckStartRegion(const StartRegion& expr, const Func& topLevelFunc);
+    void CheckEndRegion(const EndRegion& expr, const Func& topLevelFunc);
     void CheckUnaryExprBase(const UnaryExprBase& expr, const Func& topLevelFunc);
     void CheckBinaryExprBase(const BinaryExprBase& expr, const Func& topLevelFunc);
     void CheckSpawnWithException(const SpawnWithException& expr, const Func& topLevelFunc);
@@ -217,7 +219,7 @@ private:
     void CheckApply(const Apply& expr, const Func& topLevelFunc);
     bool CheckCallee(const Value& callee, const Expression& expr, const Func& topLevelFunc);
     void CheckApplyFuncArgs(const std::vector<Value*>& args,
-        const std::vector<Type*>& instParamTypes, bool varArgs, const Expression& expr, const Func& topLevelFunc);
+        const std::vector<Type*>& instParamTypes, bool varArgs, const Expression& expr, const Value& callee, const Func& topLevelFunc);
     FuncType* CalculateInstFuncType(
         FuncType& originalFuncType, const std::vector<Type*>& instantiatedTypeArgs,
         const std::vector<GenericType*>& genericTypeParams, Type* instOuterType);
@@ -225,7 +227,7 @@ private:
         const std::vector<GenericType*>& genericTypeParams, const Expression& expr, const Func& topLevelFunc);
     bool CheckApplyThisType(
         const Value& callee, const Type* thisType, const Expression& expr, const Func& topLevelFunc);
-    void CheckApplyFuncRetValue(const Type& instRetType, const Expression& expr, const Func& topLevelFunc);
+    void CheckApplyFuncRetValue(Type& instRetType, const Expression& expr, const Func& topLevelFunc);
     void CheckInvoke(const Invoke& expr, const Func& topLevelFunc);
     bool CheckInvokeThisType(
         Type& objType, const Type* thisType, const Expression& expr, const Func& topLevelFunc);

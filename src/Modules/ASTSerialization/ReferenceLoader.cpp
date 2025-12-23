@@ -271,21 +271,21 @@ void ASTLoader::ASTLoaderImpl::SetTypeTy(FormattedIndex type, const PackageForma
 {
     Ptr<Ty> ty = TypeManager::GetInvalidTy();
     if constexpr (std::is_same_v<TypeT, CStringTy>) {
-        ty = TypeManager::GetCStringTy();
+        ty = TypeManager::GetCStringTy({});
     } else if constexpr (std::is_same_v<TypeT, PointerTy>) {
         CJC_ASSERT(typeObj.typeArgs() && typeObj.typeArgs()->size() == 1u);
-        ty = typeManager.GetPointerTy(LoadType(typeObj.typeArgs()->Get(0)));
+        ty = typeManager.GetPointerTy(LoadType(typeObj.typeArgs()->Get(0)), {});
     } else if constexpr (std::is_same_v<TypeT, ArrayTy>) {
         auto info = typeObj.info_as_ArrayTyInfo();
         CJC_NULLPTR_CHECK(info);
         unsigned int dims = static_cast<unsigned int>(info->dimsOrSize());
         CJC_ASSERT(typeObj.typeArgs() && typeObj.typeArgs()->size() == 1u);
-        ty = typeManager.GetArrayTy(LoadType(typeObj.typeArgs()->Get(0)), dims);
+        ty = typeManager.GetArrayTy(LoadType(typeObj.typeArgs()->Get(0)), dims, {});
     } else if constexpr (std::is_same_v<TypeT, VArrayTy>) {
         auto info = typeObj.info_as_ArrayTyInfo();
         CJC_NULLPTR_CHECK(info);
         CJC_ASSERT(typeObj.typeArgs() && typeObj.typeArgs()->size() == 1u);
-        ty = typeManager.GetVArrayTy(*LoadType(typeObj.typeArgs()->Get(0)), info->dimsOrSize());
+        ty = typeManager.GetVArrayTy(*LoadType(typeObj.typeArgs()->Get(0)), info->dimsOrSize(), {});
     } else if constexpr (std::is_same_v<TypeT, TupleTy>) {
         ty = typeManager.GetTupleTy(LoadTypeArgs(typeObj));
     } else if constexpr (std::is_same_v<TypeT, FuncTy>) {
@@ -303,17 +303,16 @@ void ASTLoader::ASTLoaderImpl::SetTypeTy(FormattedIndex type, const PackageForma
         }
         auto typeArgs = LoadTypeArgs(typeObj);
         if constexpr (std::is_same_v<TypeT, TypeAliasTy>) {
-            ty = typeManager.GetTypeAliasTy(*typeDecl, typeArgs);
+            ty = typeManager.GetTypeAliasTy(*typeDecl, typeArgs, {});
         } else if constexpr (std::is_same_v<TypeT, ClassTy>) {
-            ty = info->isThisTy()
-                ? typeManager.GetClassThisTy(*typeDecl, typeArgs)
-                : typeManager.GetClassTy(*typeDecl, typeArgs);
+            ty = info->isThisTy() ? typeManager.GetClassThisTy(*typeDecl, typeArgs, {})
+                                  : typeManager.GetClassTy(*typeDecl, typeArgs, {});
         } else if constexpr (std::is_same_v<TypeT, InterfaceTy>) {
-            ty = typeManager.GetInterfaceTy(*typeDecl, typeArgs);
+            ty = typeManager.GetInterfaceTy(*typeDecl, typeArgs, {});
         } else if constexpr (std::is_same_v<TypeT, StructTy>) {
-            ty = typeManager.GetStructTy(*typeDecl, typeArgs);
+            ty = typeManager.GetStructTy(*typeDecl, typeArgs, {});
         } else if constexpr (std::is_same_v<TypeT, EnumTy>) {
-            ty = typeManager.GetEnumTy(*typeDecl, typeArgs);
+            ty = typeManager.GetEnumTy(*typeDecl, typeArgs, {});
         } else {
             static_assert(std::is_same_v<TypeT, Ty>);
         }

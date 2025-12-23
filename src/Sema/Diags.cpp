@@ -259,7 +259,7 @@ void DiagMismatchedTypes(DiagnosticEngine& diag, const Node& node, const Node& t
         auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_mismatched_types_because, node);
         auto tyStr = node.ty->String();
         if (auto thisTy = DynamicCast<ClassThisTy*>(node.ty); thisTy) {
-            tyStr = ClassTy(thisTy->name, *thisTy->declPtr, thisTy->typeArgs).String();
+            tyStr = ClassTy(thisTy->name, *thisTy->declPtr, thisTy->typeArgs, thisTy->modal).String();
         }
         builder.AddMainHintArguments(type.ty->String(), tyStr);
         builder.AddHint(type, type.ty->String(), because);

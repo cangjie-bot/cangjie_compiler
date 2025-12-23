@@ -929,7 +929,7 @@ bool LessThanAll(Ptr<Ty> ty, const std::set<Ptr<Ty>>& tys, const std::function<b
 Ptr<Ty> FindSmallestTy(const std::set<Ptr<Ty>>& tys, const std::function<bool(Ptr<Ty>, Ptr<Ty>)>& lessThan)
 {
     if (tys.empty()) {
-        return TypeManager::GetNothingTy();
+        return TypeManager::GetNothingTy({});
     }
     Ptr<Ty> bubble = nullptr;
     // bubble over one or two tys that are not min by each iteration
@@ -980,11 +980,11 @@ void TryEnforceCandidate(TyVar& tv, const std::set<Ptr<Decl>>& candidates, TypeM
     }
 }
 
-std::set<Ptr<Ty>> TypeMapToTys(const std::map<TypeKind, TypeKind>& m, bool fromKey)
+std::set<Ptr<Ty>> TypeMapToTys(const std::map<TypeKind, TypeKind>& m, bool fromKey, ModalInfo modalInfo)
 {
     std::set<Ptr<Ty>> result;
     for (auto& [operandKind, retKind] : m) {
-        result.insert(TypeManager::GetPrimitiveTy(fromKey ? operandKind : retKind));
+        result.insert(TypeManager::GetPrimitiveTy(fromKey ? operandKind : retKind, modalInfo));
     }
     return result;
 }
@@ -1099,7 +1099,7 @@ OwnedPtr<ThrowExpr> CreateThrowException(
 {
     auto throwExpr = MakeOwned<ThrowExpr>();
     throwExpr->expr = CreateInitCall(FindInitDecl(exceptionDecl, typeManager, args).value(), args, curFile);
-    throwExpr->ty = TypeManager::GetNothingTy();
+    throwExpr->ty = TypeManager::GetNothingTy({});
     throwExpr->curFile = &curFile;
     return throwExpr;
 }
@@ -1122,7 +1122,7 @@ OwnedPtr<GenericParamDecl> CreateGenericParamDecl(Decl& decl, TypeManager& typeM
 Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& typeManager, Ptr<Ty> strTy)
 {
     auto file = pkg.files[0].get();
-    auto retTy = IS_GENERIC_INSTANTIATION_ENABLED ? strTy : typeManager.GetCStringTy();
+    auto retTy = IS_GENERIC_INSTANTIATION_ENABLED ? strTy : typeManager.GetCStringTy({});
     auto funcTy = typeManager.GetFunctionTy({}, retTy);
     auto decl = MakeOwned<FuncDecl>();
     auto funcBody = MakeOwned<FuncBody>();
@@ -1154,7 +1154,7 @@ Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& ty
 Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeManager)
 {
     auto file = pkg.files[0].get();
-    auto retTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
+    auto retTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN, {});
     auto funcTy = typeManager.GetFunctionTy({}, retTy);
     auto decl = MakeOwned<FuncDecl>();
     auto funcBody = MakeOwned<FuncBody>();

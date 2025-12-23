@@ -84,6 +84,9 @@ void TypeChecker::TypeCheckerImpl::CheckFuncDecl(ASTContext& ctx, FuncDecl& fd)
         // Update return type to invalid, keep 'fd''s type in funcTy format.
         fd.ty = typeManager.GetFunctionTy(RawStaticCast<FuncTy*>(fd.ty)->paramTys, TypeManager::GetInvalidTy());
     }
+    if (Ty::IsTyCorrect(fd.ty) && fd.modal.HasLocal()) {
+        fd.ty = typeManager.SubstituteModal(fd.ty, fd.modal.ToModalInfo());
+    }
     // NOTE: 'fd''s type should only be updated inside 'CheckFuncBody' not here.
     if (fd.TestAttr(AST::Attribute::MAIN_ENTRY)) {
         CheckEntryFunc(fd);
@@ -235,7 +238,8 @@ void TypeChecker::TypeCheckerImpl::HandIndexOperatorOverload(const FuncDecl& fd,
             DiagKindRefactor::sema_invalid_subscript_assign_parameter_num, fd, MakeRange(fd.identifier));
         return;
     }
-    if (invalidNamedParams.empty() && funcTy.retTy != TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT)) {
+    if (invalidNamedParams.empty() &&
+        funcTy.retTy != TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {LocalModal::NOT})) {
         auto range = MakeRange(fd.identifier);
         if (fd.funcBody && fd.funcBody->retType && !fd.funcBody->retType->begin.IsZero()) {
             range = MakeRange(fd.funcBody->retType->begin, fd.funcBody->retType->end);
@@ -343,7 +347,7 @@ void TypeChecker::TypeCheckerImpl::SynchronizeTypeAndInitializer(const CheckerCo
         // when the initializer is 'this', the vd's ty will be inferred to the corresponding ClassTy (NOT
         // ClassThisTy)
         if (auto ctt = DynamicCast<AST::ClassThisTy*>(vd.initializer->ty); ctt && ctt->decl) {
-            vd.ty = typeManager.GetClassTy(*ctt->decl, ctt->typeArgs);
+            vd.ty = typeManager.GetClassTy(*ctt->decl, ctt->typeArgs, vd.initializer->ty->modal);
         } else if (auto fty = DynamicCast<AST::FuncTy*>(vd.initializer->ty);
                    fty && fty->isC && fty->hasVariableLenArg) {
             vd.ty = TypeManager::GetInvalidTy();

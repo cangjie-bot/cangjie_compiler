@@ -108,3 +108,47 @@ Ptr<Value> Translator::Visit(const AST::ReturnExpr& expr)
     maybeUnreachable.emplace(currentBlock, terminator);
     return nullptr;
 }
+
+Ptr<Value> Translator::Visit(const AST::ExclaveExpr& exclaveExpr)
+{
+    CJC_ASSERT(!blockGroupStack.empty());
+    const auto& loc = TranslateLocation(exclaveExpr);
+    CreateAndAppendExpression<EndRegion>(loc, builder.GetUnitTy(), currentBlock);
+
+    // Translate body and get the last expression as return value
+    auto& b = *exclaveExpr.body;
+    auto nodes = CollectBlockBodyNodes(b);
+    for (size_t i = 0; i + 1 < nodes.size(); ++i) {
+        TranslateSubExprToDiscarded(*nodes[i]);
+    }
+    CJC_ASSERT(!nodes.empty());
+    auto retVal = TranslateSubExprAsValue(*nodes.back());
+
+    // Save return value to function return location (same as ReturnExpr)
+    int64_t level = CalculateDelayExitLevelForReturn();
+    Ptr<Value> ret = GetOuterBlockGroupReturnValLocation();
+    if (ret != nullptr) {
+        CreateWrappedStore(loc, retVal, ret, currentBlock);
+    }
+    if (level > 0 && delayExitSignal) {
+        UpdateDelayExitSignal(level);
+    }
+
+    // Handle finally context and create Exit terminator (same as ReturnExpr)
+    Ptr<Terminator> terminator = nullptr;
+    if (finallyContext.empty()) {
+        terminator = CreateAndAppendTerminator<Exit>(loc, currentBlock);
+    } else {
+        auto& [_, controlBlocks] = finallyContext.top();
+        auto index = static_cast<uint8_t>(ControlType::RETURN);
+        auto prevBlock = currentBlock;
+        currentBlock = CreateBlock();
+        terminator = CreateAndAppendTerminator<Exit>(loc, currentBlock);
+        controlBlocks[index].emplace_back(prevBlock, currentBlock);
+    }
+
+    // Create unreachable block (same as ReturnExpr)
+    currentBlock = CreateBlock();
+    maybeUnreachable.emplace(currentBlock, terminator);
+    return nullptr;
+}

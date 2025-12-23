@@ -47,7 +47,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynAsExpr(ASTContext& ctx, AsExpr& ae)
         Ty::IsTyCorrect(Synthesize({ctx, SynPos::NONE}, ae.asType.get())) && ReplaceIdealTy(*ae.leftExpr)) {
         auto optionDecl = RawStaticCast<EnumDecl*>(importManager.GetCoreDecl("Option"));
         if (optionDecl) {
-            ae.ty = typeManager.GetEnumTy(*optionDecl, {ae.asType->ty});
+            ae.ty = typeManager.GetEnumTy(*optionDecl, {ae.asType->ty}, ae.asType->modal);
         } else {
             diag.Diagnose(ae, DiagKind::sema_no_core_object);
             ae.ty = TypeManager::GetInvalidTy();

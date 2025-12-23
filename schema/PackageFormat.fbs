@@ -103,6 +103,7 @@ table Type {
   kind: CHIRTypeKind;
   typeID: uint32; // current id in types
   argTys: [uint32]; // use types id
+  modal: uint32 = 0;
 }
 
 table RuneType {
@@ -719,6 +720,8 @@ enum CHIRExprKind: uint8 {
   UNBOX_TO_REF,
   GET_RTTI,
   GET_RTTI_STATIC,
+  START_REGION,
+  END_REGION,
 }
 
 enum IntrinsicKind: uint16 {
@@ -1445,6 +1448,14 @@ table GetInstantiateValue {
   instantiateTys: [uint32]; // use types id
 }
 
+table StartRegion {
+  base: Expression;
+}
+
+table EndRegion {
+  base: Expression;
+}
+
 table InvokeStaticWithException {
   base: Terminator;
 
@@ -1564,6 +1575,8 @@ union ExpressionElem {
   UnBoxToRef,
   GetRTTI,
   GetRTTIStatic,
+  StartRegion,
+  EndRegion,
 }
 
 union ValueElem {

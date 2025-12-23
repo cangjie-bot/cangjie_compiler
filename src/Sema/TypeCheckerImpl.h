@@ -247,13 +247,15 @@ private:
     Ptr<AST::Ty> GetTyFromASTType(ASTContext& ctx, AST::FuncType& funcType);
     Ptr<AST::Ty> GetTyFromASTType(ASTContext& ctx, AST::OptionType& optionType);
     std::vector<Ptr<AST::Ty>> GetTyFromASTType(ASTContext& ctx, std::vector<OwnedPtr<AST::Type>>& typeArguments);
-    Ptr<AST::Ty> GetTyFromASTType(AST::Decl& decl, const std::vector<Ptr<AST::Ty>>& typeArgs);
+    Ptr<AST::Ty> GetTyFromASTType(AST::Decl& decl, const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
     std::vector<Ptr<AST::Ty>> GetTyFromASTType(const std::vector<OwnedPtr<AST::GenericParamDecl>>& typeParameters);
-    Ptr<AST::Ty> GetTyFromBuiltinDecl(const AST::BuiltInDecl& bid, const std::vector<Ptr<AST::Ty>>& typeArgs);
-    Ptr<AST::Ty> GetBuiltInArrayType(const std::vector<Ptr<AST::Ty>>& typeArgs);
-    Ptr<AST::Ty> GetBuiltInVArrayType(const std::vector<Ptr<AST::Ty>>& typeArgs);
-    Ptr<AST::Ty> GetBuiltinCFuncType(const std::vector<Ptr<AST::Ty>>& typeArgs);
-    Ptr<AST::Ty> GetBuiltInPointerType(const std::vector<Ptr<AST::Ty>>& typeArgs);
+    Ptr<AST::Ty> GetTyFromBuiltinDecl(
+        const AST::BuiltInDecl& bid, const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
+    Ptr<AST::Ty> GetBuiltInArrayType(const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
+    Ptr<AST::Ty> GetBuiltInVArrayType(const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
+    Ptr<AST::Ty> GetBuiltinCFuncType(const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
+    Ptr<AST::Ty> GetBuiltInPointerType(const std::vector<Ptr<AST::Ty>>& typeArgs, AST::ModalInfo modal);
+    Ptr<AST::Ty> GetBuiltInCopyType(AST::ModalInfo modal = {});
 
     /** Check legality of attributes for all decls. */
     void CheckAllDeclAttributes(const ASTContext& ctx);
@@ -755,7 +757,7 @@ private:
     Ptr<AST::Ty> SynThrowExpr(ASTContext& ctx, AST::ThrowExpr& te);
     Ptr<AST::Ty> SynPerformExpr(ASTContext& ctx, AST::PerformExpr& pe);
     Ptr<AST::Ty> SynResumeExpr(ASTContext& ctx, AST::ResumeExpr& re);
-    Ptr<AST::Ty> SynTryExpr(ASTContext& ctx, AST::TryExpr& te);
+    Ptr<AST::Ty> InferRefExpr(ASTContext& ctx, AST::TryExpr& te);
     Ptr<AST::Ty> SynTryWithResourcesExpr(ASTContext& ctx, AST::TryExpr& te);
     std::optional<Ptr<AST::Ty>> SynTryExprCatchesAndHandles(ASTContext& ctx, AST::TryExpr& te);
     bool SynHandler(ASTContext& ctx, AST::Handler& handler, Ptr<AST::Ty> tgtTy, AST::TryExpr& te);
@@ -1726,6 +1728,20 @@ private:
     bool ChkIfAvailableExpr(ASTContext& ctx, AST::Ty& ty, AST::IfAvailableExpr& ie);
     Ptr<AST::Ty> SynIfAvailableExpr(ASTContext& ctx, AST::IfAvailableExpr& iae);
 
+    void CheckModalType(const ASTContext& ctx, AST::Package& pkg);
+    bool ChkExclaveExpr(ASTContext& ctx, AST::Ty& target, AST::ExclaveExpr& expr);
+    Ptr<AST::Ty> SynExclaveExpr(ASTContext& ctx, AST::ExclaveExpr& expr);
+    void DiagSemaOutsideFunc(const AST::ExclaveExpr& expr);
+    void DiagNestedExclave(const AST::ExclaveExpr& expr, const AST::Node& outerNode);
+    void ReportUnexpectedModalType(const AST::RefExpr& re);
+    /// Report an error if \ref expect is not a subtype (possibly via modaling) to \ref actual.
+    void ExpectSubtypeOf(Ptr<AST::Node> node, Ptr<AST::Ty> expect, Ptr<AST::Ty> actual, ModalMatchMode modal);
+    bool IsExternalLocal(const ASTContext& ctx, const AST::Expr& expr);
+    struct ModalTypeChecker* NewModalTypeChecker();
+    void DeleteModalTypeChecker();
+    void CheckHasLocalMod(const AST::Expr& node, AST::LocalModal local);
+    void DiagLocalModNotSatisfied(const AST::Expr& node, AST::LocalModal local);
+
     /** Members */
     Promotion promotion;
     TypeManager& typeManager;
@@ -1742,6 +1758,8 @@ private:
     Ptr<AST::Node> strictDeprecatedContext = nullptr;
     // cjmp typechecker implementation class
     class MPTypeCheckerImpl* mpImpl;
+    // checker impl of Modal type
+    struct ModalTypeChecker* modalTypeChecker;
     /**
      * Will be passed as a reference in TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck
      * at Perform desugar after typecheck before generic instantiation stage.

@@ -42,9 +42,9 @@ Ptr<const Ty> TryReplaceIdeal(const Ptr<const Ty> ty)
     if (!ty) {
         return ty;
     } else if (ty->kind == TypeKind::TYPE_IDEAL_INT) {
-        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64);
+        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT64, ty->modal);
     } else if (ty->kind == TypeKind::TYPE_IDEAL_FLOAT) {
-        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_FLOAT64);
+        return TypeManager::GetPrimitiveTy(TypeKind::TYPE_FLOAT64, ty->modal);
     } else {
         return ty;
     }
@@ -238,7 +238,7 @@ std::optional<Ptr<AST::Ty>> UnsolvedAsQuest(TypeManager& tyMgr, const TyVars& ty
         if (IsConcrete(tyVarsToSolve, ty)) {
             return &ty;
         } else {
-            return TypeManager::GetQuestTy();
+            return TypeManager::GetQuestTy(ty.modal);
         }
     }
 }

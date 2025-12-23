@@ -83,7 +83,7 @@ bool ExtendBoxMarker::NeedAutoBox(Ptr<Ty> child, Ptr<Ty> interface, bool isUpcas
 void ExtendBoxMarker::CheckBlockNeedBox(const Block& block, Ty& ty, Node& nodeToCheck)
 {
     auto lastExpr = block.GetLastExprOrDecl();
-    Ptr<Ty> lastTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+    Ptr<Ty> lastTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT, {});
     if (auto expr = DynamicCast<Expr*>(lastExpr); expr) {
         lastTy = expr->ty;
     }

@@ -1009,14 +1009,14 @@ protected:
     {
         auto& rangeBegin = Is<CallExpr>(range) ? *DynamicCast<CallExpr>(range)->args[0]->expr : range->desugarExpr ?
             *StaticCast<CallExpr>(*range->desugarExpr).args[0]->expr : *StaticCast<RangeExpr>(range)->startExpr;
-        auto value = Translator::TranslateASTNode(rangeBegin, tr);
+        auto value = tr.TranslateExprArg(rangeBegin);
         return tr.GetDerefedValue(value, value->GetDebugLocation());
     }
     Value* TranslateEnd()
     {
         auto& rangeEnd = Is<CallExpr>(range) ? *DynamicCast<CallExpr>(range)->args[1]->expr : range->desugarExpr ?
             *StaticCast<CallExpr>(*range->desugarExpr).args[1]->expr : *StaticCast<RangeExpr>(range)->stopExpr;
-        auto value = Translator::TranslateASTNode(rangeEnd, tr);
+        auto value = tr.TranslateExprArg(rangeEnd);
         return tr.GetDerefedValue(value, value->GetDebugLocation());
     }
 

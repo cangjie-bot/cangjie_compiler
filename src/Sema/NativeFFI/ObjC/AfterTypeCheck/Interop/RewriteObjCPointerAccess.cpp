@@ -62,7 +62,7 @@ void HandleObjCPointerRead(InteropContext& ctx, CallExpr& callExpr)
     CJC_NULLPTR_CHECK(receiver);
     auto elementType = receiver->ty->typeArgs[0];
     auto rawCType = ctx.typeMapper.Cj2CType(elementType);
-    Ptr<Ty> pointerType = ctx.typeManager.GetPointerTy(rawCType);
+    Ptr<Ty> pointerType = ctx.typeManager.GetPointerTy(rawCType, elementType->modal);
     auto ptrFieldDecl = ctx.bridge.GetObjCPointerPointerField();
     CJC_ASSERT(ptrFieldDecl);
     Ptr<Ty> int64Type = ctx.typeManager.GetPrimitiveTy(TypeKind::TYPE_INT64);
@@ -119,7 +119,7 @@ void HandleObjCPointerWrite(InteropContext& ctx, CallExpr& callExpr)
     auto valueArg = ASTCloner::Clone<Expr>(callExpr.args[0]->expr);
     auto elementType = receiver->ty->typeArgs[0];
     auto rawCType = ctx.typeMapper.Cj2CType(elementType);
-    Ptr<Ty> pointerType = ctx.typeManager.GetPointerTy(rawCType);
+    Ptr<Ty> pointerType = ctx.typeManager.GetPointerTy(rawCType, elementType->modal);
     auto ptrFieldDecl = ctx.bridge.GetObjCPointerPointerField();
     CJC_ASSERT(ptrFieldDecl);
     Ptr<Ty> int64Type = ctx.typeManager.GetPrimitiveTy(TypeKind::TYPE_INT64);

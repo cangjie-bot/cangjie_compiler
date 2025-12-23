@@ -159,24 +159,24 @@ Ptr<Ty> GetOriginalTy(Ty& ty, const TypeSubst& g2gTyMap, TypeManager& typeManage
             tyArgs.emplace_back(GetOriginalTy(*tyArg, g2gTyMap, typeManager));
         }
         if (ty.IsTuple()) {
-            return typeManager.GetTupleTy(tyArgs);
+            return typeManager.GetTupleTy(tyArgs, false, ty.modal);
         }
         auto decl = Ty::GetDeclPtrOfTy(&ty);
         if (!decl) {
             return &ty;
         }
         if (ty.IsClass()) {
-            return Is<ClassThisTy>(ty) ? typeManager.GetClassThisTy(*StaticCast<ClassDecl>(decl), tyArgs)
-                                       : typeManager.GetClassTy(*StaticCast<ClassDecl>(decl), tyArgs);
+            return Is<ClassThisTy>(ty) ? typeManager.GetClassThisTy(*StaticCast<ClassDecl>(decl), tyArgs, ty.modal)
+                                       : typeManager.GetClassTy(*StaticCast<ClassDecl>(decl), tyArgs, ty.modal);
         }
         if (ty.IsInterface()) {
-            return typeManager.GetInterfaceTy(*StaticCast<InterfaceDecl>(decl), tyArgs);
+            return typeManager.GetInterfaceTy(*StaticCast<InterfaceDecl>(decl), tyArgs, ty.modal);
         }
         if (ty.IsEnum()) {
-            return typeManager.GetEnumTy(*StaticCast<EnumDecl>(decl), tyArgs);
+            return typeManager.GetEnumTy(*StaticCast<EnumDecl>(decl), tyArgs, ty.modal);
         }
         if (ty.IsStruct()) {
-            return typeManager.GetStructTy(*StaticCast<StructDecl>(decl), tyArgs);
+            return typeManager.GetStructTy(*StaticCast<StructDecl>(decl), tyArgs, ty.modal);
         }
         return &ty;
     }
@@ -1252,12 +1252,13 @@ void GIM::GenericInstantiationManagerImpl::RearrangeCallExprReference(CallExpr& 
         return;
     }
     if (!HasJavaAttr(*target)) {
-        ce.ty = StaticCast<FuncTy*>(target->ty)->retTy;
+        ce.ty = typeManager.SubstituteModal(StaticCast<FuncTy*>(target->ty)->retTy, ce.ty->modal);
     }
     // Deal for dynamic 'This' binding call.
     // eg: tests/LLT/Sema/class/ThisType/class_generic_dynamic_binding_thistype_ok_2.cj
     if (auto thisTy = DynamicCast<ClassThisTy*>(ce.ty); thisTy && ce.baseFunc->astKind == ASTKind::MEMBER_ACCESS) {
-        ce.ty = StaticAs<ASTKind::MEMBER_ACCESS>(ce.baseFunc.get())->baseExpr->ty;
+        ce.ty = typeManager.SubstituteModal(
+            StaticAs<ASTKind::MEMBER_ACCESS>(ce.baseFunc.get())->baseExpr->ty, ce.ty->modal);
     }
 }
 

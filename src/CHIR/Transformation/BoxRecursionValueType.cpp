@@ -323,7 +323,7 @@ void TypeCastToBoxType(TypeCast& typecast, const std::vector<size_t>& path, CHIR
         CJC_ASSERT(i < eleTypes.size());
         eleTypes[i] = boxType;
     }
-    auto newTargetType = builder.GetType<TupleType>(eleTypes);
+    auto newTargetType = builder.GetType<TupleType>(eleTypes, targetType->Modal());
     auto parent = typecast.GetParentBlock();
     auto loc = typecast.GetDebugLocation();
     auto newTypeCast = builder.CreateExpression<TypeCast>(loc, newTargetType, typecast.GetSourceValue(), parent);

@@ -180,7 +180,7 @@ WrapVirtualFunc::WrapperFuncGenericTable WrapVirtualFunc::GetReplaceTableForVirt
     for (auto& parentMethodGenericTy : parentMethodGenericTys) {
         auto srcIdentifier = "fT" + std::to_string(newGenericIdx++);
         auto tyIdentifier = funcIdentifier + '_' + srcIdentifier;
-        auto funcGenericParam = builder.GetType<GenericType>(tyIdentifier, srcIdentifier);
+        auto funcGenericParam = builder.GetType<GenericType>(tyIdentifier, srcIdentifier, ModalInfo{});
         resultTable.funcGenericTypeParams.emplace_back(funcGenericParam);
         resultTable.replaceTable.emplace(parentMethodGenericTy, funcGenericParam);
     }
