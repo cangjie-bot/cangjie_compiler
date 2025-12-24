@@ -45,10 +45,10 @@ static std::vector<Ptr<AST::Node>> CollectBlockBodyNodes(
         // retrieve all the instantiated functions for the translation.
         auto funcDecl = DynamicCast<AST::FuncDecl*>(body.get());
         if (funcDecl != nullptr && funcDecl->TestAttr(AST::Attribute::GENERIC)) {
-            nodes.emplace_back(funcDecl);
             if (gim) {
                 CollectInstantiatedFuncNodes(nodes, *funcDecl, *gim);
             }
+            nodes.emplace_back(funcDecl);
         } else {
             if (IsUnnecessarySuperCall(*body)) {
                 continue;
