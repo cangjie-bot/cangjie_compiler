@@ -465,7 +465,21 @@ private:
     llvm::Function* GetExceptionIntrinsicThrow() const;
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType, bool isThisArgInStructMut = false);
+/**
+ * Do necessary conversions for one function argument so that the callee can accept the argument.
+ * Return the converted argument.
+ */
+    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType);
+/**
+ * Do necessary conversions for function arguments so that the callee can accept the arguments.
+ * Return a vector of converted arguments.
+ */
+    std::vector<llvm::Value*> FixFuncArgs(const CGFunctionType& calleeType, std::vector<CGValue*> args, bool thisArgInStruct);
+/**
+ * Create SRet for unknown size return value.
+ * Return the created SRet.
+ */
+    llvm::Value* CreateSRetUnknownSize(CHIR::Type& returnCHIRType, const CHIRCallExpr& applyWrapper);
 #endif
     llvm::Value* GetEnumTag(const CHIR::Field& field);
     llvm::Value* GetEnumAssociatedValue(const CHIR::Field& field);
