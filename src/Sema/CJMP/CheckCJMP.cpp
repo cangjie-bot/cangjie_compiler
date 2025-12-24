@@ -28,6 +28,7 @@
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/Utils/CastingTemplate.h"
 #include "cangjie/Utils/CheckUtils.h"
+#include <algorithm>
 #include <optional>
 
 using namespace Cangjie;
@@ -620,6 +621,24 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
     walker.Walk();
 }
 
+void MPTypeCheckerImpl::ValidateMatchedAnnotationsAndModifiers(AST::Package& pkg)
+{
+    std::function<VisitAction(Ptr<Node>)> visitor = [this](const Ptr<Node> &node) {
+        if (node->IsDecl()) {
+            if (!IsCommon(*node)) { return VisitAction::WALK_CHILDREN; }
+            auto commonDecl = StaticCast<Decl>(node);
+            if (!commonDecl->platformImplementation) {
+                return VisitAction::WALK_CHILDREN;
+            }
+
+            MatchCJMPDeclAnnotations(*commonDecl, *commonDecl->platformImplementation);
+        }
+        return VisitAction::WALK_CHILDREN;
+    };
+    Walker walker(&pkg, visitor);
+    walker.Walk();
+}
+
 namespace {
 // Collect common or platform decl.
 void CollectDecl(
@@ -702,7 +721,7 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
         if (common.TestAttr(attr) != platform.TestAttr(attr)) {
             if ((attr == Attribute::ABSTRACT || attr == Attribute::OPEN)) {
                 // Error `sema_platform_member_must_have_implementation` should be reported
-                // If common have body, but platform not. Diasgnostic about wrong modifiers is confusing.
+                // If common have body, but platform not. Diagnostic about wrong modifiers is confusing.
                 if (NeedToReportMissingBody(common, platform)) {
                     continue;
                 }
@@ -731,86 +750,18 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_property_have_same_declaration_in_inherit_immut,
                         common, common.identifier.Val());
                 }
-            } else if (common.astKind != ASTKind::FUNC_DECL) {
+            } else if (common.astKind == ASTKind::CLASS_DECL && (attr == Attribute::SEALED || attr == Attribute::OPEN) &&
                 // Keep silent due to overloaded common funcs.
                 // Allow platform sealed abstract when common is abstract
-                if (common.astKind == ASTKind::CLASS_DECL && (attr == Attribute::SEALED || attr == Attribute::OPEN) &&
-                    platform.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
-                    continue;
-                }
+                platform.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
+                continue;
+            } else {
                 diag.DiagnoseRefactor(
                     DiagKindRefactor::sema_platform_has_different_modifier, platform, DeclKindToString(platform));
             }
             return false;
         }
     }
-    return true;
-}
-
-bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(
-    const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, const AST::Decl& platform) const
-{
-    for (auto anno : annotations) {
-        bool commonHas{common.HasAnno(anno)};
-        bool platformHas{platform.HasAnno(anno)};
-
-        if (commonHas != platformHas) {
-            if (anno == AnnotationKind::DEPRECATED) {
-                if (commonHas) {
-                    platform.annotations.emplace_back(ASTCloner::Clone(GetDeprecated(common)));
-                } else {
-                    diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
-                            *GetDeprecated(platform), "Deprecated", DeclKindToString(platform),
-                            platform.identifier.Val())
-                        .AddNote("platform declarations implicitly inherit deprecation from the common declarations");
-                    return false;
-                }
-            } else {
-                // Keep silent due to overloaded common funcs.
-                // this shouldn't work like this and the rest of the code in this function proves it
-                // instead, we should match functions first by name and parameter types
-                // and after that we should post-check the annotations for already matched pairs
-                if (common.astKind != ASTKind::FUNC_DECL) {
-                    diag.DiagnoseRefactor(
-                        DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
-                }
-                return false;
-            }
-        } else {
-            if (platformHas && anno == AnnotationKind::DEPRECATED) {
-                diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_deprecated_annotation,
-                        *GetDeprecated(platform), "Deprecated", DeclKindToString(platform),
-                        platform.identifier.Val())
-                    .AddNote("platform declarations implicitly inherit deprecation from the common declarations");
-                return false;
-            }
-            return false;
-        }
-    }
-
-    std::unordered_set<std::string> commonAnnotationIds;
-    std::unordered_set<std::string> platformAnnotationIds;
-
-    // Collect annotation identifiers from common declaration and platform declaration
-    for (const auto& annotation : common.annotations) {
-        if (annotation->kind == AST::AnnotationKind::CUSTOM) {
-            commonAnnotationIds.insert(annotation->identifier.Val());
-        }
-    }
-
-    for (const auto& annotation : platform.annotations) {
-        if (annotation->kind == AST::AnnotationKind::CUSTOM) {
-            platformAnnotationIds.insert(annotation->identifier.Val());
-        }
-    }
-
-    // Compare annotation identifier sets
-    if (commonAnnotationIds != platformAnnotationIds) {
-        diag.DiagnoseRefactor(
-            DiagKindRefactor::sema_platform_has_different_annotation, platform, DeclKindToString(platform));
-        return false;
-    }
-
     return true;
 }
 
@@ -868,10 +819,6 @@ bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl
     std::vector<Attribute> matchedAttr = {
         Attribute::ABSTRACT, Attribute::PUBLIC, Attribute::OPEN, Attribute::PROTECTED, Attribute::C, Attribute::SEALED};
     if (!MatchCJMPDeclAttrs(matchedAttr, commonDecl, *platformDecl)) {
-        return false;
-    }
-    // Match annotations (built-in).
-    if (!MatchCJMPDeclAnnotations({AnnotationKind::DEPRECATED}, commonDecl, *platformDecl)) {
         return false;
     }
     // Match super types.
@@ -951,12 +898,7 @@ bool MPTypeCheckerImpl::IsCJMPDeclMatchable(const Decl& lhsDecl, const Decl& rhs
         return false;
     }
 
-    // need check Attribute::ABSTRACT for abstract class?
-    std::vector<Attribute> matchedAttrs = { Attribute::STATIC, Attribute::MUT, Attribute::PRIVATE, Attribute::PUBLIC,
-        Attribute::PROTECTED, Attribute::FOREIGN, Attribute::UNSAFE, Attribute::C, Attribute::OPEN,
-        Attribute::ABSTRACT};
-    return MatchCJMPDeclAttrs(matchedAttrs, commonDecl, platformDecl)
-        && MatchCJMPDeclAnnotations({AnnotationKind::DEPRECATED, AnnotationKind::FROZEN}, commonDecl, platformDecl);
+    return true;
 }
 
 bool MPTypeCheckerImpl::TrySetPlatformImpl(Decl& platformDecl, Decl& commonDecl, const std::string& kind)
@@ -1139,9 +1081,15 @@ bool MPTypeCheckerImpl::MatchCJMPVar(VarDecl& platformVar, VarDecl& commonVar)
     if (platformVar.IsStaticOrGlobal()) {
         commonVar.platformImplementation = &platformVar;
         commonVar.doNotExport = true;
+    } else if (commonVar.TestAttr(Attribute::STATIC) == platformVar.TestAttr(Attribute::STATIC)) {
+        // Instance variables must already be matched unless we have modifiers mismatch
+        // that will be reported later
+        CJC_ASSERT(commonVar.platformImplementation == &platformVar);
+    } else {
+        // we assign it even despite the mismatch
+        // and let the generic validation report it later
+        commonVar.platformImplementation = &platformVar;
     }
-    // Instance variables must already be matched
-    CJC_ASSERT(commonVar.platformImplementation == &platformVar);
     return true;
 }
 
@@ -1280,6 +1228,20 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
             CheckAbstractClassMembers(*StaticCast<InheritableDecl>(decl));
         }
     }
+    for (auto& commonDecl : commonDecls) {
+        if (commonDecl->IsNominalDecl()) {
+            continue; // this is already handled in the loop above
+        }
+        auto platformDecl = commonDecl->platformImplementation;
+        if (platformDecl == nullptr) {
+            continue;
+        }
+            // need check Attribute::ABSTRACT for abstract class?
+        std::vector<Attribute> matchedAttrs = { Attribute::STATIC, Attribute::MUT, Attribute::PRIVATE, Attribute::PUBLIC,
+            Attribute::PROTECTED, Attribute::FOREIGN, Attribute::UNSAFE, Attribute::OPEN,
+            Attribute::ABSTRACT};
+        MatchCJMPDeclAttrs(matchedAttrs, *commonDecl, *platformDecl);
+    }
 }
 
 void MPTypeCheckerImpl::CheckAbstractClassMembers(const InheritableDecl& platformDecl)
@@ -1318,6 +1280,13 @@ void MPTypeCheckerImpl::MatchPlatformWithCommon(Package& pkg)
         CheckCommonExtensions(commonDecls);
     } else if (compilePlatform) { // match common decls and platform decls
         MatchCJMPDecls(commonDecls, platformDecls);
+    }
+
+    for (auto common : commonDecls) {
+        auto platform = common->platformImplementation;
+        if (platform) {
+            PropagateCJMPDeclAnnotations(*common, *platform);
+        }
     }
 }
 
