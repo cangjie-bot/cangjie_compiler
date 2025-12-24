@@ -198,13 +198,13 @@ def download_and_patch_tinytoml():
         if not os.path.exists(TAR_PATH):
             # Fetch tinytoml from the remote repostory
             subprocess.run(
-                ["git", "clone", "https://gitee.com/src-openeuler/tinytoml.git",
+                ["git", "clone", "https://gitcode.com/src-openeuler/tinytoml.git",
                  TINYTOML_DIR],
                  check=True
             )
             # Switch to the specified tag
             subprocess.run(
-                ["git", "checkout", "openEuler-24.03-LTS-SP1"],
+                ["git", "checkout", "openEuler-24.03-LTS-SP1-release"],
                 cwd=TINYTOML_DIR,
                 check=True
             )
