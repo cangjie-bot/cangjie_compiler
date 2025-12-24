@@ -60,7 +60,10 @@ const std::unordered_map<std::string, AST::AnnotationKind> NAME_TO_ANNO_KIND = {
     {"ConstSafe", AST::AnnotationKind::CONSTSAFE}, {"Deprecated", AST::AnnotationKind::DEPRECATED},
     {"Frozen", AST::AnnotationKind::FROZEN}, {"EnsurePreparedToMock", AST::AnnotationKind::ENSURE_PREPARED_TO_MOCK}};
 
+extern const std::unordered_map<AST::AnnotationKind, std::string> ANNO_KIND_TO_NAME;
+
 bool IsBuiltinAnnotation(const std::string& moduleName, const std::string& identifier);
+std::string AnnotationKindToString(AST::AnnotationKind kind);
 
 inline bool IsIdentifierOrContextualKeyword(const TokenKind& kind)
 {
