@@ -315,6 +315,7 @@ void ASTLoader::ASTLoaderImpl::PreloadCommonPartOfPackage(AST::Package& pkg)
         auto fileInfo = package->allFileInfo()->Get(i);
         allFileIds[i] = fileInfo->fileID();
         auto file = CreateFileNode(*curPackage, fileInfo->fileID(), std::move(importInfos));
+        file->EnableAttr(Attribute::FROM_COMMON_PART);
         file->EnableAttr(Attribute::COMMON);
         file->isCommon = true;
         file->begin = LoadPos(fileInfo->begin());
