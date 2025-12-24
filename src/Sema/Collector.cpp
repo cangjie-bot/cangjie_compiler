@@ -627,6 +627,12 @@ void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie
     if (!node) {
         return;
     }
+
+    bool commonPartExpr = node->IsExpr() && node->curFile && node->curFile->TestAttr(Attribute::COMMON);
+    if (commonPartExpr) {
+        return;
+    }
+
     if (auto decl = DynamicCast<Decl*>(node); decl && decl->fullPackageName.empty()) {
         // Imported decl has fullPackageName.
         decl->fullPackageName = ctx.fullPackageName;
