@@ -284,6 +284,10 @@ bool IsOverrideOrShadow(TypeManager& typeManager, const FuncDecl& src, const Fun
     if (auto ret = typeManager.GetOverrideCache(&src, &target, baseTy, expectInstParent); ret.has_value()) {
         return ret.value();
     }
+    if (src.TestAttr(Attribute::STATIC) != target.TestAttr(Attribute::STATIC)) {
+        typeManager.AddOverrideCache(src, target, baseTy, expectInstParent, false);
+        return false;
+    }
     auto srcFt = DynamicCast<FuncTy*>(src.ty);
     auto targetFt = DynamicCast<FuncTy*>(target.ty);
     MultiTypeSubst mts;
@@ -362,7 +366,9 @@ bool IsOverrideOrShadow(TypeManager& typeManager, const PropDecl& src, const Pro
     auto srcTy = src.type ? src.type->ty : src.ty;
     auto targetTy = target.type ? target.type->ty : target.ty;
     bool ret = srcTy == typeManager.GetInstantiatedTy(targetTy, typeMapping);
-    if (ret && src.outerDecl == Ty::GetDeclPtrOfTy(baseTy)) {
+
+    if (ret && src.outerDecl == Ty::GetDeclPtrOfTy(baseTy) &&
+        src.TestAttr(Attribute::STATIC) == target.TestAttr(Attribute::STATIC)) {
         typeManager.UpdateTopOverriddenFuncDeclCache(&src, &target);
     }
     return ret;
