@@ -729,7 +729,7 @@ std::string Utils::GetJavaTypeSignature(const Ty& cjtype)
             CJC_ABORT();
             break; // method must be called only on java-compatible types
     }
-    std::cout << jsig << std::endl;
+
     return jsig;
 }
 

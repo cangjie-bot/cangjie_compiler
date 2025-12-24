@@ -165,7 +165,7 @@ std::string GetCangjieLibName(const std::string& outputLibPath, const std::strin
     bool trimmed = true);
 
 std::string GetMangledMethodName(const BaseMangler& mangler, const std::vector<OwnedPtr<FuncParam>>& params,
-    const std::string& methodName, GenericConfigInfo* genericConfig = nullptr);
+    const std::string& methodName, TypeManager& typeManager, GenericConfigInfo* genericConfig = nullptr);
 
 Ptr<Annotation> GetForeignNameAnnotation(const Decl& decl);
 Ptr<Annotation> GetAnnotation(const Decl& decl, AnnotationKind annotationKind);
@@ -178,9 +178,11 @@ bool IsThisConstructorCall(const CallExpr& call);
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
 OwnedPtr<Type> GetGenericInstType(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
+OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
 std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
 TypeKind GetGenericActualTypeKind(std::string configType);
-Ptr<Ty> GetGenericInstTy(GenericConfigInfo* config, std::string genericName);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
 Ptr<Ty> GetGenericInstTy(std::string typeStr);
 
 bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
@@ -202,9 +204,8 @@ void InitGenericConfigs(const File& file, const AST::Decl* decl, std::vector<Gen
 void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager);
 
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
-    const std::vector<std::pair<std::string, std::string>> instTypes,
-    std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap, std::vector<Ptr<Ty>> &funcTyParams,
-    std::vector<OwnedPtr<Type>> &actualPrimitiveType);
+    std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, std::vector<Ptr<Ty>>& funcTyParams,
+    std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager);
 
 Ptr<Ty> GetInstantyForGenericTy(Decl& decl, const std::unordered_map<std::string, Ptr<Ty>> &actualTyArgMap,
     TypeManager& typeManager);

@@ -177,7 +177,7 @@ void JavaDesugarManager::GenerateTuplesNativeMethod(Package& pkg)
         auto helperDecl = CreateHelperStructDecl(tupleTy, pkg);
         generatedDecls.push_back(GenerateCJMappingNativeDeleteCjObjectFunc(*helperDecl));
         const std::string fileJ = GetCjMappingTupleName(*tupleTy) + ".java";
-        auto codegen = JavaSourceCodeGenerator(helperDecl.get(), mangler, javaCodeGenPath, fileJ,
+        auto codegen = JavaSourceCodeGenerator(helperDecl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
             GetCangjieLibName(outputLibPath, helperDecl.get()->GetFullPackageName()), tupleTy, true,
             pkg.isInteropCJPackageConfig);
         codegen.Generate();
@@ -451,14 +451,14 @@ OwnedPtr<AST::MemberAccess> JavaDesugarManager::GenThisMemAcessForSelfMethod(
         std::vector<Ptr<Ty>> tmpParamTys;
         for (auto& param : fd->funcBody->paramLists[0]->params) {
             tmpParamTys.push_back(
-                param->ty->HasGeneric() ? GetGenericInstTy(genericConfig, param->ty->name) : param->ty);
+                param->ty->HasGeneric() ? GetGenericInstTy(genericConfig, param->ty, typeManager) : param->ty);
         }
         Ptr<Ty> retTy = fd->funcBody->retType->ty->HasGeneric()
-            ? GetGenericInstTy(genericConfig, fd->funcBody->retType->ty->name)
+            ? GetGenericInstTy(genericConfig, fd->funcBody->retType->ty, typeManager)
             : fd->funcBody->retType->ty;
         std::vector<Ptr<Ty>> tmpTypeArgs;
         for (auto& typeArg : fd->ty->typeArgs) {
-            tmpTypeArgs.push_back(typeArg->HasGeneric() ? GetGenericInstTy(genericConfig, typeArg->name) : typeArg);
+            tmpTypeArgs.push_back(typeArg->HasGeneric() ? GetGenericInstTy(genericConfig, typeArg, typeManager) : typeArg);
         }
 
         funcTy = typeManager.GetFunctionTy(tmpParamTys, retTy);
@@ -479,9 +479,12 @@ OwnedPtr<FuncDecl> JavaDesugarManager::GenerateInterfaceFwdclassDefaultMethod(
 {
     auto replaceRefCall = [this, &interfaceFuncDecl, genericConfig](const Node&, Node& target) {
         auto targetPtr = Ptr<Node>(&target);
+        if (genericConfig && targetPtr->ty->HasGeneric()) {
+            targetPtr->ty = GetGenericInstTy(genericConfig, targetPtr->ty, typeManager);
+        }
         if (Ptr<CallExpr> call = As<ASTKind::CALL_EXPR>(targetPtr.get())) {
             if (genericConfig && call->ty->HasGeneric()) {
-                call->ty = GetGenericInstTy(genericConfig, call->ty->name);
+                call->ty = GetGenericInstTy(genericConfig, call->ty, typeManager);
             }
             if (Ptr<RefExpr> refE = As<ASTKind::REF_EXPR>(call->baseFunc.get())) {
                 if (Ptr<FuncDecl> fd = As<ASTKind::FUNC_DECL>(refE->GetTarget())) {
@@ -1033,14 +1036,14 @@ void JavaDesugarManager::DesugarInCJMapping(File& file)
             InitGenericConfigs(file, decl, genericConfigsVector, isGenericGlueCode);
             for (auto& config : genericConfigsVector) {
                 const std::string fileJ = config->declInstName + ".java";
-                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+                auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
                     GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), config,
                     file.curPackage.get()->isInteropCJPackageConfig);
                 codegen.Generate();
             }
         } else {
             const std::string fileJ = decl.get()->identifier.Val() + ".java";
-            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, javaCodeGenPath, fileJ,
+            auto codegen = JavaSourceCodeGenerator(decl.get(), mangler, typeManager, javaCodeGenPath, fileJ,
                 GetCangjieLibName(outputLibPath, decl.get()->GetFullPackageName()), ref2extend[decl],
                 file.curPackage.get()->isInteropCJPackageConfig);
             codegen.Generate();

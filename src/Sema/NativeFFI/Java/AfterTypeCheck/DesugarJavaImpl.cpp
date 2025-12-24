@@ -515,7 +515,8 @@ std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method, const s
     auto sampleJavaName = GetJavaMemberName(method);
     std::string fqname = GetJavaFQName(*(method.outerDecl), genericActualName);
     MangleJNIName(fqname);
-    auto mangledFuncName = GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName);
+    auto mangledFuncName =
+        GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName, typeManager);
     MangleJNIName(mangledFuncName);
 
     return "Java_" + fqname + "_" + mangledFuncName;
@@ -712,7 +713,7 @@ void JavaDesugarManager::DesugarInJavaImpls(File& file)
     for (auto decl : genDecls) {
         if (JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(*decl)) {
             const std::string fileJ = decl->identifier.Val() + ".java";
-            auto codegen = JavaSourceCodeGenerator(decl, mangler, javaCodeGenPath, fileJ,
+            auto codegen = JavaSourceCodeGenerator(decl, mangler, typeManager, javaCodeGenPath, fileJ,
                 GetCangjieLibName(outputLibPath, decl->GetFullPackageName()), ref2extend[decl]);
             codegen.Generate();
         }

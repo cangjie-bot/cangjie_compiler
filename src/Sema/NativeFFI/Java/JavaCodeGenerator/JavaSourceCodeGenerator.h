@@ -26,20 +26,20 @@ using namespace AST;
 
 class JavaSourceCodeGenerator : public AbstractSourceCodeGenerator {
 public:
-    JavaSourceCodeGenerator(
-        Decl* decl, const BaseMangler& mangler, const std::string& outputFilePath, std::string cjLibName,
-        bool isInteropCJpackageConfig = false);
-    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
-        const std::string& outputFileName, std::string cjLibName, bool isInteropCJPackageConfig = false);
-    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& folderPath,
-        const std::string& outputFileName, std::string cjLibName, std::vector<Ptr<ExtendDecl>> extends,
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
+        const std::string& outputFilePath, std::string cjLibName, bool isInteropCJpackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
+        const std::optional<std::string>& folderPath, const std::string& outputFileName, std::string cjLibName,
         bool isInteropCJPackageConfig = false);
-    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
-        const std::string& outputFileName, std::string cjLibName, GenericConfigInfo* genericConfig,
-        bool isInteropCJPackageConfig);
-    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, const std::optional<std::string>& outputFolderPath,
-        const std::string& outputFileName, std::string cjLibName, Ptr<TupleTy>& tupleTy, bool isCjMappingTuple,
-        bool isInteropCJpackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
+        const std::optional<std::string>& folderPath, const std::string& outputFileName, std::string cjLibName,
+        std::vector<Ptr<ExtendDecl>> extends, bool isInteropCJPackageConfig = false);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
+        const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+        GenericConfigInfo* genericConfig, bool isInteropCJPackageConfig);
+    JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
+        const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+        Ptr<TupleTy>& tupleTy, bool isCjMappingTuple, bool isInteropCJpackageConfig = false);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -61,6 +61,7 @@ private:
     std::set<std::string> imports;
     const std::string cjLibName;
     const BaseMangler& mangler;
+    TypeManager& typeManager;
     std::vector<Ptr<ExtendDecl>> extendDecls;
     GenericConfigInfo* genericConfig = nullptr;
     Ptr<TupleTy> tupleTy{nullptr};
