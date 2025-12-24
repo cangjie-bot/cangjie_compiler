@@ -465,7 +465,8 @@ private:
     llvm::Function* GetExceptionIntrinsicThrow() const;
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType, bool isThisArgInStructMut = false);
+    llvm::Value* FixThisArg(const CGValue& srcValue, const CGType& destType);
+    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType);
 #endif
     llvm::Value* GetEnumTag(const CHIR::Field& field);
     llvm::Value* GetEnumAssociatedValue(const CHIR::Field& field);
