@@ -205,9 +205,7 @@ std::string GetMangledMethodName(const BaseMangler& mangler, const std::vector<O
 
 Ptr<Annotation> GetForeignNameAnnotation(const Decl& decl)
 {
-    auto it = std::find_if(decl.annotations.begin(), decl.annotations.end(),
-        [](const auto& anno) { return anno->kind == AnnotationKind::FOREIGN_NAME; });
-    return it != decl.annotations.end() ? it->get() : nullptr;
+    return FindFirstAnnotation(decl, AnnotationKind::FOREIGN_NAME);
 }
 
 bool IsSuperConstructorCall(const CallExpr& call)
