@@ -465,7 +465,26 @@ private:
     llvm::Function* GetExceptionIntrinsicThrow() const;
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType, bool isThisArgInStructMut = false);
+/**
+ * Do nothing for value types or pointer to i8.
+ * For other pointer types, create bit cast or addr space cast.
+ * Return the converted LLVM value.
+ */
+    llvm::Value* DoSimpleCast(const CGValue& srcValue, const CGType& destType);
+/**
+ * Do necessary conversions for one function argument so that the callee can accept the argument.
+ * Return the converted LLVM value.
+ */
+    llvm::Value* FixFuncArg(const CGValue& srcValue, const CGType& destType);
+/**
+ * Do necessary conversions for function arguments so that the callee can accept the arguments.
+ * Return a vector of converted arguments.
+ */
+    std::vector<llvm::Value*> FixFuncArgs(const CGFunctionType& calleeType, std::vector<CGValue*> args, bool thisArgInStruct);
+/**
+ * Alloca for unknown-size return value. Return the llvm value.
+ */
+    llvm::Value* CreateSRetUnknownSize(CHIR::Type* returnCHIRType, const CHIRCallExpr &applyWrapper);
 #endif
     llvm::Value* GetEnumTag(const CHIR::Field& field);
     llvm::Value* GetEnumAssociatedValue(const CHIR::Field& field);
