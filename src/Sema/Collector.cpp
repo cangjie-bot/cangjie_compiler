@@ -624,9 +624,10 @@ void Collector::CollectSpawnExpr(ASTContext& ctx, SpawnExpr& se, bool buildTrie)
 
 void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie)
 {
-    if (!node) {
+    if (!node || (node->IsExpr() && node->curFile->TestAttr(Attribute::COMMON))) {
         return;
     }
+
     if (auto decl = DynamicCast<Decl*>(node); decl && decl->fullPackageName.empty()) {
         // Imported decl has fullPackageName.
         decl->fullPackageName = ctx.fullPackageName;
