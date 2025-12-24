@@ -25,6 +25,14 @@
 using namespace Cangjie;
 using namespace Cangjie::AST;
 
+const std::unordered_map<AST::AnnotationKind, std::string> ANNO_KIND_TO_NAME = [] {
+    std::unordered_map<AST::AnnotationKind, std::string> result;
+    for (const auto& [name, kind] : NAME_TO_ANNO_KIND) {
+        result[kind] = name;
+    }
+    return result;
+}();
+
 Parser::Parser(unsigned int fileID, const std::string& input, DiagnosticEngine& diag, SourceManager& sm,
     bool attachComment, bool parseDeclFile)
     : impl{new ParserImpl{fileID, input, diag, sm, attachComment, parseDeclFile}}

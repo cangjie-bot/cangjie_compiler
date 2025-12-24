@@ -64,7 +64,10 @@ const std::unordered_map<std::string, AST::AnnotationKind> NAME_TO_ANNO_KIND = {
     {"Frozen", AST::AnnotationKind::FROZEN}, {"EnsurePreparedToMock", AST::AnnotationKind::ENSURE_PREPARED_TO_MOCK},
     {"NonProduct", AST::AnnotationKind::NON_PRODUCT}};
 
+const std::unordered_map<AST::AnnotationKind, std::string> ANNO_KIND_TO_NAME;
+
 bool IsBuiltinAnnotation(const std::string& moduleName, const std::string& identifier);
+std::string AnnotationKindToString(AST::AnnotationKind kind);
 
 inline bool IsIdentifierOrContextualKeyword(const TokenKind& kind)
 {

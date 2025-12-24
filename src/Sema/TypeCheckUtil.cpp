@@ -611,6 +611,16 @@ Ptr<const Modifier> FindModifier(const Decl& d, TokenKind kind)
     return mod;
 }
 
+Ptr<Annotation> FindFirstAnnotation(const Decl& decl, AnnotationKind kind)
+{
+    auto found = std::find_if(decl.annotations.begin(), decl.annotations.end(),
+        [&kind](const auto& anno) { return anno.get()->kind == kind; });
+    if (found != decl.annotations.end()) {
+        return (*found).get();
+    }
+    return nullptr;
+}
+
 void AddArrayLitConstructor(ArrayLit& al)
 {
     auto decl = Ty::GetDeclPtrOfTy(al.ty);
