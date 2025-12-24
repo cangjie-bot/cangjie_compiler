@@ -11,6 +11,10 @@
 
 #include "ASTLoaderImpl.h"
 
+#include "cangjie/AST/Node.h"
+#include "cangjie/Basic/Position.h"
+#include "cangjie/Macro/NodeSerialization.h"
+#include "cangjie/Utils/SafePointer.h"
 #include "flatbuffers/ModuleFormat_generated.h"
 
 #include "cangjie/AST/ASTCasting.h"
