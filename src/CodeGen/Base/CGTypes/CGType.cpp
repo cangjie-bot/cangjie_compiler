@@ -527,6 +527,22 @@ llvm::StructType* CGType::GetClassTTExtTypeVer1(llvm::LLVMContext& llvmCtx)
     return type;
 }
 
+llvm::StructType* CGType::GetExtensionDefExtTypeVer1(llvm::LLVMContext& llvmCtx, std::size_t funcTableSize)
+{
+    std::string typeName = "ext_extension_def_" + std::to_string(funcTableSize) + "_type_ver_1";
+    auto type = llvm::StructType::getTypeByName(llvmCtx, typeName);
+    if (type == nullptr) {
+        std::vector<llvm::Type*> containedTypes = {
+            llvm::Type::getInt8PtrTy(llvmCtx),
+            llvm::Type::getInt16Ty(llvmCtx),
+            llvm::Type::getInt32Ty(llvmCtx),
+            llvm::ArrayType::get(llvm::Type::getInt8PtrTy(llvmCtx), funcTableSize)
+        };
+        type = llvm::StructType::create(llvmCtx, containedTypes, typeName);
+    }
+    return type;
+}
+
 llvm::StructType* CGType::GetOrCreateTypeTemplateType(llvm::LLVMContext& llvmCtx)
 {
     auto typeTemplateType = llvm::StructType::getTypeByName(llvmCtx, "TypeTemplate");

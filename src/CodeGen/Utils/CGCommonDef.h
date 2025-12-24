@@ -81,6 +81,11 @@ enum TypeTemplateFields : uint8_t {
     TYPE_TEMPLATE_FIELDS_NUM // the number of TypeTemplate's fields
 };
 
+// enum ExtensionDefPadding : uint8_t {
+//     IS_INTERFACE_TI = 0x1 << 1,
+//     HAS_EXT_PART = 0x1 << 2
+// }
+
 enum ExtensionDefFields : uint8_t {
     TYPE_PARAM_COUNT = 0,         // i32
     IS_INTERFACE_TI,              // i8
