@@ -284,6 +284,12 @@ bool IsOverrideOrShadow(TypeManager& typeManager, const FuncDecl& src, const Fun
     if (auto ret = typeManager.GetOverrideCache(&src, &target, baseTy, expectInstParent); ret.has_value()) {
         return ret.value();
     }
+    if (src.TestAttr(Attribute::STATIC) != target.TestAttr(Attribute::STATIC)) {
+        // Static and non-static functions cannot override each other. Because this is an early, deterministic check,
+        // we do not record a negative result in `overrideOrShadowCache` (to avoid unnecessary cache growth) and
+        // return false directly.
+        return false;
+    }
     auto srcFt = DynamicCast<FuncTy*>(src.ty);
     auto targetFt = DynamicCast<FuncTy*>(target.ty);
     MultiTypeSubst mts;
@@ -362,8 +368,13 @@ bool IsOverrideOrShadow(TypeManager& typeManager, const PropDecl& src, const Pro
     auto srcTy = src.type ? src.type->ty : src.ty;
     auto targetTy = target.type ? target.type->ty : target.ty;
     bool ret = srcTy == typeManager.GetInstantiatedTy(targetTy, typeMapping);
-    if (ret && src.outerDecl == Ty::GetDeclPtrOfTy(baseTy)) {
-        typeManager.UpdateTopOverriddenFuncDeclCache(&src, &target);
+
+    // If property `src` overrides `target` within the same instantiated type (i.e. `src.outerDecl` equals the
+    // declaration of `baseTy`) and both have the same `static` attribute, update the cached overridden function
+    // declaration for the property.
+    if (ret && src.outerDecl == Ty::GetDeclPtrOfTy(baseTy) &&
+        src.TestAttr(Attribute::STATIC) == target.TestAttr(Attribute::STATIC)) {
+        typeManager.UpdateTopOverriddenFuncDeclMap(&src, &target);
     }
     return ret;
 }

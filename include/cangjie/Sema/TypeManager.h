@@ -269,7 +269,7 @@ public:
     Ptr<AST::Decl> GetOverrideDeclInClassLike(
         AST::Decl& baseDecl, const AST::FuncDecl& funcDecl, bool withAbstractOverrides = false);
 
-    void UpdateTopOverriddenFuncDeclCache(const AST::Decl* src, const AST::Decl* target);
+    void UpdateTopOverriddenFuncDeclMap(const AST::Decl* src, const AST::Decl* target);
     Ptr<const AST::FuncDecl> GetTopOverriddenFuncDecl(const AST::FuncDecl* funcDecl) const;
     /**
      * whether the decl is override the funcDecl.
@@ -512,7 +512,12 @@ private:
     };
     /** Stores the overwrite or shadow judgment result determined based on BaseTy, src funcDecl, and target funcDecl. */
     std::unordered_map<OverrideOrShadowKey, bool, OverrideOrShadowHash, OverrideOrShadowEqual> overrideOrShadowCache;
-    std::unordered_map<Ptr<const AST::FuncDecl>, std::vector<Ptr<const AST::FuncDecl>>> overrideCache;
+    /**
+     * Cache that maps a function declaration to the list of function declarations it overrides.
+     * For each key `f`, `overrideMap[f]` contains the parent/super function(s) overridden by `f`.
+     * This is used to find the top overridden function(s) for a given function declaration.
+     */
+    std::unordered_map<Ptr<const AST::FuncDecl>, std::vector<Ptr<const AST::FuncDecl>>> overrideMap;
 
     // a counter for naming tyvars
     unsigned long long nextUniqId{0};

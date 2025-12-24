@@ -126,7 +126,7 @@ void StructInheritanceChecker::UpdateOverriddenFuncDeclCache(Ptr<Decl> child, Pt
     }
 
     if (child->outerDecl == checkingDecls.back()) {
-        typeManager.UpdateTopOverriddenFuncDeclCache(child, parent);
+        typeManager.UpdateTopOverriddenFuncDeclMap(child, parent);
     }
 }
 

@@ -1696,7 +1696,7 @@ void TypeManager::AddOverrideCache(
     OverrideOrShadowKey key(&src, &target, baseTy, expectInstParent);
     overrideOrShadowCache.emplace(key, val);
     if (val && src.outerDecl && src.outerDecl == Ty::GetDeclPtrOfTy(baseTy)) {
-        UpdateTopOverriddenFuncDeclCache(&src, &target);
+        UpdateTopOverriddenFuncDeclMap(&src, &target);
     }
 }
 
@@ -1960,22 +1960,22 @@ bool TypeManager::IsFuncDeclEqualType(const AST::FuncDecl& decl, const AST::Func
     return IsFuncDeclSubType(decl, funcDecl) && IsFuncDeclSubType(funcDecl, decl);
 }
 
-void TypeManager::UpdateTopOverriddenFuncDeclCache(const AST::Decl* src, const AST::Decl* target)
+void TypeManager::UpdateTopOverriddenFuncDeclMap(const AST::Decl* src, const AST::Decl* target)
 {
     if (src == target) {
         return;
     }
     if (auto funcDecl = DynamicCast<AST::FuncDecl>(src)) {
-        auto& temp = overrideCache[funcDecl];
+        auto& temp = overrideMap[funcDecl];
         temp.emplace_back(StaticCast<AST::FuncDecl*>(target));
     } else if (auto propDecl = DynamicCast<AST::PropDecl>(src)) {
         auto targetPropDecl = StaticCast<AST::PropDecl*>(target);
         if (!propDecl->getters.empty() && !targetPropDecl->getters.empty()) {
-            auto& temp = overrideCache[propDecl->getters.front().get()];
+            auto& temp = overrideMap[propDecl->getters.front().get()];
             temp.emplace_back(targetPropDecl->getters.front().get());
         }
         if (!propDecl->setters.empty() && !targetPropDecl->setters.empty()) {
-            auto& temp = overrideCache[propDecl->setters.front().get()];
+            auto& temp = overrideMap[propDecl->setters.front().get()];
             temp.emplace_back(targetPropDecl->setters.front().get());
         }
     }
@@ -1983,17 +1983,17 @@ void TypeManager::UpdateTopOverriddenFuncDeclCache(const AST::Decl* src, const A
 
 Ptr<const AST::FuncDecl> TypeManager::GetTopOverriddenFuncDecl(const AST::FuncDecl* funcDecl) const
 {
-    const auto& decls = overrideCache.find(funcDecl);
-    if (decls == overrideCache.end() || decls->second.empty()) {
+    const auto& decls = overrideMap.find(funcDecl);
+    if (decls == overrideMap.end() || decls->second.empty()) {
         return nullptr;
     }
     Ptr<const FuncDecl> ret = decls->second.front();
     std::set<Ptr<const FuncDecl>> traversed;
-    while ((overrideCache.find(ret) != overrideCache.end()) && !(overrideCache.find(ret)->second.empty())) {
+    while ((overrideMap.find(ret) != overrideMap.end()) && !(overrideMap.find(ret)->second.empty())) {
         if (auto [_, succ] = traversed.emplace(ret); !succ) {
             return nullptr; // cycle detected
         }
-        ret = overrideCache.find(ret)->second.front();
+        ret = overrideMap.find(ret)->second.front();
     }
     return ret;
 }
