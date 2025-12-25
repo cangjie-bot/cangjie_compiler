@@ -174,7 +174,7 @@ endif()
 # On windows platform, symbolic link can only be created with command prompt with administrator
 # privilege. To be able to build the project with no special privilege, our build strategy is as
 # follows:
-# 1) On windows Platform && building Release:
+# 1) On windows Platform && building Release/RelWithDebInfo/MinSizeRelWithDebInfo:
 #    Use our wrapper executable as `cjc-frontend.exe`. Debug of `cjc.exe` by calling `cjc-frontend.exe`
 #    would be unavailable since they are different programs. The size of `cjc-frontend.exe` is small.
 #    No special privilege is required.
@@ -185,7 +185,7 @@ endif()
 # 3) On windows Platform && building Debug && with administrator privilege / On Linux:
 #    Create symbolic link `cjc-frontend(.exe)` pointing to `cjc(.exe)`. Same debugging experience between
 #    `cjc(.exe)` and `cjc-frontend(.exe)`. Minimum size usage.
-if(WIN32 AND CMAKE_BUILD_TYPE MATCHES Release)
+if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo|MinSizeRelWithDebInfo)$")
     add_executable(cjc-frontend main-frontend.cpp)
     target_link_options(cjc-frontend PRIVATE -static)
 else()
