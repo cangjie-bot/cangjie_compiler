@@ -281,54 +281,6 @@ private:
     void AddPrimitiveTypeInfoToCorePkgInfo() const;
 };
 
-class CGMetadata {
-public:
-    CGMetadata(CGModule& module, const SubCHIRPackage& subCHIRPkg)
-        : module(module), subCHIRPkg(subCHIRPkg)
-    {
-        auto globalOptions = module.GetCGContext().GetCGPkgContext().GetGlobalOptions();
-        if (globalOptions.disableReflection) {
-            reflectionMode = GenReflectMode::NO_REFLECT;
-        } else {
-            reflectionMode = GenReflectMode::FULL_REFLECT;
-        }
-    }
-
-    CGMetadata* Needs(MetadataKind mdKind)
-    {
-        (void)mdInfoFlags.set(static_cast<size_t>(mdKind));
-        return this;
-    }
-
-    void Gen()
-    {
-        for (uint8_t i = 0; i < MetadataKind::COUNT; ++i) {
-            if (mdInfoFlags.test(i)) {
-                mdCtors.at(static_cast<MetadataKind>(i))()->Gen();
-            }
-        }
-    }
-
-private:
-    std::bitset<MetadataKind::COUNT> mdInfoFlags;
-    CGModule& module;
-    const SubCHIRPackage& subCHIRPkg;
-    uint8_t reflectionMode;
-    const std::unordered_map<MetadataKind, std::function<std::unique_ptr<MetadataInfo>()>> mdCtors = {
-        {MetadataKind::STRUCT_METADATA,
-            [this]() { return std::make_unique<StructMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-        {MetadataKind::CLASS_METADATA,
-            [this]() { return std::make_unique<ClassMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-        {MetadataKind::ENUM_METADATA,
-            [this]() { return std::make_unique<EnumMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-        {MetadataKind::GV_METADATA,
-            [this]() { return std::make_unique<GVMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-        {MetadataKind::GF_METADATA,
-            [this]() { return std::make_unique<GFMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-        {MetadataKind::PKG_METADATA,
-            [this]() { return std::make_unique<PkgMetadataInfo>(module, subCHIRPkg, reflectionMode); }},
-    };
-};
 } // namespace CodeGen
 } // namespace Cangjie
 #endif
