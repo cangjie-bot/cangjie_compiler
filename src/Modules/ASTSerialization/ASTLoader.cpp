@@ -274,7 +274,9 @@ std::vector<OwnedPtr<ImportSpec>> ASTLoader::ASTLoaderImpl::LoadImportSpecs(cons
         importSpec->end = LoadPos(end);
 
         importSpec->EnableAttr(Attribute::IMPORTED);
-        importSpec->EnableAttr(Attribute::FROM_COMMON_PART);
+        if (deserializingCommon) {
+            importSpec->EnableAttr(Attribute::FROM_COMMON_PART);
+        }
         // This is WA to pass checks, because attributes do not deserialized for ImportSpec
         bool compilerAdded = rawImportSpec->end()->line() == 0;
         if (compilerAdded) {
@@ -685,7 +687,7 @@ OwnedPtr<Decl> ASTLoader::ASTLoaderImpl::LoadVarDecl(const PackageFormat::Decl& 
     varDecl->isMemberParam = info->isMemberParam();
     varDecl->isConst = info->isConst();
     LoadDeclBasicInfo(decl, *varDecl);
-    if ((importSrcCode && !varDecl->TestAttr(AST::Attribute::FROM_COMMON_PART)) || deserializingCommon) {
+    if ((importSrcCode && !varDecl->TestAttr(AST::Attribute::COMMON)) || deserializingCommon) {
         varDecl->initializer = LoadExpr(info->initializer());
     }
     if (varDecl->initializer && IsGlobalOrMember(*varDecl)) {

@@ -449,9 +449,10 @@ template <typename T> TVectorOffset<FormattedIndex> ASTWriter::ASTWriterImpl::Ge
 }
 
 /**
- * Update AST attributes related to common/platform, e.g. set FROM_COMMON_PART.
+ * Pre-save full exporting decls after sema's desugar before generic instantiation.
+ * NOTE: avoid export boxed decl creation.
  */
-void ASTWriter::ASTWriterImpl::SetAttributesIfSerializingCommonPartOfPackage(Package &package)
+void ASTWriter::ASTWriterImpl::PreSaveFullExportDecls(Package& package)
 {
     for (auto &file : package.files) {
         if (file->package && file->package->hasCommon) {
@@ -459,127 +460,6 @@ void ASTWriter::ASTWriterImpl::SetAttributesIfSerializingCommonPartOfPackage(Pac
             break;
         }
     }
-    if (!serializingCommon) {
-        return;
-    }
-    std::function<VisitAction(Ptr<Node>)> visitor = [&visitor](const Ptr<Node> &node) {
-        switch (node->astKind) {
-            case ASTKind::PACKAGE: {
-                return VisitAction::WALK_CHILDREN;
-            }
-            case ASTKind::FILE: {
-                auto file = StaticAs<ASTKind::FILE>(node);
-                for (auto &decl : file->decls) {
-                    decl->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(decl->generic.get(), visitor).Walk();
-                }
-                return VisitAction::WALK_CHILDREN;
-            }
-            case ASTKind::INTERFACE_DECL: {
-                auto id = StaticAs<ASTKind::INTERFACE_DECL>(node);
-                for (auto &member : id->body->decls) {
-                    member->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(member.get(), visitor).Walk();
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::CLASS_DECL: {
-                auto cd = StaticAs<ASTKind::CLASS_DECL>(node);
-                for (auto &member : cd->body->decls) {
-                    member->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(member.get(), visitor).Walk();
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::STRUCT_DECL: {
-                auto sd = StaticAs<ASTKind::STRUCT_DECL>(node);
-                for (auto& member : sd->body->decls) {
-                    member->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(member.get(), visitor).Walk();
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::ENUM_DECL: {
-                auto ed = StaticAs<ASTKind::ENUM_DECL>(node);
-                for (auto& member: ed->members) {
-                    member->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(member.get(), visitor).Walk();
-                }
-                for (auto& constructor: ed->constructors) {
-                    constructor->EnableAttr(Attribute::FROM_COMMON_PART);
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::EXTEND_DECL: {
-                auto ed = StaticAs<ASTKind::EXTEND_DECL>(node);
-                for (auto& member: ed->members) {
-                    member->EnableAttr(Attribute::FROM_COMMON_PART);
-                    Walker(member.get(), visitor).Walk();
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::FUNC_DECL: {
-                auto fd = StaticAs<ASTKind::FUNC_DECL>(node);
-                for (auto &param : fd->funcBody->paramLists[0]->params) {
-                    if (param->desugarDecl) {
-                        param->desugarDecl->EnableAttr(Attribute::FROM_COMMON_PART);
-                    }
-                }
-                Walker(fd->funcBody->generic.get(), visitor).Walk();
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::PROP_DECL: {
-                auto pd = StaticAs<ASTKind::PROP_DECL>(node);
-                for (auto &getter : pd->getters) {
-                    getter->EnableAttr(Attribute::FROM_COMMON_PART);
-                }
-                for (auto &setter : pd->setters) {
-                    setter->EnableAttr(Attribute::FROM_COMMON_PART);
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::GENERIC: {
-                auto generic = StaticAs<ASTKind::GENERIC>(node);
-                for (auto &it : generic->typeParameters) {
-                    it->EnableAttr(Attribute::FROM_COMMON_PART);
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::VAR_WITH_PATTERN_DECL: {
-                auto varDecl = StaticAs<ASTKind::VAR_WITH_PATTERN_DECL>(node);
-                varDecl->irrefutablePattern->EnableAttr(Attribute::FROM_COMMON_PART);
-                Walker(varDecl->irrefutablePattern, visitor).Walk();
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::TUPLE_PATTERN: {
-                auto tuplePattern = StaticAs<ASTKind::TUPLE_PATTERN>(node);
-                for (auto& pattern : tuplePattern->patterns) {
-                    Walker(pattern, visitor).Walk();
-                }
-                return VisitAction::SKIP_CHILDREN;
-            }
-            case ASTKind::VAR_PATTERN: {
-                auto varPattern = StaticAs<ASTKind::VAR_PATTERN>(node);
-                varPattern->varDecl->EnableAttr(Attribute::FROM_COMMON_PART);
-                return VisitAction::SKIP_CHILDREN;
-            }
-            default:
-                return VisitAction::SKIP_CHILDREN;
-        }
-    };
-
-    Walker walker(&package, visitor);
-    walker.Walk();
-}
-
-/**
- * Pre-save full exporting decls after sema's desugar before generic instantiation.
- * NOTE: avoid export boxed decl creation.
- */
-void ASTWriter::ASTWriterImpl::PreSaveFullExportDecls(Package& package)
-{
-    SetAttributesIfSerializingCommonPartOfPackage(package);
-
     for (auto& file : package.files) {
         CJC_NULLPTR_CHECK(file.get());
         SaveFileInfo(*file);
@@ -1631,6 +1511,10 @@ FormattedIndex ASTWriter::ASTWriterImpl::SaveDecl(const Decl& decl, bool isTopLe
     //       Since this kind of member function will never be referenced during 'Sema' step
     //       and will be replaced during instantiation step, we ignore the ty of this kind of decl.
     auto attrs = decl.GetAttrs();
+    if (serializingCommon) {
+        attrs.SetAttr(Attribute::FROM_COMMON_PART, true);
+    }
+
     if (decl.TestAttr(Attribute::GENERIC_INSTANTIATED, Attribute::GENERIC)) {
         attrs.SetAttr(Attribute::UNREACHABLE, true); // Set 'UNREACHABLE' for export.
     }
