@@ -650,12 +650,8 @@ llvm::MDTuple* EnumMetadataInfo::GenerateEnumConstructorMetadata(const CHIR::Enu
             size_t nonArgIndex = currentCgType->IsAntiOptionLike() ? 0 : 1;
             ctorName = nonArgIndex == index && !IsCoreOption(ed) ? "N$_" + ctor.name : ctor.name;
         }
-        if (currentCgType->IsTrivial() || currentCgType->IsZeroSizeEnum()) {
-            fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(""));
-        } else {
-            std::string ti = GenerateCtorFn(ed, index++, GetTypeQualifiedName(*ed.GetType()));
-            fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(ti));
-        }
+        std::string ti = GenerateCtorFn(ed, index++, GetTypeQualifiedName(*ed.GetType()));
+        fieldsVec.AddSubItem(MetadataVector(llvmCtx).Concat(ctorName).Concat(ti));
     }
     return fieldsVec.CreateMDTuple();
 }
