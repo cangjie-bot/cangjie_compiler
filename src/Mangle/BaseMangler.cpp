@@ -947,8 +947,10 @@ void BaseMangler::CollectLocalDecls(ManglerContext& ctx, AST::Package& pkg) cons
                 vda->outerDecl->astKind == ASTKind::STRUCT_DECL || vda->outerDecl->astKind == ASTKind::ENUM_DECL);
         bool needCollect = isFunc || isLambda || isGlobal || isCompositeType;
         if (needCollect) {
-            ctx.SaveLocalDecl2CurDecl(node);
+            ctx.SaveVar2CurDecl(node);
             ctx.SaveLambda2CurDecl(node);
+            ctx.SaveLocalWildcardVar2Decl(node);
+            ctx.SaveFunc2CurDecl(node);
         }
         return VisitAction::WALK_CHILDREN;
     }).Walk();
@@ -1293,7 +1295,7 @@ namespace {
     }
 }
 
-void ManglerContext::SaveLocalDecl2CurDecl(const Ptr<Node> node)
+void ManglerContext::SaveFunc2CurDecl(const Ptr<Node> node)
 {
     Ptr<Node> key = nullptr;
 
@@ -1327,6 +1329,58 @@ void ManglerContext::SaveLocalDecl2CurDecl(const Ptr<Node> node)
             mapOfName2Func.emplace_back(fd);
         }  else if (Is<FuncBody>(node) && node != key) {
             return VisitAction::WALK_CHILDREN;
+        }
+        return VisitAction::WALK_CHILDREN;
+    }).Walk();
+}
+
+void ManglerContext::SaveLocalWildcardVar2Decl(const Ptr<AST::Node> node)	
+{	
+    Ptr<Node> key = nullptr;	
+    if (auto lambda = DynamicCast<LambdaExpr>(node)) {	
+        key = lambda->funcBody.get();	
+    } else if (auto function = DynamicCast<FuncDecl>(node)) {	
+        key = function->funcBody.get();	
+    } else if (auto pcd = DynamicCast<PrimaryCtorDecl>(node)) {	
+        key = pcd->funcBody.get();	
+    } else if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && vda->TestAttr(Attribute::GLOBAL)) {	
+        key = vda;	
+    }	
+    if (!key) {	
+        return;	
+    }	
+
+    Walker(key, [this, &key](const Ptr<Node>& node) {	
+        if (auto vda = DynamicCast<VarWithPatternDecl>(node); vda && node != key) {	
+            node2LocalWildcardVar[key].emplace_back(vda);	
+        } else if (Is<FuncBody>(node) && node != key) {	
+            return VisitAction::SKIP_CHILDREN;
+        }
+        return VisitAction::WALK_CHILDREN;
+    }).Walk();
+}
+
+void ManglerContext::SaveVar2CurDecl(const Ptr<Node> node)
+{
+    Ptr<Node> key = nullptr;
+    if (auto lambda = DynamicCast<LambdaExpr>(node)) {
+        key = lambda->funcBody.get();
+    } else if (auto function = DynamicCast<FuncDecl>(node)) {
+        key = function->funcBody.get();
+    } else if (auto pcd = DynamicCast<PrimaryCtorDecl>(node)) {
+        key = pcd->funcBody.get();
+    } else if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && vda->TestAttr(Attribute::GLOBAL)) {
+        key = vda;
+    }
+    if (!key) {
+        return;
+    }
+    Walker(key, [this, &key](const Ptr<Node>& node) {
+        if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && node != key) {
+            auto& mapOfName2Var = node2LocalVar[key][vda->identifier.Val()];
+            mapOfName2Var.emplace_back(vda);
+        } else if (Is<FuncBody>(node) && node != key) {
+            return VisitAction::SKIP_CHILDREN;
         }
         return VisitAction::WALK_CHILDREN;
     }).Walk();
