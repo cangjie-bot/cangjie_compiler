@@ -556,13 +556,6 @@ std::vector<Value*> SanitizerCoverage::GenerateStringMemCmp(
     return res;
 }
 
-uint64_t GetMultipleFromType(const Type& type)
-{
-    CJC_ASSERT(type.IsInteger() || type.IsFloat());
-    // change type to uint8, recalculate the array size = n * bits / 8U.
-    return StaticCast<NumericType*>(&type)->GetBitness() / 8U;
-}
-
 std::vector<Value*> SanitizerCoverage::GenerateArrayCmp(
     const std::string& fuzzName, Value& oper1, Value& oper2, Apply& apply)
 {
@@ -619,11 +612,15 @@ std::vector<Value*> SanitizerCoverage::GenerateArrayCmp(
         auto sizeN =
             builder.CreateExpression<Field>(loc, builder.GetInt64Ty(), &oper1, std::vector<uint64_t>{2}, parent);
         sizeN->MoveBefore(&apply);
-        auto multiple = builder.CreateConstantExpression<IntLiteral>(
-            loc, builder.GetInt64Ty(), parent, GetMultipleFromType(*elementType));
-        multiple->MoveBefore(&apply);
+        auto elementSizeContext = IntrisicCallContext {
+            .kind = IntrinsicKind::SIZE_OF,
+            .args = {},
+            .instTypeArgs = {elementType}
+        };
+        auto elementSize = builder.CreateExpression<Intrinsic>(loc, builder.GetInt64Ty(), elementSizeContext, parent);
+        elementSize->MoveBefore(&apply);
         auto calSize = builder.CreateExpression<BinaryExpression>(loc, builder.GetInt64Ty(),
-            ExprKind::MUL, sizeN->GetResult(), multiple->GetResult(), OverflowStrategy::WRAPPING, parent);
+            ExprKind::MUL, sizeN->GetResult(), elementSize->GetResult(), OverflowStrategy::WRAPPING, parent);
         calSize->MoveBefore(&apply);
         auto sizeNCasted = builder.CreateExpression<TypeCast>(loc, builder.GetUInt32Ty(), calSize->GetResult(), parent);
         sizeNCasted->MoveBefore(&apply);
@@ -705,6 +702,9 @@ std::pair<std::string, std::vector<Value*>> SanitizerCoverage::GetMemFuncSymbols
         } else if (structType->GetStructDef()->GetSrcCodeIdentifier() == "String") {
             intrinsicName = GetStringSanConvFunc(MemCmpType::STRING_TYPE, applyCallName);
             if (intrinsicName == std::nullopt) {
+                return defaultValue;
+            }
+            if (!oper2.GetType()->IsString()) {
                 return defaultValue;
             }
             params = GenerateStringMemCmp(intrinsicName.value(), oper1, oper2, apply);
