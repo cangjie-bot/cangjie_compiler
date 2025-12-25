@@ -96,12 +96,26 @@ public:
      */
     void SaveGlobalWildcardVar(const Ptr<const AST::File> file, const Ptr<AST::VarWithPatternDecl> vpd);
 
+    /**	
+     * @brief Obtain local wildcard variable map which is used to calculate index.	
+     *	
+     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.	
+     */	
+    void SaveLocalWildcardVar2Decl(const Ptr<AST::Node> node);	
+
     /**
-     * @brief Obtain map contains local declarations under current declaration.
+     * @brief Obtain map contains global variable, local variable of function or lambda.
      *
      * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
      */
-    void SaveLocalDecl2CurDecl(const Ptr<AST::Node> node);
+    void SaveVar2CurDecl(const Ptr<AST::Node> node);
+
+    /**
+     * @brief Obtain map contains local funcs under current declaration.
+     *
+     * @param node Indicates "global AST::VarDeclAbstract"/AST::FuncDecl/AST::PrimaryCtorDecl/AST::LambdaExpr node ptr.
+     */
+    void SaveFunc2CurDecl(const Ptr<AST::Node> node);
 
     /**
      * @brief Obtain map contains global lambda, local lambda of function or lambda.
