@@ -558,9 +558,23 @@ std::vector<Value*> SanitizerCoverage::GenerateStringMemCmp(
 
 uint64_t GetMultipleFromType(const Type& type)
 {
-    CJC_ASSERT(type.IsInteger() || type.IsFloat());
-    // change type to uint8, recalculate the array size = n * bits / 8U.
-    return StaticCast<NumericType*>(&type)->GetBitness() / 8U;
+    if (type.IsInteger() || type.IsFloat()) {
+        // change type to uint8, recalculate the array size = n * bits / 8U.
+        return StaticCast<NumericType*>(&type)->GetBitness() / 8U;
+    } else if (type.IsRune()) {
+        // rune is 4 bits in cangjie.
+        return 4U;
+    } else if (type.IsBoolean()) {
+        // boolean is 1 bit in cangjie.
+        return 1U;
+    } else if (type.IsUnit() || type.IsNothing() || type.IsVoid()) {
+        // nothing type treated as 1 bit.
+        return 1U;
+    } else if (!type.IsValueType() || type.IsCPointer() || type.IsCString() || type.IsFunc()) {
+        // reference type and some value type treated as a pointer.
+        return sizeof(void*);
+    }
+    CJC_ABORT();
 }
 
 std::vector<Value*> SanitizerCoverage::GenerateArrayCmp(
@@ -593,6 +607,10 @@ std::vector<Value*> SanitizerCoverage::GenerateArrayCmp(
     auto arrayType = StaticCast<StructType*>(oper1.GetType());
     CJC_ASSERT(arrayType->GetGenericArgs().size() == 1);
     auto elementType = arrayType->GetGenericArgs()[0];
+    if (elementType->IsStruct() || elementType->IsTuple() || elementType->IsVArray() || elementType->IsEnum()) {
+        // no implement element type.
+        return {};
+    }
     auto cPointer1 = CreateOneCPointFromList(oper1, apply, *elementType, *builder.GetInt64Ty());
     auto cPointer2 = CreateOneCPointFromList(oper2, apply, *elementType, *builder.GetInt64Ty());
     auto typeTarget = builder.GetType<CPointerType>(builder.GetUInt8Ty());
@@ -707,6 +725,9 @@ std::pair<std::string, std::vector<Value*>> SanitizerCoverage::GetMemFuncSymbols
             if (intrinsicName == std::nullopt) {
                 return defaultValue;
             }
+            if (!oper2.GetType()->IsString()) {
+                return defaultValue;
+            }
             params = GenerateStringMemCmp(intrinsicName.value(), oper1, oper2, apply);
         } else if (structType->GetStructDef()->GetSrcCodeIdentifier() == "Array") {
             intrinsicName = GetStringSanConvFunc(MemCmpType::ARRAY_TYPE, applyCallName);
@@ -714,6 +735,9 @@ std::pair<std::string, std::vector<Value*>> SanitizerCoverage::GetMemFuncSymbols
                 return defaultValue;
             }
             params = GenerateArrayCmp(intrinsicName.value(), oper1, oper2, apply);
+            if (params.empty()) {
+                return defaultValue;
+            }
         }
     } else if (oper1.GetType()->GetTypeKind() == Type::TypeKind::TYPE_REFTYPE) {
         auto refType = StaticCast<RefType*>(oper1.GetType());

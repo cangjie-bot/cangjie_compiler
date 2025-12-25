@@ -54,6 +54,10 @@ bool IsOptionalCType(const Type& type, bool includeNormalStruct, bool includeCSt
     } else if (auto ref = Cangjie::DynamicCast<const RefType*>(&type)) {
         return IsOptionalCType(*ref->GetBaseType(), includeNormalStruct, includeCString);
     } else if (auto cp = Cangjie::DynamicCast<const CPointerType*>(&type)) {
+        if (cp->GetElementType()->IsVoid()) {
+            // void* in c func
+            return true;
+        }
         return IsOptionalCType(*cp->GetElementType(), includeNormalStruct, includeCString);
     } else if (auto cf = Cangjie::DynamicCast<const FuncType*>(&type); cf && cf->IsCFunc()) {
         if (!IsOptionalCType(*cf->GetReturnType(), includeNormalStruct, includeCString)) {
