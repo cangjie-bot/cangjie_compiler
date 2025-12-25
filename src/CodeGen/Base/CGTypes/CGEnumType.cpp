@@ -380,11 +380,11 @@ llvm::Constant* CGEnumType::GenFieldsNumOfTypeInfo()
         case CGEnumTypeKind::NON_EXHAUSTIVE_UNASSOCIATED:
         case CGEnumTypeKind::EXHAUSTIVE_UNASSOCIATED:
         case CGEnumTypeKind::NON_EXHAUSTIVE_ASSOCIATED:
+        case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_REF:
         case CGEnumTypeKind::EXHAUSTIVE_OTHER: {
             return llvm::ConstantInt::get(llvm::Type::getInt16Ty(cgMod.GetLLVMContext()), 1U);
         }
         case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_NONREF:
-        case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_REF:
         case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_T: {
             return llvm::ConstantInt::get(llvm::Type::getInt16Ty(cgMod.GetLLVMContext()), 2U);
         }
@@ -412,7 +412,6 @@ llvm::Constant* CGEnumType::GenFieldsOfTypeInfo()
         case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_REF: {
             CJC_NULLPTR_CHECK(optionLikeInfo);
             fieldTypes.emplace_back(optionLikeInfo->associatedValueType);
-            fieldTypes.emplace_back(const_cast<CHIR::Type*>(&CGType::GetZeroSizedCGType(cgMod)->GetOriginal()));
             break;
         }
         case CGEnumTypeKind::EXHAUSTIVE_ASSOCIATED_OPTION_LIKE_NONREF: {
