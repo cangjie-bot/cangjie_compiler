@@ -17,9 +17,9 @@
 
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Utils.h"
-#include "cangjie/Basic/Utils.h"
 #include "cangjie/Basic/Match.h"
 #include "cangjie/Basic/StringConvertor.h"
+#include "cangjie/Basic/Utils.h"
 #include "cangjie/Utils/Utils.h"
 
 namespace Cangjie {
@@ -196,6 +196,7 @@ void PrintPackage(unsigned indent, const Package& package, std::ostream& stream 
 void PrintFile(unsigned indent, const File& file, std::ostream& stream = std::cout)
 {
     PrintIndent(stream, indent, "File:", file.fileName, "{");
+    PrintBasic(indent + ONE_INDENT, file, stream);
     PrintNode(file.feature.get(), indent + ONE_INDENT, "features", stream);
     PrintNode(file.package.get(), indent + ONE_INDENT, "package", stream);
     for (auto& it : file.imports) {
