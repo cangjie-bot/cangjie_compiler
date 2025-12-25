@@ -69,7 +69,7 @@ bool IsOptionalCType(const Type& type, bool includeNormalStruct, bool includeCSt
         return true;
     }
     auto k = type.GetTypeKind();
-    return (k >= Type::TypeKind::TYPE_INT8 && k <= Type::TypeKind::TYPE_NOTHING) ||
+    return (k >= Type::TypeKind::TYPE_INT8 && k <= Type::TypeKind::TYPE_VOID) ||
         type.IsCPointer() || IsStructOrCStruct(type, includeNormalStruct);
 }
 
