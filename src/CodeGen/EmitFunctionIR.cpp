@@ -188,7 +188,11 @@ void FunctionGeneratorImpl::EmitIR()
     IRBuilder2 builder(cgMod);
     auto cgFunc = cgMod.GetOrInsertCGFunction(&chirFunc);
     auto rawFunction = cgFunc->GetRawFunction();
-    cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
+    bool isMockMode = (cgMod.GetCGContext().GetCompileOptions().mock == MockMode::ON) 
+                      || cgMod.GetCGContext().GetCompileOptions().enableCompileTest;
+    if(!(chirFunc.TestAttr(CHIR::Attribute::IMPORTED)) || isMockMode) {
+        cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
+    }
     auto chirFuncTy = chirFunc.GetFuncType();
     CJC_NULLPTR_CHECK(chirFuncTy);
     if (chirFuncTy->IsCFunc()) {
