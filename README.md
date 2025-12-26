@@ -14,6 +14,8 @@ The overall architecture is shown below:
 
 **Architecture Description**
 
+
+
 - **Compiler Frontend**: Responsible for converting Cangjie source code from text to intermediate representation, including lexical, syntax, macro, and semantic analysis, ensuring code structure and semantics are correct, and preparing for backend code generation. This module depends on mingw-w64 to support Windows platform capabilities, enabling users to generate executable binaries that can call Windows APIs. It also relies on libboundscheck for safe function library access.
 
   - **Lexer** breaks down Cangjie source code into meaningful tokens.
