@@ -1141,8 +1141,8 @@ Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeMan
     funcBody->retType = MakeOwned<RefType>();
     funcBody->retType->ty = retTy;
     funcBody->generic = MakeOwned<Generic>();
-    funcBody->generic->typeParameters.emplace_back(CreateGenericParamDecl(*decl, typeManager));
-    funcBody->generic->typeParameters.emplace_back(CreateGenericParamDecl(*decl, typeManager));
+    funcBody->generic->typeParameters.emplace_back(CreateGenericParamDecl(*decl, "T1", typeManager));
+    funcBody->generic->typeParameters.emplace_back(CreateGenericParamDecl(*decl, "T2", typeManager));
     funcBody->ty = funcTy;
 
     AddCurFile(*decl, file);
