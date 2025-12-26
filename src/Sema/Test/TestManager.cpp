@@ -362,6 +362,10 @@ bool ShouldPrepareDecl(Node& node, const Package& pkg)
         }
     }
 
+    if (node.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+        return false;
+    }
+
     return true;
 }
 
@@ -423,6 +427,11 @@ void TestManager::GenerateAccessors(Package& pkg)
             return VisitAction::SKIP_CHILDREN;
         }
 
+        // common/specific declarations are not supported
+        if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            return VisitAction::SKIP_CHILDREN;
+        }
+
         mockSupportManager->GenerateAccessors(*decl);
 
         return VisitAction::SKIP_CHILDREN;
@@ -453,6 +462,10 @@ void TestManager::PrepareToSpy(Package& pkg)
         }
 
         if (IS_GENERIC_INSTANTIATION_ENABLED && decl->TestAttr(Attribute::GENERIC)) {
+            return VisitAction::SKIP_CHILDREN;
+        }
+
+        if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
             return VisitAction::SKIP_CHILDREN;
         }
 

@@ -502,6 +502,11 @@ void MockSupportManager::GenerateSpyCallMarker(Package& package)
         return;
     }
 
+    if (MockUtils::FindGlobalDecl<VarDecl>(
+            package.files[0], MockUtils::spyCallMarkerVarName + MockUtils::mockAccessorSuffix)) {
+        return;
+    }
+
     static const auto BOOL_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
     auto type = MockUtils::CreateType<PrimitiveType>(BOOL_TY);
     type->kind = TypeKind::TYPE_BOOLEAN;
@@ -531,6 +536,11 @@ Ptr<Decl> MockSupportManager::GenerateSpiedObjectVar(const Decl& decl)
             OPTION_NONE_CTOR));
     noneRef->ty = optionDeclTy;
 
+    if (auto varDecl = MockUtils::FindGlobalDecl<VarDecl>(
+            decl.curFile->curPackage, MockUtils::spyObjVarName + "$" + mangledName + MockUtils::mockAccessorSuffix)) {
+        return varDecl;
+    }
+
     auto varDecl = CreateVarDecl(
         MockUtils::spyObjVarName + "$" + mangledName + MockUtils::mockAccessorSuffix,
         std::move(noneRef));
@@ -540,6 +550,7 @@ Ptr<Decl> MockSupportManager::GenerateSpiedObjectVar(const Decl& decl)
     varDecl->EnableAttr(Attribute::GLOBAL);
     varDecl->fullPackageName = decl.fullPackageName;
     varDecl->TestAttr(Attribute::GENERATED_TO_MOCK);
+    varDecl->linkage = decl.linkage;
 
     auto varRef = varDecl.get();
 
