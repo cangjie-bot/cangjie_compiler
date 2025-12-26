@@ -55,12 +55,21 @@ public:
     static std::string spyCallMarkerVarName;
     static std::string defaultAccessorSuffix;
 
-    template <typename T>
-    static Ptr<T> FindGlobalDecl(Ptr<AST::File> file, const std::string& identifier)
+    template <typename T> static Ptr<T> FindGlobalDecl(Ptr<AST::File> file, const std::string& identifier)
     {
         for (auto& decl : file->decls) {
             if (decl->identifier == identifier) {
                 return DynamicCast<T>(decl.get());
+            }
+        }
+        return nullptr;
+    }
+
+    template <typename T> static Ptr<T> FindGlobalDecl(Ptr<AST::Package> package, const std::string& identifier)
+    {
+        for (auto& file : package->files) {
+            if (auto decl = FindGlobalDecl<T>(file, identifier)) {
+                return decl;
             }
         }
         return nullptr;
