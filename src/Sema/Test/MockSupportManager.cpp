@@ -418,8 +418,9 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
         : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
     auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { funcTy });
     auto optionFunc = mockUtils->GetInstantiatedDecl(optionFuncTy->decl, {funcTy}, IS_GENERIC_INSTANTIATION_ENABLED);
-    auto noneFuncTy = CreateRefExpr(*LookupEnumMember(optionFunc, OPTION_NONE_CTOR));
-    noneFuncTy->ty = optionFuncTy;
+    auto noneCtor = CreateRefExpr(*LookupEnumMember(optionFunc, OPTION_NONE_CTOR));
+    noneCtor->curFile = decl.curFile;
+    noneCtor->ty = optionFuncTy;
 
     Ptr<VarDecl> varDecl = nullptr;
     if (funcDecl->genericDecl) {
@@ -435,8 +436,10 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
         CJC_ASSERT(varDecl);
     } else {
         auto varMangledName = mockUtils->Mangle(decl);
-        auto newVarDecl = CreateVarDecl(varMangledName + MockUtils::mockAccessorSuffix, std::move(noneFuncTy), nullptr);
+        auto newVarDecl = CreateVarDecl(varMangledName + MockUtils::mockAccessorSuffix, std::move(noneCtor), nullptr);
         newVarDecl->curFile = decl.curFile;
+        newVarDecl->begin = decl.begin;
+        newVarDecl->end = decl.end;
         newVarDecl->isVar = true;
         newVarDecl->EnableAttr(Attribute::PUBLIC);
         newVarDecl->EnableAttr(Attribute::GLOBAL);
@@ -510,6 +513,8 @@ void MockSupportManager::GenerateSpyCallMarker(Package& package)
         CreateLitConstExpr(LitConstKind::BOOL, "false", BOOL_TY, true),
         std::move(type));
     varDecl->curFile = package.files[0].get();
+    varDecl->begin = package.files[0]->GetBegin();
+    varDecl->end = package.files[0]->GetBegin();
     varDecl->isVar = true;
     varDecl->EnableAttr(Attribute::PUBLIC);
     varDecl->EnableAttr(Attribute::GLOBAL);
@@ -534,6 +539,8 @@ Ptr<Decl> MockSupportManager::GenerateSpiedObjectVar(const Decl& decl)
         MockUtils::spyObjVarName + "$" + mangledName + MockUtils::mockAccessorSuffix,
         std::move(noneRef));
     varDecl->curFile = decl.curFile;
+    varDecl->begin = decl.begin;
+    varDecl->end = decl.begin;
     varDecl->isVar = true;
     varDecl->EnableAttr(Attribute::PUBLIC);
     varDecl->EnableAttr(Attribute::GLOBAL);
@@ -1027,6 +1034,8 @@ OwnedPtr<FuncDecl> MockSupportManager::CreateFieldAccessorDecl(
     OwnedPtr<FuncDecl> accessorDecl = MakeOwned<FuncDecl>();
 
     accessorDecl->curFile = fieldDecl.curFile;
+    accessorDecl->begin = fieldDecl.begin;
+    accessorDecl->end = fieldDecl.end;
     accessorDecl->keywordPos = fieldDecl.keywordPos;
     accessorDecl->identifier.SetPos(fieldDecl.identifier.Begin(), fieldDecl.identifier.End());
     accessorDecl->moduleName = fieldDecl.moduleName;
@@ -1095,6 +1104,8 @@ OwnedPtr<FuncDecl> MockSupportManager::CreateForeignFunctionAccessorDecl(FuncDec
     auto accessorName = MockUtils::GetForeignAccessorName(funcDecl) + MockUtils::mockAccessorSuffix;
     auto accessorDecl = CreateFuncDecl(accessorName,  std::move(accessorFuncBody), funcTy);
     accessorDecl->curFile = funcDecl.curFile;
+    accessorDecl->begin = funcDecl.begin;
+    accessorDecl->end = funcDecl.end;
     accessorDecl->fullPackageName = funcDecl.fullPackageName;
     accessorDecl->moduleName = funcDecl.moduleName;
     accessorDecl->EnableAttr(Attribute::PUBLIC);

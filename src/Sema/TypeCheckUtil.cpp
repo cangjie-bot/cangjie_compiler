@@ -783,7 +783,7 @@ std::vector<Ptr<Ty>> GetParamTysInArgsOrder(TypeManager& tyMgr, const CallExpr& 
             paramHasTy[index] = true;
         } else {
             return {};
-        }    
+        }
     }
     for (auto it : std::as_const(paramHasTy)) {
         if (!it) {
@@ -1113,6 +1113,8 @@ Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& ty
     funcBody->ty = funcTy;
 
     decl->curFile = file;
+    decl->begin = file->begin;
+    decl->end = file->begin;
     decl->identifier = GET_TYPE_FOR_TYPE_PARAMETER_FUNC_NAME;
     decl->fullPackageName = pkg.fullPackageName;
     decl->ty = funcTy;
@@ -1144,6 +1146,8 @@ Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeMan
     funcBody->ty = funcTy;
 
     AddCurFile(*decl, file);
+    decl->begin = file->begin;
+    decl->end = file->begin;
     decl->identifier = IS_SUBTYPE_TYPES_FUNC_NAME;
     decl->fullPackageName = pkg.fullPackageName;
     decl->ty = funcTy;
