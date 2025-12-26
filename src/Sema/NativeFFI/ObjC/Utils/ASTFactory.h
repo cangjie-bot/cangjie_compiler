@@ -126,6 +126,7 @@ public:
     OwnedPtr<AST::CallExpr> CreateRegisterNameCall(const std::string& selector, Ptr<AST::File> curFile);
     OwnedPtr<AST::Expr> CreateGetClassCall(AST::ClassTy& ty, Ptr<AST::File> curFile);
     OwnedPtr<AST::Expr> CreateObjCRespondsToSelectorCall(OwnedPtr<AST::Expr> id, OwnedPtr<AST::Expr> sel, Ptr<AST::File> file);
+    OwnedPtr<AST::Expr> CreateGetSuperClassExpr(OwnedPtr<AST::Expr> objCSuper, Ptr<AST::File> file);
 
     /**
      * alloc($classHandle)

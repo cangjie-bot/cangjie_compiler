@@ -147,7 +147,8 @@ void DesugarMirrors::DesugarMethod(InteropContext& ctx, ClassLikeDecl& mirror, F
     method.funcBody->body = CreateBlock({}, methodTy->retTy);
 
     if (method.HasAnno(AST::AnnotationKind::OBJ_C_OPTIONAL)) {
-        auto guardCall = ctx.factory.CreateOptionalMethodGuard(std::move(arpScopeCall), ASTCloner::Clone(nativeHandle.get()), method.identifier, curFile);
+        auto selectorName = ctx.nameGenerator.GetObjCDeclName(method);
+        auto guardCall = ctx.factory.CreateOptionalMethodGuard(std::move(arpScopeCall), ASTCloner::Clone(nativeHandle.get()), selectorName, curFile);
         guardCall->curFile = curFile;
         method.funcBody->body->body.emplace_back(std::move(guardCall));
     } else {

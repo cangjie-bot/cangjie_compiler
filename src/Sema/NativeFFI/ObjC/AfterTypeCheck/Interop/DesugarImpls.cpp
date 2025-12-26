@@ -12,8 +12,10 @@
 
 #include "Context.h"
 #include "Handlers.h"
+#include "NativeFFI/ObjC/Utils/ASTFactory.h"
 #include "NativeFFI/ObjC/Utils/Common.h"
 #include "NativeFFI/Utils.h"
+#include "cangjie/AST/Clone.h"
 #include "cangjie/AST/Create.h"
 #include "cangjie/AST/Walker.h"
 
@@ -253,21 +255,27 @@ void DesugarImpls::DesugarCallExpr(InteropContext& ctx, ClassDecl& impl, CallExp
     auto nativeHandle = ctx.factory.CreateNativeHandleExpr(impl, false, ce.curFile);
     auto withMethodEnvCall = ctx.factory.CreateWithMethodEnvScope(
         std::move(nativeHandle), impl, targetFdTy->retTy, [&](auto&& receiver, auto&& objCSuper) {
-            OwnedPtr<Node> msgSendSuperCall;
+            OwnedPtr<Expr> msgSendSuperCall;
             if (targetFd->propDecl) {
                 if (!msgSendSuperArgs.empty()) {
                     msgSendSuperCall = ctx.factory.CreatePropSetterCallViaMsgSendSuper(
-                        *targetFd->propDecl, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs[0]));
+                        *targetFd->propDecl, std::move(receiver), ASTCloner::Clone(objCSuper.get()), std::move(msgSendSuperArgs[0]));
                 } else {
                     msgSendSuperCall = ctx.factory.CreatePropGetterCallViaMsgSendSuper(
-                        *targetFd->propDecl, std::move(receiver), std::move(objCSuper));
+                        *targetFd->propDecl, std::move(receiver), ASTCloner::Clone(objCSuper.get()));
                 }
             } else {
                 msgSendSuperCall = ctx.factory.CreateMethodCallViaMsgSendSuper(
-                    *targetFd, std::move(receiver), std::move(objCSuper), std::move(msgSendSuperArgs));
+                    *targetFd, std::move(receiver), ASTCloner::Clone(objCSuper.get()), std::move(msgSendSuperArgs));
             }
 
-            return Nodes<Node>(std::move(msgSendSuperCall));
+            auto methodSelector = ctx.nameGenerator.GetObjCDeclName(method);
+            auto superClass = ctx.factory.CreateGetSuperClassExpr(std::move(objCSuper), curFile);
+            auto guardCall = ctx.factory.CreateOptionalMethodGuard(std::move(msgSendSuperCall), std::move(superClass),
+                methodSelector, curFile);
+            guardCall->curFile = curFile;
+
+            return Nodes<Node>(std::move(guardCall));
         });
     withMethodEnvCall->curFile = curFile;
     ce.desugarExpr = ctx.factory.WrapEntity(std::move(withMethodEnvCall), *targetFdTy->retTy);
