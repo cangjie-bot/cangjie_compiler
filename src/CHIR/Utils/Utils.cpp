@@ -1584,4 +1584,39 @@ uint64_t GetRefDims(const Type& type)
     }
     return dims;
 }
+
+// Helper: get block size for a lambda expression (0 if not lambda)
+size_t GetBlockSize(const Expression& expr)
+{
+    size_t blockSize = 0;
+    if (expr.GetExprKind() != ExprKind::LAMBDA) {
+        return blockSize;
+    }
+    auto lambdaBody = Cangjie::StaticCast<const Lambda&>(expr).GetBody();
+    blockSize += lambdaBody->GetBlocks().size();
+    auto postVisit = [&blockSize](Expression& e) {
+        blockSize += GetBlockSize(e);
+        return VisitResult::CONTINUE;
+    };
+    Visitor::Visit(*lambdaBody, postVisit);
+    return blockSize;
+}
+
+// Count all blocks in func, including lambda expr.
+size_t GetAllBlockSizeOfFunc(const Func& func, size_t overSize)
+{
+    size_t blockSize = func.GetBody()->GetBlocks().size();
+    if (blockSize > overSize) {
+        return overSize + 1;
+    }
+    for (auto block : func.GetBody()->GetBlocks()) {
+        for (auto e : block->GetExpressions()) {
+            blockSize += GetBlockSize(*e);
+            if (blockSize > overSize) {
+                return overSize + 1;
+            }
+        }
+    }
+    return blockSize;
+}
 } // namespace Cangjie::CHIR
