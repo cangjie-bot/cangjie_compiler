@@ -1707,6 +1707,16 @@ OwnedPtr<Expr> ASTFactory::CreateObjCRespondsToSelectorCall(OwnedPtr<Expr> id, O
         typeManager.GetBoolTy(), CallKind::CALL_DECLARED_FUNCTION), file);
 }
 
+OwnedPtr<Expr> ASTFactory::CreateGetSuperClassExpr(OwnedPtr<Expr> objCSuper, Ptr<File> file) {
+    auto getSuperClassDecl = bridge.GetGetSuperClassDecl();
+    auto getSuperClassExpr = CreateRefExpr(*getSuperClassDecl);
+
+    std::vector<OwnedPtr<FuncArg>> args;
+    args.emplace_back(CreateFuncArg(std::move(objCSuper)));
+    return WithinFile(CreateCallExpr(std::move(getSuperClassExpr), std::move(args), getSuperClassDecl,
+        bridge.GetNativeObjCClassTy(), CallKind::CALL_DECLARED_FUNCTION), file);
+}
+
 OwnedPtr<Expr> ASTFactory::CreateWithMethodEnvScope(OwnedPtr<Expr> nativeHandle, ClassDecl& outerDecl, Ptr<Ty> retTy,
     std::function<std::vector<OwnedPtr<Node>>(OwnedPtr<Expr>, OwnedPtr<Expr>)> bodyFactory)
 {

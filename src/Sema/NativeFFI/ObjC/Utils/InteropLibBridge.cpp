@@ -23,6 +23,7 @@ namespace {
 constexpr auto INTEROPLIB_NATIVE_OBJ_C_ID = "NativeObjCId";
 constexpr auto INTEROPLIB_NATIVE_OBJ_C_SEL = "NativeObjCSel";
 constexpr auto INTEROPLIB_NATIVE_OBJ_C_SUPER_PTR = "NativeObjCSuperPtr";
+constexpr auto INTEROPLIB_NATIVE_OBJ_C_CLASS = "NativeObjCClass";
 constexpr auto INTEROPLIB_REGISTRY_ID = "RegistryId";
 constexpr auto INTEROPLIB_OBJ_C_UNREACHABLE_CODE_EXCEPTION = "ObjCUnreachableCodeException";
 constexpr auto INTEROPLIB_OBJ_C_OPTIONAL_METHOD_UNIMPLEMENTED_EXCEPTION = "ObjCOptionalMethodUnimplementedException";
@@ -41,6 +42,7 @@ constexpr auto INTEROPLIB_OBJ_C_SET_INSTANCE_VARIABLE_OBJ = "setInstanceVariable
 constexpr auto INTEROPLIB_OBJ_C_GET_INSTANCE_VARIABLE = "getInstanceVariable";
 constexpr auto INTEROPLIB_OBJ_C_SET_INSTANCE_VARIABLE = "setInstanceVariable";
 constexpr auto INTEROPLIB_OBJ_C_GET_CLASS = "getClass";
+constexpr auto INTEROPLIB_OBJ_C_GET_SUPER_CLASS = "getSuperClass";
 constexpr auto INTEROPLIB_OBJ_C_WITH_METHOD_ENV = "withMethodEnv";
 constexpr auto INTEROPLIB_OBJ_C_WITH_METHOD_ENV_OBJ = "withMethodEnvObj";
 constexpr auto INTEROPLIB_OBJ_C_WITH_OBJ_C_SUPER = "withObjCSuper";
@@ -162,6 +164,17 @@ Ptr<TypeAliasDecl> InteropLibBridge::GetNativeObjCSelDecl()
     return decl;
 }
 
+Ptr<TypeAliasDecl> InteropLibBridge::GetNativeObjCClassDecl()
+{
+    static auto decl = GetInteropLibDecl<ASTKind::TYPE_ALIAS_DECL>(INTEROPLIB_NATIVE_OBJ_C_CLASS);
+    return decl;
+}
+
+Ptr<Ty> InteropLibBridge::GetNativeObjCClassTy()
+{
+    return GetNativeObjCClassDecl()->type->ty;
+}
+
 Ptr<TypeAliasDecl> InteropLibBridge::GetNativeObjCSuperPtrDecl()
 {
     static auto decl = GetInteropLibDecl<ASTKind::TYPE_ALIAS_DECL>(INTEROPLIB_NATIVE_OBJ_C_SUPER_PTR);
@@ -271,6 +284,13 @@ Ptr<FuncDecl> InteropLibBridge::GetSetInstanceVariableDecl()
 Ptr<FuncDecl> InteropLibBridge::GetGetClassDecl()
 {
     static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_GET_CLASS);
+    return decl;
+}
+
+
+Ptr<FuncDecl> InteropLibBridge::GetGetSuperClassDecl()
+{
+    static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_GET_SUPER_CLASS);
     return decl;
 }
 

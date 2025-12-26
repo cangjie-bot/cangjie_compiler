@@ -96,6 +96,11 @@ bool NeedCheckForeignName(const MemberSignature& parent, const MemberSignature& 
     return true;
 }
 
+bool IsForeignNameLikeAnnotation(AnnotationKind annotationKind) {
+    return annotationKind == AnnotationKind::FOREIGN_NAME || annotationKind == AST::AnnotationKind::FOREIGN_GETTER_NAME
+        || annotationKind == AST::AnnotationKind::FOREIGN_SETTER_NAME;
+}
+
 } // namespace
 
 void CheckAnnotation(DiagnosticEngine& diag, TypeManager& typeManager, AnnotationKind annotationKind,
@@ -116,7 +121,7 @@ void CheckAnnotation(DiagnosticEngine& diag, TypeManager& typeManager, Annotatio
             DiagConflictingAnnotation(diag, *parent.decl, *child.decl, checkingDecl, annotationKind);
         } else if (!parentAnno && childAnno) {
             DiagConflictingAnnotation(diag, *child.decl, *parent.decl, checkingDecl, annotationKind);
-        } else if (GetAnnoValue(childAnno) != GetAnnoValue(parentAnno)) {
+        } else if (IsForeignNameLikeAnnotation(annotationKind) && (GetAnnoValue(childAnno) != GetAnnoValue(parentAnno))) {
             DiagConflictingAnnotation(diag, *parent.decl, *child.decl, checkingDecl, annotationKind);
         }
         return;
@@ -137,7 +142,7 @@ void CheckAnnotation(DiagnosticEngine& diag, TypeManager& typeManager, Annotatio
         clonedAnno->EnableAttr(Attribute::COMPILER_ADD);
         CopyBasicInfo(child.decl, clonedAnno.get());
         child.decl->annotations.emplace_back(std::move(clonedAnno));
-    } else if (GetAnnoValue(childAnno) != GetAnnoValue(parentAnno)) {
+    } else if (IsForeignNameLikeAnnotation(annotationKind) && (GetAnnoValue(childAnno) != GetAnnoValue(parentAnno))) {
         DiagConflictingAnnotation(diag, *parent.decl, *child.decl, checkingDecl, annotationKind);
     }
 }
@@ -148,6 +153,7 @@ void CheckForeignAnnotations(DiagnosticEngine& diag, TypeManager& typeManager, c
     CheckAnnotation(diag, typeManager, AnnotationKind::FOREIGN_NAME, parent, child, checkingDecl);
     CheckAnnotation(diag, typeManager, AnnotationKind::FOREIGN_GETTER_NAME, parent, child, checkingDecl);
     CheckAnnotation(diag, typeManager, AnnotationKind::FOREIGN_SETTER_NAME, parent, child, checkingDecl);
+    CheckAnnotation(diag, typeManager, AnnotationKind::OBJ_C_OPTIONAL, parent, child, checkingDecl);
 }
 
 } // namespace Cangjie::Interop::ObjC
