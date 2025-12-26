@@ -30,21 +30,21 @@ bool IsIfExprWithoutElse(const IfExpr& ie)
 } // namespace
 
 // Syntax : if t1 then t2 else t3.
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIfExpr(ASTContext& ctx, IfExpr& ie)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIfExpr(ASTContext& ctx, IfExpr& ie, SynthesizeContext context)
 {
     CJC_NULLPTR_CHECK(ie.condExpr);
     bool isWellTyped = CheckCondition(ctx, *ie.condExpr, false);
-    isWellTyped = ie.thenBody && Ty::IsTyCorrect(Synthesize(ctx, ie.thenBody.get())) && isWellTyped;
+    isWellTyped = ie.thenBody && Ty::IsTyCorrect(Synthesize(ctx, ie.thenBody.get(), SynthesizeContext::EXPR_ARG)) && isWellTyped;
 
     if (IsIfExprWithoutElse(ie)) {
         // For the case that if-elseif without ending 'else' branch.
-        isWellTyped = (!ie.elseBody || Ty::IsTyCorrect(Synthesize(ctx, ie.elseBody.get()))) && isWellTyped;
+        isWellTyped = (!ie.elseBody || Ty::IsTyCorrect(Synthesize(ctx, ie.elseBody.get(), SynthesizeContext::EXPR_ARG))) && isWellTyped;
         ie.ty = isWellTyped ? RawStaticCast<Ty*>(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT))
                             : TypeManager::GetInvalidTy();
         return ie.ty;
     }
 
-    isWellTyped = ie.elseBody && Ty::IsTyCorrect(Synthesize(ctx, ie.elseBody.get())) && isWellTyped;
+    isWellTyped = ie.elseBody && Ty::IsTyCorrect(Synthesize(ctx, ie.elseBody.get(), SynthesizeContext::EXPR_ARG)) && isWellTyped;
     if (!isWellTyped) {
         ie.ty = TypeManager::GetInvalidTy();
         return TypeManager::GetInvalidTy();
@@ -54,6 +54,11 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIfExpr(ASTContext& ctx, IfExpr& ie)
     ReplaceIdealTy(*ie.elseBody);
     ie.thenBody->ty = ReplaceThisTy(ie.thenBody->ty);
     ie.elseBody->ty = ReplaceThisTy(ie.elseBody->ty);
+    // when an if expr is unused, its type is set to unit if possible
+    if (context == SynthesizeContext::UNUSED) {
+        ie.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
+        return ie.ty;
+    }
     auto thenTy = ie.thenBody->ty;
     auto elseTy = ie.elseBody->ty;
     if (Ty::IsTyCorrect(thenTy) && Ty::IsTyCorrect(elseTy)) {
@@ -131,7 +136,7 @@ bool TypeChecker::TypeCheckerImpl::SynLetPatternDestructor(
         p->ctxExpr = lpd.initializer.get();
         PropagateCtxExpr(*p, *p->ctxExpr);
     }
-    Synthesize(ctx, lpd.initializer.get());
+    Synthesize(ctx, lpd.initializer.get(), SynthesizeContext::EXPR_ARG);
     ReplaceIdealTy(*lpd.initializer);
     auto selectorTy = lpd.initializer->ty;
     // cannot have multiple pattern in one let with different astKind, e.g. let A|_ <- xxx
@@ -220,8 +225,8 @@ bool TypeChecker::TypeCheckerImpl::ChkIfExprNoElse(ASTContext& ctx, Ty& target, 
 {
     Ptr<Ty> unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
     ie.ty = unitTy;
-    Synthesize(ctx, ie.thenBody.get());
-    Synthesize(ctx, ie.elseBody.get());
+    Synthesize(ctx, ie.thenBody.get(), SynthesizeContext::EXPR_ARG);
+    Synthesize(ctx, ie.elseBody.get(), SynthesizeContext::EXPR_ARG);
     // The ifExpr may only have 'then' branch or as the case that if-elseif without ending 'else' branch.
     bool isWellTyped = Ty::IsTyCorrect(ie.thenBody->ty) && (!ie.elseBody || Ty::IsTyCorrect(ie.elseBody->ty));
     bool isTargetMatched = typeManager.IsSubtype(unitTy, &target);

@@ -39,7 +39,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynReturnExpr(ASTContext& ctx, ReturnExpr&
             ctx.targetTypeMap[re.expr.get()] = re.expr->ty;
         }
     } else {
-        isWellTyped = Synthesize(ctx, re.expr.get()) && ReplaceIdealTy(*re.expr);
+        isWellTyped = Synthesize(ctx, re.expr.get(), SynthesizeContext::EXPR_ARG) && ReplaceIdealTy(*re.expr);
     }
 
     // Replace ClassThisTy to ClassTy when the function's outer declaration is not Class or Extend which extends class.

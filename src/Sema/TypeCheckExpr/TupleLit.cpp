@@ -16,7 +16,7 @@ using namespace TypeCheckUtil;
 bool TypeChecker::TypeCheckerImpl::ChkTupleLit(ASTContext& ctx, Ty& target, TupleLit& tl)
 {
     if (target.IsAny()) {
-        tl.ty = Synthesize(ctx, &tl);
+        tl.ty = Synthesize(ctx, &tl, SynthesizeContext::EXPR_ARG);
         ReplaceIdealTy(tl);
         return Ty::IsTyCorrect(tl.ty);
     }
@@ -29,7 +29,7 @@ bool TypeChecker::TypeCheckerImpl::ChkTupleLit(ASTContext& ctx, Ty& target, Tupl
     auto tupleTy = StaticCast<TupleTy*>(targetTy);
     auto typeArgs = tupleTy->typeArgs;
     if (typeArgs.size() != tl.children.size()) {
-        tl.ty = Synthesize(ctx, &tl);
+        tl.ty = Synthesize(ctx, &tl, SynthesizeContext::EXPR_ARG);
         ReplaceIdealTy(tl);
         DiagMismatchedTypes(diag, tl, *targetTy);
         return false;
@@ -42,7 +42,7 @@ bool TypeChecker::TypeCheckerImpl::ChkTupleLit(ASTContext& ctx, Ty& target, Tupl
             if (Ty::IsTyCorrect(typeArgs[i]) && Ty::IsTyCorrect(tl.children[i]->ty)) {
                 DiagMismatchedTypes(diag, *tl.children[i], *typeArgs[i]);
             }
-            tl.ty = Synthesize(ctx, &tl);
+            tl.ty = Synthesize(ctx, &tl, SynthesizeContext::EXPR_ARG);
             ReplaceIdealTy(tl);
             return false;
         } else {
@@ -66,7 +66,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTupleLit(ASTContext& ctx, TupleLit& tl)
             return tl.ty;
         }
         if (!Ty::IsTyCorrect(it->ty)) {
-            (void)Synthesize(ctx, it.get());
+            (void)Synthesize(ctx, it.get(), SynthesizeContext::EXPR_ARG);
         }
         ReplaceIdealTy(*it);
         elemTy.push_back(it->ty);

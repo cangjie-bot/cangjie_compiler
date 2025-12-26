@@ -136,7 +136,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLitConstStringExpr(ASTContext& ctx, Lit
 {
     // For string literal expr.
     if (!lce.siExpr) {
-        lce.ty = Synthesize(ctx, lce.ref.get());
+        lce.ty = Synthesize(ctx, lce.ref.get(), SynthesizeContext::EXPR_ARG);
         return lce.ty;
     }
     // For String Interpolation.
@@ -157,7 +157,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLitConstStringExpr(ASTContext& ctx, Lit
         }
         auto ie = StaticCast<InterpolationExpr*>(expr.get());
         CJC_NULLPTR_CHECK(ie->block);
-        ie->block->ty = Synthesize(ctx, ie->block.get());
+        ie->block->ty = Synthesize(ctx, ie->block.get(), SynthesizeContext::EXPR_ARG);
         if (!typeManager.IsSubtype(ie->block->ty, toStringInterface->ty)) {
             if (Ty::IsTyCorrect(ie->block->ty)) {
                 diag.Diagnose(*ie->block, DiagKind::sema_invalid_string_implementation, ie->block->ty->String());

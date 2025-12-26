@@ -19,7 +19,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTypeConvExpr(ASTContext& ctx, TypeConvE
 {
     CJC_NULLPTR_CHECK(tce.expr);
     CJC_NULLPTR_CHECK(tce.type);
-    Synthesize(ctx, tce.expr.get());
+    Synthesize(ctx, tce.expr.get(), SynthesizeContext::EXPR_ARG);
     ReplaceIdealTy(*tce.expr);
     if (tce.type->astKind == ASTKind::PRIMITIVE_TYPE) {
         return SynNumTypeConvExpr(tce);

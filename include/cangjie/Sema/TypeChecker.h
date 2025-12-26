@@ -56,6 +56,7 @@ public:
      * @param targets all candidate members.
      */
     void RemoveTargetNotMeetExtendConstraint(const Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Decl>>& targets);
+    class TypeCheckerImpl;
 
 private:
     friend class InstCtxScope;
@@ -65,7 +66,6 @@ private:
     class Synthesizer;
     /** The class for checking enum sugar. */
     class EnumSugarChecker;
-    class TypeCheckerImpl;
     std::unique_ptr<TypeCheckerImpl> impl;
 }; // class TypeChecker
 } // namespace Cangjie

@@ -34,11 +34,11 @@ bool TypeChecker::TypeCheckerImpl::ChkSyncExpr(ASTContext& ctx, Ptr<Ty> tgtTy, S
         // The desugared expression must have 3 children: a mutex declaration, mutex.lock() and a try expression.
         CJC_ASSERT(b.size() == 3);
         // Handle the mutex variable declaration.
-        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, b.at(0).get())) && isWellTyped;
+        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, b.at(0).get(), SynthesizeContext::EXPR_ARG)) && isWellTyped;
         // Handle the mutex.lock().
         { // Create a scope for DiagSuppressor. Suppress errors raised by mutex.lock().
             auto ds = DiagSuppressor(diag);
-            if (Ty::IsTyCorrect(Synthesize(ctx, b.at(1).get()))) {
+            if (Ty::IsTyCorrect(Synthesize(ctx, b.at(1).get(), SynthesizeContext::EXPR_ARG))) {
                 ds.ReportDiag();
             } else {
                 isWellTyped = false;

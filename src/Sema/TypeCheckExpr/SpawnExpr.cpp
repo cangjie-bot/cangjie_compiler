@@ -14,9 +14,9 @@ using namespace Sema;
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynSpawnExpr(ASTContext& ctx, SpawnExpr& se)
 {
     bool isWellTyped = !se.arg ||
-        (Ty::IsTyCorrect(Synthesize(ctx, se.arg.get())) && CheckSpawnArgValid(ctx, *se.arg));
+        (Ty::IsTyCorrect(Synthesize(ctx, se.arg.get(), SynthesizeContext::EXPR_ARG)) && CheckSpawnArgValid(ctx, *se.arg));
     CJC_NULLPTR_CHECK(se.task);
-    isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, se.task.get())) && isWellTyped;
+    isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, se.task.get(), SynthesizeContext::EXPR_ARG)) && isWellTyped;
     if (!isWellTyped) {
         se.ty = TypeManager::GetInvalidTy();
         return se.ty;
@@ -67,7 +67,7 @@ bool TypeChecker::TypeCheckerImpl::CheckSpawnArgValid(const ASTContext& ctx, con
 
 bool TypeChecker::TypeCheckerImpl::ChkSpawnExprSimple(ASTContext& ctx, Ty& tgtTy, SpawnExpr& se)
 {
-    if (Ty::IsTyCorrect(Synthesize(ctx, &se))) {
+    if (Ty::IsTyCorrect(Synthesize(ctx, &se, SynthesizeContext::EXPR_ARG))) {
         if (typeManager.IsSubtype(se.ty, &tgtTy)) {
             return true;
         } else {
@@ -98,7 +98,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSpawnExpr(ASTContext& ctx, Ty& tgtTy, Spaw
     }
     auto funcTy = typeManager.GetFunctionTy({}, fuTy->typeArgs.front());
     bool isWellTyped = !se.arg ||
-        (Ty::IsTyCorrect(Synthesize(ctx, se.arg.get())) && CheckSpawnArgValid(ctx, *se.arg));
+        (Ty::IsTyCorrect(Synthesize(ctx, se.arg.get(), SynthesizeContext::EXPR_ARG)) && CheckSpawnArgValid(ctx, *se.arg));
     isWellTyped = Check(ctx, funcTy, se.task.get()) && isWellTyped;
     if (!isWellTyped) {
         se.ty = TypeManager::GetInvalidTy();

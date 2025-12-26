@@ -617,12 +617,12 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterTypeCheck(ASTContext& ctx,
     Walker(&pkg, preVisit).Walk();
 }
 
-Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithoutRecover(ASTContext& ctx, Ptr<AST::Node> node)
+Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithoutRecover(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context)
 {
     CJC_NULLPTR_CHECK(node);
     ctx.ClearTypeCheckCache(*node);    // ensure newly created nodes have no related cache
     ctx.SkipSynForCorrectTyRec(*node); // avoid possible recovery during synthesize for already checked node
-    auto ret = Synthesize(ctx, node);
+    auto ret = Synthesize(ctx, node, context);
     DesugarForPropDecl(*node); // seems that the above still aren't enough...
     return ret;
 }

@@ -330,7 +330,7 @@ void TypeChecker::TypeCheckerImpl::DiagMemberAccessNotFound(const MemberAccess& 
 
 bool TypeChecker::TypeCheckerImpl::ChkRefExpr(ASTContext& ctx, Ty& target, NameReferenceExpr& refNode)
 {
-    (void)Synthesize(ctx, &refNode);
+    (void)Synthesize(ctx, &refNode, SynthesizeContext::EXPR_ARG);
     auto targets = GetFuncTargets(refNode);
     // None function target check.
     if (targets.empty()) {
@@ -401,7 +401,7 @@ bool TypeChecker::TypeCheckerImpl::SynTargetOnUsed(ASTContext& ctx, const NameRe
             auto& vda = ctx.GetOuterVarDeclAbstract(*vd);
             declToSyn = vda.TestAttr(Attribute::GLOBAL) ? &vda : vd;
         }
-        auto targetTy = Synthesize(ctx, declToSyn);
+        auto targetTy = Synthesize(ctx, declToSyn, SynthesizeContext::EXPR_ARG);
         if (auto fd = DynamicCast<FuncDecl*>(declToSyn); fd && targetTy->HasQuestTy()) {
             DiagUnableToInferReturnType(diag, *fd, nre);
             return false;
@@ -417,7 +417,7 @@ void TypeChecker::TypeCheckerImpl::InferRefExpr(ASTContext& ctx, RefExpr& re)
     }
     bool isWellTyped = true;
     for (auto& type : re.typeArguments) {
-        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, type.get())) && isWellTyped;
+        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, type.get(), SynthesizeContext::EXPR_ARG)) && isWellTyped;
     }
     if (re.isThis || re.isSuper) {
         CheckThisOrSuper(ctx, re);
@@ -537,7 +537,7 @@ void TypeChecker::TypeCheckerImpl::InferMemberAccess(ASTContext& ctx, MemberAcce
     }
     bool isWellTyped = true;
     for (auto& type : ma.typeArguments) {
-        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, type.get())) && isWellTyped;
+        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, type.get(), SynthesizeContext::NONE)) && isWellTyped;
     }
     Ptr<Expr> baseExpr = ma.baseExpr.get();
     if (!baseExpr || !isWellTyped) {
@@ -600,7 +600,7 @@ Ptr<Decl> TypeChecker::TypeCheckerImpl::GetBaseDeclInMemberAccess(ASTContext& ct
     Ptr<Expr> baseExpr = ma.baseExpr.get();
     // Synthesize baseExpr's ty, baseExpr maybe another MemberAccess like a.b or RefExpr a.
     // Could be from desugaring a binary expr, need to avoid exponential repetitive check with cache
-    SynthesizeWithNegCache(ctx, baseExpr);
+    SynthesizeWithNegCache(ctx, baseExpr, SynthesizeContext::EXPR_ARG);
     return GetRealTarget(baseExpr, baseExpr->GetTarget());
 }
 
