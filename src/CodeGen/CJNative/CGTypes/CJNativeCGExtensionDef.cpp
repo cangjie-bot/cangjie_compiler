@@ -364,13 +364,9 @@ llvm::Constant* CGExtensionDef::GenerateFuncTableForType(
         return llvm::Constant::getNullValue(i8PtrType);
     }
 
-    auto tableItemType = llvm::StructType::getTypeByName(llvmCtx, "vmt_item_layout");
-    if (!tableItemType) {
-        tableItemType = llvm::StructType::create(llvmCtx, {i8PtrType, i8PtrType}, "vmt_item_layout");
-    }
     auto funcTableSize = vtableInType.GetMethodNum();
     CJC_ASSERT(funcTableSize != 0);
-    auto tableType = llvm::ArrayType::get(tableItemType, funcTableSize);
+    auto tableType = llvm::ArrayType::get(i8PtrType, 2 * funcTableSize);
     auto funcTableGV =
         llvm::cast<llvm::GlobalVariable>(cgMod.GetLLVMModule()->getOrInsertGlobal(extendDefName + ".ft", tableType));
     if (funcTableGV->hasInitializer()) {
@@ -383,13 +379,12 @@ llvm::Constant* CGExtensionDef::GenerateFuncTableForType(
         const auto& funcInfo = vtableInType.GetVirtualMethods()[i];
         if (auto method = funcInfo.GetVirtualMethod()) {
             auto function = cgMod.GetOrInsertCGFunction(method)->GetRawFunction();
-            funcPtr = llvm::ConstantExpr::getBitCast(function, i8PtrType);
+            funcTable[i] = llvm::ConstantExpr::getBitCast(function, i8PtrType);
         } else {
-            funcPtr = llvm::ConstantPointerNull::get(i8PtrType);
+            funcTable[i] = llvm::ConstantPointerNull::get(i8PtrType);
         }
-        llvm::Constant* outerTiOrFn = targetType->GetTypeArgs().empty() ? GenerateOuterTi(inheritedType, funcInfo)
-                                                                        : GenerateOuterTiFn(inheritedType, funcInfo);
-        funcTable[i] = llvm::ConstantStruct::get(tableItemType, {funcPtr, outerTiOrFn});
+        funcTable[funcTableSize + i] = targetType->GetTypeArgs().empty() ? GenerateOuterTi(inheritedType, funcInfo)
+                                                                         : GenerateOuterTiFn(inheritedType, funcInfo);
     }
 
     funcTableGV->setInitializer(llvm::ConstantArray::get(tableType, funcTable));
@@ -496,9 +491,10 @@ bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedT
     content[static_cast<size_t>(INTERFACE_FN_OR_INTERFACE_TI)] = iFnOrTi;
     content[static_cast<size_t>(IS_INTERFACE_TI)] =
         llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(isTi));
+    auto flag = 0b01000000;
+    flag &= inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000;
     content[static_cast<size_t>(FLAG)] =
-        llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()),
-        static_cast<uint8_t>(inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000));
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(flag));
     content[static_cast<size_t>(WHERE_CONDITION_FN)] = GenerateWhereConditionFn();
     content[static_cast<size_t>(FUNC_TABLE)] = GenerateFuncTableForType(inheritedType, vTable);
     content[static_cast<size_t>(FUNC_TABLE_SIZE)] =
