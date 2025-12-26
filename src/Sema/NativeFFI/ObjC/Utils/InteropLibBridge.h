@@ -64,12 +64,22 @@ public:
     Ptr<AST::TypeAliasDecl> GetNativeObjCSelDecl();
 
     /**
+     * Gets NativeObjCClass declaration.
+     * objc_class*.
+     */
+    Ptr<AST::TypeAliasDecl> GetNativeObjCClassDecl();
+
+    Ptr<AST::Ty> GetNativeObjCClassTy();
+
+    /**
      * Gets NativeObjCSuperPtr (CPointer<NativeObjCSuper>) declaration.
      * objc_super*.
      */
     Ptr<AST::TypeAliasDecl> GetNativeObjCSuperPtrDecl();
 
     Ptr<AST::Ty> GetNativeObjCSuperPtrTy();
+
+    Ptr<AST::FuncDecl> GetGetSuperClassDecl();
 
     /**
      * Gets RegistryId declaration.
