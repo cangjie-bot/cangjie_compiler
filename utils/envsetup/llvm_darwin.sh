@@ -10,22 +10,14 @@
 # ** NOTE: Please use `source' command to execute this script. **
 
 # Get current shell name.
-shell_name=$(ps -o comm= $$)
-
-case "${shell_name}" in
-    "-"*)
-        ;;
-    *)
-        shell_name=$(basename $shell_name)
-        ;;
-esac
+shell_name=$(basename -- $(ps -o comm= $$))
 
 # Get the absolute path of this script according to different shells.
 case "${shell_name}" in
-    "zsh" | "-zsh")
+    "zsh")
         source_dir="${(%):-%N}"
         ;;
-    "sh" | "-sh" | "bash" | "-bash")
+    "sh" | "bash")
         source_dir="${BASH_SOURCE[0]}"
         ;;
     *)
