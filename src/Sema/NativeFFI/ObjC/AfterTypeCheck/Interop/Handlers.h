@@ -288,8 +288,8 @@ public:
 private:
     void Desugar(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method);
     void Desugar(InteropContext& ctx, AST::ClassDecl& impl, AST::PropDecl& prop);
-    void DesugarCallExpr(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method, AST::CallExpr& ce);
-    void DesugarGetForPropDecl(InteropContext& ctx, AST::ClassDecl& impl, AST::FuncDecl& method, AST::MemberAccess& ma);
+    void DesugarCallExpr(InteropContext& ctx, AST::ClassDecl& impl, AST::CallExpr& ce);
+    void DesugarGetForPropDecl(InteropContext& ctx, AST::ClassDecl& impl, AST::MemberAccess& ma);
 };
 
 /**

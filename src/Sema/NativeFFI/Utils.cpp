@@ -410,7 +410,8 @@ bool IsThisConstructorCall(const CallExpr& call)
     if (!baseFunc || !baseFunc->isThis) {
         return false;
     }
-    return call.callKind == CallKind::CALL_OBJECT_CREATION || call.callKind == CallKind::CALL_STRUCT_CREATION;
+    // this(...) call is a kind of CALL_DECLARED_FUNCTION
+    return call.callKind == CallKind::CALL_DECLARED_FUNCTION;
 }
 
 void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericConfig, TypeManager& typeManager)
