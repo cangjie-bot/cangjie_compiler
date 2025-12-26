@@ -191,7 +191,7 @@ bool TypeChecker::TypeCheckerImpl::SolveLamExprParamTys(ASTContext& ctx, AST::La
         for (auto& node : le.funcBody->paramLists[0]->params) {
             node->ty = typeManager.GetInstantiatedTy(node->ty, *sol);
         }
-        if (Ty::IsTyCorrect(Synthesize(ctx, le.funcBody.get())) && le.funcBody->body &&
+        if (Ty::IsTyCorrect(Synthesize(ctx, le.funcBody.get(), SynthesizeContext::EXPR_ARG)) && le.funcBody->body &&
             Ty::IsTyCorrect(le.funcBody->body->ty)) {
             le.ty = le.funcBody->ty;
             successful = true;
@@ -266,7 +266,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLamExpr(ASTContext& ctx, LambdaExpr& le
     TyVarScope sc(typeManager);
     for (auto& node : le.funcBody->paramLists[0]->params) {
         CJC_NULLPTR_CHECK(node);
-        Ptr<Ty> ty = Synthesize(ctx, node->type.get());
+        Ptr<Ty> ty = Synthesize(ctx, node->type.get(), SynthesizeContext::NONE);
         if (Ty::IsTyCorrect(ty)) {
             node->ty = ty;
         } else if (ctx.funcArgReachable.count(&le) == 0 && !node->type) {
@@ -282,7 +282,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLamExpr(ASTContext& ctx, LambdaExpr& le
     Ptr<Ty> leTy = nullptr;
     {
         DiagSuppressor ds(diag);
-        leTy = Synthesize(ctx, le.funcBody.get());
+        leTy = Synthesize(ctx, le.funcBody.get(), SynthesizeContext::EXPR_ARG);
         if (skipSolving) {
             ds.ReportDiag();
         }
@@ -318,14 +318,14 @@ bool TypeChecker::TypeCheckerImpl::ChkLamExpr(ASTContext& ctx, Ty& target, Lambd
     ClearInvalidTypeCheckCache(ctx, le, target);
     ctx.lastTargetTypeMap[&le] = &target;
     if (target.IsAny() || (le.TestAttr(AST::Attribute::C) && target.IsCType())) {
-        le.ty = Synthesize(ctx, &le);
+        le.ty = Synthesize(ctx, &le, SynthesizeContext::EXPR_ARG);
         (void)ReplaceIdealTy(le);
         return Ty::IsTyCorrect(le.ty);
     }
     Ptr<Ty> targetTy = TypeCheckUtil::UnboxOptionType(&target);
     if (!Ty::IsTyCorrect(targetTy) || !targetTy->IsFunc()) {
         auto ds = DiagSuppressor(diag);
-        auto synTy = Synthesize(ctx, &le);
+        auto synTy = Synthesize(ctx, &le, SynthesizeContext::EXPR_ARG);
         le.ty = TypeManager::GetInvalidTy();
         if (!ds.HasError() && Ty::IsTyCorrect(synTy)) { // Only report type mismatch when no error happens.
             DiagMismatchedTypesWithFoundTy(diag, le, target, *synTy);
@@ -369,7 +369,7 @@ bool TypeChecker::TypeCheckerImpl::ChkLamExpr(ASTContext& ctx, Ty& target, Lambd
         ClearLambdaBodyForReCheck(le);
     }
     le.funcBody->retType.reset(nullptr);
-    auto bodyTy = Synthesize(ctx, le.funcBody.get());
+    auto bodyTy = Synthesize(ctx, le.funcBody.get(), SynthesizeContext::EXPR_ARG);
     if (Ty::IsTyCorrect(bodyTy) && !typeManager.IsSubtype(bodyTy, targetTy)) {
         DiagMismatchedTypesWithFoundTy(diag, le, *targetTy, *bodyTy);
     }

@@ -167,7 +167,7 @@ void TypeChecker::TypeCheckerImpl::DesugarStrInterpolationExpr(ASTContext& ctx, 
     CopyNodeScopeInfo(siexpr, sbItem);
     // Local variable names do not require mangling.
     sbItem->EnableAttr(Attribute::NO_MANGLE);
-    sbItem->ty = SynthesizeWithoutRecover(ctx, sbItem->initializer.get());
+    sbItem->ty = SynthesizeWithoutRecover(ctx, sbItem->initializer.get(), SynthesizeContext::EXPR_ARG);
     // Get all StringBuilder append candidate functions.
     LookupInfo info{.file = litConstExpr.curFile, .lookupExtend = false};
     std::vector<Ptr<Decl>> appendDecls = FieldLookup(ctx, sbDecl, "append", info);

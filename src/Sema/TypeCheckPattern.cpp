@@ -315,7 +315,7 @@ bool TypeChecker::TypeCheckerImpl::ChkTypePattern(ASTContext& ctx, Ty& target, T
 {
     CJC_NULLPTR_CHECK(p.pattern);
     CJC_NULLPTR_CHECK(p.type);
-    p.type->ty = Synthesize(ctx, p.type.get());
+    p.type->ty = Synthesize(ctx, p.type.get(), SynthesizeContext::NONE);
     CJC_NULLPTR_CHECK(p.type->ty);
     if (typeManager.IsSubtype(&target, p.type->ty, true, false)) {
         p.needRuntimeTypeCheck = false;
@@ -596,7 +596,7 @@ bool TypeChecker::TypeCheckerImpl::ChkExceptTypePattern(
     bool foundClass = exception && error;
     for (auto& type : etp.types) {
         CJC_NULLPTR_CHECK(type);
-        Synthesize(ctx, type.get());
+        Synthesize(ctx, type.get(), SynthesizeContext::NONE);
         CJC_NULLPTR_CHECK(type->ty);
         if (!foundClass || type->ty->IsNothing() ||
             (!typeManager.IsSubtype(type->ty, exception->ty) && !typeManager.IsSubtype(type->ty, error->ty))) {
@@ -655,7 +655,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::ChkCommandTypePattern(
     CJC_ASSERT(ctp.types.size() == 1);
     auto cmdTypePat = ctp.types[0].get();
     CJC_NULLPTR_CHECK(cmdTypePat);
-    Synthesize(ctx, cmdTypePat);
+    Synthesize(ctx, cmdTypePat, SynthesizeContext::NONE);
     CJC_NULLPTR_CHECK(cmdTypePat->ty);
     auto prCTys = promotion.Promote(*cmdTypePat->ty, *command->ty);
     if (cmdTypePat->ty->IsNothing() || prCTys.empty()) {

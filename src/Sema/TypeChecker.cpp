@@ -109,7 +109,7 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
     // If the return type is not of QuestTy, then we use it to check the function's body.
     if (fb.retType->ty->IsQuest()) {
         // Semantic analysis for function body without given return type.
-        auto ret = Synthesize(ctx, fb.body.get());
+        auto ret = Synthesize(ctx, fb.body.get(), SynthesizeContext::NONE);
         // In lambda, the return value type should be consistent with the body.
         // Otherwise, errors in the body that do not affect the return value type may fail to be reported.
         if (fb.funcDecl == nullptr && !Ty::IsTyCorrect(ret)) {
@@ -139,7 +139,7 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
         if (fb.retType->ty->IsUnit()) {
             // The body eventually will be appended a 'return ()' expression, so we switch to the Synthesize mode.
             // Errors should be already reported during the synthesis.
-            isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, fb.body.get()));
+            isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, fb.body.get(), SynthesizeContext::UNUSED));
         } else if (NeedCheckBodyReturn(fb)) {
             isWellTyped = Check(ctx, fb.retType->ty, fb.body.get());
             if (!isWellTyped && fb.body->body.empty()) {
@@ -199,7 +199,7 @@ void TypeChecker::TypeCheckerImpl::ReplaceFuncRetTyWithThis(FuncBody& fb, Ptr<Ty
 bool TypeChecker::TypeCheckerImpl::CheckFuncBody(ASTContext& ctx, FuncBody& fb)
 {
     if (fb.retType) {
-        Synthesize(ctx, fb.retType.get());
+        Synthesize(ctx, fb.retType.get(), SynthesizeContext::NONE);
     } else {
         // The goal is that, after type checking, every function declaration has a correct return type, so that the back
         // ends do not need to test anymore.
@@ -252,7 +252,7 @@ bool TypeChecker::TypeCheckerImpl::CheckNormalFuncBody(ASTContext& ctx, FuncBody
     if (!Ty::IsTyCorrect(fb.retType->ty)) {
         if (!fb.TestAttr(Attribute::IS_CHECK_VISITED)) {
             fb.EnableAttr(Attribute::IS_CHECK_VISITED); // Avoid re-enter funcDecl check, when function is invalid.
-            Synthesize(ctx, fb.body.get());             // Synthesize for other decl/expr in function body.
+            Synthesize(ctx, fb.body.get(), SynthesizeContext::NONE); // Synthesize for other decl/expr in function body.
         }
         fb.ty = typeManager.GetFunctionTy(paramTys, fb.retType->ty, {isCFunc, false, hasVariableLenArg});
         return false;
@@ -472,7 +472,7 @@ void TypeChecker::TypeCheckerImpl::CheckCtorFuncBody(ASTContext& ctx, FuncBody& 
     fb.ty = typeManager.GetFunctionTy(paramTys, ctorTy);
     fb.funcDecl->ty = fb.ty;
     fb.retType->ty = ctorTy;
-    Synthesize(ctx, fb.body.get());
+    Synthesize(ctx, fb.body.get(), SynthesizeContext::UNUSED);
 }
 
 void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParamList& fpl)
@@ -485,7 +485,7 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
     }
     for (auto& param : fpl.params) {
         CJC_NULLPTR_CHECK(param);
-        if (!Ty::IsTyCorrect(Synthesize(ctx, param.get()))) {
+        if (!Ty::IsTyCorrect(Synthesize(ctx, param.get(), SynthesizeContext::NONE))) {
             paramTys.push_back(TypeManager::GetInvalidTy()); // Set type to get correct size of function type.
             continue;
         }
@@ -532,7 +532,7 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncArgWithInout(ASTContext& ctx, Ty& targ
     auto exprTy = fa.expr->ty;
     if (!Ty::IsTyCorrect(fa.expr->ty)) {
         // Trying to infer fa type without target.
-        exprTy = Synthesize(ctx, fa.expr.get());
+        exprTy = Synthesize(ctx, fa.expr.get(), SynthesizeContext::EXPR_ARG);
     }
     auto argTy = DynamicCast<VArrayTy*>(exprTy);
     auto ptrParamTy = DynamicCast<PointerTy*>(&target);
@@ -671,7 +671,7 @@ bool TypeChecker::TypeCheckerImpl::ChkInoutMemberAccess(const MemberAccess& ma)
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncArg(ASTContext& ctx, FuncArg& fa)
 {
     if (fa.expr) {
-        Synthesize(ctx, fa.expr.get());
+        Synthesize(ctx, fa.expr.get(), SynthesizeContext::EXPR_ARG);
         if (fa.withInout) {
             if (!Ty::IsTyCorrect(fa.expr->ty) || !ChkInoutFuncArg(fa)) {
                 fa.ty = TypeManager::GetInvalidTy();
@@ -882,7 +882,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::PerformBasicChecksForSynthe
     return {};
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node, SynthesizeContext context)
 {
     if (auto res = PerformBasicChecksForSynthesize(ctx, node)) {
         return *res;
@@ -918,7 +918,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::BLOCK: {
-            node->ty = SynBlock(*curCtx, *StaticAs<ASTKind::BLOCK>(node));
+            node->ty = SynBlock(*curCtx, *StaticAs<ASTKind::BLOCK>(node), context);
             break;
         }
         case ASTKind::FUNC_PARAM_LIST: {
@@ -938,7 +938,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::PAREN_EXPR: {
-            node->ty = SynParenExpr(*curCtx, *StaticAs<ASTKind::PAREN_EXPR>(node));
+            node->ty = SynParenExpr(*curCtx, *StaticAs<ASTKind::PAREN_EXPR>(node), context);
             break;
         }
         case ASTKind::LAMBDA_EXPR: {
@@ -982,7 +982,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::IF_EXPR: {
-            node->ty = SynIfExpr(*curCtx, *StaticAs<ASTKind::IF_EXPR>(node));
+            node->ty = SynIfExpr(*curCtx, *StaticAs<ASTKind::IF_EXPR>(node), context);
             break;
         }
         case ASTKind::TRY_EXPR: {
@@ -1045,7 +1045,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::OPTIONAL_CHAIN_EXPR: {
-            node->ty = SynOptionalChainExpr(*curCtx, *StaticAs<ASTKind::OPTIONAL_CHAIN_EXPR>(node));
+            node->ty = SynOptionalChainExpr(*curCtx, *StaticAs<ASTKind::OPTIONAL_CHAIN_EXPR>(node), context);
             break;
         }
         case ASTKind::ENUM_DECL: {
@@ -1222,7 +1222,7 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
         if (lub) {
             chkRet = Check(ctx, lub, node) && typeManager.IsSubtype(node->ty, realTarget);
         } else {
-            Synthesize(ctx, node);
+            Synthesize(ctx, node, SynthesizeContext::NONE);
             ReplaceIdealTy(*node);
             chkRet = typeManager.IsSubtype(node->ty, realTarget);
         }
@@ -1392,7 +1392,7 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
                 break;
             }
             default: {
-                Synthesize(ctx, node);
+                Synthesize(ctx, node, SynthesizeContext::NONE);
                 ReplaceIdealTy(*node);
                 chkRet = typeManager.IsSubtype(node->ty, realTarget);
                 break;
@@ -1492,11 +1492,11 @@ void TypeChecker::TypeCheckerImpl::CheckCallsInConstructor(
     }
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithCache(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithCache(ASTContext& ctx, Ptr<Node> node, SynthesizeContext context)
 {
     CJC_NULLPTR_CHECK(node);
     if (!typeManager.GetUnsolvedTyVars().empty()) {
-        return Synthesize(ctx, node);
+        return Synthesize(ctx, node, context);
     }
     CacheKey key = GetCacheKeyForSyn(ctx, node);
     if (ctx.typeCheckCache[node].synCache.count(key) != 0) {
@@ -1504,7 +1504,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithCache(ASTContext& ctx, Ptr<N
         RestoreCached(ctx, node, cache);
         return cache.result;
     } else {
-        return SynthesizeAndCache(ctx, node, key);
+        return SynthesizeAndCache(ctx, node, context, key);
     }
 }
 
@@ -1524,11 +1524,11 @@ bool TypeChecker::TypeCheckerImpl::CheckWithCache(ASTContext& ctx, Ptr<Ty> targe
     }
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithNegCache(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithNegCache(ASTContext& ctx, Ptr<Node> node, SynthesizeContext context)
 {
     CJC_NULLPTR_CHECK(node);
     if (!typeManager.GetUnsolvedTyVars().empty()) {
-        return Synthesize(ctx, node);
+        return Synthesize(ctx, node, context);
     }
     CacheKey key = GetCacheKeyForSyn(ctx, node);
     if (ctx.typeCheckCache[node].synCache.count(key) != 0 && !ctx.typeCheckCache[node].synCache[key].successful) {
@@ -1536,7 +1536,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithNegCache(ASTContext& ctx, Pt
         RestoreCached(ctx, node, cache);
         return cache.result;
     } else {
-        return SynthesizeAndCache(ctx, node, key);
+        return SynthesizeAndCache(ctx, node, context, key);
     }
 }
 
@@ -1578,10 +1578,11 @@ bool TypeChecker::TypeCheckerImpl::CheckWithEffectiveCache(
     return CheckAndCache(ctx, target, node, key);
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(ASTContext& ctx, Ptr<Node> node, bool recoverDiag)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(
+    ASTContext& ctx, Ptr<Node> node, SynthesizeContext context, bool recoverDiag)
 {
     if (!typeManager.GetUnsolvedTyVars().empty() || !node) {
-        return Synthesize(ctx, node);
+        return Synthesize(ctx, node, context);
     }
     CacheKey key = GetCacheKeyForSyn(ctx, node);
     if (!Ty::IsInitialTy(node->ty)) {
@@ -1591,18 +1592,19 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(ASTContext& c
                 RestoreCached(ctx, node, cache, recoverDiag);
                 return cache.result;
             } else {
-                return SynthesizeAndCache(ctx, node, key);
+                return SynthesizeAndCache(ctx, node, context, key);
             }
         }
     }
-    return SynthesizeAndCache(ctx, node, key);
+    return SynthesizeAndCache(ctx, node, context, key);
 }
 
-Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeAndCache(ASTContext& ctx, Ptr<AST::Node> node, const CacheKey& key)
+Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeAndCache(
+    ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context, const CacheKey& key)
 {
     DiagnosticCache dc;
     dc.ToExclude(ctx.diag);
-    auto ret = Synthesize(ctx, node);
+    auto ret = Synthesize(ctx, node, context);
     dc.BackUp(ctx.diag);
     ctx.typeCheckCache[node].synCache[key] = {.successful = ret && Ty::IsTyCorrect(ret) && dc.NoError(),
         .result = ret,
@@ -1754,7 +1756,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheckCompositeBody(
                 CheckFinalizer(*fd);
             }
         }
-        Synthesize(ctx, decl.get());
+        Synthesize(ctx, decl.get(), SynthesizeContext::NONE);
         CheckCTypeMember(*decl);
     }
 }
@@ -2215,7 +2217,7 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
 void TypeChecker::TypeCheckerImpl::TypeCheckTopLevelDecl(ASTContext& ctx, Decl& decl)
 {
     TyVarScope ts(typeManager); // to release local placeholder ty var
-    Synthesize(ctx, &decl);
+    Synthesize(ctx, &decl, SynthesizeContext::NONE);
     MarkOverflow(decl);
 }
 
@@ -2232,7 +2234,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheckImportedGenericMember(ASTContext& ct
         }
         for (auto& member : id->GetMemberDecls()) {
             if (member->TestAttr(Attribute::GENERIC)) {
-                Synthesize(ctx, member.get());
+                Synthesize(ctx, member.get(), SynthesizeContext::NONE);
             }
         }
     }
@@ -2252,7 +2254,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheck(ASTContext& ctx, Package& pkg)
     }
     // 2. check source imported decls.
     for (auto& node : pkg.srcImportedNonGenericDecls) {
-        Synthesize(ctx, node);
+        Synthesize(ctx, node, SynthesizeContext::NONE);
     }
     // 3. check imported generic member decls which is defined in non-generic decl.
     // NOTE: This kind of decls will not be checked in step 1.

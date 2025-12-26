@@ -12,7 +12,7 @@ using namespace AST;
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynThrowExpr(ASTContext& ctx, ThrowExpr& te)
 {
     CJC_NULLPTR_CHECK(te.expr); // Parser guarantees.
-    Synthesize(ctx, te.expr.get());
+    Synthesize(ctx, te.expr.get(), SynthesizeContext::EXPR_ARG);
     te.ty = TypeManager::GetNothingTy();
     if (!Ty::IsTyCorrect(te.expr->ty)) {
         return TypeManager::GetInvalidTy();

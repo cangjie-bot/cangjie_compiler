@@ -60,7 +60,7 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForUnaryExprWithTarget(ASTContext& ct
 {
     // `leaf` is responsible for the invalid type.
     UnaryExpr& leaf = GetLeafUnaryExpr(ue);
-    if (Ty::IsTyCorrect(Synthesize(ctx, leaf.expr.get())) && ReplaceIdealTy(*leaf.expr)) {
+    if (Ty::IsTyCorrect(Synthesize(ctx, leaf.expr.get(), SynthesizeContext::EXPR_ARG)) && ReplaceIdealTy(*leaf.expr)) {
         DiagInvalidUnaryExprWithTarget(diag, leaf, target);
     }
 }
@@ -69,7 +69,7 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForUnaryExpr(ASTContext& ctx, UnaryEx
 {
     // `leaf` is responsible for the invalid type.
     UnaryExpr& leaf = GetLeafUnaryExpr(ue);
-    if (Ty::IsTyCorrect(Synthesize(ctx, leaf.expr.get())) && ReplaceIdealTy(*leaf.expr)) {
+    if (Ty::IsTyCorrect(Synthesize(ctx, leaf.expr.get(), SynthesizeContext::EXPR_ARG)) && ReplaceIdealTy(*leaf.expr)) {
         DiagInvalidUnaryExpr(diag, leaf);
     }
 }
@@ -79,7 +79,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynUnaryExpr(ASTContext& ctx, UnaryExpr& u
     if (ue.desugarExpr) {
         return ue.desugarExpr->ty;
     }
-    if (!Ty::IsTyCorrect(Synthesize(ctx, ue.expr.get()))) {
+    if (!Ty::IsTyCorrect(Synthesize(ctx, ue.expr.get(), SynthesizeContext::EXPR_ARG))) {
         ue.ty = TypeManager::GetInvalidTy();
         return ue.ty;
     }
@@ -90,7 +90,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynUnaryExpr(ASTContext& ctx, UnaryExpr& u
     }
 
     DesugarOperatorOverloadExpr(ctx, ue);
-    if (Ty::IsTyCorrect(Synthesize(ctx, ue.desugarExpr.get()))) {
+    if (Ty::IsTyCorrect(Synthesize(ctx, ue.desugarExpr.get(), SynthesizeContext::EXPR_ARG))) {
         ue.ty = ue.desugarExpr->ty;
         ReplaceTarget(&ue, StaticCast<CallExpr*>(ue.desugarExpr.get())->resolvedFunction);
     } else {
@@ -103,7 +103,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynUnaryExpr(ASTContext& ctx, UnaryExpr& u
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynBuiltinUnaryExpr(ASTContext& ctx, UnaryExpr& ue)
 {
-    auto ty = Synthesize(ctx, ue.expr.get());
+    auto ty = Synthesize(ctx, ue.expr.get(), SynthesizeContext::EXPR_ARG);
     if (!Ty::IsTyCorrect(ty)) {
         return TypeManager::GetInvalidTy();
     }
@@ -166,7 +166,7 @@ bool TypeChecker::TypeCheckerImpl::ChkUnaryExpr(ASTContext& ctx, Ty& target, Una
         ReplaceTarget(&ue, StaticCast<CallExpr*>(ue.desugarExpr.get())->resolvedFunction);
         return true;
     }
-    auto synTy = Synthesize(ctx, ue.desugarExpr.get());
+    auto synTy = Synthesize(ctx, ue.desugarExpr.get(), SynthesizeContext::EXPR_ARG);
     RecoverToUnaryExpr(ue);
     ctx.DeleteDesugarExpr(ue.desugarExpr);
     // Report errors.

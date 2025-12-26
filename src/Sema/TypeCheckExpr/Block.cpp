@@ -12,24 +12,27 @@
 using namespace Cangjie;
 using namespace Sema;
 
-bool TypeChecker::TypeCheckerImpl::SynthesizeAndReplaceIdealTy(ASTContext& ctx, Node& node)
+bool TypeChecker::TypeCheckerImpl::SynthesizeAndReplaceIdealTy(ASTContext& ctx, Node& node, SynthesizeContext context)
 {
     // Call `Synthesize` on declares containing invalid types may return valid types.
     // Therefore, we need to know if there are any errors during the inference process.
     auto ds = DiagSuppressor(diag);
-    bool valid = Ty::IsTyCorrect(Synthesize(ctx, &node)) && ReplaceIdealTy(node) && !ds.HasError();
+    bool valid = Ty::IsTyCorrect(Synthesize(ctx, &node, context)) && ReplaceIdealTy(node) && !ds.HasError();
     ds.ReportDiag();
     return valid;
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynBlock(ASTContext& ctx, Block& b)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynBlock(ASTContext& ctx, Block& b, SynthesizeContext context)
 {
     if (b.body.empty()) {
         b.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
     } else {
         bool existInvalid = false;
-        for (auto& node : b.body) {
-            existInvalid = !SynthesizeAndReplaceIdealTy(ctx, *node) || existInvalid;
+        for (size_t i = 0; i < b.body.size(); i++) {
+            auto& node = b.body[i];
+            auto c = i == b.body.size() - 1 && context != SynthesizeContext::UNUSED ?
+                SynthesizeContext::IMPLICIT_RETURN : SynthesizeContext::UNUSED;
+            existInvalid = !SynthesizeAndReplaceIdealTy(ctx, *node, c) || existInvalid;
         }
         Ptr<Node> lastNode = b.body[b.body.size() - 1].get();
         CJC_ASSERT(lastNode != nullptr);
@@ -62,7 +65,8 @@ bool TypeChecker::TypeCheckerImpl::ChkBlock(ASTContext& ctx, Ty& target, Block& 
     bool isWellTyped = true;
     for (size_t i = 0; i < b.body.size() - 1; i++) {
         CJC_ASSERT(b.body[i]);
-        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *b.body[i]) && isWellTyped;
+        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *b.body[i],
+            SynthesizeContext::UNUSED) && isWellTyped;
     }
     Ptr<Node> lastNode = b.body[b.body.size() - 1].get();
     CJC_ASSERT(lastNode != nullptr);
@@ -73,7 +77,7 @@ bool TypeChecker::TypeCheckerImpl::ChkBlock(ASTContext& ctx, Ty& target, Block& 
     }
     if (lastNode->IsDecl()) {
         bool typeMatched = typeManager.IsSubtype(unitTy, &target);
-        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *lastNode) && typeMatched && isWellTyped;
+        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *lastNode, SynthesizeContext::IMPLICIT_RETURN) && typeMatched && isWellTyped;
         if (isWellTyped) {
             b.ty = unitTy;
             return true;

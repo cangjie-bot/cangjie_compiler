@@ -11,17 +11,17 @@
 using namespace Cangjie;
 using namespace Sema;
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynOptionalChainExpr(ASTContext& ctx, OptionalChainExpr& oce)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynOptionalChainExpr(ASTContext& ctx, OptionalChainExpr& oce, SynthesizeContext context)
 {
     CJC_NULLPTR_CHECK(oce.desugarExpr);
-    oce.ty = Synthesize(ctx, oce.desugarExpr.get());
+    oce.ty = Synthesize(ctx, oce.desugarExpr.get(), context);
     return oce.ty;
 }
 
 bool TypeChecker::TypeCheckerImpl::ChkOptionalChainExpr(ASTContext& ctx, Ty& target, OptionalChainExpr& oce)
 {
     CJC_NULLPTR_CHECK(oce.desugarExpr);
-    if (!Ty::IsTyCorrect(SynOptionalChainExpr(ctx, oce))) {
+    if (!Ty::IsTyCorrect(SynOptionalChainExpr(ctx, oce, SynthesizeContext::EXPR_ARG))) {
         return false;
     }
     if (!CheckOptionBox(target, *oce.desugarExpr->ty)) {

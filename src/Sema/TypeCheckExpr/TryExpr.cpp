@@ -28,7 +28,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryWithResourcesExpr(ASTContext& ctx, T
     bool isWellTyped = true;
     for (auto& vd : te.resourceSpec) {
         CJC_NULLPTR_CHECK(vd);
-        if (!SynthesizeAndReplaceIdealTy(ctx, *vd)) {
+        if (!SynthesizeAndReplaceIdealTy(ctx, *vd, SynthesizeContext::NONE)) {
             isWellTyped = false;
             vd->ty = TypeManager::GetInvalidTy(); // Avoid chaining errors.
             continue;
@@ -40,11 +40,11 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryWithResourcesExpr(ASTContext& ctx, T
         }
     }
     CJC_NULLPTR_CHECK(te.tryBlock);
-    isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryBlock) && isWellTyped;
+    isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryBlock, SynthesizeContext::EXPR_ARG) && isWellTyped;
     isWellTyped = ChkTryExprCatchPatterns(ctx, te) && isWellTyped;
     for (auto& catchBlock : te.catchBlocks) {
         CJC_NULLPTR_CHECK(catchBlock);
-        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *catchBlock) && isWellTyped;
+        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *catchBlock, SynthesizeContext::EXPR_ARG) && isWellTyped;
     }
     isWellTyped = ChkTryExprFinallyBlock(ctx, te) && isWellTyped;
     if (isWellTyped) {
@@ -65,10 +65,10 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTryExpr(ASTContext& ctx, TryExpr& te)
     if (!te.handlers.empty() && te.tryLambda) {
         // For a try-handle expression, the try block has been replaced by a lambda,
         // but only if there were no syntax errors.
-        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryLambda);
+        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryLambda, SynthesizeContext::EXPR_ARG);
     } else {
         CJC_NULLPTR_CHECK(te.tryBlock);
-        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryBlock);
+        isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *te.tryBlock, SynthesizeContext::EXPR_ARG);
     }
 
     auto optJTy = SynTryExprCatchesAndHandles(ctx, te);
@@ -94,7 +94,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynTryExprCatchesAndHandles
         isWellTyped = isWellTyped && ValidateBlockInTryHandle(*te.tryBlock);
     }
     for (auto& catchBlock : te.catchBlocks) {
-        if (!SynthesizeAndReplaceIdealTy(ctx, *catchBlock) ||
+        if (!SynthesizeAndReplaceIdealTy(ctx, *catchBlock, SynthesizeContext::EXPR_ARG) ||
             (!te.handlers.empty() && !ValidateBlockInTryHandle(*catchBlock))) {
             isWellTyped = false;
             continue;
@@ -155,7 +155,7 @@ bool TypeChecker::TypeCheckerImpl::SynHandler(ASTContext& ctx, Handler& handler,
     if (!ValidateHandler(handler)) {
         return false;
     }
-    if (!SynthesizeAndReplaceIdealTy(ctx, *handler.block)) {
+    if (!SynthesizeAndReplaceIdealTy(ctx, *handler.block, SynthesizeContext::EXPR_ARG)) {
         return false;
     }
 
@@ -268,13 +268,14 @@ bool TypeChecker::TypeCheckerImpl::ChkTryExprFinallyBlock(ASTContext& ctx, const
     if (te.isDesugaredFromSyncBlock) {
         // Suppress errors raised from the desugared mutex.unlock(), which should not be reported anyway.
         auto ds = DiagSuppressor(diag);
-        if (Ty::IsTyCorrect(Synthesize(ctx, te.finallyBlock.get()))) {
+        // value of finally is not used
+        if (Ty::IsTyCorrect(Synthesize(ctx, te.finallyBlock.get(), SynthesizeContext::UNUSED))) {
             ds.ReportDiag();
         } else {
             isWellTyped = false;
         }
     } else {
-        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, te.finallyBlock.get())) && isWellTyped;
+        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, te.finallyBlock.get(), SynthesizeContext::UNUSED)) && isWellTyped;
         if (!te.handlers.empty() && te.finallyLambda) {
             auto finallyLamTy = typeManager.GetFunctionTy({}, TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT));
             isWellTyped = Check(ctx, finallyLamTy, te.finallyLambda) && isWellTyped;

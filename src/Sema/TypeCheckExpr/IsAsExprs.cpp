@@ -13,7 +13,8 @@ using namespace Sema;
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIsExpr(ASTContext& ctx, IsExpr& ie)
 {
-    if (Ty::IsTyCorrect(Synthesize(ctx, ie.leftExpr.get())) && Ty::IsTyCorrect(Synthesize(ctx, ie.isType.get())) &&
+    if (Ty::IsTyCorrect(Synthesize(ctx, ie.leftExpr.get(), SynthesizeContext::EXPR_ARG)) &&
+        Ty::IsTyCorrect(Synthesize(ctx, ie.isType.get(), SynthesizeContext::NONE)) &&
         ReplaceIdealTy(*ie.leftExpr)) {
         ie.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
     } else {
@@ -43,7 +44,8 @@ bool TypeChecker::TypeCheckerImpl::ChkIsExpr(ASTContext& ctx, Ty& target, IsExpr
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynAsExpr(ASTContext& ctx, AsExpr& ae)
 {
-    if (Ty::IsTyCorrect(Synthesize(ctx, ae.leftExpr.get())) && Ty::IsTyCorrect(Synthesize(ctx, ae.asType.get())) &&
+    if (Ty::IsTyCorrect(Synthesize(ctx, ae.leftExpr.get(), SynthesizeContext::EXPR_ARG)) &&
+        Ty::IsTyCorrect(Synthesize(ctx, ae.asType.get(), SynthesizeContext::NONE)) &&
         ReplaceIdealTy(*ae.leftExpr)) {
         auto optionDecl = RawStaticCast<EnumDecl*>(importManager.GetCoreDecl("Option"));
         if (optionDecl) {

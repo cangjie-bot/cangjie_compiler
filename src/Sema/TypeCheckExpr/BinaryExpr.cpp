@@ -221,7 +221,7 @@ bool TypeChecker::TypeCheckerImpl::ChkBinaryExpr(ASTContext& ctx, Ty& target, Bi
     }
     // Clear the node to `Synthesize` the literals and the corresponding expressions again.
     be.Clear();
-    if (Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, &be))) {
+    if (Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, &be, SynthesizeContext::EXPR_ARG))) {
         DiagMismatchedTypes(diag, be, target);
         RecoverToBinaryExpr(be);
     }
@@ -357,7 +357,7 @@ bool TypeChecker::TypeCheckerImpl::ChkExpoExprExponent(ASTContext& ctx, Expr& ex
         // The nested if reflects the checking logic better.
         isWellTyped = false;
         if (CanSkipDiag(exponent)) {
-            (void)SynthesizeWithNegCache(ctx, &exponent); // Synthesize 'exponent' to report errors.
+            (void)SynthesizeWithNegCache(ctx, &exponent, SynthesizeContext::EXPR_ARG); // Synthesize 'exponent' to report errors.
         } else {
             std::string tgtTyStr;
             if (exTys.size() == 1) {
@@ -377,7 +377,7 @@ bool TypeChecker::TypeCheckerImpl::ChkExpoExprExponent(ASTContext& ctx, Expr& ex
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynExpoExpr(ASTContext& ctx, BinaryExpr& be)
 {
-    (void)SynthesizeWithNegCache(ctx, be.leftExpr.get());
+    (void)SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
     ReplaceIdealTy(*be.leftExpr);
 
     auto& exponent = *be.rightExpr;
@@ -398,7 +398,7 @@ bool TypeChecker::TypeCheckerImpl::CheckExponentByBaseTy(ASTContext& ctx, Ty& ba
     bool isExponentWellTyped = true;
     if (baseTy.IsPlaceholder()) {
         std::set<std::pair<Ptr<Ty>, Ptr<Ty>>> validCombos = {{i64, u64}, {f64, i64}, {f64, f64}};
-        SynthesizeWithNegCache(ctx, &exponent);
+        SynthesizeWithNegCache(ctx, &exponent, SynthesizeContext::EXPR_ARG);
         ReplaceIdealTy(exponent);
         if (!Ty::IsTyCorrect(exponent.ty)) {
             isExponentWellTyped = false;
@@ -425,7 +425,7 @@ bool TypeChecker::TypeCheckerImpl::CheckExponentByBaseTy(ASTContext& ctx, Ty& ba
             DiagMismatchedTypesWithFoundTy(diag, base, "Int64' or 'Float64", baseTy.String(),
                 "the type of the left operand of an exponentiation expression must be either 'Int64' or 'Float64'");
         }
-        (void)SynthesizeWithNegCache(ctx, &exponent);
+        (void)SynthesizeWithNegCache(ctx, &exponent, SynthesizeContext::EXPR_ARG);
     }
     return isExponentWellTyped;
 }
@@ -559,8 +559,8 @@ std::optional<bool> TypeChecker::TypeCheckerImpl::CheckBinaryExprCaseBuiltIn(
         if (cannotBeTuple) {
             return {};
         }
-        bool bothAreTuple = Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, be.leftExpr.get())) &&
-            be.leftExpr->ty->IsTuple() && Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, be.rightExpr.get())) &&
+        bool bothAreTuple = Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG)) &&
+            be.leftExpr->ty->IsTuple() && Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG)) &&
             be.rightExpr->ty->IsTuple();
         if (bothAreTuple) {
             if (!CheckTupleCanEqual(ctx, be)) {
@@ -610,7 +610,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynLiteralInBinaryExprFromR
     CJC_NULLPTR_CHECK(be.leftExpr);
     {
         auto ds = DiagSuppressor(diag);
-        bool isWellTyped = SynthesizeWithNegCache(ctx, be.rightExpr.get()) && ReplaceIdealTy(*be.rightExpr);
+        bool isWellTyped = SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG) && ReplaceIdealTy(*be.rightExpr);
         if (!isWellTyped) {
             be.ty = TypeManager::GetInvalidTy();
             return {};
@@ -625,7 +625,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynLiteralInBinaryExprFromR
             targetRight->IsPlaceholder());
     if (!isWellTyped) {
         // Bind target when error happens for LSP.
-        SynthesizeWithNegCache(ctx, be.leftExpr.get());
+        SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
         be.ty = TypeManager::GetInvalidTy();
         return {TypeManager::GetInvalidTy()};
     }
@@ -647,14 +647,14 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::SynLiteralInBinaryExprFromR
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLiteralInBinaryExprFromLeft(ASTContext& ctx, BinaryExpr& be)
 {
-    bool isWellTyped = SynthesizeWithNegCache(ctx, be.leftExpr.get()) && ReplaceIdealTy(*be.leftExpr);
+    bool isWellTyped = SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG) && ReplaceIdealTy(*be.leftExpr);
     auto targetLeft = be.leftExpr->ty;
     isWellTyped = isWellTyped &&
         (targetLeft->IsNothing() || targetLeft->IsPrimitiveSubType() || targetLeft->IsTuple() ||
             targetLeft->IsPlaceholder());
     if (!isWellTyped) {
         // Bind target when error happens for LSP.
-        SynthesizeWithNegCache(ctx, be.rightExpr.get());
+        SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG);
         be.ty = TypeManager::GetInvalidTy();
         return TypeManager::GetInvalidTy();
     }
@@ -711,8 +711,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynLogicalExpr(ASTContext& ctx, BinaryExpr
 {
     CJC_NULLPTR_CHECK(be.leftExpr);
     CJC_NULLPTR_CHECK(be.rightExpr);
-    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get());
-    auto rightTy = SynthesizeWithNegCache(ctx, be.rightExpr.get());
+    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
+    auto rightTy = SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG);
     if (!Ty::IsTyCorrect(leftTy) || !Ty::IsTyCorrect(rightTy)) {
         return TypeManager::GetInvalidTy();
     }
@@ -734,7 +734,7 @@ bool TypeChecker::TypeCheckerImpl::ChkShiftExpr(ASTContext& ctx, Ty& target, Bin
 
     auto isWellTyped = CheckWithNegCache(ctx, &target, be.leftExpr.get());
     auto leftTy = be.leftExpr->ty;
-    SynthesizeWithNegCache(ctx, be.rightExpr.get());
+    SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG);
     ReplaceIdealTy(*be.rightExpr);
     auto rightTy = be.rightExpr->ty;
 
@@ -757,8 +757,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynShiftExpr(ASTContext& ctx, BinaryExpr& 
 {
     CJC_NULLPTR_CHECK(be.leftExpr);
     CJC_NULLPTR_CHECK(be.rightExpr);
-    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get());
-    auto rightTy = SynthesizeWithNegCache(ctx, be.rightExpr.get());
+    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
+    auto rightTy = SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG);
     if (!Ty::IsTyCorrect(leftTy) || !Ty::IsTyCorrect(rightTy)) {
         return TypeManager::GetInvalidTy();
     }
@@ -794,7 +794,7 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForBinaryExpr(ASTContext& ctx, Binary
         }
         if (Ty::IsInitialTy(pivot->leftExpr->ty)) {
             auto ds = DiagSuppressor(diag);
-            SynthesizeWithNegCache(ctx, pivot->leftExpr); // in case the node was cleared and then skipped
+            SynthesizeWithNegCache(ctx, pivot->leftExpr, SynthesizeContext::EXPR_ARG); // in case the node was cleared and then skipped
         }
         if (!Ty::IsTyCorrect(pivot->leftExpr->ty)) {
             auto newPivot = GetChildBinaryExpr(*pivot->leftExpr);
@@ -802,17 +802,17 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForBinaryExpr(ASTContext& ctx, Binary
                 pivotStack.emplace_back(newPivot);
                 continue;
             }
-            if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot->leftExpr.get()))) {
+            if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot->leftExpr.get(), SynthesizeContext::EXPR_ARG))) {
                 // `leftExpr` is the pivot, and the `Synthesize` should have diagnosed errors in `leftExpr`.
                 // Now we report diagnostics in the `rightExpr`,
-                SynthesizeWithNegCache(ctx, pivot->rightExpr.get());
+                SynthesizeWithNegCache(ctx, pivot->rightExpr.get(), SynthesizeContext::EXPR_ARG);
                 return;
             }
         }
         // So far, `leftExpr` is correct.
         if (Ty::IsInitialTy(pivot->rightExpr->ty)) {
             auto ds = DiagSuppressor(diag);
-            SynthesizeWithNegCache(ctx, pivot->rightExpr);
+            SynthesizeWithNegCache(ctx, pivot->rightExpr, SynthesizeContext::EXPR_ARG);
         }
         if (!Ty::IsTyCorrect(pivot->rightExpr->ty)) {
             auto newPivot = GetChildBinaryExpr(*pivot->rightExpr);
@@ -820,7 +820,7 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForBinaryExpr(ASTContext& ctx, Binary
                 pivotStack.emplace_back(newPivot);
                 continue;
             }
-            if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot->rightExpr.get()))) {
+            if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot->rightExpr.get(), SynthesizeContext::EXPR_ARG))) {
                 // `rightExpr` is the pivot, and the `Synthesize` should have diagnosed.
                 return;
             }
@@ -831,13 +831,13 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForBinaryExpr(ASTContext& ctx, Binary
     while (pivotStack.size() > 1) {
         Ptr<BinaryExpr> pivot = pivotStack.back();
         pivotStack.pop_back();
-        if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot))) {
+        if (!Ty::IsTyCorrect(SynthesizeWithNegCache(ctx, pivot, SynthesizeContext::EXPR_ARG))) {
             return;
         }
     }
     Ptr<BinaryExpr> pivot = pivotStack.back();
-    SynthesizeWithNegCache(ctx, pivot->leftExpr.get());
-    SynthesizeWithNegCache(ctx, pivot->rightExpr.get());
+    SynthesizeWithNegCache(ctx, pivot->leftExpr.get(), SynthesizeContext::EXPR_ARG);
+    SynthesizeWithNegCache(ctx, pivot->rightExpr.get(), SynthesizeContext::EXPR_ARG);
     if (ReplaceIdealTy(*pivot->leftExpr) && ReplaceIdealTy(*pivot->rightExpr)) {
         DiagInvalidBinaryExpr(diag, *pivot);
     }
@@ -871,7 +871,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynBinaryExpr(ASTContext& ctx, BinaryExpr&
     if (TypeCheckUtil::IsOverloadableOperator(be.op)) {
         DesugarOperatorOverloadExpr(ctx, be);
         auto ds = DiagSuppressor(diag);
-        if (Ty::IsTyCorrect(Synthesize(ctx, be.desugarExpr.get()))) {
+        if (Ty::IsTyCorrect(Synthesize(ctx, be.desugarExpr.get(), SynthesizeContext::EXPR_ARG))) {
             ds.ReportDiag();
             // Desugar SubscriptOverloadExpr guarantees the deref and StaticCast.
             be.ty = be.desugarExpr->ty;
@@ -914,10 +914,10 @@ void TypeChecker::TypeCheckerImpl::SynBinaryLeafs(ASTContext& ctx, BinaryExpr& b
                 bf->callOrPattern = ce;
             }
         } else if (auto ma = DynamicCast<MemberAccess*>(node); ma && !IsFieldOperator(ma->field)) {
-            Synthesize(ctx, ma);
+            Synthesize(ctx, ma, SynthesizeContext::EXPR_ARG);
             return VisitAction::SKIP_CHILDREN;
         } else if (auto re = DynamicCast<RefExpr*>(node); re) {
-            Synthesize(ctx, re);
+            Synthesize(ctx, re, SynthesizeContext::EXPR_ARG);
         }
         return VisitAction::WALK_CHILDREN;
     };
@@ -941,10 +941,10 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::InferBinaryExprCaseBuiltIn(
             failNow = true;
         }
         if (Ty::IsInitialTy(be.leftExpr->ty)) {
-            (void)SynthesizeWithNegCache(ctx, be.leftExpr.get());
+            (void)SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
         }
         if (Ty::IsInitialTy(be.rightExpr->ty)) {
-            (void)SynthesizeWithNegCache(ctx, be.rightExpr.get());
+            (void)SynthesizeWithNegCache(ctx, be.rightExpr.get(), SynthesizeContext::EXPR_ARG);
         }
         auto leftTupleTy = DynamicCast<TupleTy*>(be.leftExpr->ty);
         auto rightTupleTy = DynamicCast<TupleTy*>(be.rightExpr->ty);
@@ -1016,8 +1016,8 @@ bool TypeChecker::TypeCheckerImpl::ChkFlowExpr(ASTContext& ctx, Ptr<Ty> target, 
     auto cs = PData::CommitScope(typeManager.constraints);
     {
         auto ds = DiagSuppressor(diag);
-        (void)SynthesizeWithNegCache(ctx, &leftExpr);
-        (void)SynthesizeWithNegCache(ctx, &rightExpr);
+        (void)SynthesizeWithNegCache(ctx, &leftExpr, SynthesizeContext::EXPR_ARG);
+        (void)SynthesizeWithNegCache(ctx, &rightExpr, SynthesizeContext::EXPR_ARG);
         if (ds.HasError()) {
             if (be.op == TokenKind::COMPOSITION) {
                 be.ty = TypeManager::GetInvalidTy();
@@ -1107,7 +1107,7 @@ bool TypeChecker::TypeCheckerImpl::IsCoalescingLeftTyValid(Ty& ty) const
 
 bool TypeChecker::TypeCheckerImpl::ChkCoalescingExpr(ASTContext& ctx, Ptr<Ty> tgtTy, BinaryExpr& be)
 {
-    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get());
+    auto leftTy = SynthesizeWithNegCache(ctx, be.leftExpr.get(), SynthesizeContext::EXPR_ARG);
     bool isLeftTyInvalid = !leftTy || !IsCoalescingLeftTyValid(*leftTy);
     be.leftExpr->ty = typeManager.TryGreedySubst(leftTy);
     leftTy = typeManager.TryGreedySubst(leftTy);

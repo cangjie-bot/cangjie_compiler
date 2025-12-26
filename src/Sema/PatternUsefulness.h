@@ -16,7 +16,7 @@
 
 #include "cangjie/AST/Node.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
-#include "cangjie/Sema/TypeManager.h"
+#include "TypeCheckerImpl.h"
 
 namespace Cangjie::PatternUsefulness {
 bool CheckMatchExprHasSelectorExhaustivenessAndReachability(

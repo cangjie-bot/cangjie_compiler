@@ -53,7 +53,7 @@ void TypeChecker::TypeCheckerImpl::DesugarTokenCallExpr(ASTContext& ctx, CallExp
     auto callExpr = CreateCallExpr(std::move(refreshExpr), std::move(args));
     CopyBasicInfo(&ce, callExpr.get());
     AddCurFile(*callExpr, ce.curFile);
-    auto updateTy = SynthesizeWithoutRecover(ctx, callExpr.get()); // Need syn to desugar.
+    auto updateTy = SynthesizeWithoutRecover(ctx, callExpr.get(), SynthesizeContext::EXPR_ARG); // Need syn to desugar.
     CJC_ASSERT(updateTy && updateTy->kind != TypeKind::TYPE_INVALID);
     ce.desugarExpr = std::move(callExpr);
 }

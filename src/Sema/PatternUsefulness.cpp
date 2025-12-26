@@ -64,6 +64,7 @@
 #include "cangjie/Sema/TypeManager.h"
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/Utils/CheckUtils.h"
+#include <csignal>
 
 namespace Cangjie {
 using namespace AST;
@@ -395,6 +396,8 @@ public:
         if (!Ty::IsTyCorrect(pattern.ty) || !IsValidTy(*pattern.ty)) {
             return {Constructor::Invalid(), {}, *TypeManager::GetInvalidTy(), &pattern};
         }
+        Ptr<Ty> ReplaceThisTy(TypeManager& typeManager, Ptr<Ty> now);
+        auto goal = ReplaceThisTy(typeManager, &goalTy);
         // Now we are 100% sure that `pattern.ty` contains a type.
         switch (pattern.astKind) {
             case ASTKind::CONST_PATTERN: {
@@ -407,7 +410,7 @@ public:
                 return FromEnumPattern(typeManager, static_cast<EnumPattern&>(pattern));
             }
             case ASTKind::TYPE_PATTERN: {
-                return FromTypePattern(typeManager, goalTy, static_cast<TypePattern&>(pattern));
+                return FromTypePattern(typeManager, *goal, static_cast<TypePattern&>(pattern));
             }
             // Variable pattern behaves the same as a wildcard in the usefulness checking problem.
             // And we don't care about the name for binding.
@@ -416,7 +419,7 @@ public:
                 return {Constructor::Wildcard(), {}, *pattern.ty, &pattern};
             }
             case ASTKind::VAR_OR_ENUM_PATTERN: {
-                return FromPattern(typeManager, goalTy, *static_cast<VarOrEnumPattern&>(pattern).pattern);
+                return FromPattern(typeManager, *goal, *static_cast<VarOrEnumPattern&>(pattern).pattern);
             }
             default: {
                 CJC_ABORT(); // unreachable
@@ -1018,6 +1021,64 @@ private:
     Matrix matrix_;
     bool keepABIStable{true};
 };
+
+Ptr<Ty> ReplaceThisTy(TypeManager& typeManager, Ptr<Ty> now)
+{
+    if (auto thisTy = DynamicCast<ClassThisTy>(now)) {
+        std::vector<Ptr<Ty>> newArgs;
+        for (auto& arg : thisTy->typeArgs) {
+            newArgs.emplace_back(ReplaceThisTy(typeManager, arg));
+        }
+        return typeManager.GetClassTy(*thisTy->decl, newArgs);
+    }
+    // If no type args, return as-is
+    if (now->typeArgs.empty()) {
+        return now;
+    }
+    // Recursively replace type args
+    std::vector<Ptr<Ty>> newArgs;
+    bool changed = false;
+    for (auto& arg : now->typeArgs) {
+        auto replaced = ReplaceThisTy(typeManager, arg);
+        newArgs.emplace_back(replaced);
+        if (replaced != arg) {
+            changed = true;
+        }
+    }
+    if (!changed) {
+        return now;
+    }
+    // Reconstruct the type with new args based on type kind
+    switch (now->kind) {
+        case TypeKind::TYPE_FUNC: {
+            auto& funcTy = static_cast<FuncTy&>(*now);
+            std::vector<Ptr<Ty>> paramTys;
+            for (auto& p : funcTy.paramTys) {
+                paramTys.push_back(ReplaceThisTy(typeManager, p));
+            }
+            auto retTy = ReplaceThisTy(typeManager, funcTy.retTy);
+            return typeManager.GetFunctionTy(paramTys, retTy, {funcTy.IsCFunc(), funcTy.isClosureTy, funcTy.hasVariableLenArg});
+        }
+        case TypeKind::TYPE_TUPLE:
+            return typeManager.GetTupleTy(newArgs, static_cast<TupleTy&>(*now).isClosureTy);
+        case TypeKind::TYPE_ARRAY:
+            return typeManager.GetArrayTy(newArgs[0], static_cast<ArrayTy&>(*now).dims);
+        case TypeKind::TYPE_POINTER:
+            return typeManager.GetPointerTy(newArgs[0]);
+        case TypeKind::TYPE_STRUCT:
+            return typeManager.GetStructTy(*static_cast<StructTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_CLASS:
+            return typeManager.GetClassTy(*static_cast<ClassTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_INTERFACE:
+            return typeManager.GetInterfaceTy(*static_cast<InterfaceTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_ENUM:
+            return typeManager.GetEnumTy(*static_cast<EnumTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE:
+            return typeManager.GetTypeAliasTy(*static_cast<TypeAliasTy&>(*now).declPtr, newArgs);
+        default:
+            return now;
+    }
+}
 } // namespace
 
 namespace PatternUsefulness {

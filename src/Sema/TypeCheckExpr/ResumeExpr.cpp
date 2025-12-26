@@ -24,7 +24,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynResumeExpr(ASTContext& ctx, ResumeExpr&
     if (re.throwingExpr) {
         auto exception = importManager.GetCoreDecl<ClassDecl>(CLASS_EXCEPTION);
         auto error = importManager.GetCoreDecl<ClassDecl>(CLASS_ERROR);
-        Synthesize(ctx, re.throwingExpr.get());
+        Synthesize(ctx, re.throwingExpr.get(), SynthesizeContext::EXPR_ARG);
         CJC_NULLPTR_CHECK(re.throwingExpr->ty);
 
         if (!typeManager.IsSubtype(re.throwingExpr->ty, exception->ty) &&

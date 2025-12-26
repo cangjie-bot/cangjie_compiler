@@ -137,13 +137,23 @@ public:
      */
     Candidate SynReferenceSeparately(ASTContext& ctx, const std::string& scopeName, AST::Expr& expr, bool hasLocalDecl);
     void RemoveTargetNotMeetExtendConstraint(const Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Decl>>& targets);
+    Ptr<AST::Ty> ReplaceThisTy(Ptr<AST::Ty> now);
 
 private:
+    /// Mark the position of the synthesized expr/decl. It currently has not effect on decl.
+    enum SynthesizeContext {
+        NONE, // when the context is not considered
+        EXPR_ARG, // when the expr is used as an argument of another expr, e.g. function arg, returned expr, throwed expr,
+            // spawn arg, initializer of var decl, etc.
+        IMPLICIT_RETURN, // as the implicit return value of a function, or the last expr of a block or lambda
+        LEFT_VALUE, // when the expr is used as a left value of an assignment expression
+        UNUSED, // when the expr is not used, i.e. in a block but not implicit return
+    };
     /**
      * Main entry of the synthesis mode of the type checking.
      */
-    Ptr<AST::Ty> Synthesize(ASTContext& ctx, Ptr<AST::Node> node);
-    bool SynthesizeAndReplaceIdealTy(ASTContext& ctx, AST::Node& node);
+    Ptr<AST::Ty> Synthesize(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context);
+    bool SynthesizeAndReplaceIdealTy(ASTContext& ctx, AST::Node& node, SynthesizeContext context);
     /**
      * Main entry of the check mode of the type checking.
      */
@@ -163,7 +173,7 @@ private:
      * the affected entries must be cleared. Currently, this could happen when allocating
      * new nodes during DesugarInTypeCheck, and checking lambda with omitted param type.
      */
-    Ptr<AST::Ty> SynthesizeWithCache(ASTContext& ctx, Ptr<AST::Node> node);
+    Ptr<AST::Ty> SynthesizeWithCache(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context);
     bool CheckWithCache(ASTContext& ctx, Ptr<AST::Ty> target, Ptr<AST::Node> node);
     /**
      * Cahched version of Synthesize and Check. But only cache failed results.
@@ -171,7 +181,7 @@ private:
      * because this procedure lacks a post-check phase and will stop on success,
      * thus the successful check will always need to fully execute.
      * */
-    Ptr<AST::Ty> SynthesizeWithNegCache(ASTContext& ctx, Ptr<AST::Node> node);
+    Ptr<AST::Ty> SynthesizeWithNegCache(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context);
     bool CheckWithNegCache(ASTContext& ctx, Ptr<AST::Ty> target, Ptr<AST::Node> node);
     /*
      * Use cached version of Synthesize and Check only when the same key was used
@@ -179,9 +189,9 @@ private:
      * Also, it will NOT recover diags.
      * For function call post-check and any execution path that won't reach post-check.
      */
-    Ptr<AST::Ty> SynthesizeWithEffectiveCache(ASTContext& ctx, Ptr<AST::Node> node, bool recoverDiag);
+    Ptr<AST::Ty> SynthesizeWithEffectiveCache(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context, bool recoverDiag);
     bool CheckWithEffectiveCache(ASTContext& ctx, Ptr<AST::Ty> target, Ptr<AST::Node> node, bool recoverDiag);
-    Ptr<AST::Ty> SynthesizeAndCache(ASTContext& ctx, Ptr<AST::Node> node, const AST::CacheKey& key);
+    Ptr<AST::Ty> SynthesizeAndCache(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context, const AST::CacheKey& key);
     bool CheckAndCache(ASTContext& ctx, Ptr<AST::Ty> target, Ptr<AST::Node> node, const AST::CacheKey& key);
     /** ======== PreCheck related functions implemented in src/Sema/PreCheck.cpp. ======== */
     /**
@@ -591,7 +601,7 @@ private:
     void EncloseTryLambda(ASTContext& ctx, OwnedPtr<AST::LambdaExpr>& tryLambda);
 
     /* Synthesize specialized for desugar after sema. Will not recover previous desugar results */
-    Ptr<AST::Ty> SynthesizeWithoutRecover(ASTContext& ctx, Ptr<AST::Node> node);
+    Ptr<AST::Ty> SynthesizeWithoutRecover(ASTContext& ctx, Ptr<AST::Node> node, SynthesizeContext context);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     void PerformToAnyInsertion(AST::Package& pkg);
     OwnedPtr<AST::FuncDecl> CreateToAny(AST::Decl& outerDecl);
@@ -649,13 +659,13 @@ private:
         ASTContext& ctx, const AST::Decl& structDecl, const std::vector<OwnedPtr<AST::Decl>>& body);
     void CheckVarWithPatternDecl(ASTContext& ctx, AST::VarWithPatternDecl& vpd);
     // T should be VarWithPatternDecl or VarDecl. A way to avoid restructuring the AST.h file.
-    template <typename T> void SynchronizeTypeAndInitializer(ASTContext& ctx, T& vd);
+    template <typename T> void SynchronizeTypeAndInitializer(ASTContext& ctx, T& vd, SynthesizeContext context);
 
     void CheckVarDecl(ASTContext& ctx, AST::VarDecl& vd);
     void CheckPropDecl(ASTContext& ctx, AST::PropDecl& pd);
     void UpdateMemberVariableTy(const AST::Decl& decl, const AST::EnumTy& eTy);
 
-    Ptr<AST::Ty> SynBlock(ASTContext& ctx, AST::Block& b);
+    Ptr<AST::Ty> SynBlock(ASTContext& ctx, AST::Block& b, SynthesizeContext context);
     bool ChkBlock(ASTContext& ctx, AST::Ty& target, AST::Block& b);
     /**
      * Arithmetic operator { +, -, *, /, ** }
@@ -716,9 +726,8 @@ private:
     bool ChkLamParamTys(ASTContext& ctx, AST::LambdaExpr& le, const std::vector<Ptr<AST::Ty>>& tgtParamTys,
         std::vector<Ptr<AST::Ty>>& lamParamTys);
     bool ChkLamBody(ASTContext& ctx, AST::FuncBody& lamFb);
-    Ptr<AST::Ty> SynIfExpr(ASTContext& ctx, AST::IfExpr& ie);
+    Ptr<AST::Ty> SynIfExpr(ASTContext& ctx, AST::IfExpr& ie, SynthesizeContext context);
     bool ChkIfExpr(ASTContext& ctx, AST::Ty& tgtTy, AST::IfExpr& ie);
-    Ptr<AST::Ty> ReplaceThisTy(Ptr<AST::Ty> now);
     bool ChkIfExprNoElse(ASTContext& ctx, AST::Ty& target, AST::IfExpr& ie);
     bool ChkIfExprTwoBranches(ASTContext& ctx, AST::Ty& target, AST::IfExpr& ie);
     /// Check and diagnose conditions in if and while
@@ -749,7 +758,7 @@ private:
     Ptr<AST::Ty> SynUnaryExpr(ASTContext& ctx, AST::UnaryExpr& ue);
     bool ChkUnaryExpr(ASTContext& ctx, AST::Ty& target, AST::UnaryExpr& ue);
     Ptr<AST::Ty> SynBuiltinUnaryExpr(ASTContext& ctx, AST::UnaryExpr& ue);
-    Ptr<AST::Ty> SynParenExpr(ASTContext& ctx, AST::ParenExpr& pe);
+    Ptr<AST::Ty> SynParenExpr(ASTContext& ctx, AST::ParenExpr& pe, SynthesizeContext context);
     bool ChkParenExpr(ASTContext& ctx, AST::Ty& target, AST::ParenExpr& pe);
     Ptr<AST::Ty> SynAssignExpr(ASTContext& ctx, AST::AssignExpr& ae);
     Ptr<AST::Ty> SynMultipleAssignExpr(ASTContext& ctx, AST::AssignExpr& ae);
@@ -786,7 +795,7 @@ private:
     bool ChkIsExpr(ASTContext& ctx, AST::Ty& target, AST::IsExpr& ie);
     Ptr<AST::Ty> SynAsExpr(ASTContext& ctx, AST::AsExpr& ae);
     bool ChkAsExpr(ASTContext& ctx, AST::Ty& target, AST::AsExpr& ae);
-    Ptr<AST::Ty> SynOptionalChainExpr(ASTContext& ctx, AST::OptionalChainExpr& oce);
+    Ptr<AST::Ty> SynOptionalChainExpr(ASTContext& ctx, AST::OptionalChainExpr& oce, SynthesizeContext context);
     bool ChkOptionalChainExpr(ASTContext& ctx, AST::Ty& target, AST::OptionalChainExpr& oce);
     /**
      * Checks whether @param target is an auto-boxed Option of @param ty
