@@ -22,9 +22,9 @@
 #include "Diags.h"
 #include "ExtraScopes.h"
 #include "JoinAndMeet.h"
-#include "PluginCheck.h"
 #include "NativeFFI/Java/BeforeTypeCheck/GenerateJavaMirror.h"
 #include "NativeFFI/ObjC/BeforeTypeCheck/Desugar.h"
+#include "Plugin/PluginCustomAnnoChecker.h"
 #include "TypeCheckUtil.h"
 
 #include "cangjie/AST/Clone.h"

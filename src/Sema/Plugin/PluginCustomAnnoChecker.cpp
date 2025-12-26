@@ -10,7 +10,7 @@
  * This file provides the function of checking APILevel customized macros.
  */
 
-#include "PluginCheck.h"
+#include "PluginCustomAnnoChecker.h"
 
 #include <functional>
 #include <iostream>
@@ -397,7 +397,9 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
             }
         }
     }
-    intersectionSet = lastSyscap.value();
+    if (lastSyscap.has_value()) {
+        intersectionSet = lastSyscap.value();
+    }
 }
 
 void PluginCustomAnnoChecker::ParseOption() noexcept
