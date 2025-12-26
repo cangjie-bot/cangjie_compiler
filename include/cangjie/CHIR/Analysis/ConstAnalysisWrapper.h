@@ -106,10 +106,6 @@ private:
 
     AnalysisStrategy ChooseAnalysisStrategy(const Func& func);
 
-    /// Compute block size helpers
-    static size_t GetBlockSize(const Expression& expr);
-    static size_t CountBlockSize(const Func& func);
-
     template <typename... Args>
     void RunOnPackageInSerial(const Package* package, bool isDebug, Args&&... args)
     {

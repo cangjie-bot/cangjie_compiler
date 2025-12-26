@@ -11,41 +11,6 @@ namespace Cangjie::CHIR {
 static constexpr size_t OVERHEAD_BLOCK_SIZE = 1000U;
 static constexpr size_t USE_ACTIVE_BLOCK_SIZE = 300U;
 
-// Helper: get block size for a lambda expression (0 if not lambda)
-size_t ConstAnalysisWrapper::GetBlockSize(const Expression& expr)
-{
-    size_t blockSize = 0;
-    if (expr.GetExprKind() != ExprKind::LAMBDA) {
-        return blockSize;
-    }
-    auto lambdaBody = Cangjie::StaticCast<const Lambda&>(expr).GetBody();
-    blockSize += lambdaBody->GetBlocks().size();
-    auto postVisit = [&blockSize](Expression& e) {
-        blockSize += GetBlockSize(e);
-        return VisitResult::CONTINUE;
-    };
-    Visitor::Visit(*lambdaBody, postVisit);
-    return blockSize;
-}
-
-// Count all blocks in func, including lambda expr.
-size_t ConstAnalysisWrapper::CountBlockSize(const Func& func)
-{
-    size_t blockSize = func.GetBody()->GetBlocks().size();
-    if (blockSize > OVERHEAD_BLOCK_SIZE) {
-        return OVERHEAD_BLOCK_SIZE + 1;
-    }
-    for (auto block : func.GetBody()->GetBlocks()) {
-        for (auto e : block->GetExpressions()) {
-            blockSize += GetBlockSize(*e);
-            if (blockSize > OVERHEAD_BLOCK_SIZE) {
-                return OVERHEAD_BLOCK_SIZE + 1;
-            }
-        }
-    }
-    return blockSize;
-}
-
 ConstAnalysisWrapper::ConstAnalysisWrapper(CHIRBuilder& builder) : builder(builder)
 {
 }
@@ -86,7 +51,10 @@ ConstAnalysisWrapper::AnalysisStrategy ConstAnalysisWrapper::ChooseAnalysisStrat
         // judge condition inner analysis engine
         return AnalysisStrategy::SkipAnalysis;
     }
-    size_t blockSize = CountBlockSize(func);
+    if (IsSTDFunction(func)) {
+        return AnalysisStrategy::FullStatePool;;
+    }
+    size_t blockSize = GetAllBlockSizeOfFunc(func, OVERHEAD_BLOCK_SIZE);
     if (blockSize > OVERHEAD_BLOCK_SIZE) {
         // huge function, skip analysis
         return AnalysisStrategy::SkipAnalysis;
