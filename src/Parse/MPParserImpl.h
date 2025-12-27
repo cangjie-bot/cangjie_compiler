@@ -36,7 +36,6 @@ public:
 private:
     bool CheckCJMPModifiersOf(const AST::Decl& decl) const;
     bool CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::Decl& outer) const;
-    void CheckCJMPFuncParams(AST::Decl& decl, const Ptr<AST::FuncBody> funcBody) const;
     void CheckPlatformInterface(const AST::InterfaceDecl& decl) const;
     // Diag report
     void DiagOuterDeclMissMatch(const AST::Node& node,
