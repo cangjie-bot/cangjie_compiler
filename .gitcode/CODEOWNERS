@@ -26,6 +26,7 @@
 /include/cangjie/Parse/ @kkkkkkkbbbbbbb
 /include/cangjie/Sema/ @huohuixin
 /include/cangjie/Utils/ @wyq1213
+/include/cangjie/Basic/InteropCJPackageConfigReader.h @JasmineZhu
 
 /integration_build/ @zichexuelan
 /schema/ @mini-tang
@@ -58,6 +59,7 @@
 /src/Sema/Desugar/DesugarMacro.cpp @mini-tang
 /src/Sema/Desugar/DesugarMacro.h @mini-tang
 /src/Utils/ @wyq1213
+/src/Basic/InteropCJPackageConfigReader.cpp @JasmineZhu
 
 /third_party/ @neilliuistaken
 
