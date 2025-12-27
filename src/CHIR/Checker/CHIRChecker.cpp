@@ -360,6 +360,22 @@ std::string GetFuncIdentifier(const Value& func)
         return Cangjie::StaticCast<Lambda*>(lambda)->GetIdentifier();
     }
 }
+
+bool isAllowedToHaveAbstractMethod(const CustomTypeDef& def)
+{
+    if (def.IsInterface()) {
+        return true;
+    } else if (def.IsClass()) {
+        return def.TestAttr(Attribute::ABSTRACT);
+    } else if (def.IsExtend()) {
+        auto extendedType = Cangjie::StaticCast<const ExtendDef&>(def).GetExtendedType();
+        if (auto classType = Cangjie::DynamicCast<const ClassType*>(extendedType)) {
+            return classType->GetClassDef()->IsAbstract();
+        }
+        return false;
+    }
+    return false;
+}
 } // namespace
 
 CHIRChecker::CHIRChecker(const Package& package, const Cangjie::GlobalOptions& opts, CHIRBuilder& builder)
@@ -1065,9 +1081,9 @@ void CHIRChecker::CheckVTable(const CustomTypeDef& def)
             continue;
         }
         // 3. only interface or abstract class can have unimplemented virtual method
-        bool defIsInterfaceOrAbstract = def.IsInterface() || def.TestAttr(Attribute::ABSTRACT);
+        bool canHaveAbstractMethod = isAllowedToHaveAbstractMethod(def);
         for (size_t i = 0; i < it.GetMethodNum(); ++i) {
-            if (it.GetVirtualMethods()[i].GetVirtualMethod() == nullptr && !defIsInterfaceOrAbstract) {
+            if (it.GetVirtualMethods()[i].GetVirtualMethod() == nullptr && !canHaveAbstractMethod) {
                 Errorln("in vtable of " + def.GetIdentifier() + ", parent type " + parentInstType->ToString() +
                     ", the " + IndexToString(i) +
                     " virtual method is unimplemented, but only interface or abstract class can have this kind of "
@@ -3068,28 +3084,34 @@ void CHIRChecker::CheckInout(const IntrinsicBase& expr, const Func& topLevelFunc
     }
 
     // 7. result must be Func's or Intrinsic/pointerInit1's arg
-    for (auto user : expr.GetResult()->GetUsers()) {
-        auto errMsgBase = "the result is used in a wrong expression `" + user->ToString() + "`, ";
-        if (Is<ApplyWithException>(user) || Is<Apply>(user)) {
-            continue;
-        } else if (Is<InvokeWithException>(user) || Is<Invoke>(user)) {
-            auto funcName = InvokeBase(user).GetMethodName();
-            if (funcName != INST_VIRTUAL_FUNC && funcName != GENERIC_VIRTUAL_FUNC) {
-                ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
-                    errMsgBase + "the result can't be used as virtual method's argument.");
+    std::function<void(const LocalVar&)> checkUsers = [this, &checkUsers, &expr, &topLevelFunc](const LocalVar& localVar) {
+        for (auto user : localVar.GetUsers()) {
+            auto errMsgBase = "the result is used in a wrong expression `" + user->ToString() + "`, ";
+            if (Is<ApplyWithException>(user) || Is<Apply>(user)) {
+                continue;
+            } else if (Is<InvokeWithException>(user) || Is<Invoke>(user)) {
+                auto funcName = InvokeBase(user).GetMethodName();
+                if (funcName != INST_VIRTUAL_FUNC && funcName != GENERIC_VIRTUAL_FUNC) {
+                    ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
+                        errMsgBase + "the result can't be used as virtual method's argument.");
+                }
+                continue;
+            } else if (Is<IntrinsicWithException>(user) || Is<Intrinsic>(user)) {
+                auto userBase = IntrinsicBase(user);
+                if (userBase.GetIntrinsicKind() != IntrinsicKind::CPOINTER_INIT1) {
+                    ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
+                        errMsgBase + "the result must be used as pointerInit1's argument.");
+                }
+                continue;
+            } else if (Is<TypeCast>(user)) {
+                checkUsers(*user->GetResult());
+                continue;
             }
-            continue;
-        } else if (Is<IntrinsicWithException>(user) || Is<Intrinsic>(user)) {
-            auto userBase = IntrinsicBase(user);
-            if (userBase.GetIntrinsicKind() != IntrinsicKind::CPOINTER_INIT1) {
-                ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
-                    errMsgBase + "the result must be used as pointerInit1's argument.");
-            }
-            continue;
+            ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
+                errMsgBase + "the result must be used as Func's or Intrinsic/pointerInit1's argument.");
         }
-        ErrorInExpr(topLevelFunc, *expr.GetRawExpr(),
-            errMsgBase + "the result must be used as Func's or Intrinsic/pointerInit1's argument.");
-    }
+    };
+    checkUsers(*expr.GetResult());
 }
 void CHIRChecker::CheckIntrinsicBase(const IntrinsicBase& expr, const Func& topLevelFunc)
 {

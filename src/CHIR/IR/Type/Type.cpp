@@ -1386,7 +1386,7 @@ std::vector<ClassType*> BuiltinType::GetSuperTypesRecusively(CHIRBuilder& builde
 {
     std::vector<ClassType*> inheritanceList;
     for (auto extendDef : GetExtends(&builder)) {
-        if (!IsEqualOrInstantiatedTypeOf(*extendDef->GetExtendedType(), builder, visited)) {
+        if (!IsEqualOrInstantiatedTypeOf(*extendDef->GetExtendedType(), builder)) {
             continue;
         }
         for (auto interface : extendDef->GetImplementedInterfaceTys()) {
