@@ -2964,6 +2964,7 @@ struct Package : Node {
     std::vector<std::string> interopCJExcludedApis;
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
+    std::vector<std::string> interopTuples; /**< Record interop tuple configuration. Writed in sema. */
     bool isInteropCJPackageConfig{false};
 
 private:

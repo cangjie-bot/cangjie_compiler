@@ -35,7 +35,7 @@ enum class ArrayOperationKind: uint8_t {
 
 class Utils final {
 public:
-    Utils(ImportManager& importManager, TypeManager& typeManager);
+    Utils(ImportManager& importManager, TypeManager& typeManager, Package& pkg);
 
     // Ty of `Option<ty>`
     Ptr<Ty> GetOptionTy(Ptr<Ty> ty);
@@ -79,6 +79,7 @@ private:
 private:
     ImportManager& importManager;
     TypeManager& typeManager;
+    Package& pkg;
 };
 
 /**
@@ -205,6 +206,7 @@ void MangleJNIName(std::string& name);
  */
 std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler,
     const std::vector<OwnedPtr<FuncParam>>& params, bool isGeneratedCtor);
+std::string GetMangledJniInitCjObjectFuncName(const BaseMangler& mangler, const std::vector<Ptr<Ty>>& types);
 
 std::string GetMangledJniInitCjObjectFuncNameForEnum(
     const BaseMangler& mangler, const std::vector<OwnedPtr<FuncParam>>& params, const std::string funcName);
@@ -226,6 +228,7 @@ bool IsMirror(const Ty& ty);
 bool IsImpl(const Ty& ty);
 bool IsCJMappingInterface(const Ty& ty);
 bool IsCJMapping(const Ty& ty);
+bool IsCJMappingTuple(const Ptr<Ty>& ty, std::unordered_set<Ptr<Ty>> tupleConfigs);
 std::string ReplaceClassName(std::string& classTypeSignature, std::string newSegment);
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);

@@ -556,8 +556,8 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(Decl& target, FuncDecl& ctor, 
     std::vector<Ptr<Ty>> funcTyParams;
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
-        GetArgsAndRetGenericActualTyVector(genericConfig, ctor, genericConfig->instTypes, actualTyArgMap,
-            funcTyParams, actualPrimitiveType);
+        GetArgsAndRetGenericActualTyVector(
+            genericConfig, ctor, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager);
     }
 
     auto wrapperParamList = MakeOwned<FuncParamList>();
@@ -805,8 +805,8 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method, const Nativ
     std::vector<Ptr<Ty>> funcTyParams;
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
-        GetArgsAndRetGenericActualTyVector(genericConfig, method, genericConfig->instTypes, actualTyArgMap,
-            funcTyParams, actualPrimitiveType);
+        GetArgsAndRetGenericActualTyVector(
+            genericConfig, method, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager);
     }
     auto instantTy = GetInstantyForGenericTy(*method.outerDecl, actualTyArgMap, typeManager);
     auto retActualTy = retTy->IsGeneric() ? actualTyArgMap[retTy->name] : retTy;

@@ -39,16 +39,16 @@ enum class DesugarJavaMirrorImplStage : uint8_t {
     END
 };
 
-enum class DesugarCJImplStage : uint8_t { BEGIN, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
+enum class DesugarCJImplStage : uint8_t { BEGIN, PRE_GENERATE, FWD_GENERATE, IMPL_GENERATE, IMPL_DESUGAR, TYPECHECKS, END };
 
 class JavaDesugarManager {
 public:
     JavaDesugarManager(ImportManager& importManager, TypeManager& typeManager, DiagnosticEngine& diag,
-                       const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath,
-                       const std::string& outputLibPath, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
+        const BaseMangler& mangler, const std::optional<std::string>& javaCodeGenPath, const std::string& outputLibPath,
+        const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap, Package& pkg)
         : importManager(importManager),
           typeManager(typeManager),
-          utils(importManager, typeManager),
+          utils(importManager, typeManager, pkg),
           diag(diag),
           mangler(mangler),
           lib(importManager, typeManager, diag, utils),
@@ -56,7 +56,7 @@ public:
           outputLibPath(outputLibPath),
           memberMap(memberMap)
     {
-            lib.CheckInteropLibVersion();
+        lib.CheckInteropLibVersion();
     }
 
     /**
@@ -97,18 +97,45 @@ public:
     void ProcessCJImplStage(DesugarCJImplStage stage, File& file);
 
     /**
-     * Stage 1: generate forward class for CJMapping data structure 
+     * Stage 1: generate configued CJMapping-type glue code
+     */
+
+    /**
+     * Generates glue code for CJMapping tuples:
+     * 
+     * (Int32, Int32) is configured
+     * after:
+     * @C
+     * public func Java_TupleOfInt32Int32_initCJObject(env, obj, item0: Int32, item1: Int32) {
+     *     return Java_CFFI_put_to_registry_1((item0, item1))
+     * }
+     * 
+     * @C
+     * public func Java_TupleOfInt32Int32_item0(env, obj, self: Int64) {
+     *     return Java_CFFI_getFromRegistry<(Int32, Int32)>(env, self)[0]
+     * }
+     * ...
+     * 
+     * @C
+     * public func Java_TupleOfInt32Int32_deleteCJObject(env, obj, self: Int64) {
+     *      Java_CFFI_removeFromRegistry(self)
+     * }
+     */
+    void GenerateTuplesGlueCode(Package& pkg);
+
+    /**
+     * Stage 2: generate forward class for CJMapping data structure 
      */
     void GenerateFwdClassInCJMapping(File& file);
 
     /**
-     * Stage 2: generate constructors and native init/deinit/method call functions (callable from java) for CJMapping
+     * Stage 3: generate constructors and native init/deinit/method call functions (callable from java) for CJMapping
      * data structure
      */
     void GenerateInCJMapping(File& file);
 
     /**
-     * Stage 3: desugar in CJMapping data structure
+     * Stage 4: desugar in CJMapping data structure
      */
     void DesugarInCJMapping(File& file);
 
@@ -298,7 +325,13 @@ private:
         std::vector<OwnedPtr<FuncParamList>>& paramLists, FuncParam& jniEnvPtrParam, Ptr<Ty>& retTy,
         std::string funcName);
 
+    OwnedPtr<Decl> GenerateNativeFuncDeclBylambda(OwnedPtr<LambdaExpr>& wrappedNodesLambda,
+        std::vector<OwnedPtr<FuncParamList>>& paramLists, FuncParam& jniEnvPtrParam, Ptr<Ty>& retTy,
+        std::string funcName, Ptr<File>& curFile, std::string moduleName, std::string fullPackageName);
+
     std::string GetJniMethodName(const FuncDecl& method, const std::string* genericActualName = nullptr);
+
+    std::string GetJniTupleItemName(const Ptr<TupleTy>& tupleTy, Package& pkg, size_t index);
 
     std::string GetJniMethodNameForProp(const PropDecl& propDecl, bool isSet,
         const std::string* genericActualName = nullptr) const;
@@ -307,6 +340,7 @@ private:
 
     std::string GetJniInitCjObjectFuncName(const FuncDecl& ctor, bool isGeneratedCtor,
         const std::string* genericActualName = nullptr);
+    std::string GetJniInitCjObjectFuncName(const Ptr<TupleTy>& tupleTy, Package& pkg);
 
     std::string GetJniInitCjObjectFuncNameForVarDecl(const VarDecl& ctor) const;
 
@@ -362,6 +396,8 @@ private:
      */
     OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(FuncDecl& ctor, bool isClassLikeDecl, bool isOpenClass = false, Ptr<FuncDecl> fwdCtor = nullptr,
          const GenericConfigInfo* genericConfig = nullptr);
+    
+    OwnedPtr<Decl> GenerateNativeInitCjObjectFunc(const Ptr<TupleTy>& tuple, Package& pkg);
 
     /**
      * for func [fun]:
@@ -542,6 +578,9 @@ private:
     void InsertAttachCJObject(ClassDecl& fwdDecl, ClassDecl& classDecl);
     OwnedPtr<FuncDecl> GenerateFwdClassMethod(ClassDecl& fwdDecl, ClassDecl& classDecl, FuncDecl& oriMethodDecl, int index);
     OwnedPtr<ClassDecl> InitInterfaceFwdClassDecl(AST::InterfaceDecl& interfaceDecl);
+    OwnedPtr<StructDecl> CreateHelperStructDecl(const Ptr<TupleTy>& tupleTy, Package& pkg);
+    void GenerateNativeItemFunc(const Ptr<TupleTy>& tupleTy, Package& pkg);
+
     /**
      * Add this. for interface fwdclass default method that call self method, and replace generic ty to instance ty by genericConfig.
      * from
@@ -565,6 +604,7 @@ private:
     InteropLibBridge lib;
     const std::optional<std::string>& javaCodeGenPath;
     const std::string& outputLibPath;
+    std::unordered_set<Ptr<Ty>> tupleConfigs;
 
     /**
      * Top-level declarations generated during desugaring. Should be added at the end of file desugaring

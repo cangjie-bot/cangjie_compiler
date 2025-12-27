@@ -500,6 +500,9 @@ Ptr<Ty> JavaDesugarManager::GetJNITy(Ptr<Ty> ty)
     if (IsCJMapping(*ty)) {
         return jlongTy;
     }
+    if (ty->IsTuple()) {
+        return jlongTy;
+    }
     if (ty->kind == TypeKind::TYPE_GENERICS) {
         return nullptr;
     }
@@ -512,10 +515,19 @@ std::string JavaDesugarManager::GetJniMethodName(const FuncDecl& method, const s
     auto sampleJavaName = GetJavaMemberName(method);
     std::string fqname = GetJavaFQName(*(method.outerDecl), genericActualName);
     MangleJNIName(fqname);
-    auto mangledFuncName = GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName);
+    auto mangledFuncName =
+        GetMangledMethodName(mangler, method.funcBody->paramLists[0]->params, sampleJavaName, typeManager);
     MangleJNIName(mangledFuncName);
 
     return "Java_" + fqname + "_" + mangledFuncName;
+}
+
+std::string JavaDesugarManager::GetJniTupleItemName(const Ptr<TupleTy>& tupleTy, Package& pkg, size_t index)
+{
+    std::string fqname = pkg.fullPackageName + "." + GetCjMappingTupleName(*tupleTy);
+    MangleJNIName(fqname);
+
+    return "Java_" + fqname + "_" + "item" + std::to_string(index);
 }
 
 std::string JavaDesugarManager::GetJniMethodNameForProp(const PropDecl& propDecl, bool isSet,
@@ -550,6 +562,15 @@ std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const FuncDecl& ctor,
         mangledFuncName = ctor.identifier + mangledFuncName;
     }
 
+    return "Java_" + fqname + "_" + mangledFuncName;
+}
+
+std::string JavaDesugarManager::GetJniInitCjObjectFuncName(const Ptr<TupleTy>& tupleTy, Package& pkg)
+{
+    std::string fqname = pkg.fullPackageName + "." + GetCjMappingTupleName(*tupleTy);
+    MangleJNIName(fqname);
+    std::string mangledFuncName = GetMangledJniInitCjObjectFuncName(mangler, tupleTy->typeArgs);
+    MangleJNIName(mangledFuncName);
     return "Java_" + fqname + "_" + mangledFuncName;
 }
 
@@ -692,7 +713,7 @@ void JavaDesugarManager::DesugarInJavaImpls(File& file)
     for (auto decl : genDecls) {
         if (JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(*decl)) {
             const std::string fileJ = decl->identifier.Val() + ".java";
-            auto codegen = JavaSourceCodeGenerator(decl, mangler, javaCodeGenPath, fileJ,
+            auto codegen = JavaSourceCodeGenerator(decl, mangler, typeManager, javaCodeGenPath, fileJ,
                 GetCangjieLibName(outputLibPath, decl->GetFullPackageName()), ref2extend[decl]);
             codegen.Generate();
         }

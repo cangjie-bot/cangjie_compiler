@@ -30,7 +30,9 @@ constexpr auto WRAPPER_GETTER_SUFFIX = "_get";
 constexpr auto WRAPPER_SETTER_SUFFIX = "_set";
 } // namespace
 
-NameGenerator::NameGenerator(const BaseMangler& mangler) : mangler(mangler) {
+NameGenerator::NameGenerator(const BaseMangler& mangler, TypeManager& typeManager)
+    : mangler(mangler), typeManager(typeManager)
+{
 }
 
 std::string NameGenerator::GenerateInitCjObjectName(const VarDecl& target, const std::string* genericActualName)
@@ -44,7 +46,7 @@ std::string NameGenerator::GenerateInitCjObjectName(const FuncDecl& target, cons
 {
     auto& params =  target.funcBody->paramLists[0]->params;
     auto ctorName = GetObjCDeclName(target);
-    auto mangledCtorName = GetMangledMethodName(mangler, params, ctorName);
+    auto mangledCtorName = GetMangledMethodName(mangler, params, ctorName, typeManager);
     auto name = GetObjCFullDeclName(*target.outerDecl, genericActualName) + "_" + mangledCtorName;
     std::replace(name.begin(), name.end(), '.', '_');
     std::replace(name.begin(), name.end(), ':', '_');
@@ -94,7 +96,7 @@ std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target, con
 {
     auto& params = target.funcBody->paramLists[0]->params;
     auto methodName = GetObjCDeclName(target);
-    auto mangledMethodName = GetMangledMethodName(mangler, params, methodName);
+    auto mangledMethodName = GetMangledMethodName(mangler, params, methodName, typeManager);
     auto outerDeclName = genericActualName ? GetObjCFullDeclName(*target.outerDecl, genericActualName) :
         GetObjCFullDeclName(*target.outerDecl);
 
