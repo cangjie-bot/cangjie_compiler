@@ -576,13 +576,17 @@ OwnedPtr<FuncDecl> ASTFactory::CreateInitCjObject(Decl& target, FuncDecl& ctor, 
             if (it != actualTyArgMap.end()) {
                 finalTy = it->second;
             }
+#ifndef CANGJIE_ENABLE_GCOV
             if (!finalTy) {
                 throw std::runtime_error("Missing type for parameter: " + paramName);
             }
+#endif
             Ptr<Ty> cType = this->typeMapper.Cj2CType(finalTy);
+#ifndef CANGJIE_ENABLE_GCOV
             if (!cType) {
                 throw std::runtime_error("Failed to convert type for parameter: " + paramName);
             }
+#endif
             return CreateFuncParam(paramName, nullptr, nullptr, cType);
         }
     );
