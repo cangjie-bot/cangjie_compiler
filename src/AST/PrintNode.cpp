@@ -490,6 +490,7 @@ void PrintEnumDecl(unsigned indent, const EnumDecl& enumDecl, std::ostream& stre
     PrintIndent(stream, indent, "EnumDecl:", enumDecl.identifier.Val(), "{");
     PrintBasic(indent + ONE_INDENT, enumDecl, stream);
     PrintModifiers(enumDecl, indent, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "hasEllipsis:", enumDecl.hasEllipsis ? "true" : "false");
     if (enumDecl.generic) {
         PrintGeneric(indent + ONE_INDENT, *enumDecl.generic, stream);
     }
