@@ -718,7 +718,8 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
                 if (NeedToReportMissingBody(common, platform)) {
                     continue;
                 }
-                if (platform.TestAttr(Attribute::ABSTRACT) && common.TestAttr(Attribute::OPEN)) {
+                if (platform.TestAttr(Attribute::ABSTRACT) && common.TestAttr(Attribute::OPEN) &&
+                    common.IsFuncOrProp()) {
                     auto kindStr = common.astKind == ASTKind::FUNC_DECL ? "function" : "property";
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_open_abstract_platform_can_not_replace_open_common,
                         platform, kindStr, kindStr);
