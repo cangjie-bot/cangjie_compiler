@@ -135,6 +135,11 @@ void MockSupportManager::MarkNodeMockSupportedIfNeeded(Node& node)
         return;
     }
 
+    if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+        // TODO: cjmp common/platform support
+        return;
+    }
+
     if (Is<ClassDecl>(decl)) {
         decl->EnableAttr(Attribute::MOCK_SUPPORTED);
         MakeOpenToMockIfNeeded(*decl);
@@ -172,6 +177,10 @@ void MockSupportManager::MarkMockAccessorWithAttributes(Decl& decl, AccessLevel 
 void MockSupportManager::PrepareDecls(DeclsToPrepare&& decls)
 {
     for (auto decl : decls.interfacesWithDefaults) {
+        if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            // TODO: cjmp common/platform support
+            continue;
+        }
         // temporary exclusion std lib packages to preare default methods,
         // to make stdlib compailable in mock-compatible way
         if (decl->fullPackageName.rfind("std.", 0) == 0) {
@@ -181,6 +190,10 @@ void MockSupportManager::PrepareDecls(DeclsToPrepare&& decls)
     }
 
     for (auto decl : decls.properties) {
+        if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            // TODO: cjmp common/platform support
+            continue;
+        }
         auto& getter = *GetUsableGetterForProperty(*decl);
         if (getter.outerDecl != decl->outerDecl) {
             continue;
@@ -197,10 +210,22 @@ void MockSupportManager::PrepareDecls(DeclsToPrepare&& decls)
     }
 
     for (auto [classDecl, interfaceDecl] : decls.classWithInterfaceDefaults) {
+        if (classDecl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            // TODO: cjmp common/platform support
+            continue;
+        }
+        if (interfaceDecl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            // TODO: cjmp common/platform support
+            continue;
+        }
         PrepareClassWithDefaults(*classDecl, *interfaceDecl);
     }
 
     for (auto decl : decls.functions) {
+        if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+            // TODO: cjmp common/platform support
+            continue;
+        }
         if (decl->TestAttr(Attribute::FOREIGN) &&
             usedInternalDecls.find(decl) != usedInternalDecls.end() &&
             !decl->funcBody->paramLists[0]->hasVariableLenArg // vararg C functions are not supported yet
@@ -516,6 +541,11 @@ void MockSupportManager::GenerateSpyCallMarker(Package& package)
         return;
     }
 
+    if (auto& file = package.files[0]; file->isCommon || file->isPlatform) {
+        // TODO: cjmp common/platform support
+        return;
+    }
+
     if (MockUtils::FindGlobalDecl<VarDecl>(
             package.files[0], MockUtils::spyCallMarkerVarName + MockUtils::mockAccessorSuffix)) {
         return;
@@ -735,6 +765,10 @@ void MockSupportManager::PrepareToSpy(Decl& decl)
 
 void MockSupportManager::GenerateAccessors(Decl& decl)
 {
+    if (decl.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+        // TODO: cjmp common/platform support
+        return;
+    }
     if (auto varDecl = As<ASTKind::VAR_DECL>(&decl); varDecl && varDecl->TestAttr(Attribute::GLOBAL)) {
         GenerateVarDeclAccessors(
             *varDecl, AccessorKind::TOP_LEVEL_VARIABLE_GETTER, AccessorKind::TOP_LEVEL_VARIABLE_SETTER);

@@ -1121,6 +1121,7 @@ Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& ty
     decl->funcBody = std::move(funcBody);
     decl->EnableAttr(Attribute::INTRINSIC);
     decl->EnableAttr(Attribute::GENERIC);
+    decl->doNotExport = true;
 
     auto declPtr = decl.get();
 
@@ -1155,6 +1156,7 @@ Ptr<FuncDecl> GenerateIsSubtypeTypesIntrinsic(Package& pkg, TypeManager& typeMan
     decl->EnableAttr(Attribute::INTRINSIC);
     decl->EnableAttr(Attribute::GENERIC);
     decl->EnableAttr(Attribute::COMPILER_ADD);
+    decl->doNotExport = true;
 
     auto declPtr = decl.get();
 
