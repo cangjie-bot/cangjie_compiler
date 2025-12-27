@@ -180,12 +180,9 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         // Check that the member of platform interface must have the body
         CheckPlatformInterface(StaticCast<AST::InterfaceDecl&>(decl));
-    } else if (decl.astKind == ASTKind::PRIMARY_CTOR_DECL) {
-        auto& fn = StaticCast<AST::PrimaryCtorDecl&>(decl);
-        CheckCJMPFuncParams(fn, fn.funcBody.get());
-    } else if (decl.astKind == ASTKind::FUNC_DECL) {
-        auto& fn = StaticCast<AST::FuncDecl&>(decl);
-        CheckCJMPFuncParams(fn, fn.funcBody.get());
+    } else if ((decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::STRUCT_DECL) && 
+        decl.TestAttr(Attribute::COMMON)) {
+        CheckCJMPCtorPresence(decl);
     }
 }
 
@@ -266,17 +263,6 @@ bool MPParserImpl::CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::
         return false;
     }
     return true;
-}
-
-void MPParserImpl::CheckCJMPFuncParams(AST::Decl& decl, const Ptr<AST::FuncBody> funcBody) const
-{
-    if (!funcBody || funcBody->paramLists.size() != 1) {
-        return;
-    }
-    auto& params = funcBody->paramLists[0]->params;
-    for (size_t index = 0; index < params.size(); index++) {
-        CheckCJMPModifiersBetween(*params[index], decl);
-    }
 }
 
 void MPParserImpl::CheckPlatformInterface(const AST::InterfaceDecl& decl) const
