@@ -2966,6 +2966,7 @@ struct Package : Node {
         allowedInteropCJGenericInstantiations;
     std::vector<std::string> interopTuples; /**< Record interop tuple configuration. Writed in sema. */
     bool isInteropCJPackageConfig{false};
+    std::vector<LambdaPattern> lambdaPatterns;
 
 private:
     std::vector<std::string> allDependentStdPkgs; /**< Record all dependent standard packages. */
@@ -3010,6 +3011,10 @@ public:
     const std::vector<std::string>& GetAllDependentStdPkgs() const
     {
         return allDependentStdPkgs;
+    }
+
+    const std::vector<LambdaPattern>& GetLambdaPatterns() const {
+        return lambdaPatterns;
     }
 };
 

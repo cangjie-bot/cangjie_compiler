@@ -45,6 +45,7 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
 {
     switch (stage) {
         case DesugarCJImplStage::PRE_GENERATE:
+            PreGenerateInCJMapping(file);
             break;
         case DesugarCJImplStage::FWD_GENERATE:
             GenerateFwdClassInCJMapping(file);
@@ -66,7 +67,8 @@ void JavaDesugarManager::ProcessCJImplStage(DesugarCJImplStage stage, File& file
     generatedDecls.clear();
 }
 
-void JavaInteropManager::DesugarPackage(Package& pkg, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
+void JavaInteropManager::DesugarPackage(
+    Package& pkg, const std::unordered_map<Ptr<const InheritableDecl>, MemberMap>& memberMap)
 {
     if (!(hasMirrorOrImpl || targetInteropLanguage == GlobalOptions::InteropLanguage::Java)) {
         return;
