@@ -135,6 +135,11 @@ void MockSupportManager::MarkNodeMockSupportedIfNeeded(Node& node)
         return;
     }
 
+    if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+        // TODO: cjmp common/platform support
+        return;
+    }
+
     if (Is<ClassDecl>(decl)) {
         decl->EnableAttr(Attribute::MOCK_SUPPORTED);
         MakeOpenToMockIfNeeded(*decl);
@@ -181,9 +186,17 @@ void MockSupportManager::PrepareDecls(DeclsToPrepare&& decls)
     }
 
     for (auto decl : decls.properties) {
-        PrepareStaticDecl(*GetUsableGetterForProperty(*decl));
+        auto& getter = *GetUsableGetterForProperty(*decl);
+        if (getter.outerDecl != decl->outerDecl) {
+            continue;
+        }
+        PrepareStaticDecl(getter);
         if (decl->isVar) {
-            PrepareStaticDecl(*GetUsableSetterForProperty(*decl));
+            auto& setter = *GetUsableSetterForProperty(*decl);
+            if (setter.outerDecl != decl->outerDecl) {
+                continue;
+            }
+            PrepareStaticDecl(setter);
         }
         decl->EnableAttr(Attribute::MOCK_SUPPORTED);
     }
@@ -276,6 +289,13 @@ void MockSupportManager::CollectDeclsToPrepare(Decl& decl, DeclsToPrepare& decls
         if (!classDecl) {
             auto extendDecl = As<ASTKind::EXTEND_DECL>(&decl);
             CJC_ASSERT(extendDecl);
+
+            // auto mangleCtx = mockUtils->mangler.manglerCtxTable.at(extendDecl->fullPackageName);
+            auto mangleCtx = mockUtils->mangler.manglerCtxTable.find(
+                        ManglerContext::ReduceUnitTestPackageName(extendDecl->fullPackageName));
+            CJC_ASSERT(mangleCtx != mockUtils->mangler.manglerCtxTable.end());
+            mangleCtx->second->SaveExtend2CurFile(extendDecl->curFile, extendDecl);
+
             classDecl = As<ASTKind::CLASS_DECL>(Ty::GetDeclOfTy(extendDecl->extendedType->ty));
         }
         if (!classDecl) {
@@ -419,8 +439,9 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
         : typeManager.GetFunctionTy({arrayTy, toStrArrayTy}, optionFuncRetTy);
     auto optionFuncTy = typeManager.GetEnumTy(*mockUtils->optionDecl, { funcTy });
     auto optionFunc = mockUtils->GetInstantiatedDecl(optionFuncTy->decl, {funcTy}, IS_GENERIC_INSTANTIATION_ENABLED);
-    auto noneFuncTy = CreateRefExpr(*LookupEnumMember(optionFunc, OPTION_NONE_CTOR));
-    noneFuncTy->ty = optionFuncTy;
+    auto noneCtor = CreateRefExpr(*LookupEnumMember(optionFunc, OPTION_NONE_CTOR));
+    noneCtor->curFile = decl.curFile;
+    noneCtor->ty = optionFuncTy;
 
     Ptr<VarDecl> varDecl = nullptr;
     if (funcDecl->genericDecl) {
@@ -436,8 +457,10 @@ void MockSupportManager::PrepareStaticDecl(Decl& decl)
         CJC_ASSERT(varDecl);
     } else {
         auto varMangledName = mockUtils->Mangle(decl);
-        auto newVarDecl = CreateVarDecl(varMangledName + MockUtils::mockAccessorSuffix, std::move(noneFuncTy), nullptr);
+        auto newVarDecl = CreateVarDecl(varMangledName + MockUtils::mockAccessorSuffix, std::move(noneCtor), nullptr);
         newVarDecl->curFile = decl.curFile;
+        newVarDecl->begin = decl.begin;
+        newVarDecl->end = decl.end;
         newVarDecl->isVar = true;
         newVarDecl->EnableAttr(Attribute::PUBLIC);
         newVarDecl->EnableAttr(Attribute::GLOBAL);
@@ -502,6 +525,16 @@ void MockSupportManager::GenerateSpyCallMarker(Package& package)
         return;
     }
 
+    if (auto& file = package.files[0]; file->isCommon || file->isPlatform) {
+        // TODO: cjmp common/platform support
+        return;
+    }
+
+    if (MockUtils::FindGlobalDecl<VarDecl>(
+            package.files[0], MockUtils::spyCallMarkerVarName + MockUtils::mockAccessorSuffix)) {
+        return;
+    }
+
     static const auto BOOL_TY = TypeManager::GetPrimitiveTy(TypeKind::TYPE_BOOLEAN);
     auto type = MockUtils::CreateType<PrimitiveType>(BOOL_TY);
     type->kind = TypeKind::TYPE_BOOLEAN;
@@ -511,6 +544,8 @@ void MockSupportManager::GenerateSpyCallMarker(Package& package)
         CreateLitConstExpr(LitConstKind::BOOL, "false", BOOL_TY, true),
         std::move(type));
     varDecl->curFile = package.files[0].get();
+    varDecl->begin = package.files[0]->GetBegin();
+    varDecl->end = package.files[0]->GetBegin();
     varDecl->isVar = true;
     varDecl->EnableAttr(Attribute::PUBLIC);
     varDecl->EnableAttr(Attribute::GLOBAL);
@@ -531,15 +566,23 @@ Ptr<Decl> MockSupportManager::GenerateSpiedObjectVar(const Decl& decl)
             OPTION_NONE_CTOR));
     noneRef->ty = optionDeclTy;
 
+    if (auto varDecl = MockUtils::FindGlobalDecl<VarDecl>(
+            decl.curFile->curPackage, MockUtils::spyObjVarName + "$" + mangledName + MockUtils::mockAccessorSuffix)) {
+        return varDecl;
+    }
+
     auto varDecl = CreateVarDecl(
         MockUtils::spyObjVarName + "$" + mangledName + MockUtils::mockAccessorSuffix,
         std::move(noneRef));
     varDecl->curFile = decl.curFile;
+    varDecl->begin = decl.begin;
+    varDecl->end = decl.begin;
     varDecl->isVar = true;
     varDecl->EnableAttr(Attribute::PUBLIC);
     varDecl->EnableAttr(Attribute::GLOBAL);
     varDecl->fullPackageName = decl.fullPackageName;
     varDecl->TestAttr(Attribute::GENERATED_TO_MOCK);
+    varDecl->linkage = decl.linkage;
 
     auto varRef = varDecl.get();
 
@@ -706,6 +749,10 @@ void MockSupportManager::PrepareToSpy(Decl& decl)
 
 void MockSupportManager::GenerateAccessors(Decl& decl)
 {
+    if (decl.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM, Attribute::FROM_COMMON_PART)) {
+        // TODO: cjmp common/platform support
+        return;
+    }
     if (auto varDecl = As<ASTKind::VAR_DECL>(&decl); varDecl && varDecl->TestAttr(Attribute::GLOBAL)) {
         GenerateVarDeclAccessors(
             *varDecl, AccessorKind::TOP_LEVEL_VARIABLE_GETTER, AccessorKind::TOP_LEVEL_VARIABLE_SETTER);
@@ -1028,6 +1075,8 @@ OwnedPtr<FuncDecl> MockSupportManager::CreateFieldAccessorDecl(
     OwnedPtr<FuncDecl> accessorDecl = MakeOwned<FuncDecl>();
 
     accessorDecl->curFile = fieldDecl.curFile;
+    accessorDecl->begin = fieldDecl.begin;
+    accessorDecl->end = fieldDecl.end;
     accessorDecl->keywordPos = fieldDecl.keywordPos;
     accessorDecl->identifier.SetPos(fieldDecl.identifier.Begin(), fieldDecl.identifier.End());
     accessorDecl->moduleName = fieldDecl.moduleName;
@@ -1096,6 +1145,8 @@ OwnedPtr<FuncDecl> MockSupportManager::CreateForeignFunctionAccessorDecl(FuncDec
     auto accessorName = MockUtils::GetForeignAccessorName(funcDecl) + MockUtils::mockAccessorSuffix;
     auto accessorDecl = CreateFuncDecl(accessorName,  std::move(accessorFuncBody), funcTy);
     accessorDecl->curFile = funcDecl.curFile;
+    accessorDecl->begin = funcDecl.begin;
+    accessorDecl->end = funcDecl.end;
     accessorDecl->fullPackageName = funcDecl.fullPackageName;
     accessorDecl->moduleName = funcDecl.moduleName;
     accessorDecl->EnableAttr(Attribute::PUBLIC);
@@ -1461,6 +1512,11 @@ Ptr<Expr> MockSupportManager::ReplaceFieldSetWithAccessor(AssignExpr& assignExpr
         }
     } else if (leftValue->astKind == ASTKind::WILDCARD_EXPR) {
         return nullptr;
+    } else if (auto subscript = As<ASTKind::SUBSCRIPT_EXPR>(leftValue.get())) {
+        if (subscript->IsVArrayAccess()) {
+            // TODO: support VArray
+            return nullptr;
+        }
     }
 
     CJC_ASSERT(accessorCall);
