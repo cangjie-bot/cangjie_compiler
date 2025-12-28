@@ -5,13 +5,13 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 /**
-* @file
-*
-* This document aims to parse PackageConfig.toml (interop CJ package configuration information),
-* which primarily involves the symbols that the target language can expose in interoperability scenarios,
-* as well as the specific type sets for generic instantiation.
-*
-*/
+ * @file
+ *
+ * This document aims to parse PackageConfig.toml (interop CJ package configuration information),
+ * which primarily involves the symbols that the target language can expose in interoperability scenarios,
+ * as well as the specific type sets for generic instantiation.
+ *
+ */
 
 #ifndef CANGJIE_BASIC_INTEROP_CJ_PACKAGECONFIGREADER_H
 #define CANGJIE_BASIC_INTEROP_CJ_PACKAGECONFIGREADER_H
@@ -27,13 +27,32 @@ namespace Cangjie {
 enum class InteropCJStrategy { FULL, NONE, UNKNOWN };
 
 // InteropCJ Generic Strategy Type
-enum class InteropCJGenericStrategyType { NONE, PARTIAL, UNKNOWN};
+enum class InteropCJGenericStrategyType { NONE, PARTIAL, UNKNOWN };
 
 // Generic instanceization Structure
 struct GenericTypeArguments {
     std::unordered_set<std::string> symbols;
 };
 
+// Custom Type Mapping Information
+struct ClassMapping {
+    std::string name;
+    std::string pkgPath;
+    ClassMapping(std::string name, std::string pkg) : name(name), pkgPath(pkg) {};
+};
+
+// lambda configuration pattern
+struct LambdaPattern {
+    std::string signature;
+    std::vector<std::string> parameterTypes;
+    std::string returnType;
+    std::vector<ClassMapping> ClassMappings;
+    std::string fullPackageName;
+    LambdaPattern(std::string sign, std::vector<std::string> params, std::string retType)
+        : signature(std::move(sign)), parameterTypes(std::move(params)), returnType(std::move(retType))
+    {
+    }
+};
 // Package Configuration Structure
 struct PackageConfig {
     std::string name;
@@ -44,6 +63,7 @@ struct PackageConfig {
     std::unordered_map<std::string, std::unordered_map<std::string, GenericTypeArguments>>
         allowedInteropCJGenericInstantiations;
     std::vector<std::string> interopTuples;
+    std::vector<LambdaPattern> lambdaPatterns;
 };
 
 // Complete Configuration Structure

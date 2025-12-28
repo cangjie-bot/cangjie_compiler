@@ -70,7 +70,7 @@ OwnedPtr<ClassDecl> InsertFwdClasses::GenerateGenericInterfaceFwdclassMethod(Int
     std::vector<Ptr<Ty>> typeArgs;
     for (const auto& typePair : genericConfig->instTypes) {
         std::string typeStr = typePair.second;
-        auto ty = GetGenericInstTy(typeStr);
+        auto ty = GetTyByName(typeStr);
         typeArgs.push_back(ty);
         actualTyArgMap[typeStr] = ty;
     }
@@ -80,7 +80,7 @@ OwnedPtr<ClassDecl> InsertFwdClasses::GenerateGenericInterfaceFwdclassMethod(Int
     auto interfaceRefType = CreateRefType(*interfaceDecl, instantTy);
     std::vector<OwnedPtr<Type>> typeArguments;
     for (const auto& arg : actualTyArgMap) {
-        auto priType = GetGenericInstType(arg.first);
+        auto priType = GetTypeByName(arg.first);
         interfaceRefType->typeArguments.emplace_back(std::move(priType));
     }
     fwdclassDecl->inheritedTypes.emplace_back(std::move(interfaceRefType));
