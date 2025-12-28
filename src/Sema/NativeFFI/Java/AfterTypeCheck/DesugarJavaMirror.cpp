@@ -398,13 +398,23 @@ void JavaDesugarManager::AddJavaMirrorMethodBody(
 
     auto callResRef = CreateRefExpr(*methodCallRes);
     CopyBasicInfo(methodCallRes.get(), callResRef.get());
-    auto unwrapJavaEntityCall = lib.UnwrapJavaEntity(std::move(callResRef), fun.funcBody->retType->ty, mirror);
-    if (!unwrapJavaEntityCall) {
+
+
+    OwnedPtr<Expr> retCallExpr = nullptr;
+    // cjmapping interface return param support lambda.
+    if (fun.funcBody->retType->ty->kind == TypeKind::TYPE_FUNC &&
+        fun.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_FWD)) {
+        retCallExpr = CreateGetCJLambdaCallExpr(std::move(callResRef), fun.funcBody->retType->ty, mirror);
+    } else {
+        retCallExpr = lib.UnwrapJavaEntity(std::move(callResRef), fun.funcBody->retType->ty, mirror);
+    }
+
+    if (!retCallExpr) {
         fun.EnableAttr(Attribute::IS_BROKEN);
         return;
     }
     std::vector<OwnedPtr<Node>> blockNodes;
-    auto retExpr = CreateReturnExpr(std::move(unwrapJavaEntityCall), fun.funcBody.get());
+    auto retExpr = CreateReturnExpr(std::move(retCallExpr), fun.funcBody.get());
     retExpr->ty = TypeManager::GetNothingTy();
     retExpr->refFuncBody = fun.funcBody.get();
     blockNodes.push_back(std::move(methodCallRes));

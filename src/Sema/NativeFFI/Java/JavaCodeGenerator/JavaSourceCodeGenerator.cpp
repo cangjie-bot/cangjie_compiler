@@ -12,11 +12,11 @@
 
 #include <limits>
 
+#include "JavaSourceCodeGenerator.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Symbol.h"
 #include "cangjie/Utils/FileUtil.h"
 #include "cangjie/Utils/StdUtils.h"
-#include "JavaSourceCodeGenerator.h"
 
 namespace {
 using namespace Cangjie::AST;
@@ -79,6 +79,8 @@ std::string FuncParamToString(const OwnedPtr<FuncParam>& p)
     if (auto ty = Ty::GetDeclOfTy(p->type->ty)) {
         bool castToId = IsCJMapping(*ty) && !IsCJMappingInterface(*(p->type->ty));
         res += castToId ? ".self" : "";
+    } else if (p->type->ty->IsFunc()) {
+        res = GetLambdaJavaClassName(p->type->ty) + ".box(" + res + ")";
     }
     if (p->type->ty->IsTuple()) {
         res += ".self";
@@ -162,6 +164,18 @@ JavaSourceCodeGenerator::JavaSourceCodeGenerator(Decl* decl, const BaseMangler& 
 {
 }
 
+JavaSourceCodeGenerator::JavaSourceCodeGenerator(const BaseMangler& mangler, TypeManager& typeManager,
+    const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+    Ptr<LambdaPattern> pattern)
+    : AbstractSourceCodeGenerator(
+          outputFolderPath.value_or(JavaSourceCodeGenerator::DEFAULT_OUTPUT_DIR), outputFileName),
+      cjLibName(std::move(cjLibName)),
+      mangler(mangler),
+      typeManager(typeManager),
+      lambdaPattern(pattern)
+{
+}
+
 bool JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(const Decl& declArg)
 {
     return (IsImpl(declArg) &&
@@ -169,8 +183,106 @@ bool JavaSourceCodeGenerator::IsDeclAppropriateForGeneration(const Decl& declArg
         IsCJMapping(declArg);
 }
 
+std::string JavaSourceCodeGenerator::GenerateLambdaRetType()
+{
+    std::string retType =
+        MapCJTypeToJavaType(GetTyByName(lambdaPattern->returnType), &imports, &lambdaPattern->fullPackageName, false);
+    return retType;
+}
+
+std::string JavaSourceCodeGenerator::GenerateLambdaParamType(bool isVar)
+{
+    int index = 1;
+    std::string paramsStr = "";
+    for (auto& typeName : lambdaPattern->parameterTypes) {
+        if (index > 1) {
+            paramsStr += ", ";
+        }
+        std::string varName = "p" + std::to_string(index);
+        paramsStr += isVar
+            ? varName
+            : MapCJTypeToJavaType(GetTyByName(typeName), &imports, &lambdaPattern->fullPackageName, false) + " " +
+                varName;
+        index++;
+    }
+    return paramsStr;
+}
+
+void JavaSourceCodeGenerator::GenerateLambdaJavaSourceCode()
+{
+    std::string lambdaJavaClassName = GetLambdaJavaClassName(*lambdaPattern);
+    res += "@FunctionalInterface\n public interface " + lambdaJavaClassName + "\n{";
+    AddWithIndent(TAB, "public " + GenerateLambdaRetType() + " call(" + GenerateLambdaParamType() + ");");
+
+    AddWithIndent(TAB, "public static " + lambdaJavaClassName + " box(" + lambdaJavaClassName + " lambda)");
+    AddWithIndent(TAB, "{");
+    AddWithIndent(TAB2, "if (lambda instanceof " + lambdaJavaClassName + ".Box) {");
+    AddWithIndent(TAB3, "return lambda;");
+    AddWithIndent(TAB2, "} else {");
+    AddWithIndent(TAB3, "return new Box(lambda);");
+    AddWithIndent(TAB2, "}");
+    AddWithIndent(TAB, "}");
+
+    AddWithIndent(TAB, "class Box implements " + lambdaJavaClassName + " {");
+    AddLoadLibrary();
+    AddWithIndent(TAB2, "long cjLambdaId = 0;");
+    AddWithIndent(TAB2, lambdaJavaClassName + " javaLambda;");
+
+    AddWithIndent(TAB2, "private Box(" + lambdaJavaClassName + " javaL)");
+
+    AddWithIndent(TAB2, "{");
+    AddWithIndent(TAB3, "javaLambda = javaL;");
+    AddWithIndent(TAB2, "}");
+
+    AddWithIndent(TAB2, "private Box(long cjId)");
+    AddWithIndent(TAB2, "{");
+    AddWithIndent(TAB3, "cjLambdaId = cjId;");
+    AddWithIndent(TAB2, "}");
+
+    AddWithIndent(TAB2, "@Override");
+    AddWithIndent(TAB2, "public " + GenerateLambdaRetType() + " call(" + GenerateLambdaParamType() + ")");
+    AddWithIndent(TAB2, "{");
+    std::string callImplParamStr =
+        GenerateLambdaParamType(true).empty() ? "cjLambdaId" : "cjLambdaId, " + GenerateLambdaParamType(true);
+    if (GenerateLambdaRetType() == "void") {
+        AddWithIndent(TAB3, "if( this.javaLambda != null) {");
+        AddWithIndent(TAB3, "javaLambda.call(" + GenerateLambdaParamType(true) + ");");
+        AddWithIndent(TAB3, "} else {");
+        AddWithIndent(TAB3, "callImpl(" + callImplParamStr + ");");
+        AddWithIndent(TAB3, "}");
+    } else {
+        AddWithIndent(TAB3,
+            "return this.javaLambda != null ? javaLambda.call(" + GenerateLambdaParamType(true) + ")" + ": callImpl(" +
+                callImplParamStr + ");");
+    }
+    AddWithIndent(TAB2, "}");
+
+    AddWithIndent(TAB2, "@Override");
+    AddWithIndent(TAB2, "public void finalize()");
+    AddWithIndent(TAB2, "{");
+    AddWithIndent(TAB3, "if (cjLambdaId != 0) {");
+    AddWithIndent(TAB3, "deleteCJObject(cjLambdaId);");
+    AddWithIndent(TAB3, "}");
+    AddWithIndent(TAB2, "}");
+
+    std::string callImplParamDef =
+        GenerateLambdaParamType().empty() ? "long cjLambdaId" : "long cjLambdaId, " + GenerateLambdaParamType();
+    AddWithIndent(TAB2, "private static native " + GenerateLambdaRetType() + " callImpl(" + callImplParamDef + ");");
+
+    AddWithIndent(TAB2, "private static native void deleteCJObject(long cjLambdaId);");
+    AddWithIndent(TAB, "}");
+    AddWithIndent("", "}");
+
+    AddHeaderWithPackageName(lambdaPattern->fullPackageName);
+}
+
 void JavaSourceCodeGenerator::ConstructResult()
 {
+    if (lambdaPattern != nullptr) {
+        GenerateLambdaJavaSourceCode();
+        return;
+    }
+
     if (decl->TestAnyAttr(Attribute::IS_BROKEN, Attribute::HAS_BROKEN)) {
         return;
     }
@@ -224,7 +336,11 @@ void JavaSourceCodeGenerator::ConstructResult()
 void JavaSourceCodeGenerator::AddHeader()
 {
     std::string curPackageName = GetJavaPackage(*decl);
+    AddHeaderWithPackageName(curPackageName);
+}
 
+void JavaSourceCodeGenerator::AddHeaderWithPackageName(std::string& curPackageName)
+{
     std::string header;
     if (!curPackageName.empty()) {
         header += JAVA_PACKAGE;
@@ -306,6 +422,8 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
             }
             javaType = GetCjMappingTupleName(*ty);
             break;
+        case TypeKind::TYPE_FUNC:
+            javaType = GetLambdaJavaClassName(ty);
         default:
             if (ty->name == "String") {
                 javaType = "String";
@@ -1114,9 +1232,9 @@ void JavaSourceCodeGenerator::AddFinalize()
 
 void JavaSourceCodeGenerator::AddPrivateCtorForCJMappring()
 {
-    std::string signature = genericConfig ?
-        "private " + genericConfig->declInstName + " (long id, " + GetConstructorMarkerClassName() + " __init__) {" :
-        "private " + decl->identifier.Val() + " (long id, " + GetConstructorMarkerClassName() + " __init__) {";
+    std::string signature = genericConfig
+        ? "private " + genericConfig->declInstName + " (long id, " + GetConstructorMarkerClassName() + " __init__) {"
+        : "private " + decl->identifier.Val() + " (long id, " + GetConstructorMarkerClassName() + " __init__) {";
     AddWithIndent(TAB, signature);
     AddWithIndent(TAB2, "self = id;");
     auto classDecl = As<ASTKind::CLASS_DECL>(decl);
