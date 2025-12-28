@@ -284,7 +284,8 @@ void TypeChecker::PerformDesugarAfterSema(std::vector<Ptr<Package>>& pkgs) const
     impl->PerformDesugarAfterSema(pkgs);
 }
 
-void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg, InteropCJPackageConfigReader packagesFullConfig)
+void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(
+    Ptr<AST::Package>& pkg, InteropCJPackageConfigReader packagesFullConfig)
 {
     std::string currentPackageName = pkg->fullPackageName;
     pkg->interopCJApiStrategy = packagesFullConfig.GetApiStrategy(currentPackageName);
@@ -294,11 +295,11 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
         pkg->interopCJExcludedApis = currentPackageConfig->interopCJExcludedApis;
         pkg->allowedInteropCJGenericInstantiations = currentPackageConfig->allowedInteropCJGenericInstantiations;
         pkg->interopTuples = currentPackageConfig->interopTuples;
+        pkg->lambdaPatterns = currentPackageConfig->lambdaPatterns;
         for (auto& file : pkg->files) {
-            for (auto & decl : file->decls) {
+            for (auto& decl : file->decls) {
                 // Following the symbol exposure strategy "Full" requirement, and included_apis is empty
-                if (pkg->interopCJApiStrategy == InteropCJStrategy::FULL &&
-                    pkg->interopCJIncludedApis.size() == 0) {
+                if (pkg->interopCJApiStrategy == InteropCJStrategy::FULL && pkg->interopCJIncludedApis.size() == 0) {
                     if (decl->symbol) {
                         decl->symbol->isNeedExposedToInterop = true;
                     }
@@ -320,8 +321,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                             for (auto& member : decl->GetMemberDecls()) {
                                 if (member->symbol &&
                                     ((!decl->symbol->isNeedExposedToInterop &&
-                                            element ==
-                                                (decl->symbol->name + "." + member->symbol->name)) ||
+                                         element == (decl->symbol->name + "." + member->symbol->name)) ||
                                         decl->symbol->isNeedExposedToInterop)) {
                                     member->symbol->isNeedExposedToInterop = true;
                                     isMemberExposed = true;
@@ -349,8 +349,7 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                             for (auto& member : decl->GetMemberDecls()) {
                                 if (member->symbol &&
                                     (!decl->symbol->isNeedExposedToInterop &&
-                                        (element ==
-                                            (decl->symbol->name + "." + member->symbol->name)))) {
+                                        (element == (decl->symbol->name + "." + member->symbol->name)))) {
                                     member->symbol->isNeedExposedToInterop = false;
                                 }
                             }
@@ -385,8 +384,8 @@ void TypeChecker::TypeCheckerImpl::ParsePackageConfigFile(Ptr<AST::Package>& pkg
                     if (member->symbol && member->symbol->isNeedExposedToInterop) {
                         decl->symbol->isNeedExposedToInterop = true;
                         std::cerr << "Warning: " << decl->symbol->name << " is not config to exposed but "
-                                  << decl->symbol->name << "." << member->symbol->name
-                                  << " is config to exposed" << std::endl;
+                                  << decl->symbol->name << "." << member->symbol->name << " is config to exposed"
+                                  << std::endl;
                     }
                 }
             } else {

@@ -595,6 +595,72 @@ private:
      * }
      */
     OwnedPtr<AST::MemberAccess> GenThisMemAcessForSelfMethod(Ptr<FuncDecl> fd, Ptr<InterfaceDecl> interfaceDecl, GenericConfigInfo* genericConfig);
+    void PreGenerateInCJMapping(File& file);
+
+    /**
+     * config (Int32) -> Int32, will generate as follow:
+     * 
+     * public func getInt32ToInt32CjLambda(a: jobject) : (Int32) -> Int32 {
+     *  let javaref = Java_CFFI_JavaEntityJobject(a)
+     *  let cjLambda = { b:Int32 =>
+     *      let env = Java_CFFI_get_env()
+     *      let methodId = Java_CFFI_MethodIDConstr(env, Java_CFFI_ClassInit(env, "cj/IntWInt"), "call",
+     *      Java_CFFI_parseMethodSignature("(I)I")); let result = Java_CFFI_callVirtualMethod(env, javaref, methodId,
+     *      [Java_CFFI_JavaEntity(b)], Java_CFFI_JavaCallNestInit(1)) Java_CFFI_unwrapJavaEntityAsValue<Int32>(result)
+     *      }
+     *  cjLambda
+     *  }
+     * 
+     * @C
+     * public func Java_cj_IntWInt_00024BoxIntWInt_intWIntImpl(env: JNIEnv_ptr, _: jclass, self: jlong, arg: Int32):
+     * Int32 {
+     *       withExceptionHandling(env) {
+     *      let v = Java_CFFI_getFromRegistry<(Int32) -> Int32>(env, self)
+     *       let r = v(arg)
+     *       r
+     *       }
+     *   }
+     *
+     * @C
+     * public func Java_cj_IntWInt_00024BoxIntWInt_deleteIntWIntCJObject(env: JNIEnv_ptr, _: jclass, self:jlong): Unit {
+     *       withExceptionHandling(env) {
+     *           Java_CFFI_deleteCJObjectOneWay<(Int32) -> Int32>(env, self)
+     *      }
+     *   }
+     */
+    void GenerateLambdaGlueCode(File& file);
+
+    /**
+     * config (Int32) -> Int32, will generate as follow:
+     *  let cjLambda = { b:Int32 =>
+     *      let env = Java_CFFI_get_env()
+     *      let methodId = Java_CFFI_MethodIDConstr(env, Java_CFFI_ClassInit(env, "cj/IntWInt"), "call",
+     *      Java_CFFI_parseMethodSignature("(I)I")); let result = Java_CFFI_callVirtualMethod(env, javaref, methodId,
+     *      [Java_CFFI_JavaEntity(b)], Java_CFFI_JavaCallNestInit(1)) Java_CFFI_unwrapJavaEntityAsValue<Int32>(result)
+     *      }
+     *  cjLambda
+     *  }
+     */
+    OwnedPtr<LambdaExpr> GenerateLambdaExpr(File& file, LambdaPattern& pattern, FuncParam& funcParam);
+
+    /**
+     * check whether exist lambdaDecl by function param ty.
+     */
+    Ptr<FuncDecl> CheckCjLambdaDeclByTy(Ptr<Ty> ty);
+
+    /**
+     * generate callexpr for getInt32ToInt32CjLambda() if param ty is (Int32)->Int32.
+     */
+    OwnedPtr<CallExpr> CreateGetCJLambdaCallExpr(OwnedPtr<RefExpr> callResRef, Ptr<Ty> ty, const Decl& outerDecl);
+
+
+    /**
+     * generate java interfacefunctional call() method's native function decl.
+     */
+    OwnedPtr<Decl> GenerateCallImplNativeMethod(File& file, LambdaPattern& lambdaPattern);
+    Ptr<FuncTy> GetLambdaFuncTy(LambdaPattern& lambdaPattern);
+    Ptr<Decl> GetLambdaTmpDecl(File& file, std::string javaClassName, std::string fullPackGeName);
+    std::string GetLambdaCallImplJniMethodName(Decl& decl);
 
     ImportManager& importManager;
     TypeManager& typeManager;
@@ -613,6 +679,8 @@ private:
 
     // contains the member signatures of structs.
     const std::unordered_map<Ptr<const AST::InheritableDecl>, MemberMap>& memberMap;
+    std::map<std::string, Ptr<FuncDecl>> lambdaConfUtilFuncs;
+    bool isInitLambdaUtilFunc = false;
 };
 
 } // namespace Cangjie::Interop::Java
