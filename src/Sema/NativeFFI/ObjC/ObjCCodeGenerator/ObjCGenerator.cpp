@@ -753,7 +753,7 @@ void ObjCGenerator::AddProperties()
         std::string type;
         if (isGenericGlueCode) {
             auto genericActualTy =
-                TypeManager::GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, varDecl.ty->name)));
+                TypeManager::GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, varDecl.ty->name)));
             type = MapCJTypeToObjCType(*genericActualTy);
         } else {
             type = MapCJTypeToObjCType(*varDecl.ty);
@@ -1183,7 +1183,7 @@ std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<Type>& type)
     if (IsGenericParam(type->ty, *decl, genericConfig)) {
         // Current generic only support primitive type.
         auto genericActualTy =
-            TypeManager::GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, type->ty->name)));
+            TypeManager::GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, type->ty->name)));
         return MapCJTypeToObjCType(*genericActualTy);
     }
     return MapCJTypeToObjCType(*type->ty);
@@ -1199,7 +1199,7 @@ std::string ObjCGenerator::MapCJTypeToObjCType(const OwnedPtr<FuncParam>& param)
     if (IsGenericParam(paraTy, *decl, genericConfig)) {
         // Current generic only support primitive type.
         auto genericActualTy =
-            TypeManager::GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, paraTy->name)));
+            TypeManager::GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, paraTy->name)));
         return MapCJTypeToObjCType(*genericActualTy);
     }
     return MapCJTypeToObjCType(*param->type->ty);
