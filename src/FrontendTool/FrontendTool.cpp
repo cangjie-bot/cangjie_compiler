@@ -124,7 +124,7 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
     }
     if (!isEmitCHIR) {
         Cangjie::ICE::TriggerPointSetter iceSetter(CompileStage::SAVE_RESULTS);
-        res = instance.PerformCjoAndBchirSaving() && res;
+        res = instance.PerformBchirSaving() && res;
     }
     return res;
 }

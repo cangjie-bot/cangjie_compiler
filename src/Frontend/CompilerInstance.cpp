@@ -26,6 +26,7 @@
 #include "cangjie/CHIR/Serializer/CHIRDeserializer.h"
 #include "cangjie/CHIR/UserDefinedType.h"
 #include "cangjie/Frontend/CompileStrategy.h"
+#include "cangjie/Driver/TempFileManager.h"
 #include "cangjie/IncrementalCompilation/ASTCacheCalculator.h"
 #include "cangjie/IncrementalCompilation/IncrementalCompilationLogger.h"
 #include "cangjie/Mangle/BaseMangler.h"
@@ -119,7 +120,7 @@ bool CompilerInstance::InitCompilerInstance()
     performMap.insert_or_assign(CompileStage::MANGLING, &CompilerInstance::PerformMangling);
     performMap.insert_or_assign(CompileStage::CHIR, &CompilerInstance::PerformCHIRCompilation);
     performMap.insert_or_assign(CompileStage::CODEGEN, &CompilerInstance::PerformCodeGen);
-    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformCjoAndBchirSaving);
+    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformBchirSaving);
     return true;
 }
 
@@ -315,6 +316,12 @@ bool CompilerInstance::PerformParse()
         srcPkgs.front()->noSubPkg = globalOpts.noSubPkg;
         Utils::ProfileRecorder::SetPackageName(srcPkgs[0]->fullPackageName);
         Utils::ProfileRecorder::SetOutputDir(globalOpts.output);
+        TempFileInfo astFileInfo = TempFileManager::Instance().CreateNewFileInfo(
+            TempFileInfo{srcPkgs[0]->fullPackageName, ""}, TempFileKind::O_CJO_FLAG);
+        if (FileUtil::FileExist(astFileInfo.filePath) && !FileUtil::Remove(astFileInfo.filePath)) {
+            Errorln("fail to generate file: " + astFileInfo.filePath);
+            ret = false;
+        }
         if (IsNeedSaveIncrCompilationLogFile(globalOpts, invocation.frontendOptions)) {
             std::string incrLogPath =
                 invocation.globalOptions.GenerateCachedPathName(srcPkgs[0]->fullPackageName, CACHED_LOG_EXTENSION);
@@ -840,7 +847,7 @@ bool CompilerInstance::PerformMangling()
     if (!srcPkgs.empty() && invocation.globalOptions.NeedDumpAST()) {
         DumpAST(GetSourcePackages(), invocation.globalOptions.output, "mangle", invocation.globalOptions.dumpToScreen);
     }
-    return true;
+    return PerformCjoSaving();
 }
 
 bool CompilerInstance::GenerateCHIRForPkg(AST::Package& pkg)

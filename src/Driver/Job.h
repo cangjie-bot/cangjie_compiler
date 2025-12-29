@@ -37,7 +37,7 @@ public:
     /**
      * Execute compilation job.
      */
-    bool Execute() const;
+    bool Execute(bool dryLink) const;
 
 private:
     std::unique_ptr<Backend> backend;

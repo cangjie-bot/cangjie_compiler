@@ -44,6 +44,7 @@ enum class TempFileKind {
     T_OBJ,         // temp .o(binary object) file
     T_EXE_MAC,     // temp executable file for macro strip
     T_DYLIB_MAC,   // temp dynamic library file for macro strip
+    O_CJO_FLAG,    // output .cjo file ok flag
 };
 
 } // namespace Cangjie

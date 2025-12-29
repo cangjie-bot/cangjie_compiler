@@ -135,7 +135,7 @@ void Driver::EnvironmentSetup(const std::unordered_map<std::string, std::string>
     driverOptions->cangjieHome = driverOptions->environment.cangjieHome.value_or(cangjieHome);
 }
 
-bool Driver::ExecuteCompilation() const
+bool Driver::ExecuteCompilation(bool dryLink) const
 {
     if (driverOptions == nullptr) {
         return false;
@@ -202,14 +202,14 @@ bool Driver::ExecuteCompilation() const
     }
 
     std::future<bool> future = std::async(DeleteInstance, instance);
-    bool res = InvokeCompileToolchain();
+    bool res = InvokeCompileToolchain(dryLink);
     Utils::ProfileRecorder::Start("Main Stage", "DeleteInstanceLeftTime");
     future.get();
     Utils::ProfileRecorder::Stop("Main Stage", "DeleteInstanceLeftTime");
     return res;
 }
 
-bool Driver::InvokeCompileToolchain() const
+bool Driver::InvokeCompileToolchain(bool dryLink) const
 {
 #ifdef SIGNAL_TEST
     // The interrupt signal triggers the function. In normal cases, this function does not take effect.
@@ -222,6 +222,6 @@ bool Driver::InvokeCompileToolchain() const
     }
 
     // Execute Job.
-    bool executeResult = job->Execute();
+    bool executeResult = job->Execute(dryLink);
     return executeResult;
 }

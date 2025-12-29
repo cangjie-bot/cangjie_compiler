@@ -52,14 +52,14 @@ public:
      *
      * @return bool Return true If success.
      */
-    bool ExecuteCompilation() const;
+    bool ExecuteCompilation(bool dryLink) const;
 
     /**
      * @brief Generate backend and linking commands.
      *
      * @return bool Return true If success.
      */
-    bool InvokeCompileToolchain() const;
+    bool InvokeCompileToolchain(bool dryLink) const;
 
     std::vector<std::string> args;
     DiagnosticEngine& diag;

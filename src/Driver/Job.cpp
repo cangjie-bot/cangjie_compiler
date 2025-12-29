@@ -22,6 +22,9 @@
 #include "cangjie/Utils/FileUtil.h"
 #include "cangjie/Utils/ProfileRecorder.h"
 #include "cangjie/Utils/Semaphore.h"
+#include <filesystem>
+namespace fs = std::filesystem;
+#include <fstream>
 
 namespace {
 bool CheckExecuteResult(std::map<std::string, std::unique_ptr<ToolFuture>>& checklist,
@@ -84,15 +87,44 @@ bool Job::Assemble(const DriverOptions& driverOptions, const Driver& driver)
     return true;
 }
 
-bool Job::Execute() const
+bool Job::Execute(bool dryLink) const
 {
     const std::vector<ToolBatch>& commandList = backend->GetBackendCmds();
+    auto needSkipLink = false;
+    auto& lastBatch = commandList.back();
+    std::string linkCmd = "";
+    if (dryLink && lastBatch.size() == 1 && FileUtil::GetFileName(lastBatch[0]->GetName()) == "ld") {
+        needSkipLink = true;
+        linkCmd = FileUtil::Normalize(lastBatch[0]->GetCommandString());
+    }
+    std::string srcPath = "";
+    std::string dstPath = "";
+    auto size = commandList.size();
+    size_t cnt = 0;
     for (const ToolBatch& cmdBatch : commandList) {
+        cnt++;
+        if (cnt == size && needSkipLink)
+        {
+            continue;
+        }
         if (cmdBatch.empty()) {
             continue;
         }
         std::map<std::string, std::unique_ptr<ToolFuture>> childWorkers{};
         Utils::ProfileRecorder recorder("Main Stage", "Execute " + FileUtil::GetFileName(cmdBatch[0]->GetName()), "");
+        Println("-----------------------------------------------------------------------------------" + FileUtil::GetFileName(cmdBatch[0]->GetName()));
+        for (auto& cmd : cmdBatch) {
+            Println("xxx" + FileUtil::Normalize(cmd->GetCommandString()));
+        }
+        Println("-----------------------------------------------------------------------------------" + FileUtil::GetFileName(cmdBatch[0]->GetName()));
+        if (FileUtil::GetFileName(cmdBatch[0]->GetName()) == "CacheCopy") {
+            auto args = cmdBatch[0]->GetArgs();
+            srcPath = args[0];
+            dstPath = args[1];
+            for (auto& arg : args) {
+                Println("CacheCopy arg " + arg);
+            }
+        }
         for (auto& cmd : cmdBatch) {
             // NOTE: `CheckExecuteResult` acquires semaphore without condition. We must ensure that there is still
             // available slot in semaphore before executing next command. If there is no more slot available, wait
@@ -111,6 +143,22 @@ bool Job::Execute() const
         if (!CheckExecuteResult(childWorkers)) {
             return false;
         }
+    }
+    if (needSkipLink) {
+        fs::path src_file_path = srcPath;
+        fs::path dst_file_path = dstPath;
+        fs::path grandparent = dst_file_path.parent_path().parent_path();
+        fs::path filename = src_file_path.filename();
+        fs::path full_path = grandparent / filename;
+        fs::copy(src_file_path, full_path);
+        fs::path link_path = (grandparent / src_file_path.stem()).string() + ".link";
+        size_t pos = linkCmd.find(src_file_path);
+        if (pos != std::string::npos) {
+            linkCmd.replace(pos, src_file_path.string().length(), full_path);
+        }
+        std::ofstream out_file(link_path);
+        out_file << linkCmd;
+        out_file.close();
     }
     return true;
 }

@@ -202,7 +202,7 @@ bool OptionTable::ParseShortTermArgs(const std::vector<std::string>& argsStrs, s
 
     std::optional<OptionArgInstance> maybeArg = ParseOptionArg(argStr);
     if (!maybeArg) {
-        return false;
+        return true;
     }
     auto arg = maybeArg.value();
     if (arg.argType == ArgType::PartiallyParsed && !ParseSeparatedArgValue(arg, argsStrs, idx)) {

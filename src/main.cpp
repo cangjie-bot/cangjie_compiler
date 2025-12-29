@@ -91,7 +91,14 @@ int main(int argc, const char** argv, const char** envp)
             WriteError("Invalid options. Try: 'cjc --help' for more information.\n");
             return EXIT_CODE_ERROR;
         }
-        auto res = driver->ExecuteCompilation();
+        bool dryLink = false;
+        for (const std::string& arg : args) {
+            if (arg == "--dry-link") {
+                dryLink = true;
+                break;
+            }
+        }
+        auto res = driver->ExecuteCompilation(dryLink);
         TempFileManager::Instance().DeleteTempFiles();
         if (!res) {
             RuntimeInit::GetInstance().CloseRuntime();
