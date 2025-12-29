@@ -15,11 +15,11 @@
 #include <set>
 
 #include "AbstractSourceCodeGenerator.h"
+#include "NativeFFI/Java/AfterTypeCheck/JavaDesugarManager.h"
+#include "NativeFFI/Java/AfterTypeCheck/Utils.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Types.h"
 #include "cangjie/Mangle/BaseMangler.h"
-#include "NativeFFI/Java/AfterTypeCheck/JavaDesugarManager.h"
-#include "NativeFFI/Java/AfterTypeCheck/Utils.h"
 
 namespace Cangjie::Interop::Java {
 using namespace AST;
@@ -40,6 +40,9 @@ public:
     JavaSourceCodeGenerator(Decl* decl, const BaseMangler& mangler, TypeManager& typeManager,
         const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
         Ptr<TupleTy>& tupleTy, bool isCjMappingTuple, bool isInteropCJpackageConfig = false);
+    JavaSourceCodeGenerator(const BaseMangler& mangler, TypeManager& typeManager,
+        const std::optional<std::string>& outputFolderPath, const std::string& outputFileName, std::string cjLibName,
+        Ptr<LambdaPattern> pattern);
     static bool IsDeclAppropriateForGeneration(const Decl& declArg);
 
 private:
@@ -67,6 +70,7 @@ private:
     Ptr<TupleTy> tupleTy{nullptr};
     bool isCjMappingTuple{false};
     bool isInteropCJPackageConfig{false};
+    Ptr<LambdaPattern> lambdaPattern = nullptr;
 
     std::string GenerateFuncParams(const std::vector<OwnedPtr<FuncParam>>& params, bool isNativeMethod = false);
     std::string GenerateFuncParamLists(
@@ -106,7 +110,7 @@ private:
      *     static {
      *         loadLibrary("UNNAMED");
      *     }
-     * 
+     *
      *     public static native void foo_default_impl(CJMappingInterface selfobj);
      * }
      */
@@ -114,7 +118,7 @@ private:
     void AddInterfaceFwdClassNativeMethod();
 
     void AddEndClassParenthesis();
-    void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>> &params, const FuncDecl& ctor);
+    void AddNativeInitCJObject(const std::vector<OwnedPtr<Cangjie::AST::FuncParam>>& params, const FuncDecl& ctor);
     void AddNativeDeleteCJObject();
     void AddFinalize();
     void AddHeader();
@@ -130,6 +134,10 @@ private:
     void AddAttachCJObject();
     void AddDetachCJObject();
     void AddNativeDetachCJObject();
+    void AddHeaderWithPackageName(std::string& curPackageName);
+    void GenerateLambdaJavaSourceCode();
+    std::string GenerateLambdaRetType();
+    std::string GenerateLambdaParamType(bool isVar = false);
 };
 } // namespace Cangjie::Interop::Java
 

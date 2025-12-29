@@ -60,8 +60,9 @@ public:
     StructDecl& GetStringDecl();
 
     std::string GetJavaClassNormalizeSignature(const Ty& cjtype) const;
-    std::string GetJavaTypeSignature(const Ty& cjtype);
-    std::string GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& args);
+    std::string GetJavaTypeSignature(const Ty& cjtype, std::string fullpackageName = "");
+    std::string GetJavaTypeSignature(Ty& retTy, const std::vector<Ptr<Ty>>& args, std::string fullpackageName = "");
+    std::string GetParamJavaSignature(const Ptr<Ty> ty, std::string fullpackageName);
     std::string GetJavaObjectTypeName(const Ty& ty);
 
     OwnedPtr<Expr> CreateOptionMatch(
@@ -230,6 +231,7 @@ bool IsCJMappingInterface(const Ty& ty);
 bool IsCJMapping(const Ty& ty);
 bool IsCJMappingTuple(const Ptr<Ty>& ty, std::unordered_set<Ptr<Ty>> tupleConfigs);
 std::string ReplaceClassName(std::string& classTypeSignature, std::string newSegment);
+std::string NormalizeJavaSignature(const std::string& sig);
 
 ArrayOperationKind GetArrayOperationKind(Decl& decl);
 

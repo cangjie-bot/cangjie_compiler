@@ -1105,11 +1105,11 @@ OwnedPtr<FuncDecl> ASTFactory::CreateGetterWrapper(VarDecl& field, const Native:
 
     if (field.ty->IsGeneric()) {
         genericActualTy =
-            typeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, field.ty->name)));
+            typeManager.GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, field.ty->name)));
         if (outerDecl->ty->HasGeneric()) {
             for (auto argTy : outerDecl->ty->typeArgs) {
                 if (argTy->IsGeneric()) {
-                    auto actualRetTy = typeManager.GetPrimitiveTy(GetGenericActualTypeKind(GetGenericActualType(genericConfig, argTy->name)));
+                    auto actualRetTy = typeManager.GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, argTy->name)));
                     actualTyArgMap[argTy->name] = actualRetTy;
                     actualPrimitiveType.emplace_back(GetGenericInstType(genericConfig, actualRetTy->name));
                 }

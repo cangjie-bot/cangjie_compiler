@@ -13,8 +13,10 @@
  */
 
 #include "cangjie/Basic/InteropCJPackageConfigReader.h"
+#include "cangjie/Utils/CheckUtils.h"
 #include <iostream>
 #include <stdexcept>
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -42,6 +44,9 @@ const std::string INCLUDED_APIS = "included_apis";
 const std::string EXCLUDED_APIS = "excluded_apis";
 const std::string GENERIC_OBJECT_CONFIG = "generic_object_configuration";
 const std::string TUPLE_CONFIG = "tuple_configuration";
+const std::string LAMBDA_PATTERNS = "lambda_patterns";
+const std::string SIGNATURE = "signature";
+const std::string CLASS_MAPPINGS = "class_mappings";
 const std::string TYPE_ARGUMENTS = "type_arguments";
 const std::string SYMBOLS = "symbols";
 
@@ -197,6 +202,131 @@ void ParseTupleConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig
     }
 }
 
+std::string Trim(const std::string& str)
+{
+    size_t start = 0;
+    size_t end = str.length();
+
+    while (start < end && std::isspace(static_cast<unsigned char>(str[start]))) {
+        ++start;
+    }
+
+    while (end > start && std::isspace(static_cast<unsigned char>(str[end - 1]))) {
+        --end;
+    }
+
+    return str.substr(start, end - start);
+}
+
+std::vector<std::string> ParseParameterList(const std::string& paramsStr)
+{
+    std::vector<std::string> parameters;
+    if (paramsStr.empty()) {
+        // such as "()->Int32"
+        return parameters;
+    }
+
+    std::string currentParam;
+    bool inGeneric = false; // whether in generic param, such as List<Int32>
+    int genericDepth = 0;
+
+    for (char ch : paramsStr) {
+        if (ch == '<') {
+            inGeneric = true;
+            genericDepth++;
+            currentParam += ch;
+        } else if (ch == '>') {
+            genericDepth--;
+            if (genericDepth == 0) {
+                inGeneric = false;
+            }
+            currentParam += ch;
+        } else if (ch == ',' && !inGeneric) {
+            std::string trimmedParam = Trim(currentParam);
+            if (!trimmedParam.empty()) {
+                parameters.push_back(trimmedParam);
+            }
+            currentParam.clear();
+        } else {
+            currentParam += ch;
+        }
+    }
+
+    if (!currentParam.empty()) {
+        std::string trimmedParam = Trim(currentParam);
+        if (!trimmedParam.empty()) {
+            parameters.push_back(trimmedParam);
+        }
+    }
+
+    return parameters;
+}
+
+// Parse lambda signature, such as (Int32, Int64) -> Int32.
+LambdaPattern ParseLambdaSignature(const std::string& signature)
+{
+    CJC_ASSERT(!signature.empty());
+
+    std::string trimmed = Trim(signature);
+
+    size_t arrowPos = trimmed.find("->");
+    if (arrowPos == std::string::npos) {
+        std::cerr << "Invalid lambda signature without ->." << std::endl;
+    }
+    if (trimmed.front() != '(' || trimmed.find(')') == std::string::npos) {
+        std::cerr << "Invalid lambda signature without ()." << std::endl;
+    }
+    size_t closeParenPos = trimmed.find(')');
+    if (closeParenPos >= arrowPos) {
+        std::cerr << "Invalid lambda signature, -> position is not right." << std::endl;
+    }
+
+    std::string paramsStr = trimmed.substr(1, closeParenPos - 1);
+    std::string returnTypeStr = trimmed.substr(arrowPos + 2);
+
+    std::vector<std::string> paramTypes = ParseParameterList(paramsStr);
+
+    std::string returnType = Trim(returnTypeStr);
+    if (returnType.empty()) {
+        std::cerr << "Invalid lambda signature, return type can not be empty." << std::endl;
+    }
+
+    return LambdaPattern(trimmed, paramTypes, returnType);
+}
+
+void ParseLmabdaPatternsConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig)
+{
+    if (packageTable.find(LAMBDA_PATTERNS) == packageTable.end() || !packageTable[LAMBDA_PATTERNS].is<Array>()) {
+        return;
+    }
+
+    auto lambdaPatterns = packageTable[LAMBDA_PATTERNS].as<Array>();
+    for (const auto& item : lambdaPatterns) {
+        if (!item.is<Table>()) {
+            continue;
+        }
+
+        auto genTable = item.as<Table>();
+        // Check the name field.
+        if (genTable.find(SIGNATURE) == genTable.end() || !genTable[SIGNATURE].is<std::string>()) {
+            continue;
+        }
+        std::string lambdaSigna = genTable[SIGNATURE].as<std::string>();
+        LambdaPattern lambdaPat = ParseLambdaSignature(lambdaSigna);
+        // Check if it is a type parameter definition.
+        if (genTable.find(CLASS_MAPPINGS) != genTable.end() && genTable[CLASS_MAPPINGS].is<Table>()) {
+            auto classMappings = genTable[CLASS_MAPPINGS].as<Table>();
+
+            for (const auto& [key, value] : classMappings) {
+                ClassMapping classMap(key, value.as<std::string>());
+                lambdaPat.ClassMappings.push_back(classMap);
+            }
+        }
+
+        pkgConfig.lambdaPatterns.push_back(lambdaPat);
+    }
+}
+
 void CollectTypeArguments(toml::Array& allowedGenerics,
     std::unordered_map<std::string, std::vector<std::string>>& typeArgumentsMap, PackageConfig& pkgConfig)
 {
@@ -333,6 +463,9 @@ bool ParseSinglePackage(toml::Table& packageTable, PackageConfig& pkgConfig)
 
     // Parse tuple configuration
     ParseTupleConfiguration(packageTable, pkgConfig);
+
+    // Parse lambda patterns
+    ParseLmabdaPatternsConfiguration(packageTable, pkgConfig);
 
     return true;
 }
