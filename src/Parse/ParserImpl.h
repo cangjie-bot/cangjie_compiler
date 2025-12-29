@@ -126,6 +126,21 @@ public:
 
     void SkipCombinator(const std::vector<TokenKind>& kinds);
 
+    /** Whether skip collect tokens for macro. In Completion LSP, no need to collect tokens for macro. */
+    inline void EnableSkipCollectTokensForMacro()
+    {
+        skipCollectTokensForMacro = true;
+    }
+    /** Disable skip collect tokens for macro. */
+    inline void DisableSkipCollectTokensForMacro()
+    {
+        skipCollectTokensForMacro = false;
+    }
+    /** Whether skip collect tokens for macro. */
+    inline bool IsSkipCollectTokensForMacro() const
+    {
+        return skipCollectTokensForMacro;
+    }
 private:
     DiagnosticEngine& diag;
     Token lookahead{TokenKind::SENTINEL, "", Position(0, 1, 1), Position(0, 1, 1)}; /**< Current scanned token. */
@@ -145,7 +160,8 @@ private:
     bool deadlocked{false};
     bool inForeignBlock{false};
     bool enableCustomAnno{false}; // parse macrocall as custom annotation.
-
+    /**< Whether skip collect tokens for macro. In Completion LSP, no need to collect tokens for macro. */
+    bool skipCollectTokensForMacro{false};
     std::unique_ptr<Lexer> lexer;
     std::string inputString{};
     bool forImport{false};

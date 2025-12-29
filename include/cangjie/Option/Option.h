@@ -497,6 +497,9 @@ public:
 
     bool enableMacroInLSP = false; /**< Whether enable macro in LSP. */
 
+    /**< Whether skip collect tokens for macro. In Completion LSP, no need to collect tokens for macro. */
+    bool skipCollectTokensForMacro = false;
+
     bool enableMacroDebug = false; /**< Whether enable debug macro. */
 
     bool enableParallelMacro = false; /**< Whether enable parallel macro expansion. */
