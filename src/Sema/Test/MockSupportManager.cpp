@@ -781,6 +781,13 @@ void MockSupportManager::GenerateAccessors(Decl& decl)
         ) {
             continue;
         }
+        if (auto propDecl = As<ASTKind::PROP_DECL>(member)) {
+            auto getter = GetUsableGetterForProperty(*propDecl);
+            if ((getter && getter->isFrozen)) {
+                continue;
+            }
+        }
+
         if (!MockUtils::IsMockAccessorRequired(*member)) {
             continue;
         }
