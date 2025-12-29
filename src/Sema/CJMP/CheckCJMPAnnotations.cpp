@@ -38,9 +38,10 @@ using namespace Cangjie;
 using namespace AST;
 using namespace TypeCheckUtil;
 
+namespace {
 // Annotations not serialized in AST are matched via their corresponding attributes
 // Annotations with parameters MUST be serialized for common/platform matching
-static const std::unordered_map<AnnotationKind, Attribute> NonSerializedAnnotations = {
+const std::unordered_map<AnnotationKind, Attribute> NonSerializedAnnotations = {
     {AnnotationKind::C, Attribute::C},
     {AnnotationKind::JAVA_MIRROR, Attribute::JAVA_MIRROR},
     {AnnotationKind::JAVA_HAS_DEFAULT, Attribute::JAVA_HAS_DEFAULT},
@@ -50,12 +51,11 @@ static const std::unordered_map<AnnotationKind, Attribute> NonSerializedAnnotati
 };
 
 // Annotations not supported on common/platform (neither serialized nor have attributes)
-static const std::unordered_set<AnnotationKind> UnsupportedAnnotations = {AnnotationKind::JAVA,
-    AnnotationKind::CALLING_CONV, AnnotationKind::FOREIGN_GETTER_NAME, AnnotationKind::FOREIGN_SETTER_NAME,
-    AnnotationKind::CONSTSAFE, AnnotationKind::ENSURE_PREPARED_TO_MOCK, AnnotationKind::NON_PRODUCT,
-    AnnotationKind::UNKNOWN};
+const std::unordered_set<AnnotationKind> UnsupportedAnnotations = {AnnotationKind::JAVA, AnnotationKind::CALLING_CONV,
+    AnnotationKind::FOREIGN_GETTER_NAME, AnnotationKind::FOREIGN_SETTER_NAME, AnnotationKind::CONSTSAFE,
+    AnnotationKind::ENSURE_PREPARED_TO_MOCK, AnnotationKind::NON_PRODUCT, AnnotationKind::UNKNOWN};
 
-static bool PostCheckDeprecatedAnnotation(const AST::Decl& platform, DiagnosticEngine& diag)
+bool PostCheckDeprecatedAnnotation(const AST::Decl& platform, DiagnosticEngine& diag)
 {
     auto platformDeprecation = FindFirstAnnotation(platform, AnnotationKind::DEPRECATED);
 
@@ -69,7 +69,7 @@ static bool PostCheckDeprecatedAnnotation(const AST::Decl& platform, DiagnosticE
     return true;
 }
 
-static bool FuncArgEquals(const AST::FuncArg& a, const AST::FuncArg& b)
+bool FuncArgEquals(const AST::FuncArg& a, const AST::FuncArg& b)
 {
     if (a.name != b.name) {
         return false;
@@ -90,7 +90,7 @@ static bool FuncArgEquals(const AST::FuncArg& a, const AST::FuncArg& b)
     return aLit->ToString() == bLit->ToString();
 }
 
-static bool AnnotationEquals(const AST::Annotation& a, const AST::Annotation& b)
+bool AnnotationEquals(const AST::Annotation& a, const AST::Annotation& b)
 {
     if (a.kind != b.kind) {
         return false;
@@ -110,7 +110,7 @@ static bool AnnotationEquals(const AST::Annotation& a, const AST::Annotation& b)
     return true;
 }
 
-static Ptr<const AST::Annotation> FindAnnotation(const AST::Decl& decl, const AST::Annotation& sample,
+Ptr<const AST::Annotation> FindAnnotation(const AST::Decl& decl, const AST::Annotation& sample,
     const std::unordered_set<Ptr<const AST::Annotation>>& excludes)
 {
     auto found = std::find_if(decl.annotations.begin(), decl.annotations.end(), [&sample, &excludes](const auto& anno) {
@@ -122,7 +122,7 @@ static Ptr<const AST::Annotation> FindAnnotation(const AST::Decl& decl, const AS
     return nullptr;
 }
 
-static std::string FormatAnnotationMismatchNote(const AST::Annotation& anno)
+std::string FormatAnnotationMismatchNote(const AST::Annotation& anno)
 {
     std::ostringstream result;
     result << "The mismatched annotation is @" << anno.identifier.Val();
@@ -141,15 +141,14 @@ static std::string FormatAnnotationMismatchNote(const AST::Annotation& anno)
     return result.str();
 }
 
-static std::string FormatAnnotationMismatchNote(AnnotationKind kind)
+std::string FormatAnnotationMismatchNote(AnnotationKind kind)
 {
-
     std::ostringstream noteMessage;
     noteMessage << "The mismatched annotation is @" << AnnotationKindToString(kind);
     return noteMessage.str();
 }
 
-static void ReportAnnotationMismatch(const AST::Annotation& anno, const AST::Decl& decl, DiagnosticEngine& diag)
+void ReportAnnotationMismatch(const AST::Annotation& anno, const AST::Decl& decl, DiagnosticEngine& diag)
 {
     if (decl.TestAttr(Attribute::PLATFORM)) {
         // The declaration is platform-specific but the mismatching annotation belongs to the common declaration.
@@ -170,8 +169,7 @@ static void ReportAnnotationMismatch(const AST::Annotation& anno, const AST::Dec
     }
 }
 
-static bool PostCheckNonSerializedAnnotations(
-    const AST::Decl& common, const AST::Decl& platform, DiagnosticEngine& diag)
+bool PostCheckNonSerializedAnnotations(const AST::Decl& common, const AST::Decl& platform, DiagnosticEngine& diag)
 {
     bool result = true;
 
@@ -200,7 +198,7 @@ static bool PostCheckNonSerializedAnnotations(
     return result;
 }
 
-static bool IsSpecialHandledAnnotation(const Annotation& anno)
+bool IsSpecialHandledAnnotation(const Annotation& anno)
 {
     return anno.kind == AnnotationKind::DEPRECATED || anno.kind == AnnotationKind::ATTRIBUTE ||
         NonSerializedAnnotations.find(anno.kind) != NonSerializedAnnotations.end() ||
@@ -222,7 +220,7 @@ static bool IsSpecialHandledAnnotation(const Annotation& anno)
  * @param diag Diagnostic engine for reporting mismatches
  * @return bool True if all source annotations matched successfully, false otherwise
  */
-static bool MatchAnnotationsFromSource(const AST::Decl& source, const AST::Decl& target,
+bool MatchAnnotationsFromSource(const AST::Decl& source, const AST::Decl& target,
     std::unordered_set<Ptr<const AST::Annotation>>& matchedSource,
     std::unordered_set<Ptr<const AST::Annotation>>& matchedTarget, DiagnosticEngine& diag)
 {
@@ -244,6 +242,7 @@ static bool MatchAnnotationsFromSource(const AST::Decl& source, const AST::Decl&
 
     return result;
 }
+} // namespace
 
 /**
  * @brief Validates that common and platform declarations have matching annotations.
@@ -290,15 +289,17 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAnnotations(const AST::Decl& common, AST::D
     return result;
 }
 
-static bool IsCommonOrPlatform(const Node& node)
+namespace {
+bool IsCommonOrPlatform(const Node& node)
 {
     return node.TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM);
 }
 
-static bool IsUnsupported(const Annotation& anno)
+bool IsUnsupported(const Annotation& anno)
 {
-    return UnsupportedAnnotations.find(anno.kind) != UnsupportedAnnotations.end();
+    return UnsupportedAnnotations.count(anno.kind);
 }
+} // namespace
 
 void MPTypeCheckerImpl::CheckNotAllowedAnnotations(AST::Package& pkg)
 {
@@ -312,12 +313,16 @@ void MPTypeCheckerImpl::CheckNotAllowedAnnotations(AST::Package& pkg)
                 }
             }
         }
+        if (node->astKind == ASTKind::FUNC_BODY) {
+            return VisitAction::SKIP_CHILDREN;
+        }
         return VisitAction::WALK_CHILDREN;
     };
     Walker walker(&pkg, visitor);
     walker.Walk();
 }
 
+namespace {
 /**
  * @brief Propagates deprecation annotations from common declarations to platform declarations.
  *
@@ -329,7 +334,7 @@ void MPTypeCheckerImpl::CheckNotAllowedAnnotations(AST::Package& pkg)
  * @param common The common declaration that may contain deprecation annotation
  * @param platform The platform declaration to receive the deprecation annotation (if applicable)
  */
-static void PropagateDeprecatedAnnotations(const AST::Decl& common, AST::Decl& platform)
+void PropagateDeprecatedAnnotations(const AST::Decl& common, AST::Decl& platform)
 {
     auto commonDeprecation = FindFirstAnnotation(common, AnnotationKind::DEPRECATED);
     auto platformDeprecation = FindFirstAnnotation(platform, AnnotationKind::DEPRECATED);
@@ -355,7 +360,7 @@ static void PropagateDeprecatedAnnotations(const AST::Decl& common, AST::Decl& p
  * @param common The common declaration containing @Attribute annotations
  * @param platform The platform declaration to receive the @Attribute annotations
  */
-static void PropagateAttributeAnnotations(const AST::Decl& common, AST::Decl& platform)
+void PropagateAttributeAnnotations(const AST::Decl& common, AST::Decl& platform)
 {
     for (auto& annotation : common.annotations) {
         if (annotation->kind == AnnotationKind::ATTRIBUTE) {
@@ -363,6 +368,7 @@ static void PropagateAttributeAnnotations(const AST::Decl& common, AST::Decl& pl
         }
     }
 }
+} // namespace
 
 /**
  * @brief Propagates special annotations from common declarations to platform declarations.
