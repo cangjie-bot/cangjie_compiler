@@ -245,6 +245,11 @@ inline bool IsTypeObjectCreation(const AST::FuncDecl& fd, const AST::CallExpr& c
  * Get a specific modifier of a given declaration @p d.
  */
 Ptr<const AST::Modifier> FindModifier(const AST::Decl& d, TokenKind kind);
+
+/**
+ * Returns the first annotation occurrence of a given kind on the declaration, returns null pointer
+ * if no annotation of the given kind is found.
+ */
 Ptr<AST::Annotation> FindFirstAnnotation(const AST::Decl& decl, AST::AnnotationKind kind);
 
 inline bool HasCFuncAttr(const AST::Decl& decl)
