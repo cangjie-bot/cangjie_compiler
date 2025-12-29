@@ -537,7 +537,11 @@ private:
         }
         // multiple assignement expr is expanded into a block of multiple expressions
         if (expr.astKind == ASTKind::ASSIGN_EXPR) {
-            return CheckDesugaredMultipleAssignment(StaticCast<Block>(*expr.desugarExpr), isWeak);
+            if (auto block = DynamicCast<Block>(expr.desugarExpr.get()); block) {
+                return CheckDesugaredMultipleAssignment(*block, isWeak);
+            } else {
+                return ChkExpr(*expr.desugarExpr, isWeak);
+            }
         }
         // Not all syntax sugars are valid constant expressions.
         DiagExpectConstExpr(diag, expr, isWeak);
