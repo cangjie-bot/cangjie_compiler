@@ -424,7 +424,9 @@ void ParserImpl::ParseMacroCallDeclInput(
     lexer->StopCollectTokens(bStart);
 
     if (Utils::In(decl->astKind, G_VALID_DECL_LIST) && decl->astKind != ASTKind::MACRO_DECL) {
-        ParseNodeToTokens(*decl, nodeBegin, invocation.args);
+        if (!IsSkipCollectTokensForMacro()) {
+            ParseNodeToTokens(*decl, nodeBegin, invocation.args);
+        }
     } else {
         ParseDiagnoseRefactor(DiagKindRefactor::parse_illegal_macro_expand_input_args_without_paren, decl->begin);
     }

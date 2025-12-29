@@ -1882,29 +1882,6 @@ bool ParserImpl::HasAnnotation(const PtrVector<Annotation>& annos, AnnotationKin
     return Utils::In(annos, [&](const auto& anno) { return anno->kind == ak; });
 }
 
-std::string ParserImpl::ParseForImportToGetContentBetween(
-    unsigned int fileID, int beginLine, int beginColumn, int endLine, int endColumn)
-{
-    Position posBase = lexer->GetPosBase();
-    int newBeginLine;
-    int newBeginColumn;
-    int newEndLine;
-    int newEndColumn;
-    if (beginLine == posBase.line && beginColumn == posBase.column) {
-        newBeginLine = 1;
-        newBeginColumn = 1;
-        newEndLine = (endLine - beginLine) + 1;
-        newEndColumn = endColumn;
-    } else {
-        newBeginLine = (beginLine - posBase.line) + 1;
-        newBeginColumn = beginColumn;
-        newEndLine = (endLine - posBase.line) + 1;
-        newEndColumn = endColumn;
-    }
-    return sourceManager.GetContentBetween(
-        fileID, Position(newBeginLine, newBeginColumn), Position(newEndLine, newEndColumn), inputString);
-}
-
 OwnedPtr<MainDecl> ParserImpl::ParseMainDecl(
     ScopeKind scopeKind, const std::set<AST::Modifier>& modifiers, PtrVector<Annotation> annos)
 {

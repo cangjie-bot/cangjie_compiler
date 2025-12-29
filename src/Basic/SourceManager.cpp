@@ -153,13 +153,13 @@ int SourceManager::GetLineEnd(const Position& pos)
 }
 
 std::string SourceManager::GetContentBetween(
-    const Position& begin, const Position& end, const std::string& importGenericContent) const
+    const Position& begin, const Position& end) const
 {
-    return GetContentBetween(begin.fileID, begin, end, importGenericContent);
+    return GetContentBetween(begin.fileID, begin, end);
 }
 
 std::string SourceManager::GetContentBetween(
-    unsigned int fileID, const Position& begin, const Position& end, const std::string& importGenericContent) const
+    unsigned int fileID, const Position& begin, const Position& end) const
 {
     if (fileID == 0 || begin <= INVALID_POSITION || end <= INVALID_POSITION || end < begin) {
         return "";
@@ -168,17 +168,13 @@ std::string SourceManager::GetContentBetween(
     CJC_ASSERT(INVALID_POSITION < begin && begin <= end);
 
     auto& sourceWithFileID = fileID >= sources.size() ? sources[0] : sources[fileID];
-    const auto& source = sourceWithFileID.buffer.empty() && !importGenericContent.empty()
-        ? Source(sourceWithFileID.fileID, sourceWithFileID.path, importGenericContent)
-        : sourceWithFileID;
-    const auto& buffer = source.buffer;
-
+    const auto& buffer = sourceWithFileID.buffer;
     if (buffer.empty()) {
         return "";
     }
 
-    auto startOffset = source.PosToOffset(begin);
-    auto endOffset = source.PosToOffset(end);
+    auto startOffset = sourceWithFileID.PosToOffset(begin);
+    auto endOffset = sourceWithFileID.PosToOffset(end);
     return buffer.substr(startOffset, endOffset - startOffset);
 }
 

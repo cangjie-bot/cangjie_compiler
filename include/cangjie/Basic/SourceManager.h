@@ -162,8 +162,7 @@ public:
      * @param end: end position.
      * @param importGenericContent generic instantiation content.
      */
-    std::string GetContentBetween(
-        const Position& begin, const Position& end, const std::string& importGenericContent = "") const;
+    std::string GetContentBetween(const Position& begin, const Position& end) const;
 
     /**
      * Get content between given position.
@@ -172,8 +171,7 @@ public:
      * @param end: end position.
      * @param importGenericContent generic instantiation content.
      */
-    std::string GetContentBetween(unsigned int fileID, const Position& begin, const Position& end,
-        const std::string& importGenericContent = "") const;
+    std::string GetContentBetween(unsigned int fileID, const Position& begin, const Position& end) const;
 
     static const std::string testPkgSuffix;
 };
