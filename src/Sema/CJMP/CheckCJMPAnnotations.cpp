@@ -318,14 +318,6 @@ void MPTypeCheckerImpl::CheckNotAllowedAnnotations(AST::Package& pkg)
     walker.Walk();
 }
 
-static OwnedPtr<AST::Annotation> CloneAnnotation(Ptr<Annotation> original)
-{
-    return ASTCloner::Clone(original, [](Node& source, Node& target) {
-        (void)source;
-        target.EnableAttr(Attribute::COMPILER_ADD);
-    });
-}
-
 /**
  * @brief Propagates deprecation annotations from common declarations to platform declarations.
  *
@@ -346,7 +338,7 @@ static void PropagateDeprecatedAnnotations(const AST::Decl& common, AST::Decl& p
         return;
     }
 
-    platform.annotations.emplace_back(CloneAnnotation(commonDeprecation));
+    platform.annotations.emplace_back(ASTCloner::Clone(commonDeprecation));
 }
 
 /**
@@ -365,10 +357,11 @@ static void PropagateDeprecatedAnnotations(const AST::Decl& common, AST::Decl& p
  */
 static void PropagateAttributeAnnotations(const AST::Decl& common, AST::Decl& platform)
 {
-    std::transform(std::find_if(common.annotations.begin(), common.annotations.end(),
-                       [](const Ptr<Annotation>& anno) { return anno->kind == AnnotationKind::ATTRIBUTE; }),
-        common.annotations.end(), std::back_inserter(platform.annotations),
-        [](auto& from) { return CloneAnnotation(from); });
+    for (auto& annotation : common.annotations) {
+        if (annotation->kind == AnnotationKind::ATTRIBUTE) {
+            platform.annotations.emplace_back(ASTCloner::Clone(annotation.get()));
+        }
+    }
 }
 
 /**
