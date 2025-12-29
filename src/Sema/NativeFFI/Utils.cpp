@@ -378,7 +378,7 @@ Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericNam
     return GetTyByName(actualTypeName);
 }
 
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager)
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager)
 {
     switch (genericTy->kind) {
         case TypeKind::TYPE_GENERICS:
@@ -390,12 +390,12 @@ Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, Ty
             std::vector<Ptr<Ty>> paramTys;
             Ptr<Ty> retTy = funcTy->retTy;
             if (funcTy->retTy && funcTy->retTy->HasGeneric()) {
-                retTy = GetGenericInstTy(config, funcTy->retTy->name);
+                retTy = GetGenericInstTy(config, funcTy->retTy, typeManager);
             }
 
             for (auto& paramTy : funcTy->paramTys) {
                 if (paramTy && paramTy->HasGeneric()) {
-                    paramTys.push_back(GetGenericInstTy(config, paramTy->name));
+                    paramTys.push_back(GetGenericInstTy(config, paramTy, typeManager));
                 } else {
                     paramTys.push_back(paramTy);
                 }
@@ -442,7 +442,7 @@ OwnedPtr<Type> GetTypeByName(std::string typeStr)
     return type;
 }
 
-OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager)
+OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager)
 {
     auto ty = GetGenericInstTy(config, genericTy, typeManager);
     if (ty->IsPrimitive()) {
@@ -463,6 +463,7 @@ OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, Ptr<Ty>& gene
         for (auto param : funcTy->paramTys) {
             res->paramTypes.push_back(GetGenericInstType(config, param, typeManager));
         }
+        res->retType = GetGenericInstType(config, funcTy->retTy, typeManager);
         return res;
     }
     CJC_ASSERT(false);
@@ -490,7 +491,7 @@ void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericC
     }
 
     for (auto& param : funcDecl->funcBody->paramLists[0]->params) {
-        if (param->ty && param->ty->HasGeneric()) {
+        if (param->type->ty && param->type->ty->HasGeneric()) {
             param->type = GetGenericInstType(genericConfig, param->ty, typeManager);
             param->ty = GetGenericInstTy(genericConfig, param->ty, typeManager);
         }

@@ -172,11 +172,11 @@ bool IsThisConstructorCall(const CallExpr& call);
 OwnedPtr<PrimitiveType> GetPrimitiveType(std::string typeName, AST::TypeKind typekind);
 OwnedPtr<Type> GetTypeByName(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
-OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
+OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager);
 std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
 TypeKind GetActualTypeKind(std::string configType);
 Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName);
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager);
 Ptr<Ty> GetTyByName(std::string typeStr);
 
 bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
@@ -208,7 +208,6 @@ Ptr<Ty> GetInstantyForGenericTy(
 
 std::string GetLambdaJavaClassName(LambdaPattern& pattern);
 std::string GetLambdaJavaClassName(Ptr<Ty> ty);
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, Ptr<Ty>& genericTy, TypeManager& typeManager);
 
 std::string GetCjMappingTupleName(const Ty& tupleTy);
 
