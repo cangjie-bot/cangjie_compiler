@@ -1100,14 +1100,18 @@ std::vector<flatbuffers::Offset<NodeFormat::Token>> NodeWriter::TokensVectorCrea
         auto kind = static_cast<uint16_t>(token.kind);
         auto value = builder.CreateString(token.Value());
         auto& escapes = GetEscapeTokenKinds();
+        auto delimiterNum = token.delimiterNum;
+        auto isSingleQuote = token.isSingleQuote;
+        auto hasEscape = false;
         NodeFormat::Position pos;
         if (std::find(escapes.begin(), escapes.end(), token.kind) != escapes.end() &&
             token.Begin() + token.Value().size() + 1 == token.End()) {
             pos = FlatPosCreateHelper(token.Begin() + 1);
+            hasEscape = true;
         } else {
             pos = FlatPosCreateHelper(token.Begin());
         }
-        vecToken.push_back(NodeFormat::CreateToken(builder, kind, value, &pos));
+        vecToken.push_back(NodeFormat::CreateToken(builder, kind, value, &pos, delimiterNum, isSingleQuote, hasEscape));
     }
     return vecToken;
 }
