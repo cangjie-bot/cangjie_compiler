@@ -531,7 +531,10 @@ void ASTLoader::ASTLoaderImpl::AddDeclToImportedPackage(Decl& decl)
  */
 Ptr<Decl> ASTLoader::ASTLoaderImpl::GetDeclFromIndex(const PackageFormat::FullId* fullId)
 {
-    CJC_NULLPTR_CHECK(fullId);
+    // New field of FullId type, it may be empty when read old version cjo.
+    if (!fullId) {
+        return nullptr;
+    }
     auto pkgIndex = fullId->pkgId();
     if (pkgIndex == INVALID_PACKAGE_INDEX) {
         return nullptr;

@@ -17,9 +17,9 @@
 
 #include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Utils.h"
-#include "cangjie/Basic/Utils.h"
 #include "cangjie/Basic/Match.h"
 #include "cangjie/Basic/StringConvertor.h"
+#include "cangjie/Basic/Utils.h"
 #include "cangjie/Utils/Utils.h"
 
 namespace Cangjie {
@@ -196,6 +196,7 @@ void PrintPackage(unsigned indent, const Package& package, std::ostream& stream 
 void PrintFile(unsigned indent, const File& file, std::ostream& stream = std::cout)
 {
     PrintIndent(stream, indent, "File:", file.fileName, "{");
+    PrintBasic(indent + ONE_INDENT, file, stream);
     PrintNode(file.feature.get(), indent + ONE_INDENT, "features", stream);
     PrintNode(file.package.get(), indent + ONE_INDENT, "package", stream);
     for (auto& it : file.imports) {
@@ -236,6 +237,7 @@ void PrintAnnotation(unsigned indent, const Annotation& anno, std::ostream& stre
 {
     PrintIndent(stream, indent, "Annotation:", anno.identifier, "{");
     PrintBasic(indent + ONE_INDENT, anno, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "isCompileTimeVisible:", anno.isCompileTimeVisible);
     PrintIndent(stream, indent + ONE_INDENT, "args [");
     for (auto& arg : anno.args) {
         PrintNode(arg.get(), indent + TWO_INDENT, "", stream);
@@ -264,6 +266,7 @@ void PrintFuncParam(unsigned indent, const FuncParam& param, std::ostream& strea
     PrintAnnotations(param, indent + ONE_INDENT, stream);
     PrintNode(param.type.get(), indent + ONE_INDENT, "type", stream);
     PrintNode(param.assignment.get(), indent + ONE_INDENT, "assignment", stream);
+    PrintIndent(stream, indent + ONE_INDENT, "isMemberParam:", param.isMemberParam);
     if (param.desugarDecl) {
         PrintNode(param.desugarDecl.get(), indent + ONE_INDENT, "desugarDecl", stream);
     }
@@ -487,6 +490,7 @@ void PrintEnumDecl(unsigned indent, const EnumDecl& enumDecl, std::ostream& stre
     PrintIndent(stream, indent, "EnumDecl:", enumDecl.identifier.Val(), "{");
     PrintBasic(indent + ONE_INDENT, enumDecl, stream);
     PrintModifiers(enumDecl, indent, stream);
+    PrintIndent(stream, indent + ONE_INDENT, "hasEllipsis:", enumDecl.hasEllipsis ? "true" : "false");
     if (enumDecl.generic) {
         PrintGeneric(indent + ONE_INDENT, *enumDecl.generic, stream);
     }
@@ -1567,8 +1571,8 @@ void PrintNode(Ptr<const Node> node, unsigned indent, const std::string& additio
         });
 }
 
-void PrintNode(Ptr<const AST::Node> node, std::ostream& stream = std::cout)
+void PrintNode(Ptr<const AST::Node> node)
 {
-    PrintNode(node, 0, "", stream);
+    PrintNode(node, 0, "", std::cout);
 }
 } // namespace Cangjie

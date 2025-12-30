@@ -247,6 +247,13 @@ struct Info {
      * @return std::string The environment name.
      */
     std::string EnvironmentToString() const;
+
+    /**
+     * @brief Convert environment to string without api level.
+     *
+     * @return std::string The environment name.
+     */
+    std::string EnvironmentToSimpleString() const;
 };
 
 /**
