@@ -342,5 +342,12 @@ template <typename T> T* GetMemberDecl(
  */
 bool IsLegalAccess(AST::Symbol* curComposite, const AST::Decl& d, const AST::Node& node, ImportManager& importManager,
     TypeManager& typeManager);
+
+/**
+ * Find the corresponding common declaration for a given platform declaration.
+ * @param platformDecl The platform declaration to find the common declaration for.
+ * @return The corresponding common declaration if found, nullptr otherwise.
+ */
+Ptr<AST::Decl> FindCorrespondingCommonDecl(const AST::Decl& platformDecl);
 } // namespace Cangjie::TypeCheckUtil
 #endif

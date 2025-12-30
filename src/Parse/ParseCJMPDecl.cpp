@@ -154,6 +154,28 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
     }
     // Enable COMMON_WITH_DEFAULT attr for func/constructor/var
     SetCJMPAttrs(decl);
+
+    // Check if all members have COMMON_WITH_DEFAULT for common side class, interface, struct, enum, extend
+    if (decl.TestAttr(Attribute::COMMON) &&
+        (decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::INTERFACE_DECL ||
+            decl.astKind == ASTKind::STRUCT_DECL || decl.astKind == ASTKind::ENUM_DECL ||
+            decl.astKind == ASTKind::EXTEND_DECL)) {
+
+        bool allMembersHaveDefault = true;
+        for (auto& member : decl.GetMemberDeclPtrs()) {
+            if (member->TestAttr(Attribute::COMMON) && !member->TestAttr(Attribute::COMMON_WITH_DEFAULT) &&
+                !member->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
+                allMembersHaveDefault = false;
+                break;
+            }
+        }
+
+        // Set COMMON_WITH_DEFAULT on the parent declaration if all members have it
+        if (allMembersHaveDefault) {
+            decl.EnableAttr(Attribute::COMMON_WITH_DEFAULT);
+        }
+    }
+
     // Check sema rules
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
         // Check that the member of platform interface must have the body

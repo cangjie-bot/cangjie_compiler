@@ -1278,4 +1278,21 @@ bool IsLegalAccess(Symbol* curComposite, const Decl& d, const AST::Node& node, I
     return curComposite && curComposite->node == expectedOuter;
 }
 
+Ptr<Decl> FindCorrespondingCommonDecl(const Decl& platformDecl)
+{
+    if (platformDecl.curFile == nullptr || platformDecl.curFile->curPackage == nullptr) {
+        return nullptr;
+    }
+
+    for (const auto& file : platformDecl.curFile->curPackage->files) {
+        for (const auto& decl : file->decls) {
+            if (decl->platformImplementation == &platformDecl) {
+                return decl;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 } // namespace Cangjie::TypeCheckUtil
