@@ -356,10 +356,12 @@ bool DefaultCompilerInstance::PerformBchirSaving()
 {
     return impl->PerformBchirSaving();
 }
-bool DefaultCompilerInstance::SaveBchir(AST::Package& pkg) const
+
+void DefaultCompilerInstance::SaveBchir(AST::Package& pkg) const
 {
     impl->SaveBchir(pkg);
 }
+
 bool DefaultCompilerInstance::SaveCjo(const AST::Package& pkg) const
 {
     return impl->SaveCjo(pkg);
