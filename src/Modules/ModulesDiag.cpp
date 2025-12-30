@@ -50,6 +50,18 @@ void DiagForNullPackageFeature(DiagnosticEngine& diag, const Range& current, con
         "perhapse you meant these features");
 }
 
+void DiagForNonProductTerminalSourceSet(DiagnosticEngine& diag, const Package& pkg, const std::string mode)
+{
+    for (const auto& file : pkg.files) {
+        if (file->feature && !file->feature->annotations.empty()) {
+            auto annoRange = MakeRange(file->feature->annotations[0]->begin, file->feature->annotations[0]->end);
+            auto builder = diag.DiagnoseRefactor(DiagKindRefactor::feature_non_product_with_invalid_output_type,
+                annoRange, "@NonProduct", "--output-type=" + mode);
+            builder.AddNote("@NonProduct works with '--output-type=chir' only");
+        }
+    }
+}
+
 void DiagForDifferentPackageFeatureConsistency(DiagnosticEngine& diag, const Ptr<FeaturesDirective> feature,
     const Ptr<FeaturesDirective> refFeature, bool hasAnno)
 {

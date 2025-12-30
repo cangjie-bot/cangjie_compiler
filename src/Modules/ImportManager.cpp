@@ -758,7 +758,7 @@ void CollectInvalidFeatureFiles(const Package& pkg, std::vector<Ptr<File>>& inva
     }
 }
 
-static void CheckPackageFeatureSpec(DiagnosticEngine& diag, const Package& pkg)
+static void CheckPackageFeatureSpec(DiagnosticEngine& diag, Package& pkg, const GlobalOptions& globalOptions)
 {
     std::unordered_map<std::string, bool> refMap;
     std::vector<Ptr<File>> invalidFeatures;
@@ -782,6 +782,10 @@ static void CheckPackageFeatureSpec(DiagnosticEngine& diag, const Package& pkg)
             }
             counter++;
         }
+    }
+
+    if (hasAnno && globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
+        DiagForNonProductTerminalSourceSet(diag, pkg, globalOptions.OutputModeToString(globalOptions.outputMode));
     }
 }
 
@@ -833,7 +837,7 @@ bool ImportManager::BuildIndex(
 
     for (auto pkg : packages) {
         if (pkg->HasFtrDirective()) {
-            CheckPackageFeatureSpec(diag, *pkg);
+            CheckPackageFeatureSpec(diag, *pkg, globalOptions);
         }
         CheckPackageSpecsIdentical(diag, *pkg);
         if (opts.compileTestsOnly) {

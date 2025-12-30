@@ -622,6 +622,29 @@ public:
     enum class OutputMode : uint8_t {
         EXECUTABLE, STATIC_LIB, SHARED_LIB, CHIR
     };
+    /**
+     * @brief Convert output mode to string
+     *
+     * @param mode the output mode type
+     * @return std::string name of output mode
+     */
+    std::string OutputModeToString(OutputMode mode) const
+    {
+        switch (mode)
+        {
+        case OutputMode::EXECUTABLE:
+            return "exe";
+        case OutputMode::STATIC_LIB:
+            return "staticlib";
+        case OutputMode::SHARED_LIB:
+            return "dylib";
+        case OutputMode::CHIR:
+            return "chir";
+        default:
+            CJC_ABORT_WITH_MSG("unknown output mode");
+        }
+
+    }
     OutputMode outputMode = OutputMode::EXECUTABLE;
 
     bool enableFuncSections = false;
