@@ -9,8 +9,16 @@
 #ifndef BUILD_LIB_CANGJIE_DEMANGLE
 #define BUILD_LIB_CANGJIE_DEMANGLE
 #endif
+#include <regex>
 #include "Demangler.h"
 #include "StdString.h"
+
+namespace {
+Cangjie::StdString removeSpacesRegex(const Cangjie::StdString& s) {
+    std::regex pattern(R"(\s*->\s*)");
+    return std::regex_replace(s, pattern, "->");
+}
+} //namespace
 
 namespace Cangjie {
 using DemangleMetaData = DemangleInfo<StdString>;
@@ -45,7 +53,7 @@ DemangleData Demangle(const std::string& mangled, const std::string& scopeRes,
     auto demangler = Demangler<StdString>(mangled.c_str(), scopeRes);
     demangler.setGenericVec(genericVec);
     auto di = demangler.Demangle();
-    auto dd = DemangleData{ di.GetPkgName(), di.GetFullName(demangler.ScopeResolution()), di.IsFunctionLike(),
+    auto dd = DemangleData{ di.GetPkgName(), removeSpacesRegex(di.GetFullName(demangler.ScopeResolution())), di.IsFunctionLike(),
         di.IsValid() };
     dd.SetPrivateDeclaration(di.isPrivateDeclaration);
     return dd;
@@ -60,7 +68,7 @@ DemangleData DemangleType(const std::string& mangled, const std::string& scopeRe
 {
     auto demangler = Demangler<StdString>(mangled, scopeRes);
     auto di = demangler.Demangle(true);
-    auto dd = DemangleData{ di.GetPkgName(), di.GetFullName(demangler.ScopeResolution()), false,
+    auto dd = DemangleData{ di.GetPkgName(), removeSpacesRegex(di.GetFullName(demangler.ScopeResolution())), false,
         di.IsValid()};
     dd.SetPrivateDeclaration(di.isPrivateDeclaration);
     return dd;
