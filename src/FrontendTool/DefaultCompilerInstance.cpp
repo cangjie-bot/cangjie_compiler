@@ -39,9 +39,9 @@ public:
     ~DefaultCIImpl();
 
     bool PerformCodeGen();
-    bool PerformCjoAndBchirSaving();
+    bool PerformCjoSaving();
+    bool PerformBchirSaving();
     void DumpDepPackage();
-    bool SaveCjoAndBchir(AST::Package& pkg);
     bool SaveCjo(const AST::Package& pkg);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     void SaveBchir([[maybe_unused]] const AST::Package& pkg) const
@@ -346,13 +346,19 @@ bool DefaultCompilerInstance::PerformCodeGen()
 {
     return impl->PerformCodeGen();
 }
-bool DefaultCompilerInstance::PerformCjoAndBchirSaving()
+
+bool DefaultCompilerInstance::PerformCjoSaving()
 {
-    return impl->PerformCjoAndBchirSaving();
+    return impl->PerformCjoSaving();
 }
-bool DefaultCompilerInstance::SaveCjoAndBchir(AST::Package& pkg) const
+
+bool DefaultCompilerInstance::PerformBchirSaving()
 {
-    return impl->SaveCjoAndBchir(pkg);
+    return impl->PerformBchirSaving();
+}
+bool DefaultCompilerInstance::SaveBchir(AST::Package& pkg) const
+{
+    impl->SaveBchir(pkg);
 }
 bool DefaultCompilerInstance::SaveCjo(const AST::Package& pkg) const
 {
