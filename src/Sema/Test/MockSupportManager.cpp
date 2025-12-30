@@ -1132,7 +1132,12 @@ OwnedPtr<FuncDecl> MockSupportManager::CreateForeignFunctionAccessorDecl(FuncDec
     std::vector<OwnedPtr<FuncArg>> args;
     for (const auto& paramList : accessorFuncParamLists) {
         for (const auto& param : paramList->params) {
-            args.emplace_back(CreateFuncArg(CreateRefExpr(*param)));
+            auto funcArg = CreateFuncArg(CreateRefExpr(*param));
+            if (auto varray = DynamicCast<VArrayTy>(funcArg->ty)) {
+                funcArg->withInout = true;
+                funcArg->ty = typeManager.GetPointerTy(varray->typeArgs[0]);
+            }
+            args.emplace_back(std::move(funcArg));
         }
     }
 
@@ -1884,7 +1889,11 @@ Ptr<AST::FuncDecl> MockSupportManager::FindDefaultAccessorImplementation(
         return MockUtils::FindMemberDecl<FuncDecl>(*extendDecl, accessorDecl->identifier);
     }
 
-    return MockUtils::FindMemberDecl<FuncDecl>(*Ty::GetDeclOfTy(baseTy), accessorDecl->identifier);
+    if (auto decl = Ty::GetDeclOfTy(baseTy)) {
+        return MockUtils::FindMemberDecl<FuncDecl>(*decl, accessorDecl->identifier);
+    }
+
+    return nullptr;
 }
 
 void MockSupportManager::ReplaceInterfaceDefaultFunc(

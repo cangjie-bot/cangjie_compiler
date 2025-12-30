@@ -966,7 +966,9 @@ OwnedPtr<CallExpr> MockManager::CreateFuncInfo(FuncDecl& funcDecl, File& curFile
 
         Ptr<Decl> outerDecl = funcDecl.outerDecl;
         if (funcDecl.TestAttr(Attribute::IN_EXTEND)) {
-            outerDecl = mockUtils->GetExtendedClassDecl(funcDecl);
+            // FIXME: There might be no decl for extended type. e.g. Unit
+            outerDecl = mockUtils->GetExtendedTypeDecl(funcDecl);
+            CJC_NULLPTR_CHECK(outerDecl);
         }
 
         auto outerDeclId = CreateDeclId(*outerDecl, curFile);

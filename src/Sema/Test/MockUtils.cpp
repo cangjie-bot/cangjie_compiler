@@ -596,7 +596,7 @@ Ptr<AST::Decl> MockUtils::GetOuterDecl(AST::Decl& decl) const
     return decl.outerDecl;
 }
 
-Ptr<ClassDecl> MockUtils::GetExtendedClassDecl(FuncDecl& decl) const
+Ptr<Decl> MockUtils::GetExtendedTypeDecl(FuncDecl& decl) const
 {
     CJC_ASSERT(decl.TestAttr(Attribute::IN_EXTEND));
 
@@ -606,14 +606,7 @@ Ptr<ClassDecl> MockUtils::GetExtendedClassDecl(FuncDecl& decl) const
     Ptr<ExtendDecl> extendDecl = As<ASTKind::EXTEND_DECL>(outerDecl);
     CJC_NULLPTR_CHECK(extendDecl);
 
-    Ptr<RefType> extendedRefType = As<ASTKind::REF_TYPE>(extendDecl->extendedType);
-    CJC_NULLPTR_CHECK(extendedRefType);
-    CJC_NULLPTR_CHECK(extendedRefType->ref.target);
-
-    Ptr<ClassDecl> classLikeDecl = As<ASTKind::CLASS_DECL>(extendedRefType->ref.target);
-    CJC_NULLPTR_CHECK(classLikeDecl);
-
-    return classLikeDecl;
+    return Ty::GetDeclOfTy(extendDecl->extendedType->ty);
 }
 
 void MockUtils::PrependFuncGenericSubst(
