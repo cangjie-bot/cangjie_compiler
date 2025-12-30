@@ -440,9 +440,9 @@ OwnedPtr<CallExpr> MockManager::CreateInitCallOfMockClass(
         [] (auto & arg) { return ASTCloner::Clone(arg->expr.get()); }
     );
 
-    return CreateInitCall(
-        FindInitDecl(mockClass, typeManager, valueParamTys, instTys).value(),
-        initArgs, *mockClass.curFile, instTys);
+    auto initDecl = FindInitDecl(mockClass, typeManager, valueParamTys, instTys);
+    CJC_ASSERT(initDecl.has_value());
+    return CreateInitCall(*initDecl, initArgs, *mockClass.curFile, instTys);
 }
 
 OwnedPtr<ThrowExpr> MockManager::CreateIllegalMockCallException(
@@ -883,7 +883,9 @@ OwnedPtr<CallExpr> MockManager::CreateDeclId(const Decl& decl, File& curFile) co
             mockUtils->GetOriginalIdentifierOfMockAccessor(decl),
             mockUtils->stringDecl->ty,
             true));
-    return CreateInitCall(FindInitDecl(*declIdDecl, typeManager, valueArgs).value(), valueArgs, curFile);
+    auto initDecl = FindInitDecl(*declIdDecl, typeManager, valueArgs);
+    CJC_ASSERT(initDecl.has_value());
+    return CreateInitCall(*initDecl, valueArgs, curFile);
 }
 
 OwnedPtr<CallExpr> MockManager::CreateParamInfo(const FuncParam& param, int position, File& curFile) const
@@ -898,8 +900,9 @@ OwnedPtr<CallExpr> MockManager::CreateParamInfo(const FuncParam& param, int posi
         CreateLitConstExpr(LitConstKind::BOOL, param.isNamedParam ? "true" : "false", BOOL_TY, true));
     valueArgs.emplace_back(
         CreateLitConstExpr(LitConstKind::BOOL, param.assignment != nullptr ? "true" : "false", BOOL_TY, true));
-    return CreateInitCall(
-        FindInitDecl(*parameterInfoDecl, typeManager, valueArgs).value(), valueArgs, curFile);
+    auto initDecl = FindInitDecl(*parameterInfoDecl, typeManager, valueArgs);
+    CJC_ASSERT(initDecl.has_value());
+    return CreateInitCall(*initDecl, valueArgs, curFile);
 }
 
 OwnedPtr<ArrayLit> MockManager::CreateParamsInfo(const FuncDecl& decl, File& curFile) const
@@ -966,7 +969,9 @@ OwnedPtr<CallExpr> MockManager::CreateFuncInfo(FuncDecl& funcDecl, File& curFile
 
         Ptr<Decl> outerDecl = funcDecl.outerDecl;
         if (funcDecl.TestAttr(Attribute::IN_EXTEND)) {
-            outerDecl = mockUtils->GetExtendedClassDecl(funcDecl);
+            // FIXME: There might be no decl for extended type. e.g. Unit
+            outerDecl = mockUtils->GetExtendedTypeDecl(funcDecl);
+            CJC_NULLPTR_CHECK(outerDecl);
         }
 
         auto outerDeclId = CreateDeclId(*outerDecl, curFile);
@@ -994,8 +999,10 @@ OwnedPtr<CallExpr> MockManager::CreateFuncInfo(FuncDecl& funcDecl, File& curFile
             LitConstKind::BOOL,
             IsDeclAccessible(*curFile.curPackage, funcDecl) ? "true" : "false", BOOL_TY, true));
     funcIntoItems.emplace_back(CreateDeclKind(funcDecl));
-    return CreateInitCall(
-        FindInitDecl(*funcInfoDecl, typeManager, funcIntoItems).value(), funcIntoItems, curFile);
+
+    auto initDecl = FindInitDecl(*funcInfoDecl, typeManager, funcIntoItems);
+    CJC_ASSERT(initDecl.has_value());
+    return CreateInitCall(*initDecl, funcIntoItems, curFile);
 }
 
 OwnedPtr<CallExpr> MockManager::CreateDeclKind(const FuncDecl& decl) const
@@ -1088,8 +1095,9 @@ OwnedPtr<CallExpr> MockManager::CreateCallInfo(
     callInfoItems.emplace_back(std::move(mockedArgsArray));
     callInfoItems.emplace_back(CreateFuncInfo(originalFunction, *curFile));
 
-    return CreateInitCall(
-        FindInitDecl(*callDecl, typeManager, callInfoItems).value(), callInfoItems, *curFile);
+    auto initDecl = FindInitDecl(*callDecl, typeManager, callInfoItems);
+    CJC_ASSERT(initDecl.has_value());
+    return CreateInitCall(*initDecl, callInfoItems, *curFile);
 }
 
 OwnedPtr<RefExpr> MockManager::GetHandlerRefFromClass(const Ptr<ClassDecl> decl)
