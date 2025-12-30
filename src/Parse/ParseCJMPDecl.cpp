@@ -164,7 +164,8 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 
         bool allMembersHaveDefault = true;
         for (auto& member : decl.GetMemberDeclPtrs()) {
-            if (member->TestAttr(Attribute::COMMON) && !member->TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
+            if (member->TestAttr(Attribute::COMMON) && !member->TestAttr(Attribute::COMMON_WITH_DEFAULT) &&
+                !member->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
                 allMembersHaveDefault = false;
                 break;
             }

@@ -575,6 +575,13 @@ bool MustMatchWithPlatform(const Decl& decl)
     if (decl.TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
         return false;
     }
+    // No match is required for enum constructors when the outer enum is marked as
+    // COMMON_WITH_DEFAULT and has no platform implementation
+    if (decl.TestAttr(Attribute::ENUM_CONSTRUCTOR) && decl.outerDecl &&
+        decl.outerDecl->TestAttr(AST::Attribute::COMMON_WITH_DEFAULT) && !decl.outerDecl->platformImplementation) {
+        return false;
+    }
+
     // common member in interface allow no platform member, maybe use abstract attr.
     if (decl.outerDecl && decl.outerDecl->astKind == ASTKind::INTERFACE_DECL) {
         return false;

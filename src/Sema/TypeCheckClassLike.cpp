@@ -55,12 +55,19 @@ void TypeChecker::TypeCheckerImpl::CheckSealedInheritance(const Decl& child, con
             // Parent is imported, and child is defined in current package.
             DiagCannotInheritSealed(diag, child, parent);
         }
+
         // Otherwise, both parent and child are imported,
         // which is orphan extension and the error is reported by `CheckExtendOrphanRule`.
-        if (target->TestAttr(Attribute::PLATFORM) && !child.TestAttr(Attribute::FROM_COMMON_PART) &&
-            !child.TestAttr(Attribute::PLATFORM)) {
-            // Parent is imported, and child is defined in current package.
-            DiagCannotInheritSealed(diag, child, parent, true);
+        // For platform sealed, check if corresponding common is also sealed
+        if (target->TestAttr(Attribute::PLATFORM)) {
+            // Find the corresponding common declaration
+            Ptr<const Decl> commonDecl = FindCorrespondingCommonDecl(*target);
+            // Only report error if both common and platform are sealed
+            if (commonDecl != nullptr && commonDecl->TestAttr(Attribute::SEALED)) {
+                if (!child.TestAttr(Attribute::FROM_COMMON_PART) && !child.TestAttr(Attribute::PLATFORM)) {
+                    DiagCannotInheritSealed(diag, child, parent, true);
+                }
+            }
         }
     }
 }
