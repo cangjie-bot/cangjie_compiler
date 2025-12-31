@@ -161,6 +161,11 @@ public:
     Candidate SynReferenceSeparately(ASTContext& ctx, const std::string& scopeName, AST::Expr& expr, bool hasLocalDecl);
     void RemoveTargetNotMeetExtendConstraint(const Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Decl>>& targets);
 
+    /**
+     * @brief
+     */
+    void SetOverflowStrategyForInstantiatedDecl() const;
+
 private:
     /**
      * Main entry of the synthesis mode of the type checking.
@@ -510,7 +515,7 @@ private:
     void BuildExtendMap(ASTContext& ctx);
     void CheckExtendRules(const ASTContext& ctx);
     /* Set integer overflow strategy before sema typechecking. */
-    void SetIntegerOverflowStrategy() const;
+    void SetOverflowStrategyAfterSemantic() const;
     void CheckDefaultParamFuncsEntry(AST::File& file);
     AST::VisitAction CheckDefaultParamFunc(AST::StructDecl& sd) const;
     AST::VisitAction CheckDefaultParamFunc(AST::ClassDecl& cd, const AST::File& file) const;
