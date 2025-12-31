@@ -31,6 +31,30 @@ std::vector<FuncBase*> GetAllGlobalFuncs(const Package& package)
     }
     return result;
 }
+
+void RemoveOldRetValue(LocalVar& oldRet)
+{
+    /*  remove this kind of code:
+        %1: Unit& = Allocate(Unit)  // old ret value
+        ...
+        %2: Unit = Constant(Unit)
+        %3: Unit& = Store(%2, %1)
+
+        we are not sure if the store is the only user of the old ret value,
+        so we only care about the "store" expression for safety.
+    */
+    for (auto user : oldRet.GetUsers()) {
+        if (auto store = Cangjie::DynamicCast<Store*>(user)) {
+            if (auto unitVal = Cangjie::DynamicCast<LocalVar*>(store->GetValue())) {
+                if (unitVal->GetExpr()->IsConstant()) {
+                    unitVal->GetExpr()->RemoveSelfFromBlock();
+                }
+            }
+            store->RemoveSelfFromBlock();
+        }
+    }
+    oldRet.GetExpr()->RemoveSelfFromBlock();
+}
 }
 
 OptFuncRetType::OptFuncRetType(Package& package, CHIRBuilder& builder) : package(package), builder(builder)
@@ -39,18 +63,22 @@ OptFuncRetType::OptFuncRetType(Package& package, CHIRBuilder& builder) : package
 
 void OptFuncRetType::Unit2Void()
 {
+    // 1. collect all global functions that should return Void
     auto allFuncs = GetAllGlobalFuncs(package);
     for (auto func : allFuncs) {
         CJC_ASSERT(func->GetReturnType()->IsUnit());
         LocalVar* oldRet = nullptr;
+        // 2. change the return type to Void
         if (auto f = DynamicCast<Func>(func)) {
             oldRet = f->GetReturnValue();
             CJC_NULLPTR_CHECK(oldRet);
         }
         func->ReplaceReturnValue(nullptr, builder);
-        if (oldRet != nullptr && oldRet->GetUsers().empty()) {
-            oldRet->GetExpr()->RemoveSelfFromBlock();
+        // 3. remove the old ret value, just for clean code
+        if (oldRet != nullptr) {
+            RemoveOldRetValue(*oldRet);
         }
+        // 4. replace all call sites with the new return type
         for (auto user : func->GetUsers()) {
             if (auto apply = DynamicCast<Apply*>(user)) {
                 CJC_ASSERT(apply->GetCallee() == func);
