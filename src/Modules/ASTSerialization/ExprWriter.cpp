@@ -68,7 +68,7 @@ FormattedIndex ASTWriter::ASTWriterImpl::SaveExpr(const Expr& expr)
     (void)savedExprMap.emplace(realExpr, exprIndex);
 
     auto exprInfo = PackNodeInfo(*realExpr);
-    exprInfo.ov = expr.overflowStrategy;
+    exprInfo.ov = realExpr->overflowStrategy;
     // 'JumpExpr' will not have mapExpr, so re-use this field for 'refLoop'.
     exprInfo.mapExpr =
         realExpr->astKind == ASTKind::JUMP_EXPR ? StaticCast<const JumpExpr*>(realExpr)->refLoop : realExpr->mapExpr;
