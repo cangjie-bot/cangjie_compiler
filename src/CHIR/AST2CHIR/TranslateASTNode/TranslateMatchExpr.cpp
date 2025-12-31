@@ -917,16 +917,15 @@ std::unordered_map<size_t, std::vector<Ptr<Block>>> Translator::TranslateSecondL
         CJC_ASSERT(firstPattern.ty->IsInteger() || firstPattern.ty->IsRune());
         auto selectorTy = TranslateType(*firstPattern.ty);
         auto enumValueTuple = CastEnumValueToConstructorTupleType(enumVal, enumPattern);
-        auto secondSelectVar =
-            CreateAndAppendExpression<Field>(selectorTy, enumValueTuple, std::vector<uint64_t>{1}, currentBlock)
-                ->GetResult();
+        auto secondSelectVar = CreateAndAppendExpression<Field>(
+            selectorTy, enumValueTuple, std::vector<uint64_t>{1}, currentBlock)->GetResult();
         std::vector<uint64_t> indexes;
         std::vector<Block*> blocks;
         for (auto& [index, infos] : secondMap) {
             indexes.emplace_back(index);
             auto block = CreateBlock();
             blocks.emplace_back(block);
-            TranslateSecondLevelTable(firstDefaultBlock, block, enumVal, infos, blockBranchInfos);
+            TranslateSecondLevelTable(secondDefaultBlock, block, enumVal, infos, blockBranchInfos);
         }
         currentBlock = firstLevelBlock;
         CreateAndAppendTerminator<MultiBranch>(
