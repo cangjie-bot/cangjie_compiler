@@ -172,7 +172,12 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(
     }
     OwnedPtr<MemberAccess> methodAccess;
     if (sampleMethod.TestAttr(Attribute::STATIC)) {
-        methodAccess = CreateMemberAccess(WithinFile(CreateRefExpr(decl), curFile), sampleMethod);
+        auto staticRefExpr = CreateRefExpr(decl);
+        if (decl.ty->HasGeneric()) {
+            staticRefExpr->typeArguments = std::move(actualPrimitiveType);
+            staticRefExpr->ty = instantTy;
+        }
+        methodAccess = CreateMemberAccess(WithinFile(std::move(staticRefExpr), curFile), sampleMethod);
     } else if (sampleMethod.TestAttr(Attribute::CJ_MIRROR_JAVA_INTERFACE_DEFAULT)) {
         auto& objParam = *params[2];
         auto paramRef = WithinFile(CreateRefExpr(objParam), curFile);

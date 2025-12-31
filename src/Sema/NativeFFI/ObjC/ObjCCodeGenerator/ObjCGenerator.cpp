@@ -751,7 +751,7 @@ void ObjCGenerator::AddProperties()
         const auto& staticType =
             varDecl.TestAttr(Attribute::STATIC) ? ObjCFunctionType::STATIC : ObjCFunctionType::INSTANCE;
         std::string type;
-        if (isGenericGlueCode) {
+        if (isGenericGlueCode && varDecl.ty->IsGeneric()) {
             auto genericActualTy =
                 TypeManager::GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, varDecl.ty->name)));
             type = MapCJTypeToObjCType(*genericActualTy);
