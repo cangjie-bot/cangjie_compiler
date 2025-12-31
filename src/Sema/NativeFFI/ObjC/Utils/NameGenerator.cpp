@@ -27,6 +27,7 @@ constexpr auto DELETE_CJ_OBJECT_SUFFIX = "_deleteCJObject";
 constexpr auto LOCK_CJ_OBJECT_SUFFIX = "_lockCJObject";
 constexpr auto UNLOCK_CJ_OBJECT_SUFFIX = "_unlockCJObject";
 constexpr auto WRAPPER_GETTER_SUFFIX = "_get";
+constexpr auto WRAPPER_GETTER_SUFFIX_INNER_GENERIC_PROP = "get";
 constexpr auto WRAPPER_SETTER_SUFFIX = "_set";
 } // namespace
 
@@ -92,7 +93,7 @@ std::string NameGenerator::GenerateUnlockCjObjectName(const AST::Decl& target)
     return WRAPPER_PREFIX + name + UNLOCK_CJ_OBJECT_SUFFIX;
 }
 
-std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target, const std::string* genericActualName)
+std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target, const std::string* genericActualName, bool isInnerGeneric)
 {
     auto& params = target.funcBody->paramLists[0]->params;
     auto methodName = GetObjCDeclName(target);
@@ -101,6 +102,26 @@ std::string NameGenerator::GenerateMethodWrapperName(const FuncDecl& target, con
         GetObjCFullDeclName(*target.outerDecl);
 
     auto name = outerDeclName + "." + mangledMethodName;
+
+    /*
+        public enum A<T> where T <: ToString {
+            | E(T)
+
+            public prop p: Int64 {
+                get() {
+                var b: T
+                1
+                }
+            }
+        }
+        For prop inner local generic var.
+    */
+    if (isInnerGeneric) {
+        name.erase(std::remove_if(name.begin(), name.end(),
+            [](char c) { return c == '$'; }),
+            name.end());
+    }
+
     std::replace(name.begin(), name.end(), '.', '_');
     std::replace(name.begin(), name.end(), ':', '_');
 
@@ -130,7 +151,7 @@ std::string NameGenerator::GetPropSetterWrapperName(const PropDecl& target)
     return WRAPPER_PREFIX + name + WRAPPER_SETTER_SUFFIX;
 }
 
-std::string NameGenerator::GetFieldGetterWrapperName(const VarDecl& target, const std::string* genericActualName)
+std::string NameGenerator::GetFieldGetterWrapperName(const VarDecl& target, const std::string* genericActualName, bool isInnerGeneric)
 {
     CJC_NULLPTR_CHECK(target.outerDecl);
     auto outerDeclName = genericActualName ? GetObjCFullDeclName(*target.outerDecl, genericActualName) :
@@ -140,6 +161,9 @@ std::string NameGenerator::GetFieldGetterWrapperName(const VarDecl& target, cons
     std::replace(name.begin(), name.end(), '.', '_');
     std::replace(name.begin(), name.end(), ':', '_');
 
+    if (isInnerGeneric) {
+        return WRAPPER_PREFIX + name + WRAPPER_GETTER_SUFFIX_INNER_GENERIC_PROP;
+    }
     return WRAPPER_PREFIX + name + WRAPPER_GETTER_SUFFIX;
 }
 

@@ -541,9 +541,15 @@ std::string ObjCGenerator::GenerateStaticFunctionReference(
     const std::string& funcName, const std::string& retType, const std::string& argTypes) const
 {
     std::string result = STATIC_MODIFIER;
+    std::string objCDeclName = funcName;
+    if (genericConfig) {
+        objCDeclName.erase(std::remove_if(objCDeclName.begin(), objCDeclName.end(),
+            [](char c) { return c == '$'; }),
+            objCDeclName.end());
+    }
     result += " ";
     result += retType + " (*";
-    result += funcName + ")";
+    result += objCDeclName + ")";
     result += "(" + argTypes + ")";
     result += " = " + string(NULL_KW) + ";";
     return result;
@@ -581,7 +587,13 @@ void ObjCGenerator::GenerateFunctionSymbolsInitialization()
                 continue;
             }
             const FuncDecl& funcDecl = *StaticAs<ASTKind::FUNC_DECL>(declPtr.get());
-            GenerateFunctionSymInit(funcDecl.identifier);
+            std::string objCDeclName = funcDecl.identifier;
+            if (genericConfig) {
+                objCDeclName.erase(std::remove_if(objCDeclName.begin(), objCDeclName.end(),
+                    [](char c) { return c == '$'; }),
+                    objCDeclName.end());
+            }
+            GenerateFunctionSymInit(objCDeclName);
         }
     }
 }
@@ -751,7 +763,7 @@ void ObjCGenerator::AddProperties()
         const auto& staticType =
             varDecl.TestAttr(Attribute::STATIC) ? ObjCFunctionType::STATIC : ObjCFunctionType::INSTANCE;
         std::string type;
-        if (isGenericGlueCode) {
+        if (isGenericGlueCode && varDecl.ty->IsGeneric()) {
             auto genericActualTy =
                 TypeManager::GetPrimitiveTy(GetActualTypeKind(GetGenericActualType(genericConfig, varDecl.ty->name)));
             type = MapCJTypeToObjCType(*genericActualTy);
@@ -760,8 +772,7 @@ void ObjCGenerator::AddProperties()
         }
         bool genSetter = varDecl.isVar && !SkipSetterForValueTypeDecl(*decl);
         const auto modeModifier = genSetter ? READWRITE_MODIFIER : READONLY_MODIFIER;
-        const auto name = genericConfig ? ctx.nameGenerator.GetObjCDeclName(varDecl, &genericConfig->declInstName) :
-            ctx.nameGenerator.GetObjCDeclName(varDecl);
+        const auto name = ctx.nameGenerator.GetObjCDeclName(varDecl);
         const auto getterName = ctx.nameGenerator.GetObjCGetterName(varDecl);
         const auto setterName = ctx.nameGenerator.GetObjCSetterName(varDecl);
         AddWithIndent(GeneratePropertyDeclaration(staticType, modeModifier, type, name, getterName, setterName));
@@ -776,8 +787,9 @@ void ObjCGenerator::AddProperties()
         if (staticType == ObjCFunctionType::INSTANCE) {
             AddCallCangjieBeforeInitGuard();
         }
-        auto implementationName = genericConfig ? ctx.nameGenerator.GetFieldGetterWrapperName(varDecl, &genericConfig->declInstName) :
-            ctx.nameGenerator.GetFieldGetterWrapperName(varDecl);
+        bool isInnerGenericProp = genericConfig->funcNames.find(name) != genericConfig->funcNames.end();
+        auto implementationName = genericConfig ? ctx.nameGenerator.GetFieldGetterWrapperName(varDecl, &genericConfig->declInstName,
+            isInnerGenericProp) : ctx.nameGenerator.GetFieldGetterWrapperName(varDecl);
         AddWithIndent(
             GenerateDefaultFunctionImplementation(implementationName, *varDecl.ty, argList, staticType),
             GenerationTarget::SOURCE, OptionalBlockOp::CLOSE);
