@@ -29,10 +29,10 @@ bool TypeChecker::TypeCheckerImpl::ChkSubscriptExpr(ASTContext& ctx, Ptr<Ty> tar
         return false;
     }
     SetIsNotAlone(*se.baseExpr);
-    Ptr<Ty> baseTy = Synthesize(ctx, se.baseExpr.get());
+    Ptr<Ty> baseTy = Synthesize({ctx, SynPos::EXPR_ARG}, se.baseExpr.get());
     std::vector<Ptr<Ty>> indexTys{};
     for (auto& expr : se.indexExprs) {
-        indexTys.push_back(Synthesize(ctx, expr.get()));
+        indexTys.push_back(Synthesize({ctx, SynPos::EXPR_ARG}, expr.get()));
     }
     if (!Ty::IsTyCorrect(baseTy) || !Ty::AreTysCorrect(indexTys)) {
         return false;
@@ -48,8 +48,9 @@ bool TypeChecker::TypeCheckerImpl::ChkSubscriptExpr(ASTContext& ctx, Ptr<Ty> tar
     auto ds = DiagSuppressor(diag);
     DesugarOperatorOverloadExpr(ctx, se); // Desugar to callExpr.
     // The type of baseExpr should not be inferred here!
-    bool isWellTyped = target == nullptr ? Ty::IsTyCorrect(Synthesize(ctx, se.desugarExpr.get()))
-                                         : Check(ctx, target, se.desugarExpr.get());
+    bool isWellTyped = target == nullptr
+        ? Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, se.desugarExpr.get()))
+        : Check(ctx, target, se.desugarExpr.get());
     if (isWellTyped) {
         ds.ReportDiag();
         se.ty = se.desugarExpr->ty;
@@ -59,7 +60,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSubscriptExpr(ASTContext& ctx, Ptr<Ty> tar
         ReplaceTarget(&se, desugaredCE->resolvedFunction);
         return true;
     }
-    auto synTy = Synthesize(ctx, se.desugarExpr.get());
+    auto synTy = Synthesize({ctx, SynPos::EXPR_ARG}, se.desugarExpr.get());
     bool retTyMismatch = Ty::IsTyCorrect(target) && Ty::IsTyCorrect(synTy);
     RecoverToSubscriptExpr(se);
     // Also recover base and index's type.

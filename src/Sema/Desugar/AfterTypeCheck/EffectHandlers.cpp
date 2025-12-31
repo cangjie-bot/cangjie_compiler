@@ -163,7 +163,7 @@ void TypeChecker::TypeCheckerImpl::EncloseTryLambda(ASTContext& ctx, OwnedPtr<AS
         auto getOrThrowAccess = CreateMemberAccess(std::move(getActiveFrameCall), "getOrThrow");
         auto getOrThrowCall = CreateCallExpr(std::move(getOrThrowAccess), {});
         auto parentAccess = CreateMemberAccess(std::move(getOrThrowCall), "parent");
-        SynthesizeWithoutRecover(ctx, parentAccess.get());
+        SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, parentAccess.get());
 
         // `(HandlerFrame.getActiveFrame() == v.frame)
         auto binExpr = CreateBinaryExpr(std::move(parentAccess), std::move(frameAccess), TokenKind::EQUAL);
@@ -248,7 +248,7 @@ void TypeChecker::TypeCheckerImpl::EncloseTryLambda(ASTContext& ctx, OwnedPtr<AS
         auto getOrThrowAccess = CreateMemberAccess(std::move(getActiveFrameCall), "getOrThrow");
         auto getOrThrowCall = CreateCallExpr(std::move(getOrThrowAccess), {});
         auto parentAccess = CreateMemberAccess(std::move(getOrThrowCall), "parent");
-        SynthesizeWithoutRecover(ctx, parentAccess.get());
+        SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, parentAccess.get());
 
         // `(HandlerFrame.getActiveFrame() == v.frame)
         auto binExpr = CreateBinaryExpr(std::move(parentAccess), std::move(frameAccess), TokenKind::EQUAL);
@@ -335,7 +335,7 @@ void TypeChecker::TypeCheckerImpl::EncloseTryLambda(ASTContext& ctx, OwnedPtr<AS
         auto getOrThrowAccess = CreateMemberAccess(std::move(getActiveFrameCall), "getOrThrow");
         auto getOrThrowCall = CreateCallExpr(std::move(getOrThrowAccess), {});
         auto parentAccess = CreateMemberAccess(std::move(getOrThrowCall), "parent");
-        SynthesizeWithoutRecover(ctx, parentAccess.get());
+        SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, parentAccess.get());
 
         // `(HandlerFrame.getActiveFrame() == v.frame)
         auto binExpr = CreateBinaryExpr(std::move(parentAccess), std::move(frameAccess), TokenKind::EQUAL);
@@ -688,7 +688,7 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
                 // HandlerFrame.getActiveFrame()
                 auto getActiveFrame = GetHelperFrameMethod(*innerBlock, "getActiveFrame", {});
                 auto getActiveFrameCall = CreateCallExpr(std::move(getActiveFrame), {});
-                SynthesizeWithoutRecover(ctx, getActiveFrameCall.get());
+                SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, getActiveFrameCall.get());
 
                 auto vpRef = CreateRefExpr(*vp->varDecl);
                 AST::CopyNodeScopeInfo(vpRef, innerBlock);
@@ -756,7 +756,7 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
                 // HandlerFrame.getActiveFrame()
                 auto getActiveFrame = GetHelperFrameMethod(*innerBlock, "getActiveFrame", {});
                 auto getActiveFrameCall = CreateCallExpr(std::move(getActiveFrame), {});
-                SynthesizeWithoutRecover(ctx, getActiveFrameCall.get());
+                SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, getActiveFrameCall.get());
 
                 auto vpRef = CreateRefExpr(*vp->varDecl);
                 AST::CopyNodeScopeInfo(vpRef, innerBlock);
@@ -797,7 +797,7 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             tryExpr->tryBlock = std::move(innerBlock);
 
             // Recover all types in the try expression
-            SynthesizeWithoutRecover(ctx, tryExpr);
+            SynthesizeWithoutRecover({ctx, SynPos::NONE}, tryExpr); // none for now
 
             std::vector<OwnedPtr<Cangjie::AST::Node>> nodes;
 
@@ -823,7 +823,7 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
                 // HandlerFrame.getActiveFrame()
                 auto getActiveFrame = GetHelperFrameMethod(*tryResult, "getActiveFrame", {});
                 auto getActiveFrameCall = CreateCallExpr(std::move(getActiveFrame), {});
-                SynthesizeWithoutRecover(ctx, getActiveFrameCall.get());
+                SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, getActiveFrameCall.get());
 
                 // ImmediateEarlyReturn(...)
                 OwnedPtr<RefExpr> re2 = CreateRefExpr(CLASS_EARLY_RETURN);
@@ -859,7 +859,7 @@ void TypeChecker::TypeCheckerImpl::CreateSetHandler(
             auto resultBlock = CreateBlock(std::move(nodes));
 
             // Recover the types of the whole block
-            SynthesizeWithoutRecover(ctx, resultBlock);
+            SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, resultBlock);
             handlerLambda->funcBody->body = std::move(resultBlock);
 
             // Finally, we need to change the type of the try lambda from T

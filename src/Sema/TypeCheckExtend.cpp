@@ -479,11 +479,11 @@ void TypeChecker::TypeCheckerImpl::CheckExtendDecl(ASTContext& ctx, ExtendDecl& 
 
     // Do type legality check for extend type.
     CJC_NULLPTR_CHECK(ed.extendedType);
-    Synthesize(ctx, ed.extendedType.get());
+    Synthesize({ctx, SynPos::NONE}, ed.extendedType.get());
     Ptr<Decl> extendedDecl = ed.extendedType->GetTarget();
     // Check implemented interfaces.
     for (auto it = ed.inheritedTypes.begin(); it != ed.inheritedTypes.end();) {
-        if (!Ty::IsTyCorrect(Synthesize(ctx, it->get()))) {
+        if (!Ty::IsTyCorrect(Synthesize({ctx, SynPos::NONE}, it->get()))) {
             ctx.DeleteInvertedIndexes(it->get());
             it->reset();
             it = ed.inheritedTypes.erase(it);
@@ -497,7 +497,7 @@ void TypeChecker::TypeCheckerImpl::CheckExtendDecl(ASTContext& ctx, ExtendDecl& 
         }
     }
     for (auto& m : ed.members) {
-        Synthesize(ctx, m.get());
+        Synthesize({ctx, SynPos::NONE}, m.get());
         if (ed.ty && ed.ty->IsImmutableType()) {
             if (auto fd = DynamicCast<FuncDecl*>(m.get()); fd && !ed.ty->IsEnum() && IsIndexAssignmentOperator(*fd)) {
                 auto fdIdRange = MakeRange(fd->identifier);

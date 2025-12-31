@@ -110,6 +110,6 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIfAvailableExpr(ASTContext& ctx, IfAvai
         iae.ty = typeManager.GetInvalidTy();
         return iae.ty;
     }
-    iae.ty = Synthesize(ctx, iae.desugarExpr);
+    iae.ty = Synthesize({ctx, SynPos::EXPR_ARG}, iae.desugarExpr);
     return iae.ty;
 }

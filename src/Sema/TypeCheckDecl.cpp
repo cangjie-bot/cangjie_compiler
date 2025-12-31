@@ -257,7 +257,7 @@ void TypeChecker::TypeCheckerImpl::CheckVarDecl(ASTContext& ctx, VarDecl& vd)
     // Mark the declaration is checked.
     vd.EnableAttr(Attribute::IS_CHECK_VISITED);
 
-    SynchronizeTypeAndInitializer(ctx, vd);
+    SynchronizeTypeAndInitializer({ctx, SynPos::NONE}, vd);
     if (vd.initializer != nullptr && Ty::IsInitialTy(vd.initializer->ty)) {
         // Already generate diagnostics before, quit here.
         return;
@@ -277,7 +277,7 @@ void TypeChecker::TypeCheckerImpl::CheckVarWithPatternDecl(ASTContext& ctx, VarW
     }
     // Mark the current declaration checked.
     vpd.EnableAttr(Attribute::IS_CHECK_VISITED);
-    SynchronizeTypeAndInitializer(ctx, vpd);
+    SynchronizeTypeAndInitializer({ctx, SynPos::NONE}, vpd);
     if ((vpd.initializer != nullptr && !Ty::IsTyCorrect(vpd.initializer->ty)) || !vpd.irrefutablePattern) {
         // Already generate diagnostics before, quit here.
         return;
@@ -303,7 +303,8 @@ void TypeChecker::TypeCheckerImpl::CheckVarWithPatternDecl(ASTContext& ctx, VarW
     }
 }
 
-template <typename T> void TypeChecker::TypeCheckerImpl::SynchronizeTypeAndInitializer(ASTContext& ctx, T& vd)
+template <typename T>
+void TypeChecker::TypeCheckerImpl::SynchronizeTypeAndInitializer(const CheckerContext& ctx, T& vd)
 {
     if (vd.type != nullptr && vd.initializer == nullptr) {
         Synthesize(ctx, vd.type.get());
@@ -320,7 +321,7 @@ template <typename T> void TypeChecker::TypeCheckerImpl::SynchronizeTypeAndIniti
                 vd.initializer->ty = vd.type->ty;
                 ChkLitConstExprRange(StaticCast<LitConstExpr&>(*vd.initializer));
             } else {
-                bool isWellTyped = Check(ctx, vd.type->ty, vd.initializer.get());
+                bool isWellTyped = Check(ctx.Ctx(), vd.type->ty, vd.initializer.get());
                 // Unset 'checked' attribute for local variables when there exists any error.
                 if (!isWellTyped && !IsGlobalOrMember(vd)) {
                     vd.DisableAttr(Attribute::IS_CHECK_VISITED);
@@ -329,11 +330,11 @@ template <typename T> void TypeChecker::TypeCheckerImpl::SynchronizeTypeAndIniti
         } else {
             // VarDecl's user defined type is invalid, should not update 'vd.ty' with initializer's type.
             vd.ty = TypeManager::GetInvalidTy();
-            (void)Synthesize(ctx, vd.initializer.get());
+            Synthesize(ctx.With(SynPos::EXPR_ARG), vd.initializer.get());
         }
         // Should not report here. Any error should be reported during 'Check' or 'Synthesize' step.
     } else if (vd.type == nullptr && vd.initializer != nullptr) {
-        bool isWellTyped = SynthesizeAndReplaceIdealTy(ctx, *vd.initializer);
+        bool isWellTyped = SynthesizeAndReplaceIdealTy(ctx.With(SynPos::EXPR_ARG), *vd.initializer);
         // Unset 'checked' attribute for local variables when there exists any error.
         if (!isWellTyped && !IsGlobalOrMember(vd)) {
             vd.DisableAttr(Attribute::IS_CHECK_VISITED);
@@ -370,7 +371,7 @@ void TypeChecker::TypeCheckerImpl::CheckPropDecl(ASTContext& ctx, PropDecl& pd)
         pd.ty = TypeManager::GetInvalidTy();
     }
     CJC_NULLPTR_CHECK(pd.type);
-    (void)Synthesize(ctx, pd.type.get());
+    Synthesize({ctx, SynPos::NONE}, pd.type.get());
     pd.ty = pd.type->ty;
     for (auto& pmd : pd.getters) {
         if (pmd->funcBody && !pmd->funcBody->paramLists.empty()) {
@@ -381,13 +382,13 @@ void TypeChecker::TypeCheckerImpl::CheckPropDecl(ASTContext& ctx, PropDecl& pd)
                 (void)diag.Diagnose(*pmd, DiagKind::sema_cannot_currying, "getter");
             }
         }
-        (void)Synthesize(ctx, pmd.get());
+        Synthesize({ctx, SynPos::NONE}, pmd.get());
     }
     for (auto& pmd : pd.setters) {
         if (pmd->funcBody && pmd->funcBody->paramLists.size() > 1) {
             (void)diag.Diagnose(*pmd, DiagKind::sema_cannot_currying, "setter");
         }
-        (void)Synthesize(ctx, pmd.get());
+        Synthesize({ctx, SynPos::NONE}, pmd.get());
     }
 }
 
@@ -428,7 +429,7 @@ void TypeChecker::TypeCheckerImpl::CheckEnumDecl(ASTContext& ctx, EnumDecl& ed)
 
     // Do type check for all implemented interfaces.
     for (auto& interfaceType : ed.inheritedTypes) {
-        (void)Synthesize(ctx, interfaceType.get());
+        Synthesize({ctx, SynPos::NONE}, interfaceType.get());
         if (auto id = AST::As<ASTKind::INTERFACE_DECL>(Ty::GetDeclPtrOfTy(interfaceType->ty)); id) {
             CheckSealedInheritance(ed, *interfaceType);
             (void)id->subDecls.insert(&ed);
@@ -444,7 +445,7 @@ void TypeChecker::TypeCheckerImpl::CheckEnumDecl(ASTContext& ctx, EnumDecl& ed)
         CheckAnnotations(ctx, *it);
         Walker(it.get(), [this, &ctx](Ptr<Node> node) {
             if (auto type = DynamicCast<Type*>(node); type) {
-                Synthesize(ctx, type);
+                Synthesize({ctx, SynPos::NONE}, type);
                 return VisitAction::SKIP_CHILDREN;
             }
             return VisitAction::WALK_CHILDREN;
@@ -454,10 +455,10 @@ void TypeChecker::TypeCheckerImpl::CheckEnumDecl(ASTContext& ctx, EnumDecl& ed)
     for (auto& it : ed.members) {
         if (it->astKind == ASTKind::FUNC_DECL) {
             auto fd = StaticAs<ASTKind::FUNC_DECL>(it.get());
-            (void)Synthesize(ctx, fd);
+            Synthesize({ctx, SynPos::NONE}, fd);
         } else if (it->astKind == ASTKind::PROP_DECL) {
             auto pd = StaticAs<ASTKind::PROP_DECL>(it.get());
-            (void)Synthesize(ctx, pd);
+            Synthesize({ctx, SynPos::NONE}, pd);
             if (pd->isVar) {
                 auto mutDecl = TypeCheckUtil::FindModifier(*pd, TokenKind::MUT);
                 CJC_ASSERT(mutDecl);
@@ -549,7 +550,7 @@ void TypeChecker::TypeCheckerImpl::CheckStructDecl(ASTContext& ctx, StructDecl& 
     sd.EnableAttr(Attribute::IS_CHECK_VISITED);
     // Do type check for all implemented interfaces.
     for (auto& interfaceType : sd.inheritedTypes) {
-        (void)Synthesize(ctx, interfaceType.get());
+        Synthesize({ctx, SynPos::NONE}, interfaceType.get());
         if (auto id = AST::As<ASTKind::INTERFACE_DECL>(Ty::GetDeclPtrOfTy(interfaceType->ty)); id) {
             CheckSealedInheritance(sd, *interfaceType);
             (void)id->subDecls.insert(&sd);
@@ -722,9 +723,9 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncParam(ASTContext& ctx, FuncParam& f
         return TypeManager::GetInvalidTy();
     }
     if (fp.type) {
-        (void)Synthesize(ctx, fp.type.get());
+        Synthesize({ctx, SynPos::NONE}, fp.type.get());
         if (!Ty::IsTyCorrect(fp.type->ty)) {
-            (void)Synthesize(ctx, fp.assignment.get()); // If fp has assignment, synthesize to report error.
+            Synthesize({ctx, SynPos::EXPR_ARG}, fp.assignment.get()); // If fp has assignment, synthesize to report error.
             return TypeManager::GetInvalidTy();
         }
         fp.ty = fp.type->ty;
@@ -733,7 +734,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncParam(ASTContext& ctx, FuncParam& f
         if (!Check(ctx, fp.ty, fp.assignment.get())) {
             return TypeManager::GetInvalidTy();
         }
-        (void)Synthesize(ctx, fp.desugarDecl.get());
+        Synthesize({ctx, SynPos::EXPR_ARG}, fp.desugarDecl.get());
     }
     return fp.ty;
 }
@@ -744,7 +745,7 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncParam(ASTContext& ctx, Ty& target, Fun
         return true;
     }
     if (fp.type) {
-        (void)Synthesize(ctx, fp.type.get());
+        Synthesize({ctx, SynPos::NONE}, fp.type.get());
         if (!Ty::IsTyCorrect(fp.type->ty)) {
             return false;
         }
@@ -758,7 +759,7 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncParam(ASTContext& ctx, Ty& target, Fun
             if (!Check(ctx, fp.ty, fp.assignment.get())) {
                 return false;
             }
-            (void)Synthesize(ctx, fp.desugarDecl.get());
+            Synthesize({ctx, SynPos::NONE}, fp.desugarDecl.get());
         }
     } else {
         fp.ty = &target;

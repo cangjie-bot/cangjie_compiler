@@ -1432,7 +1432,7 @@ OwnedPtr<FunctionMatchingUnit> TypeChecker::TypeCheckerImpl::CheckCandidate(
         return nullptr;
     }
     if (NeedSynOnUsed(fd)) {
-        Synthesize(ctx, &fd);
+        Synthesize({ctx, SynPos::NONE}, &fd);
     }
     if (!Ty::IsTyCorrect(fd.ty) || !fd.ty->IsFunc()) {
         return nullptr;
@@ -1590,7 +1590,8 @@ TypeChecker::TypeCheckerImpl::FuncTyPair TypeChecker::TypeCheckerImpl::CollectVa
             if (targetTy && !typeManager.IsFuncParametersSubtype(*RawStaticCast<FuncTy*>(instTy), *targetTy)) {
                 continue;
             }
-            if (NeedSynOnUsed(*fd) && Synthesize(ctx, fd) && (!Ty::IsTyCorrect(fd->ty) || fd->ty->HasQuestTy())) {
+            if (NeedSynOnUsed(*fd) && Synthesize({ctx, SynPos::NONE}, fd) &&
+                (!Ty::IsTyCorrect(fd->ty) || fd->ty->HasQuestTy())) {
                 DiagUnableToInferReturnType(diag, *fd, expr);
                 break; // If the function's type still contains quest type, ignore current candidate.
             }
@@ -1626,7 +1627,7 @@ bool TypeChecker::TypeCheckerImpl::HasBaseOfPlaceholderTy(ASTContext& ctx, Ptr<N
     if (Ty::IsInitialTy(n->ty)) {
         DiagSuppressor ds(diag);
         ctx.targetTypeMap[n] = TypeManager::GetQuestTy();
-        SynthesizeWithCache(ctx, n);
+        SynthesizeWithCache({ctx, SynPos::EXPR_ARG}, n);
         ctx.targetTypeMap[n] = nullptr;
     }
     if (n->ty->IsPlaceholder()) {
@@ -1656,7 +1657,7 @@ std::vector<std::set<Ptr<Ty>>> TypeChecker::TypeCheckerImpl::GetArgTyPossibiliti
         // since ambiguous target of reference is acceptable as func arg, which is knonw from existence of target Ty.
         // Avoid error report by 'Synthesize' in current and later steps.
         ctx.targetTypeMap[arg->expr.get()] = TypeManager::GetQuestTy();
-        SynthesizeWithCache(ctx, arg.get());
+        SynthesizeWithCache({ctx, SynPos::EXPR_ARG}, arg.get());
         ctx.targetTypeMap[arg->expr.get()] = nullptr;
         // Get all possible definition for each function argument.
         auto targets = GetFuncTargets(*arg->expr);
@@ -2281,7 +2282,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynTrailingClosure(ASTContext& ctx, Traili
 {
     // TrailingClosureExpr will be desugared if ast node is valid.
     if (tc.desugarExpr) {
-        tc.ty = Synthesize(ctx, tc.desugarExpr.get());
+        tc.ty = Synthesize({ctx, SynPos::EXPR_ARG}, tc.desugarExpr.get());
     } else {
         tc.ty = TypeManager::GetInvalidTy();
     }
@@ -2379,7 +2380,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCallBaseRefExpr(
     re->isAlone = false;
     re->callOrPattern = &ce;
     ctx.targetTypeMap[re] = ctx.targetTypeMap[&ce]; // For enum sugar type infer.
-    Synthesize(ctx, re);
+    Synthesize({ctx, SynPos::EXPR_ARG}, re);
     if (auto builtin = DynamicCast<BuiltInDecl>(re->ref.target); builtin && builtin->type == BuiltInType::CFUNC) {
         return SynCFuncCall(ctx, ce);
     }
@@ -2398,7 +2399,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCallBaseMemberAccess(
     ma->isAlone = false;
     // in case base is enum, its type arg may be inferred from func call, so disable error report here
     ctx.targetTypeMap[ma->baseExpr] = TypeManager::GetQuestTy();
-    Synthesize(ctx, ma);
+    Synthesize({ctx, SynPos::EXPR_ARG}, ma);
     ctx.targetTypeMap[ma->baseExpr] = nullptr;
     if (ma->ty && ma->ty->IsNothing()) {
         return true;
@@ -2458,7 +2459,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCurryCallBase(ASTContext& ctx, CallExpr& c
         auto ds = DiagSuppressor(diag);
         for (auto& arg: ce.args) {
             if (Ty::IsInitialTy(arg->ty)) {
-                SynthesizeWithCache(ctx, arg);
+                SynthesizeWithCache({ctx, SynPos::EXPR_ARG}, arg);
             }
             if (Ty::IsTyCorrect(arg->ty)) {
                 paramTys.push_back(arg->ty);
@@ -2486,7 +2487,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCallBaseExpr(
         });
     };
     if (ce.baseFunc->desugarExpr != nullptr && !Is<TrailingClosureExpr>(ce.baseFunc.get())) {
-        if (!Ty::IsTyCorrect(Synthesize(ctx, ce.baseFunc.get()))) {
+        if (!Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, ce.baseFunc.get()))) {
             setFuncArgsInvalidTy();
             return false;
         }
@@ -2510,7 +2511,7 @@ bool TypeChecker::TypeCheckerImpl::ChkCallBaseExpr(
             if (!mayCurry) {
                 PData::Reset(typeManager.constraints);
                 ce.baseFunc->Clear();
-                Synthesize(ctx, ce.baseFunc.get());
+                Synthesize({ctx, SynPos::EXPR_ARG}, ce.baseFunc.get());
             }
             break;
     }
@@ -2541,7 +2542,7 @@ void TypeChecker::TypeCheckerImpl::CheckMacroCall(ASTContext& ctx, Node& macroNo
         // isInMacroCall field of the node which is diagnosed).
         if (ci->invocation.globalOptions.enableMacroInLSP && me->invocation.decl &&
             !me->invocation.decl->TestAttr(Attribute::IS_CHECK_VISITED)) {
-            Synthesize(ctx, me->invocation.decl.get());
+            Synthesize({ctx, SynPos::NONE}, me->invocation.decl.get());
         }
         auto decls = importManager.GetImportedDeclsByName(*me->curFile, me->identifier);
         if (decls.empty()) {
@@ -3053,7 +3054,7 @@ bool TypeChecker::TypeCheckerImpl::ChkDesugarExprOfCallExpr(ASTContext& ctx, Ptr
     if (Ty::IsTyCorrect(target)) {
         isWellTyped = Check(ctx, target, ce.desugarExpr.get());
     } else {
-        isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, ce.desugarExpr.get()));
+        isWellTyped = Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, ce.desugarExpr.get()));
     }
     ce.ty = ce.desugarExpr->ty;
     return isWellTyped && Ty::IsTyCorrect(ce.ty);
@@ -3063,7 +3064,7 @@ bool TypeChecker::TypeCheckerImpl::SynArgsOfNothingBaseExpr(ASTContext& ctx, Cal
 {
     bool isWellTyped = true;
     std::for_each(ce.args.cbegin(), ce.args.cend(), [this, &ctx, &isWellTyped](auto& arg) {
-        isWellTyped = isWellTyped && Ty::IsTyCorrect(Synthesize(ctx, arg.get()));
+        isWellTyped = isWellTyped && Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, arg.get()));
         ReplaceIdealTy(*arg);
         ReplaceIdealTy(*arg->expr);
     });

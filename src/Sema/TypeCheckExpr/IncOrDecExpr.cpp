@@ -33,7 +33,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIncOrDecExpr(ASTContext& ctx, IncOrDecE
         return TypeManager::GetInvalidTy();
     }
     auto& ae = *StaticCast<AssignExpr*>(ide.desugarExpr.get());
-    auto leftTy = Synthesize(ctx, ae.leftValue.get());
+    auto leftTy = Synthesize({ctx, SynPos::LEFT_VALUE}, ae.leftValue.get());
     if (!Ty::IsTyCorrect(leftTy)) {
         ide.ty = TypeManager::GetInvalidTy();
     } else if (leftTy->IsNothing()) {
@@ -49,7 +49,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynIncOrDecExpr(ASTContext& ctx, IncOrDecE
         if (ae.leftValue->astKind == ASTKind::SUBSCRIPT_EXPR && ae.leftValue->desugarExpr != nullptr) {
             RecoverToSubscriptExpr(StaticCast<SubscriptExpr&>(*ae.leftValue));
         }
-        ide.ty = Synthesize(ctx, ide.desugarExpr.get());
+        ide.ty = Synthesize({ctx, SynPos::UNUSED}, ide.desugarExpr.get());
     }
     return ide.ty;
 }

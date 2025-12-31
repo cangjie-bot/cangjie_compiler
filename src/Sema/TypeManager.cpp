@@ -2314,4 +2314,73 @@ Ptr<AST::Decl> TypeManager::GetDummyBuiltInDecl(Ptr<Ty> ty)
     }
     return dummyBuiltInDecls[ty].get();
 }
+
+Ptr<Ty> TypeManager::GetThisRealTy(Ptr<Ty> now)
+{
+    if (!Ty::IsTyCorrect(now)) {
+        return now;
+    }
+    if (auto thisTy = DynamicCast<ClassThisTy>(now)) {
+        return GetClassTy(*thisTy->decl, thisTy->typeArgs);
+    }
+    return now;
+}
+
+Ptr<Ty> TypeManager::ReplaceThisTy(Ptr<Ty> now)
+{
+    if (auto thisTy = DynamicCast<ClassThisTy>(now)) {
+        std::vector<Ptr<Ty>> newArgs;
+        for (auto& arg : thisTy->typeArgs) {
+            newArgs.emplace_back(ReplaceThisTy(arg));
+        }
+        return GetClassTy(*thisTy->decl, newArgs);
+    }
+    // If no type args, return as-is
+    if (now->typeArgs.empty()) {
+        return now;
+    }
+    // Recursively replace type args
+    std::vector<Ptr<Ty>> newArgs;
+    bool changed = false;
+    for (auto& arg : now->typeArgs) {
+        auto replaced = ReplaceThisTy(arg);
+        newArgs.emplace_back(replaced);
+        if (replaced != arg) {
+            changed = true;
+        }
+    }
+    if (!changed) {
+        return now;
+    }
+    // Reconstruct the type with new args based on type kind
+    switch (now->kind) {
+        case TypeKind::TYPE_FUNC: {
+            auto& funcTy = static_cast<FuncTy&>(*now);
+            std::vector<Ptr<Ty>> paramTys;
+            for (auto& p : funcTy.paramTys) {
+                paramTys.push_back(ReplaceThisTy(p));
+            }
+            auto retTy = ReplaceThisTy(funcTy.retTy);
+            return GetFunctionTy(paramTys, retTy, {funcTy.IsCFunc(), funcTy.isClosureTy, funcTy.hasVariableLenArg});
+        }
+        case TypeKind::TYPE_TUPLE:
+            return GetTupleTy(newArgs, static_cast<TupleTy&>(*now).isClosureTy);
+        case TypeKind::TYPE_ARRAY:
+            return GetArrayTy(newArgs[0], static_cast<ArrayTy&>(*now).dims);
+        case TypeKind::TYPE_POINTER:
+            return GetPointerTy(newArgs[0]);
+        case TypeKind::TYPE_STRUCT:
+            return GetStructTy(*static_cast<StructTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_CLASS:
+            return GetClassTy(*static_cast<ClassTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_INTERFACE:
+            return GetInterfaceTy(*static_cast<InterfaceTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE_ENUM:
+            return GetEnumTy(*static_cast<EnumTy&>(*now).decl, newArgs);
+        case TypeKind::TYPE:
+            return GetTypeAliasTy(*static_cast<TypeAliasTy&>(*now).declPtr, newArgs);
+        default:
+            return now;
+    }
+}
 } // namespace Cangjie

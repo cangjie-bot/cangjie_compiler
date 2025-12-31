@@ -108,7 +108,7 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
     // If the return type is not of QuestTy, then we use it to check the function's body.
     if (fb.retType->ty->IsQuest()) {
         // Semantic analysis for function body without given return type.
-        auto ret = Synthesize(ctx, fb.body.get());
+        auto ret = Synthesize({ctx, SynPos::NONE}, fb.body.get());
         // In lambda, the return value type should be consistent with the body.
         // Otherwise, errors in the body that do not affect the return value type may fail to be reported.
         if (fb.funcDecl == nullptr && !Ty::IsTyCorrect(ret)) {
@@ -138,7 +138,7 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
         if (fb.retType->ty->IsUnit()) {
             // The body eventually will be appended a 'return ()' expression, so we switch to the Synthesize mode.
             // Errors should be already reported during the synthesis.
-            isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, fb.body.get()));
+            isWellTyped = Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, fb.body.get()));
         } else if (NeedCheckBodyReturn(fb)) {
             isWellTyped = Check(ctx, fb.retType->ty, fb.body.get());
             if (!isWellTyped && fb.body->body.empty()) {
@@ -155,7 +155,7 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
                 }
                 if (auto k = node->astKind; k != ASTKind::CALL_EXPR && k != ASTKind::MEMBER_ACCESS &&
                     k != ASTKind::REF_EXPR && k != ASTKind::RETURN_EXPR && k != ASTKind::PAREN_EXPR) {
-                    fb.body->ty = ReplaceThisTy(fb.body->ty);
+                    fb.body->ty = typeManager.GetThisRealTy(fb.body->ty);
                 }
                 if (!CheckReturnThisInFuncBody(fb) && !fb.retType->ty->IsNothing()) {
                     DiagMismatchedTypes(diag, *fb.body, *fb.retType, "return type");
@@ -165,17 +165,6 @@ bool TypeChecker::TypeCheckerImpl::CheckBodyRetType(ASTContext& ctx, FuncBody& f
         }
         return isWellTyped;
     }
-}
-
-Ptr<Ty> TypeChecker::TypeCheckerImpl::ReplaceThisTy(Ptr<Ty> now)
-{
-    if (!Ty::IsTyCorrect(now)) {
-        return now;
-    }
-    if (auto thisTy = DynamicCast<ClassThisTy>(now)) {
-        return typeManager.GetClassTy(*thisTy->decl, thisTy->typeArgs);
-    }
-    return now;
 }
 
 void TypeChecker::TypeCheckerImpl::ReplaceFuncRetTyWithThis(FuncBody& fb, Ptr<Ty> ty)
@@ -198,7 +187,7 @@ void TypeChecker::TypeCheckerImpl::ReplaceFuncRetTyWithThis(FuncBody& fb, Ptr<Ty
 bool TypeChecker::TypeCheckerImpl::CheckFuncBody(ASTContext& ctx, FuncBody& fb)
 {
     if (fb.retType) {
-        Synthesize(ctx, fb.retType.get());
+        Synthesize({ctx, SynPos::NONE}, fb.retType.get());
     } else {
         // The goal is that, after type checking, every function declaration has a correct return type, so that the back
         // ends do not need to test anymore.
@@ -251,7 +240,7 @@ bool TypeChecker::TypeCheckerImpl::CheckNormalFuncBody(ASTContext& ctx, FuncBody
     if (!Ty::IsTyCorrect(fb.retType->ty)) {
         if (!fb.TestAttr(Attribute::IS_CHECK_VISITED)) {
             fb.EnableAttr(Attribute::IS_CHECK_VISITED); // Avoid re-enter funcDecl check, when function is invalid.
-            Synthesize(ctx, fb.body.get());             // Synthesize for other decl/expr in function body.
+            Synthesize({ctx, SynPos::NONE}, fb.body.get()); // Synthesize for other decl/expr in function body.
         }
         fb.ty = typeManager.GetFunctionTy(paramTys, fb.retType->ty, {isCFunc, false, hasVariableLenArg});
         return false;
@@ -471,7 +460,7 @@ void TypeChecker::TypeCheckerImpl::CheckCtorFuncBody(ASTContext& ctx, FuncBody& 
     fb.ty = typeManager.GetFunctionTy(paramTys, ctorTy);
     fb.funcDecl->ty = fb.ty;
     fb.retType->ty = ctorTy;
-    Synthesize(ctx, fb.body.get());
+    Synthesize({ctx, SynPos::UNUSED}, fb.body.get());
 }
 
 void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParamList& fpl)
@@ -484,7 +473,7 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
     }
     for (auto& param : fpl.params) {
         CJC_NULLPTR_CHECK(param);
-        if (!Ty::IsTyCorrect(Synthesize(ctx, param.get()))) {
+        if (!Ty::IsTyCorrect(Synthesize({ctx, SynPos::NONE}, param.get()))) {
             paramTys.push_back(TypeManager::GetInvalidTy()); // Set type to get correct size of function type.
             continue;
         }
@@ -531,7 +520,7 @@ bool TypeChecker::TypeCheckerImpl::ChkFuncArgWithInout(ASTContext& ctx, Ty& targ
     auto exprTy = fa.expr->ty;
     if (!Ty::IsTyCorrect(fa.expr->ty)) {
         // Trying to infer fa type without target.
-        exprTy = Synthesize(ctx, fa.expr.get());
+        exprTy = Synthesize({ctx, SynPos::EXPR_ARG}, fa.expr.get());
     }
     auto argTy = DynamicCast<VArrayTy*>(exprTy);
     auto ptrParamTy = DynamicCast<PointerTy*>(&target);
@@ -670,7 +659,7 @@ bool TypeChecker::TypeCheckerImpl::ChkInoutMemberAccess(const MemberAccess& ma)
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncArg(ASTContext& ctx, FuncArg& fa)
 {
     if (fa.expr) {
-        Synthesize(ctx, fa.expr.get());
+        Synthesize({ctx, SynPos::EXPR_ARG}, fa.expr.get());
         if (fa.withInout) {
             if (!Ty::IsTyCorrect(fa.expr->ty) || !ChkInoutFuncArg(fa)) {
                 fa.ty = TypeManager::GetInvalidTy();
@@ -881,23 +870,24 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::PerformBasicChecksForSynthe
     return {};
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(const CheckerContext& ctx, Ptr<Node> node)
 {
-    if (auto res = PerformBasicChecksForSynthesize(ctx, node)) {
+    if (auto res = PerformBasicChecksForSynthesize(ctx.Ctx(), node)) {
         return *res;
     }
-    ctx.typeCheckCache[node].lastKey = GetCacheKeyForSyn(ctx, node);
-    ASTContext* curCtx = &ctx;
+    ctx.Ctx().typeCheckCache[node].lastKey = GetCacheKeyForSyn(ctx.Ctx(), node);
+    ASTContext* curCtx = &ctx.Ctx();
     // If decl belongs to another package node, then switch to another AST context according to package node.
     if (ci->GetSourcePackages().size() > 1 && node->curFile) {
         if (auto ctx1 = ci->GetASTContextByPackage(node->curFile->curPackage)) {
             curCtx = ctx1;
         }
     }
+    CheckerContext newCtx{*curCtx, ctx.SynthPos()};
 
     if (auto decl = DynamicCast<Decl*>(node)) {
         auto stashDiagnoseStatus = diag.AutoStashDisableDiagnoseStatus();
-        CheckAnnotations(ctx, *decl);
+        CheckAnnotations(*curCtx, *decl);
     }
 
     switch (node->astKind) {
@@ -917,7 +907,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::BLOCK: {
-            node->ty = SynBlock(*curCtx, *StaticAs<ASTKind::BLOCK>(node));
+            node->ty = SynBlock(newCtx, *StaticAs<ASTKind::BLOCK>(node));
             break;
         }
         case ASTKind::FUNC_PARAM_LIST: {
@@ -937,7 +927,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::PAREN_EXPR: {
-            node->ty = SynParenExpr(*curCtx, *StaticAs<ASTKind::PAREN_EXPR>(node));
+            node->ty = SynParenExpr(newCtx, *StaticAs<ASTKind::PAREN_EXPR>(node));
             break;
         }
         case ASTKind::LAMBDA_EXPR: {
@@ -981,7 +971,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::IF_EXPR: {
-            node->ty = SynIfExpr(*curCtx, *StaticAs<ASTKind::IF_EXPR>(node));
+            node->ty = SynIfExpr(newCtx, *StaticAs<ASTKind::IF_EXPR>(node));
             break;
         }
         case ASTKind::TRY_EXPR: {
@@ -1003,7 +993,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::TRAIL_CLOSURE_EXPR: {
-            node->ty = SynTrailingClosure(ctx, *StaticAs<ASTKind::TRAIL_CLOSURE_EXPR>(node));
+            node->ty = SynTrailingClosure(*curCtx, *StaticAs<ASTKind::TRAIL_CLOSURE_EXPR>(node));
             break;
         }
         case ASTKind::MEMBER_ACCESS: {
@@ -1044,7 +1034,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
             break;
         }
         case ASTKind::OPTIONAL_CHAIN_EXPR: {
-            node->ty = SynOptionalChainExpr(*curCtx, *StaticAs<ASTKind::OPTIONAL_CHAIN_EXPR>(node));
+            node->ty = SynOptionalChainExpr(newCtx, *StaticAs<ASTKind::OPTIONAL_CHAIN_EXPR>(node));
             break;
         }
         case ASTKind::ENUM_DECL: {
@@ -1113,7 +1103,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(ASTContext& ctx, Ptr<Node> node
         case ASTKind::REF_TYPE:
             // Fall through !.
         case ASTKind::QUALIFIED_TYPE: {
-            CheckReferenceTypeLegality(ctx, *StaticAs<ASTKind::TYPE>(node));
+            CheckReferenceTypeLegality(*curCtx, *StaticAs<ASTKind::TYPE>(node));
             break;
         }
         case ASTKind::PROP_DECL: {
@@ -1221,7 +1211,7 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
         if (lub) {
             chkRet = Check(ctx, lub, node) && typeManager.IsSubtype(node->ty, realTarget);
         } else {
-            Synthesize(ctx, node);
+            Synthesize({ctx, SynPos::NONE}, node);
             ReplaceIdealTy(*node);
             chkRet = typeManager.IsSubtype(node->ty, realTarget);
         }
@@ -1391,7 +1381,7 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
                 break;
             }
             default: {
-                Synthesize(ctx, node);
+                Synthesize({ctx, SynPos::NONE}, node);
                 ReplaceIdealTy(*node);
                 chkRet = typeManager.IsSubtype(node->ty, realTarget);
                 break;
@@ -1491,16 +1481,16 @@ void TypeChecker::TypeCheckerImpl::CheckCallsInConstructor(
     }
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithCache(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithCache(const CheckerContext& ctx, Ptr<Node> node)
 {
     CJC_NULLPTR_CHECK(node);
     if (!typeManager.GetUnsolvedTyVars().empty()) {
         return Synthesize(ctx, node);
     }
-    CacheKey key = GetCacheKeyForSyn(ctx, node);
-    if (ctx.typeCheckCache[node].synCache.count(key) != 0) {
-        auto& cache = ctx.typeCheckCache[node].synCache[key];
-        RestoreCached(ctx, node, cache);
+    CacheKey key = GetCacheKeyForSyn(ctx.Ctx(), node);
+    if (ctx.Ctx().typeCheckCache[node].synCache.count(key) != 0) {
+        auto& cache = ctx.Ctx().typeCheckCache[node].synCache[key];
+        RestoreCached(ctx.Ctx(), node, cache);
         return cache.result;
     } else {
         return SynthesizeAndCache(ctx, node, key);
@@ -1523,16 +1513,16 @@ bool TypeChecker::TypeCheckerImpl::CheckWithCache(ASTContext& ctx, Ptr<Ty> targe
     }
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithNegCache(ASTContext& ctx, Ptr<Node> node)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithNegCache(const CheckerContext& ctx, Ptr<Node> node)
 {
     CJC_NULLPTR_CHECK(node);
     if (!typeManager.GetUnsolvedTyVars().empty()) {
         return Synthesize(ctx, node);
     }
-    CacheKey key = GetCacheKeyForSyn(ctx, node);
-    if (ctx.typeCheckCache[node].synCache.count(key) != 0 && !ctx.typeCheckCache[node].synCache[key].successful) {
-        auto& cache = ctx.typeCheckCache[node].synCache[key];
-        RestoreCached(ctx, node, cache);
+    CacheKey key = GetCacheKeyForSyn(ctx.Ctx(), node);
+    if (ctx.Ctx().typeCheckCache[node].synCache.count(key) != 0 && !ctx.Ctx().typeCheckCache[node].synCache[key].successful) {
+        auto& cache = ctx.Ctx().typeCheckCache[node].synCache[key];
+        RestoreCached(ctx.Ctx(), node, cache);
         return cache.result;
     } else {
         return SynthesizeAndCache(ctx, node, key);
@@ -1577,17 +1567,17 @@ bool TypeChecker::TypeCheckerImpl::CheckWithEffectiveCache(
     return CheckAndCache(ctx, target, node, key);
 }
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(ASTContext& ctx, Ptr<Node> node, bool recoverDiag)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(const CheckerContext& ctx, Ptr<Node> node, bool recoverDiag)
 {
     if (!typeManager.GetUnsolvedTyVars().empty() || !node) {
         return Synthesize(ctx, node);
     }
-    CacheKey key = GetCacheKeyForSyn(ctx, node);
+    CacheKey key = GetCacheKeyForSyn(ctx.Ctx(), node);
     if (!Ty::IsInitialTy(node->ty)) {
-        if (ctx.typeCheckCache[node].lastKey && ctx.typeCheckCache[node].lastKey.value() == key) {
-            if (ctx.typeCheckCache[node].synCache.count(key) != 0) {
-                auto& cache = ctx.typeCheckCache[node].synCache[key];
-                RestoreCached(ctx, node, cache, recoverDiag);
+        if (ctx.Ctx().typeCheckCache[node].lastKey && ctx.Ctx().typeCheckCache[node].lastKey.value() == key) {
+            if (ctx.Ctx().typeCheckCache[node].synCache.count(key) != 0) {
+                auto& cache = ctx.Ctx().typeCheckCache[node].synCache[key];
+                RestoreCached(ctx.Ctx(), node, cache, recoverDiag);
                 return cache.result;
             } else {
                 return SynthesizeAndCache(ctx, node, key);
@@ -1597,13 +1587,14 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynthesizeWithEffectiveCache(ASTContext& c
     return SynthesizeAndCache(ctx, node, key);
 }
 
-Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeAndCache(ASTContext& ctx, Ptr<AST::Node> node, const CacheKey& key)
+Ptr<AST::Ty> TypeChecker::TypeCheckerImpl::SynthesizeAndCache(
+    const CheckerContext& ctx, Ptr<AST::Node> node, const CacheKey& key)
 {
     DiagnosticCache dc;
-    dc.ToExclude(ctx.diag);
+    dc.ToExclude(ctx.Ctx().diag);
     auto ret = Synthesize(ctx, node);
-    dc.BackUp(ctx.diag);
-    ctx.typeCheckCache[node].synCache[key] = {.successful = ret && Ty::IsTyCorrect(ret) && dc.NoError(),
+    dc.BackUp(ctx.Ctx().diag);
+    ctx.Ctx().typeCheckCache[node].synCache[key] = {.successful = ret && Ty::IsTyCorrect(ret) && dc.NoError(),
         .result = ret,
         .diags = std::move(dc),
         .targets = CollectTargets(*node)};
@@ -1753,7 +1744,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheckCompositeBody(
                 CheckFinalizer(*fd);
             }
         }
-        Synthesize(ctx, decl.get());
+        Synthesize({ctx, SynPos::NONE}, decl.get());
         CheckCTypeMember(*decl);
     }
 }
@@ -2218,7 +2209,7 @@ void TypeChecker::TypeCheckerImpl::PrepareTypeCheck(ASTContext& ctx, Package& pk
 void TypeChecker::TypeCheckerImpl::TypeCheckTopLevelDecl(ASTContext& ctx, Decl& decl)
 {
     TyVarScope ts(typeManager); // to release local placeholder ty var
-    Synthesize(ctx, &decl);
+    Synthesize({ctx, SynPos::NONE}, &decl);
     MarkOverflow(decl);
 }
 
@@ -2235,7 +2226,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheckImportedGenericMember(ASTContext& ct
         }
         for (auto& member : id->GetMemberDecls()) {
             if (member->TestAttr(Attribute::GENERIC)) {
-                Synthesize(ctx, member.get());
+                Synthesize({ctx, SynPos::NONE}, member.get());
             }
         }
     }
@@ -2255,7 +2246,7 @@ void TypeChecker::TypeCheckerImpl::TypeCheck(ASTContext& ctx, Package& pkg)
     }
     // 2. check source imported decls.
     for (auto& node : pkg.srcImportedNonGenericDecls) {
-        Synthesize(ctx, node);
+        Synthesize({ctx, SynPos::NONE}, node);
     }
     // 3. check imported generic member decls which is defined in non-generic decl.
     // NOTE: This kind of decls will not be checked in step 1.

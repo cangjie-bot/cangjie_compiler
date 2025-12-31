@@ -284,7 +284,7 @@ void TypeChecker::TypeCheckerImpl::DesugarTryWithResourcesExpr(ASTContext& ctx, 
     auto tryBlock = CreateOuterTryBlock(ctx, *exceptionDecl, *someTy, *noneTy, te.resourceSpec, std::move(te.tryBlock));
     // Only try-block needs `Synthesize`. `catch` and `finally` were checked by `SynTryWithResourcesExpr`.
     // And they will be moved to the desugar try expression.
-    SynthesizeWithoutRecover(ctx, tryBlock.get());
+    SynthesizeWithoutRecover({ctx, SynPos::EXPR_ARG}, tryBlock.get());
     CJC_ASSERT(Ty::IsTyCorrect(tryBlock->ty) && tryBlock->ty->IsUnit());
     for (auto& block : te.catchBlocks) {
         CJC_NULLPTR_CHECK(block);

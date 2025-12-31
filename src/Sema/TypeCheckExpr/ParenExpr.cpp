@@ -9,9 +9,9 @@
 using namespace Cangjie;
 using namespace AST;
 
-Ptr<Ty> TypeChecker::TypeCheckerImpl::SynParenExpr(ASTContext& ctx, ParenExpr& pe)
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynParenExpr(const CheckerContext& ctx, ParenExpr& pe)
 {
-    (void)Synthesize(ctx, pe.expr.get());
+    Synthesize(ctx, pe.expr.get());
     if (!pe.expr || !Ty::IsTyCorrect(pe.expr->ty)) {
         pe.ty = TypeManager::GetInvalidTy();
         return TypeManager::GetInvalidTy();

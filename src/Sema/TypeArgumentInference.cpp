@@ -436,7 +436,7 @@ ErrOrSubst TypeChecker::TypeCheckerImpl::PrepareTyArgsSynthesis(
         return SolvingErrInfo{};
     }
     if (NeedSynOnUsed(fd)) {
-        Synthesize(ctx, &fd);
+        Synthesize({ctx, SynPos::NONE}, &fd);
     }
     stat.failSet = std::vector<bool>(stat.argTys.size(), true);
     stat.questParamTys = std::vector<Ptr<Ty>>(stat.argTys.size(), nullptr);
@@ -474,12 +474,12 @@ ErrOrSubst TypeChecker::TypeCheckerImpl::PrepareTyArgsSynthesis(
             } else if (Ty::IsInitialTy(stat.argTys[i])) {
                 // Initially, every arg goes into this branch. If the inference eventually fails,
                 // errors from this synthesize should be reported
-                stat.argTys[i] = SynthesizeWithCache(ctx, ce.args[i].get());
+                stat.argTys[i] = SynthesizeWithCache({ctx, SynPos::EXPR_ARG}, ce.args[i].get());
             } else if (stat.failSet[i] && !stat.lastResortUnused) {
                 // If some arg is a lambda, try to infer its param type from its body,
                 // as a last resort in case no enough contextual info is provided.
                 auto ds3 = DiagSuppressor(diag);
-                stat.argTys[i] = Synthesize(ctx, ce.args[i].get());
+                stat.argTys[i] = Synthesize({ctx, SynPos::EXPR_ARG}, ce.args[i].get());
             }
         }
         // 2. collect valid arg tys & update failSet

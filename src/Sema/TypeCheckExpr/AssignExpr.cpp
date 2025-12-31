@@ -228,11 +228,11 @@ void TypeChecker::TypeCheckerImpl::DiagnoseForSubscriptAssignExpr(
         bool areChildrenValid = true;
         for (auto& indexExpr : se.indexExprs) {
             CJC_NULLPTR_CHECK(indexExpr);
-            areChildrenValid =
-                Ty::IsTyCorrect(Synthesize(ctx, indexExpr.get())) && ReplaceIdealTy(*indexExpr) && areChildrenValid;
+            areChildrenValid = Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, indexExpr.get())) &&
+                ReplaceIdealTy(*indexExpr) && areChildrenValid;
         }
-        areChildrenValid =
-            Ty::IsTyCorrect(Synthesize(ctx, ae.rightExpr.get())) && ReplaceIdealTy(*ae.rightExpr) && areChildrenValid;
+        areChildrenValid = Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, ae.rightExpr.get())) &&
+            ReplaceIdealTy(*ae.rightExpr) && areChildrenValid;
         if (areChildrenValid) {
             // If all the children are valid, there must be operator overloading errors.
             // Firstly, report the warnings in children.
@@ -256,7 +256,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::InferAssignExprCheckCaseOve
     if (!ae.desugarExpr && ae.leftValue && ae.leftValue->astKind == ASTKind::SUBSCRIPT_EXPR) {
         SubscriptExpr& se = StaticCast<SubscriptExpr&>(*ae.leftValue);
         DesugarSubscriptOverloadExpr(ctx, ae);
-        if (Ty::IsTyCorrect(Synthesize(ctx, ae.desugarExpr.get()))) {
+        if (Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, ae.desugarExpr.get()))) {
             ds.ReportDiag();
             CJC_NULLPTR_CHECK(ae.desugarExpr);
             ae.ty = ae.desugarExpr->ty;
@@ -274,7 +274,7 @@ std::optional<Ptr<Ty>> TypeChecker::TypeCheckerImpl::InferAssignExprCheckCaseOve
         ctx.DeleteDesugarExpr(ae.desugarExpr);
     } else if (ae.isCompound) {
         DesugarOperatorOverloadExpr(ctx, ae);
-        if (Ty::IsTyCorrect(Synthesize(ctx, ae.desugarExpr.get()))) {
+        if (Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, ae.desugarExpr.get()))) {
             ds.ReportDiag();
             ae.ty = ae.desugarExpr->ty;
             CallExpr& ce = StaticCast<CallExpr&>(*StaticCast<AssignExpr&>(*ae.desugarExpr).rightExpr);
@@ -313,10 +313,10 @@ bool TypeChecker::TypeCheckerImpl::ChkAssignExpr(ASTContext& ctx, Ty& target, As
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMultipleAssignExpr(ASTContext& ctx, AST::AssignExpr& ae)
 {
-    (void)Synthesize(ctx, ae.desugarExpr.get());
+    Synthesize({ctx, SynPos::UNUSED}, ae.desugarExpr.get());
     CJC_NULLPTR_CHECK(ae.desugarExpr);
     ae.ty = ae.desugarExpr->ty;
-    (void)Synthesize(ctx, ae.rightExpr.get());
+    Synthesize({ctx, SynPos::EXPR_ARG}, ae.rightExpr.get());
     CJC_NULLPTR_CHECK(ae.rightExpr);
     if (!Ty::IsTyCorrect(ae.rightExpr->ty)) {
         return ae.ty;
@@ -324,7 +324,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMultipleAssignExpr(ASTContext& ctx, AST
     typeManager.ReplaceIdealTy(&ae.rightExpr->ty);
     { // Create a scope for DiagSuppressor.
         auto ds = DiagSuppressor(diag);
-        (void)Synthesize(ctx, ae.leftValue.get());
+        Synthesize({ctx, SynPos::LEFT_VALUE}, ae.leftValue.get());
     }
     CheckMultipleAssignExpr(diag, typeManager, ae);
     return ae.ty;
@@ -347,7 +347,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynAssignExpr(ASTContext& ctx, AssignExpr&
     CJC_ASSERT(ae.leftValue && ae.rightExpr);
     ae.ty = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
     if (ae.leftValue->astKind == ASTKind::WILDCARD_EXPR) {
-        if (Ty::IsTyCorrect(Synthesize(ctx, ae.rightExpr.get()))) {
+        if (Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, ae.rightExpr.get()))) {
             typeManager.ReplaceIdealTy(&ae.rightExpr->ty);
         } else {
             ae.ty = TypeManager::GetInvalidTy();
@@ -355,7 +355,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynAssignExpr(ASTContext& ctx, AssignExpr&
         ae.leftValue->ty = ae.rightExpr->ty;
         return ae.ty;
     }
-    auto lTy = Synthesize(ctx, ae.leftValue.get());
+    auto lTy = Synthesize({ctx, SynPos::LEFT_VALUE}, ae.leftValue.get());
     if (lTy->IsInvalid()) {
         ae.ty = TypeManager::GetInvalidTy();
         return TypeManager::GetInvalidTy();
@@ -425,7 +425,7 @@ bool TypeChecker::TypeCheckerImpl::PreCheckCompoundAssign(
     if (ae.isCompound) {
         const auto& typeCandidates = COMPOUND_ASSIGN_TYPE_MAP.at(ae.op);
         if (Ty::IsInitialTy(&lTy) || !Utils::In(lTy.kind, typeCandidates)) {
-            (void)Synthesize(ctx, ae.rightExpr.get());
+            Synthesize({ctx, SynPos::EXPR_ARG}, ae.rightExpr.get());
             if (ae.ShouldDiagnose()) {
                 (void)std::for_each(diags.begin(), diags.end(), [this](auto info) { (void)diag.Diagnose(info); });
                 (void)diag.Diagnose(ae, DiagKind::sema_type_incompatible, "compound assignment expression");

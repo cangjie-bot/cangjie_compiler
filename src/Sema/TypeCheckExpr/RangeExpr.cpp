@@ -123,12 +123,14 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynRangeExprInferElemTy(const RangeExpr& r
 {
     // If type of startExpr is Nothing or startExpr is litconst when only one of start/stop is litconst,
     // using type of stopExpr or default Int64 type.
-    Ptr<Ty> startTy = re.startExpr ? Synthesize(ctx, re.startExpr.get()) : TypeManager::GetInvalidTy();
+    Ptr<Ty> startTy =
+        re.startExpr ? Synthesize({ctx, SynPos::EXPR_ARG}, re.startExpr.get()) : TypeManager::GetInvalidTy();
     bool useStartLit = !Is<LitConstExpr>(re.startExpr.get()) || Is<LitConstExpr>(re.stopExpr.get());
     if (Ty::IsTyCorrect(startTy) && !startTy->IsNothing() && useStartLit) {
         return startTy;
     }
-    Ptr<Ty> stopTy = re.stopExpr ? Synthesize(ctx, re.stopExpr.get()) : TypeManager::GetInvalidTy();
+    Ptr<Ty> stopTy =
+        re.stopExpr ? Synthesize({ctx, SynPos::EXPR_ARG}, re.stopExpr.get()) : TypeManager::GetInvalidTy();
     if (Ty::IsTyCorrect(stopTy) && !stopTy->IsNothing()) {
         return stopTy;
     } else if (Ty::IsTyCorrect(startTy)) {

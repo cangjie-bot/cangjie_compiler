@@ -77,7 +77,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchExprHasSelector(ASTContext& ctx, M
 {
     // Synthesize selector's ty.
     CJC_NULLPTR_CHECK(me.selector);
-    Synthesize(ctx, me.selector.get());
+    Synthesize({ctx, SynPos::NONE}, me.selector.get());
     ReplaceIdealTy(*me.selector);
 
     // Check each case.
@@ -221,7 +221,8 @@ bool TypeChecker::TypeCheckerImpl::ChkMatchExprHasSelector(ASTContext& ctx, AST:
 {
     CJC_NULLPTR_CHECK(me.selector);
     std::set<Ptr<Ty>> matchCaseTyVec;
-    bool isMatchCorrect = Synthesize(ctx, me.selector.get()) && ReplaceIdealTy(*me.selector);
+    bool isMatchCorrect =
+        Synthesize({ctx, SynPos::EXPR_ARG}, me.selector.get()) && ReplaceIdealTy(*me.selector);
     auto selectorTy = me.selector->ty;
 
     for (auto& mc : me.matchCases) {
@@ -289,7 +290,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynMatchCaseNoSelector(ASTContext& ctx, Ma
     }
 
     // Synthesize the ty of exprOrDecls of each case.
-    mco.ty = Synthesize(ctx, mco.exprOrDecls.get());
+    mco.ty = Synthesize({ctx, SynPos::EXPR_ARG}, mco.exprOrDecls.get());
     return mco.ty;
 }
 
@@ -311,7 +312,7 @@ bool TypeChecker::TypeCheckerImpl::ChkMatchCaseActions(ASTContext& ctx, Ptr<Ty> 
         return false;
     }
     if (!target) { // Synthesize the ty of exprOrDecls of each case.
-        mc.exprOrDecls->ty = Synthesize(ctx, mc.exprOrDecls.get());
+        mc.exprOrDecls->ty = Synthesize({ctx, SynPos::EXPR_ARG}, mc.exprOrDecls.get());
         mc.ty = mc.exprOrDecls->ty;
     } else if (Check(ctx, target, mc.exprOrDecls.get())) { // Check whether exprOrDecls->ty has given target ty.
         mc.ty = mc.exprOrDecls->ty;

@@ -335,6 +335,12 @@ public:
     Ptr<AST::Ty> TryGreedySubst(Ptr<AST::Ty> ty);
     // constraints for placeholder type vars
     Constraint constraints;
+
+    /// recursively replace This in type args
+    Ptr<AST::Ty> ReplaceThisTy(Ptr<AST::Ty> now);
+    /// get the class ty that This refers to if it is a This ty
+    Ptr<AST::Ty> GetThisRealTy(Ptr<AST::Ty> now);
+
 private:
     friend class TyVarScope;
     friend class InstCtxScope;

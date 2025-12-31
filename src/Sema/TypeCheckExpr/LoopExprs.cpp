@@ -51,7 +51,7 @@ bool TypeChecker::TypeCheckerImpl::ChkWhileExpr(ASTContext& ctx, Ty& target, Whi
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynWhileExpr(ASTContext& ctx, WhileExpr& we)
 {
     bool isWellTyped = CheckCondition(ctx, *we.condExpr, false);
-    isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, we.body.get())) && isWellTyped;
+    isWellTyped = Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, we.body.get())) && isWellTyped;
     we.ty =
         isWellTyped ? StaticCast<Ty*>(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT)) : TypeManager::GetInvalidTy();
     return we.ty;
@@ -70,7 +70,7 @@ bool TypeChecker::TypeCheckerImpl::ChkDoWhileExpr(ASTContext& ctx, Ty& target, D
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynDoWhileExpr(ASTContext& ctx, DoWhileExpr& dwe)
 {
-    bool isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, dwe.body.get()));
+    bool isWellTyped = Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, dwe.body.get()));
     isWellTyped = CheckCondition(ctx, *dwe.condExpr, false) && isWellTyped;
     dwe.ty =
         isWellTyped ? StaticCast<Ty*>(TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT)) : TypeManager::GetInvalidTy();
@@ -96,7 +96,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynForInExpr(ASTContext& ctx, ForInExpr& f
     CJC_NULLPTR_CHECK(fie.inExpression);
     CJC_NULLPTR_CHECK(fie.pattern);
 
-    bool isWellTyped = Synthesize(ctx, fie.inExpression.get()) && ReplaceIdealTy(*fie.inExpression);
+    bool isWellTyped =
+        Synthesize({ctx, SynPos::EXPR_ARG}, fie.inExpression.get()) && ReplaceIdealTy(*fie.inExpression);
 
     // Implemented iterable in stdlib.
     CJC_NULLPTR_CHECK(fie.inExpression->ty);
@@ -124,7 +125,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynForInExpr(ASTContext& ctx, ForInExpr& f
         }
     }
 
-    isWellTyped = Ty::IsTyCorrect(Synthesize(ctx, fie.body.get())) && isWellTyped;
+    isWellTyped = Ty::IsTyCorrect(Synthesize({ctx, SynPos::UNUSED}, fie.body.get())) && isWellTyped;
     if (!IsIrrefutablePattern(*fie.pattern)) {
         isWellTyped = false;
         diag.Diagnose(fie, DiagKind::sema_forin_pattern_must_be_irrefutable);

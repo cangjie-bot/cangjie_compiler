@@ -141,7 +141,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynArrayLit(ASTContext& ctx, ArrayLit& al)
     std::set<Ptr<Ty>> arrayElemTys;
     bool hasInvalidElemTy = false;
     for (auto& child : al.children) {
-        if (Synthesize(ctx, child.get()) && !ReplaceIdealTy(*child)) {
+        if (Synthesize({ctx, SynPos::EXPR_ARG}, child.get()) && !ReplaceIdealTy(*child)) {
             hasInvalidElemTy = true;
         }
         arrayElemTys.insert(child->ty);
@@ -208,7 +208,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSizedArrayWithoutElemTy(ASTContext& ctx, T
     // Array as 'RawArray(size, expr)', need type inference. Type should match RawArray<T>(size, element: (Int64)->T).
     if (target.IsInvalid() || target.IsInterface()) {
         // No target type, synthesis expression type. Type must be (Int64)->T.
-        (void)Synthesize(ctx, ae.args[1].get());
+        Synthesize({ctx, SynPos::EXPR_ARG}, ae.args[1].get());
         ReplaceIdealTy(*ae.args[1]);
         ReplaceIdealTy(*ae.args[1]->expr);
         auto exprTy = ae.args[1]->ty;
@@ -254,7 +254,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSizedArrayExpr(ASTContext& ctx, Ty& target
     }
     ae.initFunc = importManager.GetCoreDecl<FuncDecl>("arrayInitByFunction");
     CJC_NULLPTR_CHECK(ae.initFunc);
-    Synthesize(ctx, ae.initFunc); // Non-public decl should synthesize manually.
+    Synthesize({ctx, SynPos::EXPR_ARG}, ae.initFunc); // Non-public decl should synthesize manually.
     CJC_ASSERT(arrayTy && !arrayTy->typeArgs.empty());
     if (arrayTy->typeArgs[0]->IsInvalid()) {
         return ChkSizedArrayWithoutElemTy(ctx, target, ae);
@@ -280,7 +280,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSingeArgArrayWithoutElemTy(ASTContext& ctx
     auto arrayTy = RawStaticCast<ArrayTy*>(ae.type->ty);
     // Array(List/Collection), need type inference.
     CJC_ASSERT(!ae.args.empty());
-    auto exprTy = Synthesize(ctx, ae.args[0].get());
+    auto exprTy = Synthesize({ctx, SynPos::EXPR_ARG}, ae.args[0].get());
     if (!Ty::IsTyCorrect(exprTy)) {
         diag.Diagnose(*ae.args[0], DiagKind::sema_array_single_element_type_error);
         return false;
@@ -293,7 +293,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSingeArgArrayWithoutElemTy(ASTContext& ctx
         ae.ty = typeManager.GetArrayTy(collectionTy->typeArgs[0], arrayTy->dims);
         ae.initFunc = importManager.GetCoreDecl<FuncDecl>("arrayInitByCollection");
         CJC_NULLPTR_CHECK(ae.initFunc);
-        Synthesize(ctx, ae.initFunc); // Non-public decl should synthesize manually.
+        Synthesize({ctx, SynPos::EXPR_ARG}, ae.initFunc); // Non-public decl should synthesize manually.
     } else {
         diag.Diagnose(*ae.args[0], DiagKind::sema_array_single_element_type_error);
         return false;
@@ -320,7 +320,7 @@ bool TypeChecker::TypeCheckerImpl::ChkSingeArgArrayExpr(ASTContext& ctx, Ty& tar
     if (Check(ctx, collectionTy, ae.args[0].get())) {
         ae.initFunc = importManager.GetCoreDecl<FuncDecl>("arrayInitByCollection");
         CJC_NULLPTR_CHECK(ae.initFunc);
-        Synthesize(ctx, ae.initFunc); // Non-public decl should synthesize manually.
+        Synthesize({ctx, SynPos::EXPR_ARG}, ae.initFunc); // Non-public decl should synthesize manually.
         return target.IsInvalid() || typeManager.IsSubtype(ae.ty, &target);
     }
     diag.Diagnose(*ae.args[0], DiagKind::sema_array_single_element_type_error);
@@ -339,7 +339,7 @@ bool TypeChecker::TypeCheckerImpl::ChkArrayExpr(ASTContext& ctx, Ty& target, Arr
         ae.ty = TypeManager::GetNonNullTy(ae.ty);
         return false;
     }
-    ae.type->ty = Synthesize(ctx, ae.type.get());
+    ae.type->ty = Synthesize({ctx, SynPos::EXPR_ARG}, ae.type.get());
     if (ae.type->ty == nullptr || !ae.type->ty->IsArray()) {
         ae.ty = TypeManager::GetNonNullTy(ae.ty);
         return false;
@@ -402,7 +402,7 @@ bool TypeChecker::TypeCheckerImpl::ChkVArrayExpr(ASTContext& ctx, Ty& target, Ar
 {
     CJC_NULLPTR_CHECK(ve.type);
     Ptr<Ty> targetTy = TypeCheckUtil::UnboxOptionType(&target);
-    ve.type->ty = Synthesize(ctx, ve.type.get());
+    ve.type->ty = Synthesize({ctx, SynPos::EXPR_ARG}, ve.type.get());
     if (!Ty::IsTyCorrect(ve.type->ty) || !Is<VArrayTy>(ve.type->ty)) {
         ve.ty = TypeManager::GetInvalidTy();
         return false;
@@ -424,7 +424,7 @@ bool TypeChecker::TypeCheckerImpl::ChkVArrayExpr(ASTContext& ctx, Ty& target, Ar
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynArrayExpr(ASTContext& ctx, ArrayExpr& ae)
 {
     CJC_NULLPTR_CHECK(ae.type);
-    ae.type->ty = Synthesize(ctx, ae.type.get());
+    ae.type->ty = Synthesize({ctx, SynPos::EXPR_ARG}, ae.type.get());
     if (ae.type->ty == nullptr || !ae.type->ty->IsArray()) {
         ae.ty = TypeManager::GetInvalidTy();
         return ae.ty;
@@ -456,7 +456,7 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynArrayExpr(ASTContext& ctx, ArrayExpr& a
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynVArrayExpr(ASTContext& ctx, ArrayExpr& ve)
 {
     CJC_NULLPTR_CHECK(ve.type);
-    ve.type->ty = Synthesize(ctx, ve.type.get());
+    ve.type->ty = Synthesize({ctx, SynPos::EXPR_ARG}, ve.type.get());
     if (!Ty::IsTyCorrect(ve.type->ty) || !Is<VArrayTy>(ve.type->ty)) {
         ve.ty = TypeManager::GetInvalidTy();
         return ve.ty;
@@ -484,7 +484,7 @@ bool TypeChecker::TypeCheckerImpl::ChkPointerExpr(ASTContext& ctx, Ty& target, P
         ret = Check(ctx, targetTy, cpe.type.get());
     } else {
         // 'var a = CPointer<T>()': Type derivation does not depend on target information.
-        cpe.type->ty = Synthesize(ctx, cpe.type.get());
+        cpe.type->ty = Synthesize({ctx, SynPos::NONE}, cpe.type.get());
     }
     cpe.ty = cpe.type->ty;
     // 'var a = CPointer()': Generic type cannot be derived.
@@ -497,7 +497,7 @@ bool TypeChecker::TypeCheckerImpl::ChkPointerExpr(ASTContext& ctx, Ty& target, P
 
     // One arg.
     if (cpe.arg) {
-        auto argTy = Synthesize(ctx, cpe.arg.get());
+        auto argTy = Synthesize({ctx, SynPos::EXPR_ARG}, cpe.arg.get());
         if (!Ty::IsTyCorrect(argTy) || !(argTy->IsPointer() || argTy->IsCFunc())) {
             if (!TypeCheckUtil::CanSkipDiag(*cpe.arg)) {
                 diag.Diagnose(cpe, DiagKind::sema_pointer_single_element_type_error);
@@ -535,7 +535,7 @@ bool TypeChecker::TypeCheckerImpl::SynCFuncCall(ASTContext& ctx, CallExpr& ce)
         ce.ty = TypeManager::GetInvalidTy();
         return false;
     }
-    ce.ty = Synthesize(ctx, ce.baseFunc.get());
+    ce.ty = Synthesize({ctx, SynPos::EXPR_ARG}, ce.baseFunc.get());
     if (!Ty::IsTyCorrect(ce.baseFunc->ty) || !Ty::IsTyCorrect(ce.ty)) {
         ce.ty = TypeManager::GetInvalidTy();
         return false;
@@ -546,7 +546,7 @@ bool TypeChecker::TypeCheckerImpl::SynCFuncCall(ASTContext& ctx, CallExpr& ce)
             ce.ty = TypeManager::GetInvalidTy();
             return false;
         }
-        Synthesize(ctx, ce.args[0]);
+        Synthesize({ctx, SynPos::EXPR_ARG}, ce.args[0]);
         if (!Ty::IsTyCorrect(ce.args[0]->ty)) {
             ce.ty = TypeManager::GetInvalidTy();
             return false;

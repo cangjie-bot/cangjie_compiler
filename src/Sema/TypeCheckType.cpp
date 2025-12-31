@@ -109,9 +109,9 @@ std::tuple<bool, std::string> TypeChecker::TypeCheckerImpl::CheckVArrayWithRefTy
 
 void TypeChecker::TypeCheckerImpl::CheckVArrayType(ASTContext& ctx, const VArrayType& vt)
 {
-    Synthesize(ctx, vt.typeArgument.get());
+    Synthesize({ctx, SynPos::NONE}, vt.typeArgument.get());
     if (auto ct = DynamicCast<ConstantType*>(vt.constantType.get()); ct) {
-        ct->ty = Synthesize(ctx, ct->constantExpr.get());
+        ct->ty = Synthesize({ctx, SynPos::NONE}, ct->constantExpr.get());
     }
     // The runtime gc cannot manage data of type llvm::array, so it cannot use a reference type as its element type,
     // which is temporarily prohibited by semantics.
@@ -301,7 +301,7 @@ void TypeChecker::TypeCheckerImpl::CheckTupleType(ASTContext& ctx, TupleType& tt
 {
     for (auto& it : tt.fieldTypes) {
         CJC_NULLPTR_CHECK(it);
-        Synthesize(ctx, it.get());
+        Synthesize({ctx, SynPos::NONE}, it.get());
         if (it->ty && Ty::IsCTypeConstraint(*it->ty)) {
             diag.Diagnose(*it, DiagKind::sema_invalid_tuple_field_ctype);
             return;

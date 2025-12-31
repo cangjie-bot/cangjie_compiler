@@ -58,11 +58,11 @@
 
 #include "TypeCheckUtil.h"
 
+#include "cangjie/AST/ASTCasting.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Types.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/Sema/TypeManager.h"
-#include "cangjie/AST/ASTCasting.h"
 #include "cangjie/Utils/CheckUtils.h"
 
 namespace Cangjie {
@@ -395,6 +395,7 @@ public:
         if (!Ty::IsTyCorrect(pattern.ty) || !IsValidTy(*pattern.ty)) {
             return {Constructor::Invalid(), {}, *TypeManager::GetInvalidTy(), &pattern};
         }
+        auto goal = typeManager.ReplaceThisTy(&goalTy);
         // Now we are 100% sure that `pattern.ty` contains a type.
         switch (pattern.astKind) {
             case ASTKind::CONST_PATTERN: {
@@ -407,7 +408,7 @@ public:
                 return FromEnumPattern(typeManager, static_cast<EnumPattern&>(pattern));
             }
             case ASTKind::TYPE_PATTERN: {
-                return FromTypePattern(typeManager, goalTy, static_cast<TypePattern&>(pattern));
+                return FromTypePattern(typeManager, *goal, static_cast<TypePattern&>(pattern));
             }
             // Variable pattern behaves the same as a wildcard in the usefulness checking problem.
             // And we don't care about the name for binding.
@@ -416,7 +417,7 @@ public:
                 return {Constructor::Wildcard(), {}, *pattern.ty, &pattern};
             }
             case ASTKind::VAR_OR_ENUM_PATTERN: {
-                return FromPattern(typeManager, goalTy, *static_cast<VarOrEnumPattern&>(pattern).pattern);
+                return FromPattern(typeManager, *goal, *static_cast<VarOrEnumPattern&>(pattern).pattern);
             }
             default: {
                 CJC_ABORT(); // unreachable

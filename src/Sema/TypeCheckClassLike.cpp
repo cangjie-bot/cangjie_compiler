@@ -115,7 +115,7 @@ void TypeChecker::TypeCheckerImpl::CheckClassDecl(ASTContext& ctx, ClassDecl& cd
     // Do type check for all implemented interfaces.
     for (auto& it : cd.inheritedTypes) {
         CJC_NULLPTR_CHECK(it);
-        Synthesize(ctx, it.get());
+        Synthesize({ctx, SynPos::NONE}, it.get());
         if (auto rt = DynamicCast<RefType*>(it.get()); rt && rt->ref.target) {
             CheckSealedInheritance(cd, *rt);
             CheckThreadContextInheritance(cd, *rt);
@@ -244,7 +244,7 @@ void TypeChecker::TypeCheckerImpl::CheckInterfaceDecl(ASTContext& ctx, Interface
     id.EnableAttr(Attribute::IS_CHECK_VISITED);
     // Do type check for all implemented interfaces.
     for (auto& interfaceType : id.inheritedTypes) {
-        Synthesize(ctx, interfaceType.get());
+        Synthesize({ctx, SynPos::NONE}, interfaceType.get());
         if (auto it = DynamicCast<InterfaceTy*>(interfaceType->ty); it) {
             it->decl->subDecls.insert(&id);
             CheckSealedInheritance(id, *interfaceType);

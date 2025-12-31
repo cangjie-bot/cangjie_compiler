@@ -137,7 +137,8 @@ OwnedPtr<CallExpr> TypeChecker::TypeCheckerImpl::CheckCustomAnnotation(
     if (!callExpr) {
         return nullptr;
     }
-    if (Ty::IsTyCorrect(Synthesize(ctx, callExpr.get())) && CheckCustomAnnotationPlace(diag, decl, ann)) {
+    if (Ty::IsTyCorrect(Synthesize({ctx, SynPos::EXPR_ARG}, callExpr.get())) &&
+        CheckCustomAnnotationPlace(diag, decl, ann)) {
         CJC_ASSERT(callExpr->ty->IsClass());
         // The args information needs to be save into cjo. The original node need to be recover.
         std::vector<OwnedPtr<FuncArg>> args = {};
@@ -198,7 +199,7 @@ void TypeChecker::TypeCheckerImpl::CheckAnnotations(ASTContext& ctx, Decl& decl)
             }
             default: {
                 for (auto& arg : anno->args) {
-                    (void)Synthesize(ctx, arg.get());
+                    Synthesize({ctx, SynPos::EXPR_ARG}, arg.get());
                 }
             }
         }
