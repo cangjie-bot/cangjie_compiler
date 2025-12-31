@@ -228,6 +228,11 @@ bool ParserImpl::ParseImportSingle(ImportContent& content, bool inMultiImport)
         if (content.prefixPaths.empty() && !inMultiImport && Skip(TokenKind::DOUBLE_COLON)) {
             content.hasDoubleColon = true;
             skipDc = true;
+            // illegal to use raw identifier as org name
+            if (curIdent.IsRaw() && !content.TestAttr(Attribute::IS_BROKEN)) {
+                ParseDiagnoseRefactor(DiagKindRefactor::parse_package_name_has_backtick,
+                    MakeRange(curIdent.Begin() - 1, curIdent.End() + 1));
+            }
         }
     } while (skipDc || Skip(TokenKind::DOT));
 
