@@ -93,6 +93,7 @@ ERROR(parse_expected_no_newline_after, "expected no new-line character after %s"
     "expected no new-line character here", {"after %s"})
 ERROR(parse_expected_if_let_andand, "expected '&&', '||', or ')', got 'where'", "did you mean to write '&&'")
 ERROR(parse_duplicated_item, "duplicated %s '%s'%s", "duplicated %s", {"previous one is here"})
+ERROR(parse_expected_identifier, "expected identifier, got '`'")
 WARNING(parse_nl_warning, PARSER, "possibly confusing line terminator","", {"possibly confusing line terminator between '%s' and '%s'"})
 
 // Declaration related.
