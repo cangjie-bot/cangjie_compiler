@@ -94,8 +94,12 @@ bool Job::Execute(bool dryLink) const
     auto& lastBatch = commandList.back();
     std::string linkCmd = "";
     if (dryLink && lastBatch.size() == 1 && FileUtil::GetFileName(lastBatch[0]->GetName()) == "ld64.lld") {
+        Println("shit needSkipLink = true");
         needSkipLink = true;
         linkCmd = FileUtil::Normalize(lastBatch[0]->GetCommandString());
+    }
+    else {
+        Println("shit needSkipLink = false "+FileUtil::GetFileName(lastBatch[0]->GetName()));
     }
     std::string srcPath = "";
     std::string dstPath = "";
