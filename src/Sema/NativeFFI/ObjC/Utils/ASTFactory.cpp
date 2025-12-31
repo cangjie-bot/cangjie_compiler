@@ -807,7 +807,12 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method, const Nativ
     auto instantTy = GetInstantyForGenericTy(*method.outerDecl, actualTyArgMap, typeManager);
     auto retActualTy = retTy->IsGeneric() ? actualTyArgMap[retTy->name] : retTy;
     if (method.TestAttr(Attribute::STATIC)) {
-        methodExpr = CreateMemberAccess(WithinFile(CreateRefExpr(*method.outerDecl), method.curFile), method);
+        auto staticRefExpr = CreateRefExpr(*method.outerDecl);
+        if (method.outerDecl->ty->HasGeneric()) {
+            staticRefExpr->typeArguments = std::move(actualPrimitiveType);
+            staticRefExpr->ty = instantTy;
+        }
+        methodExpr = CreateMemberAccess(WithinFile(std::move(staticRefExpr), method.curFile), method);
     } else {
         auto registryIdTy = bridge.GetRegistryIdTy();
         auto registryIdParam = CreateFuncParam(REGISTRY_ID_IDENT, CreateType(registryIdTy), nullptr, registryIdTy);
@@ -853,13 +858,9 @@ OwnedPtr<FuncDecl> ASTFactory::CreateMethodWrapper(FuncDecl& method, const Nativ
             if (it != actualTyArgMap.end()) {
                 finalTy = it->second;
             }
-            if (!finalTy) {
-                throw std::runtime_error("Missing type for parameter: " + paramName);
-            }
+            CJC_NULLPTR_CHECK(finalTy);
             auto convertedParamTy = typeMapper.Cj2CType(finalTy);
-            if (!convertedParamTy) {
-                throw std::runtime_error("Failed to convert type for parameter: " + paramName);
-            }
+            CJC_NULLPTR_CHECK(convertedParamTy);
             return CreateFuncParam(p->identifier.GetRawText() + (typeMapper.IsObjCCJMapping(*finalTy) ? "Id" : ""),
                 CreateType(convertedParamTy), nullptr, convertedParamTy);
         }
