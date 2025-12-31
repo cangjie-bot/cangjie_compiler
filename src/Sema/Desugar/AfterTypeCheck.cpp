@@ -446,6 +446,8 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterSema(std::vector<Ptr<AST::
     // Then can not debugging stdlib with abs path.
     bool saveFileWithAbsPath =
         ci->invocation.globalOptions.enableCompileDebug || ci->invocation.globalOptions.enableCoverage;
+    // Set overflow strategy for whole package.
+    SetOverflowStrategyAfterSemantic();
     for (auto& pkg : pkgs) {
         bool saveAbsPath = STANDARD_LIBS.find(pkg->fullPackageName) != STANDARD_LIBS.end()
             ? ci->invocation.globalOptions.enableCoverage
