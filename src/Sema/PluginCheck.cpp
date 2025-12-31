@@ -397,7 +397,9 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
             }
         }
     }
-    intersectionSet = lastSyscap.value();
+    if (lastSyscap) {
+        intersectionSet = std::move(*lastSyscap);
+    }
 }
 
 void PluginCustomAnnoChecker::ParseOption() noexcept
