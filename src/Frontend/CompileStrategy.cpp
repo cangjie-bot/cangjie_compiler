@@ -66,7 +66,7 @@ bool CompileStrategy::OverflowStrategy() const
         ci->typeChecker = typeChecker;
     }
     CJC_ASSERT(ci->invocation.globalOptions.overflowStrategy != OverflowStrategy::NA);
-    ci->typeChecker->SetOverflowStrategy(ci->GetSourcePackages());
+    ci->typeChecker->SetOverflowStrategyForInstantiatedDecl();
     return true;
 }
 

@@ -30,7 +30,6 @@ public:
      * @see TypeCheck
      */
     void TypeCheckForPackages(const std::vector<Ptr<AST::Package>>& pkgs) const;
-    void SetOverflowStrategy(const std::vector<Ptr<AST::Package>>& pkgs) const;
     /**
      * Perform autobox and recursive type resolving of enum.
      */
@@ -56,6 +55,8 @@ public:
      * @param targets all candidate members.
      */
     void RemoveTargetNotMeetExtendConstraint(const Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Decl>>& targets);
+
+    void SetOverflowStrategyForInstantiatedDecl() const;
 
 private:
     friend class InstCtxScope;
