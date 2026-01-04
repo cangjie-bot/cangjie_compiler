@@ -567,7 +567,8 @@ void TypeChecker::TypeCheckerImpl::DesugarPointerCall(ASTContext& ctx, CallExpr&
     pointerExpr->type = MakeOwnedNode<Type>();
     ctx.RemoveTypeCheckCache(*pointerExpr);
     ctx.RemoveTypeCheckCache(*(pointerExpr->type));
-    auto baseFuncTy = ce.baseFunc->ty ? SubstituteTypeAliasInTy(*ce.baseFunc->ty) : TypeManager::GetInvalidTy();
+    auto baseFuncTy =
+        ce.baseFunc->ty ? typeManager.SubstituteTypeAliasInTy(*ce.baseFunc->ty) : TypeManager::GetInvalidTy();
     CJC_ASSERT(baseFuncTy);
     auto typeArgs = baseFuncTy->typeArgs;
     auto baseArgs = ce.baseFunc->GetTypeArgs();
@@ -602,7 +603,8 @@ void TypeChecker::TypeCheckerImpl::DesugarArrayCall(ASTContext& ctx, CallExpr& c
     arrayExpr->type = MakeOwnedNode<Type>();
     ctx.RemoveTypeCheckCache(*arrayExpr);
     ctx.RemoveTypeCheckCache(*(arrayExpr->type));
-    auto baseFuncTy = ce.baseFunc->ty ? SubstituteTypeAliasInTy(*ce.baseFunc->ty) : TypeManager::GetInvalidTy();
+    auto baseFuncTy =
+        ce.baseFunc->ty ? typeManager.SubstituteTypeAliasInTy(*ce.baseFunc->ty) : TypeManager::GetInvalidTy();
     CJC_ASSERT(baseFuncTy);
     auto typeArgs = typeManager.GetTypeArgs(*baseFuncTy); // ArrayTy has 'dims', must using function to get arguments.
     auto baseArgs = ce.baseFunc->GetTypeArgs();

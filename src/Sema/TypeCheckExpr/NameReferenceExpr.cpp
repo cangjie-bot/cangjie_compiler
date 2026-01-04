@@ -473,7 +473,7 @@ void TypeChecker::TypeCheckerImpl::InferRefExpr(ASTContext& ctx, RefExpr& re)
         re.ty = TypeManager::GetInvalidTy();
         return;
     }
-    re.ty = SubstituteTypeAliasInTy(*re.ref.target->ty);
+    re.ty = typeManager.SubstituteTypeAliasInTy(*re.ref.target->ty);
     if (!decl->IsFunc() || re.isAlone) {
         // Only check non-function or non-call target. Functions will be check after function overload resolution.
         InstantiateReferenceType(ctx, re);
@@ -585,7 +585,7 @@ void TypeChecker::TypeCheckerImpl::InferMemberAccess(ASTContext& ctx, MemberAcce
         ma.ty = TypeManager::GetInvalidTy();
         return;
     }
-    ma.ty = SubstituteTypeAliasInTy(*ma.target->ty);
+    ma.ty = typeManager.SubstituteTypeAliasInTy(*ma.target->ty);
     // Only instantiate ty for non-function or non-call. Function's will be done after overload resolution.
     if (!ma.target->IsFunc() || ma.isAlone) {
         InstantiateReferenceType(ctx, ma);

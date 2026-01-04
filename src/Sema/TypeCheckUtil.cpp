@@ -1129,6 +1129,7 @@ Ptr<FuncDecl> GenerateGetTypeForTypeParamIntrinsic(Package& pkg, TypeManager& ty
     funcBody->paramLists.emplace_back(CreateFuncParamList(std::vector<OwnedPtr<FuncParam>>{}));
     funcBody->retType = MakeOwned<RefType>();
     funcBody->retType->ty = retTy;
+    funcBody->retType->EnableAttr(Attribute::COMPILER_ADD);
     funcBody->generic = MakeOwned<Generic>();
     funcBody->generic->typeParameters.emplace_back(CreateGenericParamDecl(*decl, typeManager));
     funcBody->ty = funcTy;

@@ -13,9 +13,10 @@
 
 #include "flatbuffers/ModuleFormat_generated.h"
 
-#include "cangjie/AST/Utils.h"
-#include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/AST/ASTCasting.h"
+#include "cangjie/AST/Utils.h"
+#include "cangjie/AST/Walker.h"
+#include "cangjie/Utils/CheckUtils.h"
 
 using namespace Cangjie;
 using namespace AST;
@@ -61,19 +62,94 @@ void SetMemberDeclReference(Decl& member, Decl& parentDecl)
     }
 }
 
-// Wrap ty using RefType without identifier.
-OwnedPtr<RefType> WrapTypeInNode(Ptr<Ty> type)
+OwnedPtr<Type> WrapType(Ptr<Ty> ty);
+OwnedPtr<RefType> Wrap2RefType(Ptr<Ty> ty)
 {
+    const std::unordered_set<TypeKind> CAN_BE_REF = {
+        TypeKind::TYPE_ENUM,
+        TypeKind::TYPE_STRUCT,
+        TypeKind::TYPE_ARRAY,
+        TypeKind::TYPE_VARRAY,
+        TypeKind::TYPE_POINTER,
+        TypeKind::TYPE_CSTRING,
+        TypeKind::TYPE_CLASS,
+        TypeKind::TYPE_INTERFACE,
+        TypeKind::TYPE,
+        TypeKind::TYPE_GENERICS,
+        TypeKind::TYPE_NOTHING,
+        // Invalid type can also be wrapped to RefType to avoid null pointer.
+        TypeKind::TYPE_INVALID,
+    };
+    if (!Utils::In(ty->kind, CAN_BE_REF)) {
+        return nullptr;
+    }
+    bool hasTypeAlias = ty->kind == TypeKind::TYPE;
     auto refType = MakeOwned<RefType>();
-    refType->ty = type;
-    if (auto decl = Ty::GetDeclPtrOfTy(type)) {
+    for (auto typeArg : ty->typeArgs) {
+        refType->typeArguments.emplace_back(WrapType(typeArg));
+        hasTypeAlias = hasTypeAlias || !Ty::IsInitialTy(refType->typeArguments.back()->aliasTy);
+    }
+    // The refType's ty of TypeAlias reference will be updated after loading all type aliases.
+    refType->ty = ty;
+    refType->ref.identifier = ty->name;
+    if (auto decl = Ty::GetDeclPtrOfTy(ty)) {
         refType->ref.target = decl;
         refType->ref.identifier = Is<ClassThisTy>(refType->ty) ? "This" : decl->identifier.Val();
     }
-    refType->EnableAttr(Attribute::IMPORTED);
-    refType->EnableAttr(Attribute::COMPILER_ADD);
-    refType->EnableAttr(Attribute::IS_CHECK_VISITED);
+    if (hasTypeAlias) {
+        refType->aliasTy = ty;
+    }
+    refType->EnableAttr(Attribute::IMPORTED, Attribute::COMPILER_ADD, Attribute::IS_CHECK_VISITED);
     return refType;
+}
+
+/**
+ * Wrap a semantic type to an AST type node. TypeAliasTy will create a alias type reference.
+ * @param ty The semantic type.
+ * @return The wrapped AST type node.
+ */
+OwnedPtr<Type> WrapType(Ptr<Ty> ty)
+{
+    if (ty == nullptr) {
+        return nullptr;
+    }
+    bool hasTypeAlias = false;
+    if (ty->kind <= TypeKind::TYPE_BOOLEAN && ty->kind != TypeKind::TYPE_NOTHING) {
+        auto pt = MakeOwned<PrimitiveType>();
+        pt->str = ty->String();
+        pt->ty = ty;
+        pt->EnableAttr(Attribute::IMPORTED, Attribute::COMPILER_ADD, Attribute::IS_CHECK_VISITED);
+        return pt;
+    } else if (ty->kind == TypeKind::TYPE_FUNC) {
+        auto funcType = MakeOwned<FuncType>();
+        auto funcTy = StaticCast<FuncTy>(ty);
+        for (auto param : funcTy->paramTys) {
+            funcType->paramTypes.emplace_back(WrapType(param));
+            hasTypeAlias = hasTypeAlias || !Ty::IsInitialTy(funcType->paramTypes.back()->aliasTy);
+        }
+        funcType->ty = ty;
+        funcType->retType = WrapType(funcTy->retTy);
+        hasTypeAlias = hasTypeAlias || !Ty::IsInitialTy(funcType->retType->aliasTy);
+        funcType->EnableAttr(Attribute::IMPORTED, Attribute::COMPILER_ADD, Attribute::IS_CHECK_VISITED);
+        if (hasTypeAlias) {
+            funcType->aliasTy = ty;
+        }
+        return funcType;
+    } else if (ty->kind == TypeKind::TYPE_TUPLE) {
+        auto tupleType = MakeOwned<TupleType>();
+        auto tupleTy = StaticCast<TupleTy>(ty);
+        for (auto typeArg : tupleTy->typeArgs) {
+            tupleType->fieldTypes.emplace_back(WrapType(typeArg));
+            hasTypeAlias = hasTypeAlias || !Ty::IsInitialTy(tupleType->fieldTypes.back()->aliasTy);
+        }
+        tupleType->ty = ty;
+        tupleType->EnableAttr(Attribute::IMPORTED, Attribute::COMPILER_ADD, Attribute::IS_CHECK_VISITED);
+        if (hasTypeAlias) {
+            tupleType->aliasTy = ty;
+        }
+        return tupleType;
+    }
+    return Wrap2RefType(ty);
 }
 
 void UpdateType(OwnedPtr<Type>& astType, OwnedPtr<Type> loadedType)
@@ -336,7 +412,7 @@ void ASTLoader::ASTLoaderImpl::LoadInheritedTypes(const PackageFormat::Decl& dec
     for (uoffset_t i = 0; i < length; i++) {
         auto index = inheritedTypes->Get(i);
         if (index != INVALID_FORMAT_INDEX) {
-            auto type = WrapTypeInNode(LoadType(index));
+            auto type = WrapType(LoadType(index));
             CJC_NULLPTR_CHECK(type);
             if (!Ty::IsTyCorrect(type->ty) && isLoadCache) {
                 return; // If any invalid type existed, do not load type cache for current 'id'.
@@ -364,10 +440,10 @@ void ASTLoader::ASTLoaderImpl::LoadGenericConstraintsRef(
     for (uoffset_t i = 0; i < length; i++) {
         auto vConstraint = genericRef->constraints()->Get(i);
         auto constraint = CreateAndLoadBasicInfo<GenericConstraint>(*vConstraint, INVALID_FORMAT_INDEX);
-        constraint->type = WrapTypeInNode(LoadType(vConstraint->type()));
+        constraint->type = Wrap2RefType(LoadType(vConstraint->type()));
         auto upperSize = vConstraint->uppers()->size();
         for (uoffset_t j = 0; j < upperSize; j++) {
-            constraint->upperBounds.emplace_back(WrapTypeInNode(LoadType(vConstraint->uppers()->Get(j))));
+            constraint->upperBounds.emplace_back(WrapType(LoadType(vConstraint->uppers()->Get(j))));
         }
         generic->genericConstraints.emplace_back(std::move(constraint));
     }
@@ -408,13 +484,13 @@ void ASTLoader::ASTLoaderImpl::LoadNominalDeclRef(const PackageFormat::Decl& dec
         if (!nonGenericCtor) {
             auto info = decl.info_as_FuncInfo();
             CJC_NULLPTR_CHECK(info);
-            auto type = WrapTypeInNode(LoadType(info->funcBody()->retType()));
+            auto type = WrapType(LoadType(info->funcBody()->retType()));
             UpdateType(astDecl.funcBody->retType, std::move(type));
         }
         astDecl.funcBody->ty = astDecl.ty;
     }
     if constexpr (std::is_same_v<DeclT, ExtendDecl>) {
-        UpdateType(astDecl.extendedType, WrapTypeInNode(astDecl.ty));
+        UpdateType(astDecl.extendedType, WrapType(astDecl.ty));
     }
     if (astDecl.TestAttr(Attribute::GENERIC_INSTANTIATED)) {
         astDecl.genericDecl = GetDeclFromIndex(decl.genericDecl());
@@ -425,11 +501,7 @@ void ASTLoader::ASTLoaderImpl::LoadTypeAliasDeclRef(const PackageFormat::Decl& d
 {
     auto info = decl.info_as_AliasInfo();
     CJC_NULLPTR_CHECK(info);
-    auto refType = WrapTypeInNode(LoadType(info->aliasedTy()));
-    for (auto typeArg : refType->ty->typeArgs) {
-        refType->typeArguments.emplace_back(WrapTypeInNode(typeArg));
-    }
-    tad.type = std::move(refType);
+    tad.type = WrapType(LoadType(info->aliasedTy()));
 }
 
 void ASTLoader::ASTLoaderImpl::LoadDeclDependencies(const PackageFormat::Decl& decl, Decl& astDecl)
@@ -493,6 +565,13 @@ void ASTLoader::ASTLoaderImpl::LoadDeclRefs(const PackageFormat::Decl& declObj, 
             LoadPatternRefs(*info->irrefutablePattern(), *StaticCast<VarWithPatternDecl&>(decl).irrefutablePattern);
             break;
         }
+        case PackageFormat::DeclKind_FuncParam:
+        case PackageFormat::DeclKind_VarDecl:
+        case PackageFormat::DeclKind_PropDecl: {
+            auto vda = StaticCast<VarDeclAbstract>(&decl);
+            vda->type = WrapType(decl.ty);
+            break;
+        }
         default:
             break;
     }
@@ -549,7 +628,7 @@ void ASTLoader::ASTLoaderImpl::LoadExprRefs(const PackageFormat::Expr& exprObj, 
             break;
         case PackageFormat::ExprKind_LitConstExpr:
             if (expr.ty->IsString()) {
-                StaticCast<LitConstExpr&>(expr).ref = WrapTypeInNode(expr.ty);
+                StaticCast<LitConstExpr&>(expr).ref = Wrap2RefType(expr.ty);
             }
             InitializeLitConstValue(StaticCast<LitConstExpr&>(expr));
             break;
@@ -670,7 +749,7 @@ void ASTLoader::ASTLoaderImpl::LoadPatternRefs(const PackageFormat::Pattern& pOb
             break;
         case PackageFormat::PatternKind_TypePattern:
             LoadPatternRefs(*pObj.patterns()->Get(0), *StaticCast<TypePattern&>(pattern).pattern);
-            StaticCast<TypePattern&>(pattern).type = WrapTypeInNode(pattern.ty);
+            StaticCast<TypePattern&>(pattern).type = WrapType(pattern.ty);
             break;
         case PackageFormat::PatternKind_EnumPattern:
             for (uoffset_t i = 0; i < pObj.patterns()->size(); i++) {
@@ -683,7 +762,7 @@ void ASTLoader::ASTLoaderImpl::LoadPatternRefs(const PackageFormat::Pattern& pOb
             CJC_ASSERT(pObj.types()->size() >= 1);
             etp.types.resize(pObj.types()->size() - 1);
             for (uoffset_t i = 1; i < pObj.types()->size(); i++) {
-                etp.types[i - 1] = WrapTypeInNode(LoadType(pObj.types()->Get(i)));
+                etp.types[i - 1] = WrapType(LoadType(pObj.types()->Get(i)));
             }
             break;
         }
@@ -693,7 +772,7 @@ void ASTLoader::ASTLoaderImpl::LoadPatternRefs(const PackageFormat::Pattern& pOb
             CJC_ASSERT(pObj.types()->size() >= 1);
             ctp.types.resize(pObj.types()->size() - 1);
             for (uoffset_t i = 1; i < pObj.types()->size(); i++) {
-                ctp.types[i - 1] = WrapTypeInNode(LoadType(pObj.types()->Get(i)));
+                ctp.types[i - 1] = WrapType(LoadType(pObj.types()->Get(i)));
             }
             break;
         }
