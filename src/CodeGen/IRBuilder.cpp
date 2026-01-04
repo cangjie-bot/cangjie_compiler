@@ -112,8 +112,7 @@ llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llv
             : cgType.GetLLVMType();
         auto allocaInst = CreateEntryAlloca(allocatedType, nullptr, name);
         auto& options = cgMod.GetCGContext().GetCompileOptions();
-        if (allocatedType->isStructTy() && options.enableCompileDebug &&
-            options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) {
+        if (allocatedType->isStructTy() && options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) {
             (void)CreateMemsetStructWith0(allocaInst);
         }
         return allocaInst;
