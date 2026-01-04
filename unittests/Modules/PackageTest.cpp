@@ -1258,3 +1258,121 @@ TEST_F(PackageTest, ImportOptFlag)
         depPkgs.begin(), depPkgs.end(), [](Ptr<PackageDecl>& pkg) { return pkg->GetFullPackageName() == "b"; });
     EXPECT_EQ(found, depPkgs.end());
 }
+
+TEST_F(PackageTest, TypeAliasRefExport)
+{
+    // Compile dependency.
+    diag.ClearError();
+    invocation.globalOptions.srcFiles = {
+        FileUtil::JoinPath(srcPath, "TypeAliasRefExport/typealiases.cj"),
+        FileUtil::JoinPath(srcPath, "TypeAliasRefExport/typealiasRef.cj"),
+    };
+    instance = std::make_unique<TestCompilerInstance>(invocation, diag);
+    instance->invocation.globalOptions.implicitPrelude = true;
+    instance->compileOnePackageFromSrcFiles = true;
+    instance->Compile();
+    instance->PerformDesugarAfterSema();
+    std::vector<uint8_t> astData;
+    instance->importManager.ExportAST(false, astData, *instance->GetSourcePackages()[0]);
+    std::string astFile = FileUtil::JoinPath(packagePath, "dep.cjo");
+    FileUtil::WriteBufferToASTFile(astFile, astData);
+    diag.Reset();
+
+    // Compile default package.
+    invocation.globalOptions.srcFiles.clear();
+    instance = std::make_unique<TestCompilerInstance>(invocation, diag);
+    instance->code = R"(
+        import dep.*
+        main() {
+        }
+    )";
+    bool ret = instance->Compile(CompileStage::IMPORT_PACKAGE);
+    EXPECT_TRUE(ret);
+    auto depPkg = instance->importManager.GetPackage("dep");
+    EXPECT_TRUE(depPkg != nullptr);
+    const std::vector<std::string> orginNames{"A", "A_G", "B", "C", "C_1", "D", "D_G"};
+    std::function<void(Ptr<Type>)> visitType = [&orginNames, &visitType](Ptr<Type> type) {
+        /*
+        Type:
+        RefType.typeArguments
+        ParenType.type ?
+        QualifiedType.baseType ?
+        QualifiedType.typeArguments ?
+        OptionType.componentType ?
+        VArrayType.typeArgument ?
+        VArrayType.constantType ?
+        FuncType.paramTypes
+        FuncType.retType
+        TupleType.fieldTypes
+        */
+        if (auto rt = DynamicCast<RefType>(type)) {
+            Println(rt->ref.identifier.Val());
+            EXPECT_FALSE(Utils::In(rt->ref.identifier.Val(), orginNames));
+            for (auto& typeArg : rt->typeArguments) {
+                visitType(typeArg.get());
+            }
+        } else if (auto ft = DynamicCast<FuncType>(type)) {
+            for (auto& paramType : ft->paramTypes) {
+                visitType(paramType.get());
+            }
+            visitType(ft->retType.get());
+        } else if (auto tt = DynamicCast<TupleType>(type)) {
+            for (auto& type : tt->fieldTypes) {
+                visitType(type.get());
+            }
+        } else {
+            EXPECT_TRUE(false);
+        }
+    };
+    for (auto& file : depPkg->files) {
+        if (file->fileName != "typealiasRef.cj") {
+            continue;
+        }
+        for (auto& decl : file->decls) {
+            /*
+            Decl:
+            GenericConstraint.type: inpossible be alias ref.
+            GenericConstraint.upperBounds
+            InheritableDecl.inheritedTypes
+            VarDeclAbstract.type
+            TypeAliasDecl.type
+            FuncBody.retType
+            ExtendDecl.extendedType
+            */
+            if (decl->astKind >= ASTKind::VAR_DECL && decl->astKind <= ASTKind::VAR_WITH_PATTERN_DECL) {
+                auto vda = StaticCast<VarDeclAbstract>(decl.get());
+                visitType(vda->type.get());
+            } else if (auto fd = DynamicCast<FuncDecl>(decl.get()); fd) {
+                for (auto& param : fd->funcBody->paramLists[0]->params) {
+                    visitType(param->type.get());
+                }
+                visitType(fd->funcBody->retType.get());
+                if (fd->generic) {
+                    for (auto& constraint : fd->generic->genericConstraints) {
+                        for (auto& bound : constraint->upperBounds) {
+                            visitType(bound.get());
+                        }
+                    }
+                }
+            } else if (decl->astKind >= ASTKind::CLASS_LIKE_DECL && decl->astKind <= ASTKind::STRUCT_DECL) {
+                auto id = StaticCast<InheritableDecl>(decl.get());
+                if (id->generic) {
+                    for (auto& constraint : fd->generic->genericConstraints) {
+                        for (auto& bound : constraint->upperBounds) {
+                            visitType(bound.get());
+                        }
+                    }
+                }
+            } else if (decl->astKind == ASTKind::TYPE_ALIAS_DECL) {
+                auto tad = StaticCast<TypeAliasDecl>(decl.get());
+                visitType(tad->type.get());
+            }
+            /*
+            Pattern:
+            TypePattern.type
+            ExceptTypePattern.types
+            CommandTypePattern.types
+            */
+        }
+    }
+}
