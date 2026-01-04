@@ -85,6 +85,9 @@ public:
     const std::set<std::string>& GetLocalizedSymbols();
 #endif
 
+    void CollectSubTypeMap();
+    bool NeedOuterTypeInfo(const CHIR::ClassType& classType);
+
     CHIR::Value* FindCHIRGlobalValue(const std::string& mangledName);
 
     CHIR::CHIRBuilder& chirBuilder;
@@ -96,6 +99,7 @@ private:
     CachedMangleMap correctedCachedMangleMap;
 
     std::vector<std::unique_ptr<CGModule>> cgMods;
+    std::unordered_map<const CHIR::ClassType*, std::unordered_set<CHIR::Type*>> subTypeMap;
     // Container that support quick search for target global chirValue.
     ObjectLocker<std::unordered_map<std::string, CHIR::Value*>> quickCHIRValues;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
