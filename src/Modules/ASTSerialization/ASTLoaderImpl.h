@@ -61,9 +61,10 @@ public:
     Ptr<AST::Ty> LoadType(FormattedIndex type);
     // A flag to avoid conflicts when we are reusing the AST serialiser from CHIR
     bool isChirNow = false;
+    void SubstituteImportedTypeAliasTy();
 
 private:
-friend ASTLoader;
+    friend ASTLoader;
     std::vector<uint8_t> data;
     TypeManager& typeManager;
     DiagnosticEngine& diag;
