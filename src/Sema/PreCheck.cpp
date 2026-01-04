@@ -837,7 +837,17 @@ void TypeChecker::TypeCheckerImpl::ResolveTypeAlias(const std::vector<Ptr<ASTCon
 void TypeChecker::TypeCheckerImpl::SetTypeTy(ASTContext& ctx, Type& type)
 {
     type.ty = GetTyFromASTType(ctx, &type);
-    type.ty = SubstituteTypeAliasInTy(*type.ty);
+    // Set aliasTy for a type reference if refer a type alias. Use to export alias info when export cjo.
+    if (auto target = type.GetTarget(); target && target->ty->kind == TypeKind::TYPE) {
+        std::vector<Ptr<Ty>> typeArgs;
+        for (auto typeArg : type.GetTypeArgs()) {
+            typeArgs.emplace_back(typeArg->ty);
+        }
+        TypeSubst typeMapping = GenerateTypeMapping(*target, typeArgs);
+        auto instAliasedTy = typeManager.GetInstantiatedTy(target->ty, typeMapping);
+        type.aliasTy = instAliasedTy;
+    }
+    type.ty = typeManager.SubstituteTypeAliasInTy(*type.ty);
 }
 
 void TypeChecker::TypeCheckerImpl::SubstituteTypeAliasForAlias(TypeAliasDecl& tad)
@@ -855,7 +865,7 @@ void TypeChecker::TypeCheckerImpl::SubstituteTypeAliasForAlias(TypeAliasDecl& ta
             case ASTKind::OPTION_TYPE: {
                 auto type = StaticAs<ASTKind::TYPE>(node);
                 CJC_ASSERT(type->ty != nullptr);
-                type->ty = SubstituteTypeAliasInTy(*type->ty);
+                type->ty = typeManager.SubstituteTypeAliasInTy(*type->ty);
                 return VisitAction::WALK_CHILDREN;
             }
             default:
