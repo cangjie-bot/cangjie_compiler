@@ -40,18 +40,18 @@ ASTKIND(EXCEPT_TYPE_PATTERN, "except_type_pattern", ExceptTypePattern, 360)
 ASTKIND(COMMAND_TYPE_PATTERN, "effect_type_pattern", CommandTypePattern, 360)
 ASTKIND(WILDCARD_PATTERN, "wildcard_pattern", WildcardPattern, 264)
 ASTKIND(INVALID_PATTERN, "invalid_pattern", InvalidPattern, 264) // end of subtypes of Pattern.
-ASTKIND(TYPE, "*type", Type, 376)                                // begin of subtypes of Type.
-ASTKIND(REF_TYPE, "ref_type", RefType, 560)
-ASTKIND(QUALIFIED_TYPE, "qualified_type", QualifiedType, 568)
-ASTKIND(OPTION_TYPE, "option_type", OptionType, 424)
-ASTKIND(CONSTANT_TYPE, "constant_type", ConstantType, 408)
-ASTKIND(VARRAY_TYPE, "varray_type", VArrayType, 456)
-ASTKIND(PRIMITIVE_TYPE, "primitive_type", PrimitiveType, 416)
-ASTKIND(PAREN_TYPE, "paren_type", ParenType, 424)
-ASTKIND(FUNC_TYPE, "func_type", FuncType, 472)
-ASTKIND(TUPLE_TYPE, "tuple_type", TupleType, 464)
-ASTKIND(THIS_TYPE, "this_type", ThisType, 376)
-ASTKIND(INVALID_TYPE, "invalid_type", InvalidType, 376) // end of subtypes of Type.
+ASTKIND(TYPE, "*type", Type, 384)                                // begin of subtypes of Type.
+ASTKIND(REF_TYPE, "ref_type", RefType, 568)
+ASTKIND(QUALIFIED_TYPE, "qualified_type", QualifiedType, 576)
+ASTKIND(OPTION_TYPE, "option_type", OptionType, 432)
+ASTKIND(CONSTANT_TYPE, "constant_type", ConstantType, 416)
+ASTKIND(VARRAY_TYPE, "varray_type", VArrayType, 464)
+ASTKIND(PRIMITIVE_TYPE, "primitive_type", PrimitiveType, 424)
+ASTKIND(PAREN_TYPE, "paren_type", ParenType, 440)
+ASTKIND(FUNC_TYPE, "func_type", FuncType, 488)
+ASTKIND(TUPLE_TYPE, "tuple_type", TupleType, 472)
+ASTKIND(THIS_TYPE, "this_type", ThisType, 384)
+ASTKIND(INVALID_TYPE, "invalid_type", InvalidType, 384) // end of subtypes of Type.
 ASTKIND(EXPR, "*expr", Expr, 432)                       // begin of subtypes of Expr.
 ASTKIND(WILDCARD_EXPR, "wildcard_expr", WildcardExpr, 432)
 ASTKIND(CALL_EXPR, "call_expr", CallExpr, 592)
