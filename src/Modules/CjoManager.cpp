@@ -359,6 +359,10 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
     for (auto loader : loaders) {
         loader->LoadRefs();
     }
+
+    for (auto loader : loaders) {
+        loader->SubstituteImportedTypeAliasTy();
+    }
 }
 
 void CjoManager::LoadAllDeclsAndRefs() const
