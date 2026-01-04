@@ -532,6 +532,7 @@ void TypeChecker::TypeCheckerImpl::SetEnumEleTyHandleFuncDecl(FuncDecl& funcDecl
     funcDecl.funcBody->retType->ty = ctorTy->retTy;
     funcDecl.funcBody->retType->begin = funcDecl.begin;
     funcDecl.funcBody->retType->end = funcDecl.end;
+    funcDecl.funcBody->retType->EnableAttr(Attribute::COMPILER_ADD);
     // Check c ffi type usage.
     if (funcDecl.outerDecl->TestAttr(Attribute::C)) {
         diag.Diagnose(funcDecl, DiagKind::sema_enum_pattern_func_cty_error, funcDecl.identifier.Val(),
