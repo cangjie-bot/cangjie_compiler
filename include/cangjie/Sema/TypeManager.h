@@ -341,6 +341,10 @@ public:
     /// get the class ty that This refers to if it is a This ty
     Ptr<AST::Ty> GetThisRealTy(Ptr<AST::Ty> now);
 
+    Ptr<AST::Ty> ObtainsAliasType(Ptr<const AST::Node> node);
+    Ptr<AST::Ty> SubstituteTypeAliasInTy(
+        AST::Ty& ty, bool needSubstituteGeneric = false, const TypeSubst& typeMapping = {});
+
 private:
     friend class TyVarScope;
     friend class InstCtxScope;
@@ -611,6 +615,12 @@ private:
         const std::set<Ptr<AST::ExtendDecl>>& extends, const std::vector<Ptr<AST::Ty>>& typeArgs);
     bool HasExtendInterfaceTyHelper(AST::Ty& superTy, const std::set<Ptr<AST::ExtendDecl>>& extends,
         const std::vector<Ptr<AST::Ty>>& typeArgs);
+
+    Ptr<AST::Ty> SubstituteTypeArgs(Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Ty>>& typeArgs);
+    std::vector<Ptr<AST::Ty>> RecursiveSubstituteTypeAliasInTy(
+        Ptr<const AST::Ty> ty, bool needSubstituteGeneric, const TypeSubst& typeMapping = {});
+    Ptr<AST::Ty> GetUnaliasedTypeFromTypeAlias(
+        const AST::TypeAliasTy& target, const std::vector<Ptr<AST::Ty>>& typeArgs);
 };
 } // namespace Cangjie
 
