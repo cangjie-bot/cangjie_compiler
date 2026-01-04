@@ -191,8 +191,8 @@ void ParserImpl::DiagExpectedIdentifierPackageSpec(Ptr<Node> node)
             "a package name", "after keyword 'package'");
     } else {
         DiagExpectedIdentifier(
-            MakeRange(ps->prefixDotPoses.back(), ps->prefixDotPoses.back() + std::string(".").size()), "a package name",
-            "after '.' in qualified name");
+            MakeRange(ps->prefixDotPoses.back(), ps->prefixDotPoses.back() + lastToken.Value().size()), "a package name",
+            "after '" + lastToken.Value() + "' in qualified name");
     }
 }
 
@@ -203,9 +203,10 @@ void ParserImpl::DiagExpectedIdentifierImportContent(Ptr<Node> node)
         DiagExpectedIdentifier(
             MakeRange(lastToken.Begin(), lastToken.End()), "a package name", "after keyword 'import'");
     } else if (!ic->prefixDotPoses.empty()) {
+        auto expectedName = lastToken.Value() == "." ? "a '*' or identifier" : "an identifier";
         DiagExpectedIdentifier(
-            MakeRange(ic->prefixDotPoses.back(), ic->prefixDotPoses.back() + std::string(".").size()),
-            "a '*' or identifier", "after '.' in qualified name");
+            MakeRange(ic->prefixDotPoses.back(), ic->prefixDotPoses.back() + lastToken.Value().size()),
+            expectedName, "after '" + lastToken.Value() + "' in qualified name");
     } else {
         DiagExpectedIdentifier(MakeRange(lastToken.Begin(), lastToken.End()));
     }
