@@ -359,6 +359,14 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
     for (auto loader : loaders) {
         loader->LoadRefs();
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (auto loader : loaders) {
+        loader->SubstituteImportedTypeAliasTy();
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    Debugln("SubstituteImportedTypeAliasTy total spend:", duration, "ms");
 }
 
 void CjoManager::LoadAllDeclsAndRefs() const
