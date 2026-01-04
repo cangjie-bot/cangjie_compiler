@@ -151,6 +151,9 @@ public:
     {
         cjoPathFindCache[cjoName] = cjoPath;
     }
+
+    void SubstituteImportedTypeAliasTy(const std::string& srcPackageName);
+
 private:
     DiagnosticEngine& diag;
     TypeManager& typeManager;
