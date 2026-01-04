@@ -81,12 +81,12 @@ void PrintModifiers(const Decl& decl, unsigned indent, std::ostream& stream = st
     }
 }
 
-void PrintTarget(unsigned indent, const Decl& target, std::string addition = "target", std::ostream& stream = std::cout)
+void PrintTarget(unsigned indent, const Decl& target, std::ostream& stream = std::cout, std::string addition = "target")
 {
     if (target.mangledName.empty()) {
-        PrintIndent(stream, indent, addition + ": ptr:", &target);
+        PrintIndent(stream, indent, addition + " ptr:", &target);
     } else {
-        PrintIndent(stream, indent, addition + ": mangledName:", "\"" + target.mangledName + "\"");
+        PrintIndent(stream, indent, addition + " mangledName:", "\"" + target.mangledName + "\"");
     }
 }
 
@@ -119,7 +119,11 @@ void PrintBasic(unsigned indent, const Node& node, std::ostream& stream = std::c
             PrintNode(d->annotationsArray.get(), indent, "annotationsArray", stream);
         }
         if (d->outerDecl) {
-            PrintTarget(indent, *d->outerDecl, "outerDecl", stream);
+            PrintTarget(indent, *d->outerDecl, stream, "outerDecl");
+        }
+    } else if (auto t = DynamicCast<Type>(&node)) {
+        if (!Ty::IsInitialTy(t->aliasTy)) {
+            PrintIndent(stream, indent, "aliasTy:", t->aliasTy->String());
         }
     }
     if (!node.comments.IsEmpty()) {
@@ -424,12 +428,13 @@ void PrintVarDecl(unsigned indent, const VarDecl& varDecl, std::ostream& stream 
     PrintModifiers(varDecl, indent, stream);
     PrintNode(varDecl.type.get(), indent + ONE_INDENT, "type", stream);
     PrintNode(varDecl.initializer.get(), indent + ONE_INDENT, "initializer", stream);
+    PrintIndent(stream, indent + ONE_INDENT, "parentPattern:", varDecl.parentPattern.get());
     PrintIndent(stream, indent, "}");
 }
 
 void PrintBasicpeAliasDecl(unsigned indent, const TypeAliasDecl& alias, std::ostream& stream = std::cout)
 {
-    PrintIndent(stream, indent, "TypeAliasDecl", alias.identifier.Val(), "{");
+    PrintIndent(stream, indent, "TypeAliasDecl:", alias.identifier.Val(), "{");
     PrintBasic(indent + ONE_INDENT, alias, stream);
     if (alias.generic) {
         PrintGeneric(indent + ONE_INDENT, *alias.generic, stream);
@@ -474,7 +479,7 @@ void PrintInterfaceDecl(unsigned indent, const InterfaceDecl& interfaceDecl, std
         PrintGeneric(indent + ONE_INDENT, *interfaceDecl.generic, stream);
     }
     if (!interfaceDecl.inheritedTypes.empty()) {
-        PrintIndent(stream, indent + ONE_INDENT, "inheritedTypes: [");
+        PrintIndent(stream, indent + ONE_INDENT, "inheritedTypes [");
         for (auto& it : interfaceDecl.inheritedTypes) {
             PrintNode(it.get(), indent + TWO_INDENT, "", stream);
         }
@@ -524,6 +529,13 @@ void PrintStructDecl(unsigned indent, const StructDecl& decl, std::ostream& stre
     PrintModifiers(decl, indent, stream);
     if (decl.generic) {
         PrintGeneric(indent + ONE_INDENT, *decl.generic, stream);
+    }
+    if (!decl.inheritedTypes.empty()) {
+        PrintIndent(stream, indent + ONE_INDENT, "inheritedTypes [");
+        for (auto& it : decl.inheritedTypes) {
+            PrintNode(it.get(), indent + TWO_INDENT, "", stream);
+        }
+        PrintIndent(stream, indent + ONE_INDENT, "]");
     }
     PrintIndent(stream, indent + ONE_INDENT, "StructBody {");
     PrintNode(decl.body.get(), indent + TWO_INDENT, "", stream);
@@ -854,11 +866,11 @@ void PrintMemberAccess(unsigned indent, const MemberAccess& expr, std::ostream& 
         PrintIndent(stream, indent + ONE_INDENT, "]");
     }
     if (expr.target) {
-        PrintTarget(indent + ONE_INDENT, *expr.target, "", stream);
+        PrintTarget(indent + ONE_INDENT, *expr.target, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "targets [");
     for (auto t : expr.targets) {
-        PrintTarget(indent + TWO_INDENT, *t, "", stream);
+        PrintTarget(indent + TWO_INDENT, *t, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "]");
     PrintIndent(stream, indent, "}");
@@ -931,7 +943,7 @@ void PrintCallExpr(unsigned indent, const CallExpr& expr, std::ostream& stream =
         PrintIndent(stream, indent + ONE_INDENT, "]");
     }
     if (expr.resolvedFunction) {
-        PrintTarget(indent + ONE_INDENT, *expr.resolvedFunction, "resolvedFunction", stream);
+        PrintTarget(indent + ONE_INDENT, *expr.resolvedFunction, stream, "resolvedFunction");
     }
     PrintIndent(stream, indent, "}");
 }
@@ -1047,11 +1059,11 @@ void PrintRefExpr(unsigned indent, const RefExpr& refExpr, std::ostream& stream 
         PrintIndent(stream, indent + ONE_INDENT, "]");
     }
     if (refExpr.ref.target) {
-        PrintTarget(indent + ONE_INDENT, *refExpr.ref.target, "", stream);
+        PrintTarget(indent + ONE_INDENT, *refExpr.ref.target, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "targets [");
     for (auto t : refExpr.ref.targets) {
-        PrintTarget(indent + TWO_INDENT, *t, "", stream);
+        PrintTarget(indent + TWO_INDENT, *t, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "]");
     PrintIndent(stream, indent, "}");
@@ -1191,11 +1203,11 @@ void PrintRefType(unsigned indent, const RefType& refType, std::ostream& stream 
         PrintIndent(stream, indent + ONE_INDENT, "]");
     }
     if (refType.ref.target) {
-        PrintTarget(indent + ONE_INDENT, *refType.ref.target, "", stream);
+        PrintTarget(indent + ONE_INDENT, *refType.ref.target, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "targets [");
     for (auto t : refType.ref.targets) {
-        PrintTarget(indent + TWO_INDENT, *t, "", stream);
+        PrintTarget(indent + TWO_INDENT, *t, stream);
     }
     PrintIndent(stream, indent + ONE_INDENT, "]");
     PrintIndent(stream, indent, "}");
@@ -1275,7 +1287,7 @@ void PrintQualifiedType(unsigned indent, const QualifiedType& type, std::ostream
     PrintNode(type.baseType.get(), indent + ONE_INDENT, "baseType", stream);
     PrintIndent(stream, indent + ONE_INDENT, "field:", type.field.Val());
     if (type.target) {
-        PrintTarget(indent + ONE_INDENT, *type.target, "", stream);
+        PrintTarget(indent + ONE_INDENT, *type.target, stream);
     }
     PrintIndent(stream, indent, "}");
 }

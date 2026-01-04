@@ -359,6 +359,12 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
     for (auto loader : loaders) {
         loader->LoadRefs();
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    impl->SubstituteImportedTypeAliasTy();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    Debugln("SubstituteImportedTypeAliasTy total spend:", duration, "ms");
 }
 
 void CjoManager::LoadAllDeclsAndRefs() const
@@ -374,6 +380,32 @@ void CjoManager::LoadAllDeclsAndRefs() const
     for (auto& p : impl->GetPackageNameMap()) {
         if (p.second->loader) {
             p.second->loader->LoadRefs();
+        }
+    }
+}
+
+void CjoManagerImpl::SubstituteImportedTypeAliasTy(const std::string& srcPackageName)
+{
+    auto replaceAliasUseTy = [this](Ptr<Node> node) {
+        if (node->astKind == ASTKind::TYPE_ALIAS_DECL) {
+            return VisitAction::WALK_CHILDREN;
+        }
+        if (node->IsDecl() || Is<FuncBody>(node)) {
+            node->ty = typeManager.SubstituteTypeAliasInTy(*node->ty);
+        } else if (auto type = DynamicCast<Type>(node); type && !Ty::IsInitialTy(type->aliasTy)) {
+            type->ty = typeManager.SubstituteTypeAliasInTy(*type->ty);
+        }
+        return VisitAction::WALK_CHILDREN;
+    };
+    for (auto& [pkgName, pkgInfo] : GetPackageNameMap()) {
+        if (pkgName == srcPackageName && !globalOptions.commonPartCjo.has_value()) {
+            continue;
+        }
+        for (auto& file : pkgInfo->pkg->files) {
+            if (pkgName == srcPackageName && !file->TestAttr(Attribute::FROM_COMMON_PART)) {
+                continue;
+            }
+            Walker(file.get(), replaceAliasUseTy).Walk();
         }
     }
 }
