@@ -42,7 +42,7 @@ class CjoManager;
 class ASTWriter {
 public:
     ASTWriter(DiagnosticEngine& diag, const std::string& packageDepInfo, const ExportConfig& exportCfg,
-        const CjoManager& cjoManager);
+        const CjoManager& cjoManager, TypeManager& typeManager);
     ~ASTWriter();
 
     // Add for cjmp
@@ -90,6 +90,8 @@ public:
     Ptr<AST::Ty> LoadType(FormattedIndex type) const;
     // A flag to avoid conflicts when we are reusing the AST serialiser from CHIR
     void SetIsChirNow(bool isChirNow = false);
+
+    void SubstituteImportedTypeAliasTy() const;
 
 private:
     class ASTLoaderImpl;

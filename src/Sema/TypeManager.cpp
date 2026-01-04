@@ -2383,4 +2383,267 @@ Ptr<Ty> TypeManager::ReplaceThisTy(Ptr<Ty> now)
             return now;
     }
 }
+
+Ptr<Ty> TypeManager::SubstituteTypeArgs(Ptr<Ty> baseTy, std::vector<Ptr<Ty>>& typeArgs)
+{
+    if (!Ty::IsTyCorrect(baseTy)) {
+        return TypeManager::GetInvalidTy();
+    }
+    switch (baseTy->kind) {
+        case TypeKind::TYPE_CLASS: {
+            if (auto ctt = DynamicCast<ClassThisTy>(baseTy)) {
+                return GetClassThisTy(*ctt->declPtr, typeArgs);
+            }
+            return GetClassTy(*StaticCast<ClassTy>(baseTy)->declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_STRUCT: {
+            return GetStructTy(*StaticCast<StructTy>(baseTy)->declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_INTERFACE: {
+            return GetInterfaceTy(*StaticCast<InterfaceTy>(baseTy)->declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_ENUM: {
+            return GetEnumTy(*StaticCast<EnumTy>(baseTy)->declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_FUNC: {
+            auto returnTy = typeArgs.back();
+            typeArgs.pop_back();
+            auto funcTy = StaticCast<FuncTy>(baseTy);
+            return GetFunctionTy(typeArgs, returnTy, {funcTy->isC, false, funcTy->hasVariableLenArg});
+        }
+        case TypeKind::TYPE: {
+            return baseTy;
+        }
+        case TypeKind::TYPE_TUPLE: {
+            return GetTupleTy(typeArgs);
+        }
+        case TypeKind::TYPE_ARRAY: {
+            auto arrayTy = StaticCast<ArrayTy>(baseTy);
+            return GetArrayTy(typeArgs[0], arrayTy->dims);
+        }
+        case TypeKind::TYPE_VARRAY: {
+            auto varrayTy = StaticCast<VArrayTy>(baseTy);
+            return GetVArrayTy(*typeArgs[0], varrayTy->size);
+        }
+        case TypeKind::TYPE_POINTER: {
+            return GetPointerTy(typeArgs[0]);
+        }
+        default:
+            return baseTy;
+    }
+}
+
+Ptr<Ty> TypeManager::ObtainsAliasTypeOfRefType(Ptr<const RefType> rt)
+{
+    if (rt->ty->IsCFunc()) {
+        CJC_ASSERT(rt->typeArguments.size() == 1);
+        auto funcType = DynamicCast<FuncType>(rt->typeArguments[0].get());
+        CJC_NULLPTR_CHECK(funcType);
+        funcType->isC = true;
+        return ObtainsAliasType(funcType);
+    }
+    std::vector<Ptr<AST::Ty>> typeArgs;
+    for (auto& typeArg : rt->typeArguments) {
+        typeArgs.emplace_back(ObtainsAliasType(typeArg.get()));
+    }
+    return SubstituteTypeArgs(rt->ty, typeArgs);
+}
+
+Ptr<Ty> TypeManager::ObtainsAliasTypeOfFuncDecl(Ptr<const FuncDecl> fd)
+{
+    auto& fb = fd->funcBody;
+    std::vector<Ptr<Ty>> typeArgs;
+    for (auto& param : fb->paramLists[0]->params) {
+        typeArgs.emplace_back(ObtainsAliasType(param.get()));
+    }
+    if (fb->retType) {
+        typeArgs.emplace_back(ObtainsAliasType(fb->retType.get()));
+    } else {
+        auto funcTy = StaticCast<FuncTy>(fd->ty);
+        typeArgs.emplace_back(funcTy->retTy);
+    }
+    return SubstituteTypeArgs(fd->ty, typeArgs);
+}
+
+Ptr<Ty> TypeManager::ObtainsAliasType(Ptr<const Node> node)
+{
+    if (node == nullptr || !Ty::IsTyCorrect(node->ty)) {
+        return TypeManager::GetInvalidTy();
+    }
+    // Return type create by compiler will be ignored.
+    if (node->TestAttr(Attribute::COMPILER_ADD)) {
+        return node->ty;
+    }
+    if (auto typeNode = DynamicCast<Type>(node); typeNode && !Ty::IsInitialTy(typeNode->aliasTy)) {
+        auto tad = Ty::GetDeclPtrOfTy(typeNode->aliasTy);
+        CJC_NULLPTR_CHECK(tad);
+        // If typeAlias is not exported, give up replasement. The current semantics allow an exteranl declaration to use
+        // internal alias declaration.
+        if (!tad->IsExportedDecl() && !tad->TestAttr(Attribute::IMPLICIT_USED)) {
+            return node->ty;
+        }
+        return typeNode->aliasTy;
+    }
+    Ptr<Ty> ret = TypeManager::GetInvalidTy();
+    switch (node->astKind) {
+        case ASTKind::REF_TYPE: {
+            ret = ObtainsAliasTypeOfRefType(StaticCast<RefType>(node));
+            break;
+        }
+        case ASTKind::PAREN_TYPE: {
+            ret = ObtainsAliasType(StaticCast<ParenType>(node)->type.get());
+            break;
+        }
+        case ASTKind::VARRAY_TYPE: {
+            auto vat = StaticCast<VArrayType>(node);
+            std::vector<Ptr<AST::Ty>> typeArgs;
+            typeArgs.emplace_back(ObtainsAliasType(vat->typeArgument));
+            ret = SubstituteTypeArgs(node->ty, typeArgs);
+            break;
+        }
+        case ASTKind::FUNC_TYPE: {
+            auto ft = StaticCast<FuncType>(node);
+            auto fTy = StaticCast<FuncTy>(ft->ty);
+            std::vector<Ptr<Ty>> params;
+            for (auto& param : ft->paramTypes) {
+                params.emplace_back(ObtainsAliasType(param.get()));
+            }
+            auto retTy = ObtainsAliasType(ft->retType.get());
+            ret = GetFunctionTy(params, retTy, {ft->isC, false, fTy->hasVariableLenArg});
+            break;
+        }
+        case ASTKind::TUPLE_TYPE: {
+            auto tt = StaticCast<TupleType>(node);
+            std::vector<Ptr<Ty>> typeArgs;
+            for (auto& field : tt->fieldTypes) {
+                typeArgs.emplace_back(ObtainsAliasType(field.get()));
+            }
+            ret = SubstituteTypeArgs(node->ty, typeArgs);
+            break;
+        }
+        case ASTKind::VAR_DECL:
+        case ASTKind::FUNC_PARAM:
+        case ASTKind::VAR_WITH_PATTERN_DECL: {
+            auto vda = StaticCast<VarDeclAbstract>(node);
+            std::vector<Ptr<Ty>> typeArgs;
+            ret = vda->type ? ObtainsAliasType(vda->type) : node->ty;
+            break;
+        }
+        case ASTKind::FUNC_DECL: {
+            ret = ObtainsAliasTypeOfFuncDecl(StaticCast<FuncDecl>(node));
+            break;
+        }
+        case ASTKind::EXTEND_DECL: {
+            auto ed = StaticCast<ExtendDecl>(node);
+            ret = ObtainsAliasType(ed->extendedType.get());
+            break;
+        }
+        default:
+            ret = node->ty;
+            break;
+    }
+    return ret;
+}
+
+std::vector<Ptr<Ty>> TypeManager::RecursiveSubstituteTypeAliasInTy(
+    Ptr<const Ty> ty, bool needSubstituteGeneric, const TypeSubst& typeMapping)
+{
+    CJC_ASSERT(ty); // Caller guarantees;
+    std::vector<Ptr<Ty>> typeArgs;
+    for (auto typeArg : ty->typeArgs) {
+        CJC_ASSERT(typeArg);
+        if (Ty::IsTyCorrect(typeArg) || needSubstituteGeneric) {
+            auto noTypeAliasArg = SubstituteTypeAliasInTy(*typeArg, needSubstituteGeneric, typeMapping);
+            typeArgs.push_back(noTypeAliasArg);
+        } else {
+            typeArgs.push_back(typeArg);
+        }
+    }
+    return typeArgs;
+}
+
+Ptr<Ty> TypeManager::GetUnaliasedTypeFromTypeAlias(const TypeAliasTy& target, const std::vector<Ptr<Ty>>& typeArgs,
+    bool needSubstituteGeneric, const TypeSubst& customMapping)
+{
+    CJC_NULLPTR_CHECK(target.declPtr);
+    auto tad = target.declPtr;
+    if (tad->TestAttr(Attribute::IN_REFERENCE_CYCLE)) {
+        return tad->ty;
+    }
+    CJC_NULLPTR_CHECK(tad->type);
+    auto aliasedType = tad->type.get();
+    TypeSubst typeMapping = GenerateTypeMapping(*tad, typeArgs);
+    auto instAliasedTy = GetInstantiatedTy(aliasedType->ty, typeMapping);
+    // If the aliased type is still a type alias or contain a alias type, perform recursive substitution.
+    if (!Ty::IsInitialTy(aliasedType->aliasTy) || instAliasedTy->kind == TypeKind::TYPE) {
+        return SubstituteTypeAliasInTy(*instAliasedTy, needSubstituteGeneric, customMapping);
+    }
+    return instAliasedTy;
+}
+
+Ptr<AST::Ty> TypeManager::SubstituteTypeAliasInTy(AST::Ty& ty, bool needSubstituteGeneric, const TypeSubst& typeMapping)
+{
+    if (!Ty::IsTyCorrect(&ty)) {
+        return TypeManager::GetInvalidTy();
+    }
+    if (ty.kind <= TypeKind::TYPE_BOOLEAN) {
+        return &ty;
+    }
+    std::vector<Ptr<Ty>> typeArgs = RecursiveSubstituteTypeAliasInTy(&ty, needSubstituteGeneric, typeMapping);
+    switch (ty.kind) {
+        case TypeKind::TYPE_CLASS: {
+            if (auto ctt = DynamicCast<ClassThisTy*>(&ty); ctt) {
+                return GetClassThisTy(*ctt->declPtr, typeArgs);
+            }
+            return GetClassTy(*static_cast<ClassTy&>(ty).declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_STRUCT: {
+            return GetStructTy(*static_cast<StructTy&>(ty).declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_INTERFACE: {
+            return GetInterfaceTy(*static_cast<InterfaceTy&>(ty).declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_ENUM: {
+            return GetEnumTy(*static_cast<EnumTy&>(ty).declPtr, typeArgs);
+        }
+        case TypeKind::TYPE_FUNC: {
+            auto returnTy = typeArgs.back();
+            typeArgs.pop_back();
+            auto& funcTy = static_cast<FuncTy&>(ty);
+            return GetFunctionTy(typeArgs, returnTy, {funcTy.isC, false, funcTy.hasVariableLenArg});
+        }
+        case TypeKind::TYPE: {
+            return GetUnaliasedTypeFromTypeAlias(
+                static_cast<TypeAliasTy&>(ty), typeArgs, needSubstituteGeneric, typeMapping);
+        }
+        case TypeKind::TYPE_TUPLE: {
+            return GetTupleTy(typeArgs);
+        }
+        case TypeKind::TYPE_ARRAY: {
+            auto& arrayTy = static_cast<ArrayTy&>(ty);
+            return GetArrayTy(typeArgs[0], arrayTy.dims);
+        }
+        case TypeKind::TYPE_VARRAY: {
+            auto& varrayTy = static_cast<VArrayTy&>(ty);
+            CJC_ASSERT(!typeArgs.empty() && typeArgs[0] != nullptr);
+            return GetVArrayTy(*typeArgs[0], varrayTy.size);
+        }
+        case TypeKind::TYPE_POINTER: {
+            return GetPointerTy(typeArgs[0]);
+        }
+        case TypeKind::TYPE_GENERICS: {
+            if (!needSubstituteGeneric) {
+                return &ty;
+            }
+            auto found = typeMapping.find(StaticCast<GenericsTy*>(&ty));
+            if (found != typeMapping.end()) {
+                return found->second;
+            }
+            // This type will not be used, just for placeholder and marking current is substituted with typealias.
+            return GetIntersectionTy({&ty});
+        }
+        default:
+            return &ty;
+    }
+}
 } // namespace Cangjie

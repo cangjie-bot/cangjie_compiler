@@ -830,7 +830,7 @@ TPatternOffset ASTWriter::ASTWriterImpl::SaveExceptTypePattern(const ExceptTypeP
     std::vector<FormattedIndex> types{info.ty};
     for (auto& type : etp.types) {
         CJC_NULLPTR_CHECK(type);
-        types.emplace_back(SaveType(type->ty));
+        types.emplace_back(SaveType(typeManager.ObtainsAliasType(type.get())));
     }
     auto tyIdx = builder.CreateVector<FormattedIndex>(types);
     auto patternsIdx = builder.CreateVector<TPatternOffset>({pIdx});
@@ -850,7 +850,7 @@ TPatternOffset ASTWriter::ASTWriterImpl::SaveCommandTypePattern(const CommandTyp
     std::vector<FormattedIndex> types{info.ty};
     for (auto& type : ctp.types) {
         CJC_NULLPTR_CHECK(type);
-        types.emplace_back(SaveType(type->ty));
+        types.emplace_back(SaveType(typeManager.ObtainsAliasType(type.get())));
     }
     auto tyIdx = builder.CreateVector<FormattedIndex>(types);
     auto patternsIdx = builder.CreateVector<TPatternOffset>({pIdx});
