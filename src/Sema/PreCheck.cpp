@@ -837,7 +837,10 @@ void TypeChecker::TypeCheckerImpl::ResolveTypeAlias(const std::vector<Ptr<ASTCon
 void TypeChecker::TypeCheckerImpl::SetTypeTy(ASTContext& ctx, Type& type)
 {
     type.ty = GetTyFromASTType(ctx, &type);
-    type.ty = SubstituteTypeAliasInTy(*type.ty);
+    if (type.ty->kind == TypeKind::TYPE) {
+        type.aliasTy = type.ty;
+    }
+    type.ty = typeManager.SubstituteTypeAliasInTy(*type.ty);
 }
 
 void TypeChecker::TypeCheckerImpl::SubstituteTypeAliasForAlias(TypeAliasDecl& tad)
@@ -855,7 +858,7 @@ void TypeChecker::TypeCheckerImpl::SubstituteTypeAliasForAlias(TypeAliasDecl& ta
             case ASTKind::OPTION_TYPE: {
                 auto type = StaticAs<ASTKind::TYPE>(node);
                 CJC_ASSERT(type->ty != nullptr);
-                type->ty = SubstituteTypeAliasInTy(*type->ty);
+                type->ty = typeManager.SubstituteTypeAliasInTy(*type->ty);
                 return VisitAction::WALK_CHILDREN;
             }
             default:
