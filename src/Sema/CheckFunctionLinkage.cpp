@@ -295,10 +295,10 @@ inline bool IsMemberInMemLayout(const Decl& member)
 
 void ExternalLinkageAnalyzer::PerformPublicType(const OwnedPtr<Decl>& decl)
 {
-    if (!decl->IsExportedDecl() || (decl->astKind == ASTKind::FUNC_DECL && decl->TestAttr(Attribute::FOREIGN))) {
+    if (decl->linkage == Linkage::INTERNAL ||
+        (decl->astKind == ASTKind::FUNC_DECL && decl->TestAttr(Attribute::FOREIGN))) {
         return;
     }
-    decl->linkage = Linkage::EXTERNAL;
     if (auto vd = DynamicCast<VarDecl>(decl.get()); vd && vd->isConst) {
         AddSrcExportedDecl(vd);
         return;

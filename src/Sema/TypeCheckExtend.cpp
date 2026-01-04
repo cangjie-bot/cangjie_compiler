@@ -596,7 +596,9 @@ void TypeChecker::TypeCheckerImpl::SetExtendExternalAttr(const ASTContext& ctx, 
     if (ed.generic) {
         for (auto& tp : ed.generic->genericConstraints) {
             for (auto& up : tp->upperBounds) {
-                Ptr<Decl> decl = up->GetTarget();
+                // If upperbound is alias type, the extend decl access level should be less than or equal to the access
+                // level of the alias decl. However, due to compatibility issues, the actual type is used here.
+                Ptr<Decl> decl = TypeCheckUtil::GetRealTarget(up->GetTarget());
                 if (decl == nullptr) {
                     continue;
                 }

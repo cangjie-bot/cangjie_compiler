@@ -341,6 +341,23 @@ public:
     /// get the class ty that This refers to if it is a This ty
     Ptr<AST::Ty> GetThisRealTy(Ptr<AST::Ty> now);
 
+    /**
+     * @brief Obtains the alias type of node if node's ty have alias type reference.
+     * @param node the node which map contain alias type reference.
+     * @return the TypeAliasTy or Ty contain TypeAliasTy.
+     */
+    Ptr<AST::Ty> ObtainsAliasType(Ptr<const AST::Node> node);
+
+    /**
+     * @brief Substitute type alias in ty recursively.
+     * @param ty the type need to substitute type alias.
+     * @param needSubstituteGeneric whether need to substitute generic type vars.
+     * @param typeMapping the custom type mapping for substitution.
+     * @return the substituted type.
+     */
+    Ptr<AST::Ty> SubstituteTypeAliasInTy(
+        AST::Ty& ty, bool needSubstituteGeneric = false, const TypeSubst& typeMapping = {});
+
 private:
     friend class TyVarScope;
     friend class InstCtxScope;
@@ -611,6 +628,14 @@ private:
         const std::set<Ptr<AST::ExtendDecl>>& extends, const std::vector<Ptr<AST::Ty>>& typeArgs);
     bool HasExtendInterfaceTyHelper(AST::Ty& superTy, const std::set<Ptr<AST::ExtendDecl>>& extends,
         const std::vector<Ptr<AST::Ty>>& typeArgs);
+
+    Ptr<AST::Ty> SubstituteTypeArgs(Ptr<AST::Ty> baseTy, std::vector<Ptr<AST::Ty>>& typeArgs);
+    std::vector<Ptr<AST::Ty>> RecursiveSubstituteTypeAliasInTy(
+        Ptr<const AST::Ty> ty, bool needSubstituteGeneric, const TypeSubst& typeMapping = {});
+    Ptr<AST::Ty> GetUnaliasedTypeFromTypeAlias(const AST::TypeAliasTy& target,
+        const std::vector<Ptr<AST::Ty>>& typeArgs, bool needSubstituteGeneric, const TypeSubst& customMapping);
+    Ptr<AST::Ty> ObtainsAliasTypeOfRefType(Ptr<const AST::RefType> rt);
+    Ptr<AST::Ty> ObtainsAliasTypeOfFuncDecl(Ptr<const AST::FuncDecl> fd);
 };
 } // namespace Cangjie
 
