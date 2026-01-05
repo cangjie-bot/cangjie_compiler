@@ -5,22 +5,9 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 #include "cangjie/CHIR/Optimization/LambdaInline.h"
+#include "cangjie/CHIR/Utils/Utils.h"
 
 namespace Cangjie::CHIR {
-
-namespace {
-std::vector<Expression*> GetNonDebugUsers(const Value& val)
-{
-    std::vector<Expression*> res;
-    for (auto expr: val.GetUsers()) {
-        if (expr->GetExprKind() != CHIR::ExprKind::DEBUGEXPR) {
-            res.emplace_back(expr);
-        }
-    }
-    return res;
-}
-}  // namespace
-
 bool CheckLambdaUsingForMultiThread(const Lambda& lambda)
 {
     auto returnTy = lambda.GetReturnType();
