@@ -1197,7 +1197,7 @@ void JavaSourceCodeGenerator::AddInterfaceFwdClassNativeMethod()
                 methodSignature += "(";
                 std::string interfaceName = genericConfig ? genericConfig->declInstName : decl->identifier.Val();
                 methodSignature += interfaceName + JAVA_WHITESPACE + JAVA_SELF_OBJECT;
-                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, false);
+                std::string argsWithTypes = GenerateFuncParamLists(funcDecl.funcBody->paramLists, true);
                 if (argsWithTypes != "") {
                     methodSignature += ", " + argsWithTypes;
                 }
