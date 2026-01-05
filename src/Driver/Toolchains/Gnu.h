@@ -41,10 +41,11 @@ protected:
 
     bool PrepareDependencyPath() override;
     bool ProcessGeneration(std::vector<TempFileInfo>& objFiles) override;
-
+    bool PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles);         
     virtual std::string GenerateGCCLibPath(const std::pair<std::string, std::string>& gccCrtFilePair) const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);
+    virtual void GenerateObjTool(const std::vector<TempFileInfo>& objFiles);
     // utility method to find clang library, used to find asan and libfuzzer
     // clang library format: libclang_rt.<module name>[-<arch>].<suffix>
     std::optional<std::string> SearchClangLibrary(const std::string libName, const std::string libSuffix);
@@ -74,6 +75,7 @@ protected:
 private:
     void HandleAsanDependencies(Tool& tool, const std::string& cangjieLibPath, const std::string& gccLibPath);
     void HandleHwasanDependencies(Tool& tool, const std::string& cangjieLibPath);
+    void GenericHandleSanitizerRuntime(Tool& tool, const std::string& name, const std::string& cangjieLibPath, std::function<void()> finalFallback);
 };
 } // namespace Cangjie
 #endif // CANGJIE_DRIVER_TOOLCHAIN_GNU_H
