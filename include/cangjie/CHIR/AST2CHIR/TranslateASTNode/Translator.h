@@ -1153,8 +1153,9 @@ private:
 
     GenericType* TranslateCompleteGenericType(AST::GenericsTy& ty);
     
-    // intrinsic special
-    Type* HandleSpecialIntrinsic(IntrinsicKind intrinsicKind, std::vector<Value*>& args, Type* retTy);
+    // Helper to intrinsic translate.
+    Type* FixBlackBoxArgsAndRetTy(std::vector<Value*>& args, Type* retTy);
+
     void AddMemberMethodToCustomTypeDef(const AST::FuncDecl& decl, CustomTypeDef& def);
 };
 

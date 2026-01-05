@@ -485,36 +485,36 @@ void Translator::TranslateTrivialArgs(
     }
 }
 
-Type* Translator::HandleSpecialIntrinsic(
-    IntrinsicKind intrinsicKind, std::vector<Value*>& args, Type* retTy)
+
+Type* Translator::FixBlackBoxArgsAndRetTy(std::vector<Value*>& args, Type* retTy)
 {
-    if (intrinsicKind == BLACK_BOX) {
-        /// black hole args change to reference.
-        for (auto& arg : args) {
-            auto type = arg->GetType();
-            if (type->IsRef()) {
-                continue;
-            }
-            Ptr<Value> newArg = arg;
-            if (arg->IsLocalVar()) {
-                auto localVar = StaticCast<LocalVar*>(arg);
-                auto expr = localVar->GetExpr();
-                if (expr->IsLoad()) {
-                    newArg = StaticCast<Load*>(expr)->GetLocation();
-                    retTy = newArg->GetType();
-                } else {
-                    auto loc = arg->GetDebugLocation();
-                    retTy = builder.GetType<RefType>(type);
-                    newArg =
-                        CreateAndAppendExpression<Allocate>(loc, retTy, type, currentBlock)->GetResult();
-                    (void)CreateAndAppendExpression<Store>(
-                        loc, builder.GetUnitTy(), arg, newArg, currentBlock)->GetResult();
-                }
-            }
-            arg = newArg;
+    auto fixedRetTy = retTy;
+    // black hole args change to reference.
+    for (auto& arg : args) {
+        auto type = arg->GetType();
+        if (type->IsRef()) {
+            continue;
         }
+        Ptr<Value> newArg = arg;
+        if (arg->IsLocalVar()) {
+            auto localVar = StaticCast<LocalVar*>(arg);
+            auto expr = localVar->GetExpr();
+            if (expr->IsLoad()) {
+                newArg = StaticCast<Load*>(expr)->GetLocation();
+                expr->RemoveSelfFromBlock();
+                fixedRetTy = newArg->GetType();
+            } else {
+                auto loc = arg->GetDebugLocation();
+                fixedRetTy = builder.GetType<RefType>(type);
+                newArg =
+                    CreateAndAppendExpression<Allocate>(loc, retTy, type, currentBlock)->GetResult();
+                (void)CreateAndAppendExpression<Store>(
+                    loc, builder.GetUnitTy(), arg, newArg, currentBlock)->GetResult();
+            }
+        }
+        arg = newArg;
     }
-    return retTy;
+    return fixedRetTy;
 }
  
 Ptr<Value> Translator::TranslateIntrinsicCall(const AST::CallExpr& expr)
@@ -554,7 +554,10 @@ Ptr<Value> Translator::TranslateIntrinsicCall(const AST::CallExpr& expr)
     // Translate arguments
     std::vector<Value*> args;
     TranslateTrivialArgs(expr, args, std::vector<Type*>{});
-    auto retTy = HandleSpecialIntrinsic(intrinsicKind, args, ty);
+    auto retTy = ty;
+    if (intrinsicKind == BLACK_BOX) {
+        retTy = FixBlackBoxArgsAndRetTy(args, ty);
+    }
     auto ne = StaticCast<AST::NameReferenceExpr*>(expr.baseFunc.get());
     // wrap this into the `GenerateFuncCall` API
     auto callContext = IntrisicCallContext {
