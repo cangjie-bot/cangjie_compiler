@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <string_view>
 
 #include "cangjie/AST/PrintNode.h"
 #include "cangjie/Basic/Version.h"
@@ -82,15 +83,17 @@ static bool IsEmptyInputFile(const DefaultCompilerInstance& instance)
         // In scan dependency mode, .cjo file input is required or `-p` must be specified (with package path input).
         return !globalOptions.compilePackage && globalOptions.inputCjoFile.empty();
     } else {
-        // In code compilation mode, .cj file input is required or `-p` must be specified (with package path input).
-        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty();
+        // In code compilation mode, .cj file input or is required or `-p` must be specified (with package path input).
+        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && globalOptions.inputObjs.empty();
     }
 }
 
 static bool HandleEmptyInputFileSituation(const DefaultCompilerInstance& instance)
 {
     auto& globalOptions = instance.invocation.globalOptions;
-    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty()) {
+    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && 
+        globalOptions.inputObjs.empty()) {
+
         instance.diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
@@ -107,6 +110,33 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
     bool isEmitCHIR = instance.invocation.globalOptions.IsEmitCHIREnable();
     if (IsEmptyInputFile(instance) && opts.dumpAction != FrontendOptions::DumpAction::DESERIALIZE_CHIR) {
         return HandleEmptyInputFileSituation(instance);
+    }
+
+    auto& globalOptions = instance.invocation.globalOptions;
+    if (!globalOptions.compilePackage && globalOptions.srcFiles.empty() && !globalOptions.inputObjs.empty()) {
+        using namespace std::literals;
+        static constexpr std::string_view CJ_PREFIX = "cangjie-";
+        // const std::string staticLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "lib"), globalOptions.GetCangjieLibTargetPathName());
+        // const std::string dyLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "runtime/lib"), globalOptions.GetCangjieLibTargetPathName());
+        auto it = std::remove_if(globalOptions.inputLibraryOrder.begin(), globalOptions.inputLibraryOrder.end(), [&](const auto& tuple){
+            const std::string& rawName = std::get<0>(tuple);
+            std::string_view nameView(rawName);
+            if (nameView.size() <= CJ_PREFIX.size() ||  nameView.compare(0, CJ_PREFIX.size(), CJ_PREFIX) != 0) {
+                return false;
+            }
+            std::string potentialPkgName = rawName.substr(CJ_PREFIX.size());
+            std::replace(potentialPkgName.begin(), potentialPkgName.end(), '-', '.');
+            if (rawName == FileUtil::ConvertPackageNameToLibCangjieBaseFormat(potentialPkgName)){
+                globalOptions.indirectBuiltinDependencies.insert(potentialPkgName+".cjo");
+                // .cjo is same as .xx
+                return true;   
+            }
+            return false;
+        });
+        if (it != globalOptions.inputLibraryOrder.end()) {
+            globalOptions.inputLibraryOrder.erase(it, globalOptions.inputLibraryOrder.end());
+        }
+        return true;
     }
 
     if (opts.dumpAction != FrontendOptions::DumpAction::NO_ACTION) {
@@ -195,12 +225,14 @@ bool Cangjie::ExecuteFrontendByDriver(DefaultCompilerInstance& instance, const D
 {
     if (ExecuteCompile(instance)) {
         driver.driverOptions->frontendOutputFiles = instance.invocation.globalOptions.frontendOutputFiles;
+        driver.driverOptions->inputLibraryOrder = instance.invocation.globalOptions.inputLibraryOrder;
         driver.driverOptions->directBuiltinDependencies = instance.invocation.globalOptions.directBuiltinDependencies;
         driver.driverOptions->indirectBuiltinDependencies =
             instance.invocation.globalOptions.indirectBuiltinDependencies;
         driver.driverOptions->compilationCachedPath = instance.invocation.globalOptions.compilationCachedPath;
         driver.driverOptions->compilationCachedDir = instance.invocation.globalOptions.compilationCachedDir;
         driver.driverOptions->compilationCachedFileName = instance.invocation.globalOptions.compilationCachedFileName;
+
         driver.driverOptions->incrementalCompileNoChange =
             (instance.invocation.globalOptions.enIncrementalCompilation && instance.kind == IncreKind::NO_CHANGE);
         driver.driverOptions->symbolsNeedLocalized = instance.invocation.globalOptions.symbolsNeedLocalized;

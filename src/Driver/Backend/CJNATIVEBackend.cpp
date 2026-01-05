@@ -133,7 +133,7 @@ void CJNATIVEBackend::GenerateCacheCopyTool(const std::vector<TempFileInfo>& fil
  */
 bool CJNATIVEBackend::ProcessGeneration()
 {
-    CJC_ASSERT(!driverOptions.frontendOutputFiles.empty() && "non-compiled file found!");
+    CJC_ASSERT(!(driverOptions.frontendOutputFiles.empty() && driverOptions.inputObjs.empty())&& "non-compiled file found!");
     std::vector<TempFileInfo> bitCodeFiles = GetFrontendOutputs();
     return driverOptions.incrementalCompileNoChange ? ProcessGenerationOfIncrementalNoChangeCompile(bitCodeFiles)
                                                     : ProcessGenerationOfNormalCompile(bitCodeFiles);

@@ -42,6 +42,7 @@ const std::string CJ_EXTENSION = "cj";
 const std::string CHIR_EXTENSION = "chir";
 const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
+const std::string OBJC_EXTENSION= "obj";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
 #elif defined(__APPLE__)
@@ -244,6 +245,7 @@ bool GlobalOptions::SetOptimizationLevel(OptimizationLevel level)
 bool GlobalOptions::PerformPostActions()
 {
     SetupChirOptions();
+    SetupCompileTargetOptions();
     bool success = SetupConditionalCompilationCfg();
     // ReprocessInputs depends on the normalized output path which is processed in ReprocessOutputs,
     // so ReprocessOutputs must be run before ReprocessInputs.
@@ -257,6 +259,7 @@ bool GlobalOptions::PerformPostActions()
     success = success && CheckLtoOptions();
     success = success && CheckCompileAsExeOptions();
     success = success && CheckPgoOptions();
+    success = success && CheckOutputModeOptions();
     success = success && ReprocessObfuseOption();
     RefactJobs();
     RefactAggressiveParallelCompileOption();
@@ -278,6 +281,13 @@ void GlobalOptions::SetupChirOptions()
     // If using interpreter we need CHIR graph to be closure converted
     if (interpreter) {
         chirCC = true;
+    }
+}
+
+void GlobalOptions::SetupCompileTargetOptions()
+{
+     if(outputMode == OutputMode::OBJ  && compileTarget == COMPILETARGET::DEFAULT){
+        compileTarget = COMPILETARGET::EXECUTABLE;
     }
 }
 
@@ -526,12 +536,30 @@ bool GlobalOptions::CheckLtoOptions() const
         Errorln("Windows does not support LTO optimization.");
         return false;
     }
+    if (outputMode == OutputMode::OBJ ) {
+        Errorln("--output-type=obj is not allowed in LTO model");
+        return false;
+    }
     if (outputMode == OutputMode::STATIC_LIB && !bcInputFiles.empty()) {
         Errorln("The input file cannot be bc files When generating a static library in LTO mode.");
         return false;
     }
     if (optimizationLevel == OptimizationLevel::Os || optimizationLevel == OptimizationLevel::Oz) {
         Errorln("-Os and -Oz optimize options are not supported in LTO mode.");
+        return false;
+    }
+    return true;
+}
+
+bool GlobalOptions::CheckOutputModeOptions() const {
+    if(outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT){
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
+        return false;
+    }
+    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage){
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
     return true;
@@ -649,7 +677,12 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_archive_file, value, maybePath.value());
         return true;
     }
-    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION) {
+    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION ) {
+        RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
+        return true;
+    }
+
+    if (ext == OBJC_EXTENSION  && GetFileExtension(maybePath.value()) != OBJC_EXTENSION){
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
@@ -779,7 +812,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
             return;
         }
         std::string ext = GetFileExtension(value);
-        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION) {
+        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == OBJC_EXTENSION) {
             ret = HandleArchiveExtension(diag, value);
         } else if (ext == CJ_EXTENSION && !compileCjd) {
             ret = HandleCJExtension(diag, value);

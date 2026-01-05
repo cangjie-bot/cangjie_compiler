@@ -155,7 +155,7 @@ std::string DefaultCIImpl::GenerateBCFilePathAndUpdateToInvocation(
     std::string fileName = GenerateFileName(pkgName, idx);
     TempFileInfo bcFileInfo = TempFileManager::Instance().CreateNewFileInfo(TempFileInfo{fileName, "", "", true}, kind);
     ci.invocation.globalOptions.frontendOutputFiles.emplace_back(bcFileInfo);
-
+ 
     auto bcFilePath = bcFileInfo.filePath;
     if (FileUtil::FileExist(bcFilePath) && !FileUtil::Remove(bcFilePath)) {
         Errorln("The file " + bcFilePath + " already exists, but it fails to be removed before being updated.");

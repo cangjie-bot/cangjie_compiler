@@ -38,7 +38,8 @@ TempFileInfo IOS_CJNATIVE::GenerateLinkingTool(
         TempFileKind kind = driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB
             ? TempFileKind::T_DYLIB_MAC
             : TempFileKind::T_EXE_MAC;
-        outputFileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], kind);
+        outputFileInfo = CreateNewFileInfoWrapper(objFiles, kind);
+        // CreateNewFileInfoWrapper(objFiles,kind);
     } else {
         outputFileInfo = GetOutputFileInfo(objFiles);
     }

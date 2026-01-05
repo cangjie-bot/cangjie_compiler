@@ -164,9 +164,17 @@ PREDEFVALUE(output_type_list, {
     VALUE("staticlib", "emit static library", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
     VALUE("dylib", "emit dynamic library", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
     VALUE("chir", "emit partially compiled package", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+    VALUE("obj", "emit obj", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+
 #if !defined(CANGJIE_VISIBLE_OPTIONS_ONLY)
     VALUE("hotreload", "emit dynamic library with hot reload supports", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) })
 #endif
+});
+PREDEFVALUE(compile_target_list, {
+    // for CJNATIVE backend
+    VALUE("exe", "compile executable (default)", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+    VALUE("staticlib", "compile static library", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+    VALUE("dylib", "compile dynamic library", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
 });
 PREDEFVALUE(lto_mode, {
     VALUE("full", "", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
@@ -537,6 +545,9 @@ OPTION("--sysroot", SYSROOT, SEPARATED, { BACKEND(CJNATIVE) },
 OPTION("--output-type", OUTPUT_TYPE, SEPARATED, { BACKEND(ALL) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, output_type_list, SINGLE_OCCURRENCE,
     "Specify output file type")
+OPTION("--compile-target", COMPILE_TARGET, SEPARATED, { BACKEND(ALL) },
+    { GROUP(DRIVER) COMMA GROUP(VISIBLE) }, nullptr, compile_target_list, SINGLE_OCCURRENCE,
+    "Specify compile target for obj")
 OPTION("-O0", OPTIMIZATION_0, FLAG, { BACKEND(CJNATIVE) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,
     "Optimization level 0 (default)")
