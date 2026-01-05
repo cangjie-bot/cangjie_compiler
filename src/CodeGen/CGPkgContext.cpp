@@ -26,6 +26,8 @@ CGPkgContext::CGPkgContext(CHIR::CHIRBuilder& chirBuilder, const CHIRData& chirD
         correctedCachedMangleMap.incrRemovedDecls.emplace(incrRemovedDecl);
     }
     correctedCachedMangleMap.Dump();
+
+    CollectSubTypeMap();
 }
 
 CGPkgContext::~CGPkgContext() = default;
@@ -35,6 +37,7 @@ void CGPkgContext::Clear()
     for (auto& cgMod : cgMods) {
         cgMod->GetCGContext().Clear();
     }
+    subTypeMap.clear();
     correctedCachedMangleMap.Clear();
     quickCHIRValues.Do([](std::unordered_map<std::string, CHIR::Value*>& object) { object.clear(); });
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
@@ -85,6 +88,45 @@ const std::set<std::string>& CGPkgContext::GetLocalizedSymbols()
 {
     return localizedSymbols.Do(
         [](const std::set<std::string>& object) -> const std::set<std::string>& { return object; });
+}
+
+void CGPkgContext::CollectSubTypeMap()
+{
+    if (!GetGlobalOptions().CompileExecutable()) {
+        return;
+    }
+
+    for (auto customTypeDef : GetCHIRPackage().GetAllCustomTypeDef()) {
+        for (auto parentTy : customTypeDef->GetSuperTypesInCurDef()) {
+            subTypeMap[parentTy].emplace(customTypeDef->GetType());
+        }
+    }
+}
+
+bool CGPkgContext::NeedOuterTypeInfo(const CHIR::ClassType& classType)
+{
+    if (!GetGlobalOptions().CompileExecutable()) {
+        return true;
+    }
+
+    auto type = classType.GetClassDef()->GetType();
+    if (!type->GetGenericArgs().empty()) {
+        return true;
+    }
+
+    for (auto subTy : subTypeMap[type]) {
+        if (!subTy->GetTypeArgs().empty()) {
+            return true;
+        }
+        auto subClassType = DynamicCast<CHIR::ClassType*>(subTy);
+        if (subClassType == nullptr) {
+            continue;
+        }
+        if (NeedOuterTypeInfo(*subClassType)) {
+            return true;
+        }
+    }
+    return false;
 }
 #endif
 
