@@ -1925,7 +1925,7 @@ void MockSupportManager::ReplaceInterfaceDefaultFunc(
 
     if (auto maExpr = DynamicCast<MemberAccess>(nameRefExpr)) {
         if (funcDecl->TestAttr(Attribute::STATIC)) {
-            if (auto genericTy = DynamicCast<GenericsTy>(maExpr->baseExpr->ty)) {
+            if (Is<GenericsTy>(maExpr->baseExpr->ty)) {
                 // T.foo |-> match (IsSubtypeTypes<T, I$Buddy>()) {
                 //   case true => T.foo$Buddy
                 //   case false => T.foo
@@ -2070,7 +2070,7 @@ void MockSupportManager::ReplaceInterfaceDefaultFuncInCall(
 
     if (auto maExpr = DynamicCast<MemberAccess>(callExpr->baseFunc.get())) {
         if (callExpr->resolvedFunction->TestAttr(Attribute::STATIC)) {
-            if (auto genericTy = DynamicCast<GenericsTy>(maExpr->baseExpr->ty)) {
+            if (Is<GenericsTy>(maExpr->baseExpr->ty)) {
                 // T.foo() |-> match (IsSubtypeTypes<T, I$Buddy>()) {
                 //   case true => T.foo$Buddy()
                 //   case false => T.foo()
