@@ -507,46 +507,38 @@ bool PluginCustomAnnoChecker::CheckSyscap(
     if (!optionWithSyscap) {
         return true;
     }
-    SysCapSet scopeSyscaps = unionSet;
-    if (!scopeAnnoInfo.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
-    }
     PluginCustomAnnoInfo targetAPILevel;
     Parse(target, targetAPILevel);
     std::string targetLevel = targetAPILevel.syscap;
     if (targetLevel.empty()) {
         return true;
     }
-    auto diagForSyscap = [this, &scopeSyscaps, &diagCfg, &targetLevel](DiagKindRefactor kind) {
+    auto diagForSyscap = [this, &diagCfg, &targetLevel](DiagKindRefactor kind, SysCapSet& syscapCandidate) {
         auto builder = diag.DiagnoseRefactor(kind, *diagCfg.node, targetLevel);
         std::stringstream scopeSyscapsStr;
         // 3 is maximum number of syscap limit.
-        for (size_t i = 0; i < std::min(scopeSyscaps.size(), static_cast<size_t>(3)); ++i) {
-            std::string split = scopeSyscaps[i] == scopeSyscaps.back() ? "" : ", ";
-            scopeSyscapsStr << scopeSyscaps[i] << split;
+        for (size_t i = 0; i < std::min(syscapCandidate.size(), static_cast<size_t>(3)); ++i) {
+            std::string split = syscapCandidate[i] == syscapCandidate.back() ? "" : ", ";
+            scopeSyscapsStr << syscapCandidate[i] << split;
         }
-        if (scopeSyscaps.size() > 3) {
+        if (syscapCandidate.size() > 3) {
             scopeSyscapsStr << "...";
         }
         builder.AddNote("the following syscaps are supported: " + scopeSyscapsStr.str());
     };
-
-    auto found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+    bool equal2Scope = scopeAnnoInfo.syscap == targetLevel;
+    auto found = std::find(unionSet.begin(), unionSet.end(), targetLevel);
+    if (found == unionSet.end() && !equal2Scope && !diagCfg.node->begin.IsZero()) {
         if (diagCfg.reportDiag) {
-            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_error);
+            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_error, unionSet);
         }
         return false;
     }
 
-    scopeSyscaps = intersectionSet;
-    if (!scopeAnnoInfo.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
-    }
-    found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+    found = std::find(intersectionSet.begin(), intersectionSet.end(), targetLevel);
+    if (found == intersectionSet.end() && !equal2Scope && !diagCfg.node->begin.IsZero()) {
         if (diagCfg.reportDiag) {
-            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_warning);
+            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_warning, intersectionSet);
         }
         return false;
     }
