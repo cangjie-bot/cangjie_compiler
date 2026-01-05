@@ -222,8 +222,9 @@ bool TempFileManager::Init(const GlobalOptions& options, bool isFrontend)
         {TempFileKind::O_EXE, [this]() { return opts.target.os == Triple::OSType::WINDOWS ? ".exe" : ""; }},
         {TempFileKind::O_DYLIB, [this]() { return GetDylibSuffix(); }},
         {TempFileKind::O_MACRO, [this]() { return GetDylibSuffix(); }},
+        {TempFileKind::O_OBJ, [this]() { return GetObjSuffix(); }},
         {TempFileKind::T_OPT_BC, []() { return ".opt.bc"; }},
-        {TempFileKind::O_OPT_BC, []() { return ".bc"; }},
+        {TempFileKind::O_OPT_BC, []() { return ".o"; }},
         {TempFileKind::T_ASM, []() { return ".s"; }},
 #endif
         {TempFileKind::O_CHIR, []() { return CHIR_SERIALIZATION_FILE_EXTENSION; }},
@@ -315,6 +316,7 @@ TempFileInfo TempFileManager::CreateNewFileInfo(const TempFileInfo& info, TempFi
         case TempFileKind::O_MACRO:
         case TempFileKind::O_DYLIB:
         case TempFileKind::O_STATICLIB:
+        case TempFileKind::O_OBJ:
             newInfo = CreateOutputFileInfo(info, kind);
             break;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
@@ -493,4 +495,12 @@ std::string TempFileManager::GetDylibSuffix() const
         default:
             return ".so";
     }
+}
+
+std::string TempFileManager::GetObjSuffix() const
+{
+    if (opts.target.os == Triple::OSType::WINDOWS) {
+        return ".obj";
+    }
+    return ".o";
 }
