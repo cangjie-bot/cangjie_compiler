@@ -63,6 +63,7 @@ const std::unordered_map<std::string, uint8_t> OUTPUT_MODE_MAP = {
     {"exe", uint8_t(GlobalOptions::OutputMode::EXECUTABLE)},
     {"staticlib", uint8_t(GlobalOptions::OutputMode::STATIC_LIB)},
     {"dylib", uint8_t(GlobalOptions::OutputMode::SHARED_LIB)},
+    {"obj", uint8_t(GlobalOptions::OutputMode::OBJ)},
     {"chir", uint8_t(GlobalOptions::OutputMode::CHIR)},
 };
 #endif
