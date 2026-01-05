@@ -1589,4 +1589,15 @@ bool IsSTDFunction(const FuncBase& func)
 {
     return func.GetPackageName().substr(0, strlen(STD_PACKAGE_PREFIX)) == STD_PACKAGE_PREFIX;
 }
+
+std::vector<Expression*> GetNonDebugUsers(const Value& val)
+{
+    std::vector<Expression*> res;
+    for (auto expr: val.GetUsers()) {
+        if (expr->GetExprKind() != CHIR::ExprKind::DEBUGEXPR) {
+            res.emplace_back(expr);
+        }
+    }
+    return res;
+}
 } // namespace Cangjie::CHIR
