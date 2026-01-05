@@ -1100,7 +1100,7 @@ void JavaDesugarManager::GenerateLambdaGlueCode(File& file)
         if (funcDecl) {
             auto tmpFuncDecl = funcDecl.get();
             generatedDecls.push_back(std::move(funcDecl));
-            lambdaConfUtilFuncs.emplace(lambdaPattern.signature, tmpFuncDecl);
+            lambdaConfUtilFuncs.emplace(lambdaTy->String(), tmpFuncDecl);
         }
 
         // generate delete cj object

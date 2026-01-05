@@ -357,7 +357,7 @@ std::string GetGenericActualType(const GenericConfigInfo* config, std::string ge
 // Current generic just support primitive type
 TypeKind GetActualTypeKind(std::string configType)
 {
-    static const std::unordered_map<std::string, TypeKind> typeMap = {{"Int", TypeKind::TYPE_INT32},
+    static const std::unordered_map<std::string, TypeKind> typeMap = {{"Int", TypeKind::TYPE_INT64},
         {"Int8", TypeKind::TYPE_INT8}, {"Int16", TypeKind::TYPE_INT16}, {"Int32", TypeKind::TYPE_INT32},
         {"Int64", TypeKind::TYPE_INT64}, {"IntNative", TypeKind::TYPE_INT_NATIVE}, {"UInt8", TypeKind::TYPE_UINT8},
         {"UInt16", TypeKind::TYPE_UINT16}, {"UInt32", TypeKind::TYPE_UINT32}, {"UInt64", TypeKind::TYPE_UINT64},
