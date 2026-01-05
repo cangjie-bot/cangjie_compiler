@@ -666,6 +666,7 @@ private:
             if (!silent) {
                 diag.DiagnoseRefactor(DiagKindRefactor::sema_member_not_imported,
                                       DEFAULT_POSITION, package + "." + declname);
+                CJC_ABORT();
             }
             return Ptr(As<K>(nullptr));
         }

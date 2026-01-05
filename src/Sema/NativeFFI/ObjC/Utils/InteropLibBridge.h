@@ -184,7 +184,7 @@ private:
         if (!decl) {
             diag.DiagnoseRefactor(DiagKindRefactor::sema_member_not_imported, DEFAULT_POSITION,
                 INTEROPLIB_OBJ_C_PACKAGE_IDENT + std::string(".") + ident);
-            return Ptr(AST::As<K>(nullptr));
+            CJC_ABORT();
         }
 
         CJC_ASSERT(decl && decl->astKind == K);
@@ -196,7 +196,7 @@ private:
         auto decl = importManager.GetImportedDecl(OBJ_C_LANG_PACKAGE_IDENT, ident);
         if (!decl) {
             diag.DiagnoseRefactor(DiagKindRefactor::sema_member_not_imported, DEFAULT_POSITION, ident);
-            return Ptr(AST::As<K>(nullptr));
+            CJC_ABORT();
         }
 
         CJC_ASSERT(decl && decl->astKind == K);
