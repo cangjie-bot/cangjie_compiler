@@ -1319,12 +1319,7 @@ void ManglerContext::SaveFunc2CurDecl(const Ptr<Node> node)
     }
 
     Walker(key, [this, &key](const Ptr<Node>& node) {
-        if (auto vda = DynamicCast<VarWithPatternDecl>(node); vda && node != key) {
-            node2LocalWildcardVar[key].emplace_back(vda);
-        } else if (auto vda = DynamicCast<VarDeclAbstract>(node); vda && node != key) {
-            auto& mapOfName2Var = node2LocalVar[key][vda->identifier.Val()];
-            mapOfName2Var.emplace_back(vda);
-        } else if (auto fd = DynamicCast<FuncDecl>(node); fd && node != key) {
+        if (auto fd = DynamicCast<FuncDecl>(node); fd && node != key) {
             auto& mapOfName2Func = node2LocalFunc[key][fd->identifier.Val()];
             mapOfName2Func.emplace_back(fd);
         }  else if (Is<FuncBody>(node) && node != key) {
