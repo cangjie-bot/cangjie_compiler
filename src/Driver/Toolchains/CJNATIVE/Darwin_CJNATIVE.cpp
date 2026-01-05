@@ -36,8 +36,9 @@ TempFileInfo Darwin_CJNATIVE::GenerateLinkingTool(const std::vector<TempFileInfo
     auto outputFileInfo = TempFileInfo{};
     if (driverOptions.stripSymbolTable) {
         TempFileKind kind = driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB
-            ? TempFileKind::T_DYLIB_MAC : TempFileKind::T_EXE_MAC;
-        outputFileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], kind);
+            ? TempFileKind::T_DYLIB_MAC
+            : TempFileKind::T_EXE_MAC;
+        outputFileInfo = CreateNewFileInfoWrapper(objFiles, kind);
     } else {
         outputFileInfo = GetOutputFileInfo(objFiles);
     }

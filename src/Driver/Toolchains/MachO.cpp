@@ -59,7 +59,8 @@ void MachO::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
 
     // When we reach here, we must be at the final phase of the compilation,
     // which means that it is the final output.
-    TempFileInfo fileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], TempFileKind::O_STATICLIB);
+    // TempFileKind::O_STATICLIB
+    TempFileInfo fileInfo = CreateNewFileInfoWrapper(objFiles, TempFileKind::O_STATICLIB);
     std::string outputFile = fileInfo.filePath;
 
     // If archive exists, ar attempts to insert given obj files into the archive.
@@ -201,6 +202,11 @@ bool MachO::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
     // The '--output-type=staticlib', one more step to go, create an archive file consisting of all generated object files
     if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
         GenerateArchiveTool(objFiles);
+        return true;
+    }
+
+    if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
+        GenerateObjTool(objFiles);
         return true;
     }
 
