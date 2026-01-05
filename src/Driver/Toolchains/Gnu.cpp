@@ -89,6 +89,44 @@ std::pair<std::string, std::string> Gnu::GetGccCrtFilePair() const
     return {};
 }
 
+void Gnu::GenericHandleSanitizerRuntime(
+    Tool& tool,
+    const std::string& name,
+    const std::string& cangjieLibPath,
+    std::function<void()> finalFallback)
+{
+    if (driverOptions.outputMode != Cangjie::GlobalOptions::OutputMode::EXECUTABLE) {
+        return;
+    }
+
+    HandleSanitizerDependencies(tool);
+    tool.AppendArg("--export-dynamic");
+
+    // (libclang_rt-xxx.a)
+    std::string staticName = "libclang_rt-" + name + ".a";
+    auto rtLib = FileUtil::FindFileByName(staticName, {cangjieLibPath});
+    if (!rtLib) {
+        rtLib = SearchClangLibrary(name, ".a");
+    }
+
+    if (rtLib) {
+        LinkStaticLibrary(tool, *rtLib);
+        return;
+    }
+
+    // Preinit (xxx-preinit)
+    auto preinitLib = SearchClangLibrary(name + "-preinit", ".a");
+    if (preinitLib) {
+        LinkStaticLibrary(tool, *preinitLib);
+        tool.AppendArg("-lclang_rt." + name);
+        return;
+    }
+
+    if (finalFallback) {
+        finalFallback();
+    }
+}
+
 bool Gnu::PrepareDependencyPath()
 {
     auto toolPrefix = driverOptions.IsCrossCompiling() ? driverOptions.target.GetEffectiveTripleString() + "-" : "";
@@ -111,6 +149,26 @@ bool Gnu::PrepareDependencyPath()
     }
 
     return true;
+}
+
+//TODO: 将两个合成一个
+void Gnu::GenerateObjTool(const std::vector<TempFileInfo>& objFiles) {
+    if (objFiles.empty()) {
+        return;
+    }
+    std::string srcFile = objFiles[0].filePath;
+    TempFileInfo finalFileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], TempFileKind::O_OBJ);
+    std::string destFile = finalFileInfo.filePath;
+    if (srcFile == destFile) {
+        return;
+    }
+
+    auto copyTool = std::make_unique<Tool>(
+        "CacheCopy", ToolType::INTERNAL_IMPLEMENTED, driverOptions.environment.allVariables);
+    copyTool->AppendArg(srcFile);
+    copyTool->AppendArg(destFile);
+
+    backendCmds.emplace_back(MakeSingleToolBatch({std::move(copyTool)}));
 }
 
 void Gnu::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
@@ -171,65 +229,18 @@ void Gnu::HandleSanitizerDependencies(Tool& tool)
 
 void Gnu::HandleAsanDependencies(Tool& tool, const std::string& cangjieLibPath, const std::string& gccLibPath)
 {
-    if (driverOptions.outputMode != Cangjie::GlobalOptions::OutputMode::EXECUTABLE) {
-        return;
-    }
-
-    // General args
-    HandleSanitizerDependencies(tool);
-    tool.AppendArg("--export-dynamic");
-
-    // Static library
-    auto asanLib = FileUtil::FindFileByName("libclang_rt-asan.a", {cangjieLibPath});
-    if (!asanLib.has_value()) {
-        asanLib = SearchClangLibrary("asan", ".a");
-    }
-
-    if (asanLib.has_value()) {
-        LinkStaticLibrary(tool, asanLib.value());
-        return;
-    }
-
-    // Dynamic library
-    // Clang
-    asanLib = SearchClangLibrary("asan-preinit", ".a");
-    if (asanLib.has_value()) {
-        // preinit static library
-        LinkStaticLibrary(tool, asanLib.value());
-        tool.AppendArg("-lclang_rt.asan");
-        return;
-    }
-
-    // The gnu lib
-    tool.AppendArg(FileUtil::JoinPath(gccLibPath, "libasan_preinit.o"));
-    tool.AppendArg("-lasan");
+    GenericHandleSanitizerRuntime(tool, "asan", cangjieLibPath, [&]() {
+        tool.AppendArg(FileUtil::JoinPath(gccLibPath, "libasan_preinit.o"));
+        tool.AppendArg("-lasan");
+    });
 }
 
 void Gnu::HandleHwasanDependencies(Tool& tool, const std::string& cangjieLibPath)
 {
-    if (driverOptions.outputMode != Cangjie::GlobalOptions::OutputMode::EXECUTABLE) {
-        return;
-    }
-
-    // General args
-    HandleSanitizerDependencies(tool);
-    tool.AppendArg("--export-dynamic");
-
-    // Static library
-    auto asanLib = FileUtil::FindFileByName("libclang_rt-hwasan.a", {cangjieLibPath});
-    if (!asanLib.has_value()) {
-        asanLib = SearchClangLibrary("hwasan", ".a");
-    }
-
-    if (asanLib.has_value()) {
-        LinkStaticLibrary(tool, asanLib.value());
-        return;
-    }
-
-    // Dynamic library
-    asanLib = SearchClangLibrary("hwasan-preinit", ".a");
-    LinkStaticLibrary(tool, asanLib.value_or("libclang_rt.hwasan-preinit.a"));
-    tool.AppendArg("-lclang_rt.hwasan");
+   GenericHandleSanitizerRuntime(tool, "hwasan", cangjieLibPath, [&]() {
+        LinkStaticLibrary(tool, "libclang_rt.hwasan-preinit.a");
+        tool.AppendArg("-lclang_rt.hwasan");
+    });
 }
 
 void Gnu::HandleSanitizer(Tool& tool, const std::string& cangjieLibPath, const std::string& gccLibPath)
@@ -433,11 +444,20 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
         if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
             GenerateArchiveTool(objFiles);
             return true;
-        } else {
+        } else if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ){
+            GenerateObjTool(objFiles);
+            return true;
+        }  else {
             return GenerateLinking(objFiles);
         }
     }
-    auto tool = std::make_unique<Tool>(ldPath, ToolType::BACKEND, driverOptions.environment.allVariables);
+
+    return PerformPartialLinkAndContinue(objFiles);
+    
+}
+
+bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles) {
+   auto tool = std::make_unique<Tool>(ldPath, ToolType::BACKEND, driverOptions.environment.allVariables);
     // Recover the 'outputFile' from 'path/0-xx.o' to 'path/xx.o'
     std::string outputFile = objFiles[0].filePath;
     std::string dirPath = FileUtil::GetDirPath(outputFile);
@@ -466,6 +486,7 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
     }
     file.close();
 
+    // 这一步骤很重要 ， 直接调用了 objcopy 将不导出的符号进行local
     if (!driverOptions.symbolsNeedLocalized.empty()) {
         auto changeSymVis = std::make_unique<Tool>(
             objcopyPath, ToolType::BACKEND, driverOptions.environment.allVariables);
@@ -494,10 +515,14 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
     if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
         GenerateArchiveTool(objFiles);
         return true;
+    } else if(driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
+        GenerateObjTool(objFiles);
+        return true;
     } else {
         return GenerateLinking(objFiles);
     }
 }
+
 
 bool Gnu::GenerateLinking(const std::vector<TempFileInfo>& objFiles)
 {

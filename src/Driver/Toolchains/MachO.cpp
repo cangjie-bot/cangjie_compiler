@@ -203,6 +203,10 @@ bool MachO::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
         GenerateArchiveTool(objFiles);
         return true;
     }
+    
+    if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ ){
+        return true;
+    }
 
     auto outputFile = GenerateLinking(objFiles);
     if (driverOptions.enableCompileDebug) {

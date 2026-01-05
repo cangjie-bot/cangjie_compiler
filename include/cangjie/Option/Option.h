@@ -620,7 +620,11 @@ public:
     std::string optPassOptions = ""; /**< customized opt pass options from user.*/
 
     enum class OutputMode : uint8_t {
+<<<<<<< HEAD
         EXECUTABLE, STATIC_LIB, SHARED_LIB, CHIR
+=======
+        EXECUTABLE, STATIC_LIB, SHARED_LIB, CHIR, OBJ
+>>>>>>> 0ca40d0edd (feat: support obj)
     };
     OutputMode outputMode = OutputMode::EXECUTABLE;
 
