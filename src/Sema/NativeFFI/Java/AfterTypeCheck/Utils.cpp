@@ -132,7 +132,7 @@ Ptr<ClassLikeDecl> Utils::GetJavaLangDecl(const std::string& identifier)
     if (decl == nullptr) {
         importManager.GetDiagnosticEngine().DiagnoseRefactor(
             DiagKindRefactor::sema_member_not_imported, DEFAULT_POSITION, INTEROP_JAVA_LANG_PACKAGE + "." + identifier);
-        return Ptr<ClassLikeDecl>(nullptr);
+        CJC_ABORT();
     }
     return decl;
 }
