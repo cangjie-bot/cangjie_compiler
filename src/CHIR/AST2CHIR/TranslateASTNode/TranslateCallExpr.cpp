@@ -500,8 +500,13 @@ Type* Translator::HandleSpecialIntrinsic(
                 auto localVar = StaticCast<LocalVar*>(arg);
                 auto expr = localVar->GetExpr();
                 if (expr->IsLoad()) {
-                    newArg = StaticCast<Load*>(expr)->GetLocation();
+                    auto load = StaticCast<Load*>(expr);
+                    newArg = load->GetLocation();
                     retTy = newArg->GetType();
+                    load->Set<SkipCheck>(SkipKind::SKIP_DCE_WARNING);
+                    if (auto res = load->GetResult()) {
+                        res->Set<SkipCheck>(SkipKind::SKIP_DCE_WARNING);
+                    }
                 } else {
                     auto loc = arg->GetDebugLocation();
                     retTy = builder.GetType<RefType>(type);
