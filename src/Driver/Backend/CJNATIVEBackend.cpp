@@ -200,6 +200,7 @@ bool CJNATIVEBackend::ProcessGenerationOfNormalCompile(const std::vector<TempFil
         batch.emplace_back(std::move(tool));
     }
     backendCmds.emplace_back(std::move(batch));
+    // 还得过下 Cachecopy  ， 增量编译可能用到
     return TC->ProcessGeneration(objFiles);
 }
 

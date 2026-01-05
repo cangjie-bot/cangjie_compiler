@@ -933,6 +933,7 @@ void GlobalOptions::DeprecatedOptionCheck(const OptionArgInstance& arg) const
     }
 }
 
+// 这代码写的有点东西的
 bool GlobalOptions::TryParseOption(OptionArgInstance& arg, ArgList& argList)
 {
 #ifdef CANGJIE_VISIBLE_OPTIONS_ONLY
