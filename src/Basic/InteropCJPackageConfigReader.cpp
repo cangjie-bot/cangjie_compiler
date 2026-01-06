@@ -327,9 +327,15 @@ void ParseLmabdaPatternsConfiguration(toml::Table& packageTable, PackageConfig& 
     }
 }
 
-void CollectTypeArguments(toml::Array& allowedGenerics,
+bool CollectTypeArguments(toml::Array& allowedGenerics,
     std::unordered_map<std::string, std::vector<std::string>>& typeArgumentsMap, PackageConfig& pkgConfig)
 {
+    // Define a valid type.
+    static const std::unordered_set<std::string> typeSet = {
+        "Int", "Int8", "Int16", "Int32", "Int64", "IntNative", "UInt8", "UInt16", "UInt32", "UInt64", "UIntNative", "Float16",
+        "Float32", "Float64", "Bool", "Boolean", "Unit"
+    }; 
+
     for (const auto& item : allowedGenerics) {
         if (!item.is<toml::Table>()) {
             continue;
@@ -357,6 +363,15 @@ void CollectTypeArguments(toml::Array& allowedGenerics,
             }
 
             std::string typeStr = type.as<std::string>();
+
+            // Check whether the type is in a valid type mapping.
+            if (typeSet.find(typeStr) == typeSet.end()) {
+                // Reported: An illegal non-Cangjie type is used.
+                std::cerr << "Error: Package '" << pkgConfig.name << "' use illegal non-Cangjie type in the generic configuration: '" 
+                          << typeStr << "'" << std::endl;
+                return false;
+            }
+
             types.push_back(typeStr);
 
             // Initialize with empty GenericTypeArguments
@@ -365,6 +380,7 @@ void CollectTypeArguments(toml::Array& allowedGenerics,
 
         typeArgumentsMap[name] = std::move(types);
     }
+    return true;
 }
 
 void ProcessSymbolConfigurations(toml::Array& allowedGenerics,
@@ -395,21 +411,23 @@ void ProcessSymbolConfigurations(toml::Array& allowedGenerics,
     }
 }
 
-void ParseGenericObjectConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig)
+bool ParseGenericObjectConfiguration(toml::Table& packageTable, PackageConfig& pkgConfig)
 {
     if (packageTable.find(GENERIC_OBJECT_CONFIG) == packageTable.end() ||
         !packageTable[GENERIC_OBJECT_CONFIG].is<toml::Array>()) {
-        return;
+        return false;
     }
 
     auto allowedGenerics = packageTable[GENERIC_OBJECT_CONFIG].as<toml::Array>();
 
     // First pass: collect type parameter definitions
     std::unordered_map<std::string, std::vector<std::string>> typeArgumentsMap;
-    CollectTypeArguments(allowedGenerics, typeArgumentsMap, pkgConfig);
+    bool trueHandled = CollectTypeArguments(allowedGenerics, typeArgumentsMap, pkgConfig);
 
     // Second pass: process symbol configurations
     ProcessSymbolConfigurations(allowedGenerics, typeArgumentsMap, pkgConfig);
+
+    return trueHandled;
 }
 
 void ParseDefaultConfig(toml::Table& tbl, InteropCJPackageConfigReader& reader)
@@ -459,7 +477,7 @@ bool ParseSinglePackage(toml::Table& packageTable, PackageConfig& pkgConfig)
     ParseExcludedAPIs(packageTable, pkgConfig);
 
     // Parse generic object configuration
-    ParseGenericObjectConfiguration(packageTable, pkgConfig);
+    bool trueHandled = ParseGenericObjectConfiguration(packageTable, pkgConfig);
 
     // Parse tuple configuration
     ParseTupleConfiguration(packageTable, pkgConfig);
@@ -467,18 +485,18 @@ bool ParseSinglePackage(toml::Table& packageTable, PackageConfig& pkgConfig)
     // Parse lambda patterns
     ParseLmabdaPatternsConfiguration(packageTable, pkgConfig);
 
-    return true;
+    return trueHandled;
 }
 
-void ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& reader)
+bool ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& reader)
 {
     if (tbl.find(PACKAGE_SECTION) == tbl.end()) {
-        return;
+        return true;
     }
 
     const auto& packageEntry = tbl.find(PACKAGE_SECTION)->second;
     if (!packageEntry.is<toml::Array>()) {
-        return;
+        return false;
     }
 
     auto packageArray = packageEntry.as<toml::Array>();
@@ -491,11 +509,13 @@ void ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& 
         PackageConfig pkgConfig;
         auto packageTable = packageItem.as<toml::Table>();
         if (!ParseSinglePackage(packageTable, pkgConfig)) {
-            continue;
+            return false;
         }
 
         reader.packages[pkgConfig.name] = std::move(pkgConfig);
     }
+
+    return true;
 }
 
 } // namespace
@@ -503,13 +523,32 @@ void ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& 
 bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
 {
     try {
+            {
+                std::ifstream file(filePath);
+                if (!file.is_open()) {
+                    std::cerr << "Error: Cannot open configuration file." << filePath << std::endl;
+                    return false;
+                }
+
+                std::string content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+                file.close();
+
+                // Check /* */
+                if (content.find("/*") != std::string::npos) {
+                    std::cerr << "Failed to open configuration file. Error: Unsupported block comment '/*' detected." <<
+                        "Please use line comment '#' instead." << std::endl;
+                    return false;
+                }
+            }
+
         toml::Table tbl = toml::parseFile(filePath).value.as<toml::Table>();
 
         ParseDefaultConfig(tbl, *this);
 
-        ParsePackageConfigurations(tbl, *this);
+        bool trueHandled = ParsePackageConfigurations(tbl, *this);
 
-        return true;
+        return trueHandled;
     } catch (const std::exception& e) {
         std::cerr << "Error parsing config: " << e.what() << std::endl;
         return false;

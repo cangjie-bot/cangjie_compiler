@@ -177,6 +177,7 @@ public:
     Ptr<AST::FuncDecl> GetObjCStoreLambdaAsBlockDecl();
     Ptr<AST::FuncDecl> GetObjCGetLambdaFromBlockDecl();
 
+    DiagnosticEngine& GetInteropBridgeDiag() { return diag; }
 private:
     template <AST::ASTKind K = AST::ASTKind::DECL> auto GetInteropLibDecl(const std::string& ident)
     {

@@ -414,6 +414,7 @@ void TypeChecker::TypeCheckerImpl::PerformDesugarAfterSema(std::vector<Ptr<AST::
         ci->invocation.globalOptions.interopCJPackageConfigPath != "./" &&
         !packagesFullConfig.Parse(ci->invocation.globalOptions.interopCJPackageConfigPath)) {
         std::cerr << "Failed to parse package config file" << std::endl;
+        return;
     }
     // validate parser result.
     if (ci->invocation.globalOptions.enableInteropCJMapping && !packagesFullConfig.Validate()) {
