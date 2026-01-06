@@ -13,6 +13,7 @@
 #include "PluginCheck.h"
 
 #include <functional>
+#include <iterator>
 #include <iostream>
 #include <stack>
 #include <unordered_map>
@@ -371,10 +372,8 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
             startPos = static_cast<size_t>(std::find(buffer.begin(), buffer.end(), '{') - buffer.begin());
             auto rootOneDevice = ParseJsonObject(startPos, buffer);
             auto curSyscaps = GetJsonString(rootOneDevice, "SysCaps");
-            for (auto syscap : curSyscaps) {
-                if (Utils::NotIn(syscap, syscapsOneDev)) {
-                    syscapsOneDev.emplace_back(syscap);
-                }
+            for (auto& syscap : curSyscaps) {
+                syscapsOneDev.insert(syscap);
             }
         }
         dev2SyscapsMap.emplace(subObj->key, syscapsOneDev);
@@ -382,19 +381,16 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
     std::optional<SysCapSet> lastSyscap = std::nullopt;
     for (auto& dev2Syscaps : dev2SyscapsMap) {
         SysCapSet& curSyscaps = dev2Syscaps.second;
-        std::sort(curSyscaps.begin(), curSyscaps.end());
         SysCapSet intersection;
         if (lastSyscap.has_value()) {
             std::set_intersection(lastSyscap.value().begin(), lastSyscap.value().end(), curSyscaps.begin(),
-                curSyscaps.end(), std::back_inserter(intersection));
+                curSyscaps.end(), std::inserter(intersection, intersection.end()));
         } else {
             intersection = curSyscaps;
         }
         lastSyscap = intersection;
-        for (auto syscap : curSyscaps) {
-            if (Utils::NotIn(syscap, unionSet)) {
-                unionSet.emplace_back(syscap);
-            }
+        for (auto& syscap : curSyscaps) {
+            unionSet.insert(syscap);
         }
     }
     intersectionSet = lastSyscap.value();
@@ -478,9 +474,8 @@ void PluginCustomAnnoChecker::ParseAPILevelArgs(
     const Decl& decl, const Annotation& anno, PluginCustomAnnoInfo& annoInfo)
 {
     for (size_t i = 0; i < anno.args.size(); ++i) {
-        std::string argName = anno.args[i]->name.Val();
         // To support old APILevel definition that constructor parameter list is 'level: Int8, ...'.
-        argName = argName.empty() ? LEVEL_IDENTGIFIER : argName;
+        std::string_view argName = anno.args[i]->name.Val().empty() ? LEVEL_IDENTGIFIER : anno.args[i]->name.Val();
         if (parseNameParam.count(argName) <= 0) {
             continue;
         }
@@ -656,46 +651,59 @@ bool PluginCustomAnnoChecker::CheckSyscap(
     if (!optionWithSyscap) {
         return true;
     }
-    SysCapSet scopeSyscaps = unionSet;
-    if (!scopeAnnoInfo.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
-    }
     PluginCustomAnnoInfo targetAPILevel;
     Parse(target, targetAPILevel);
     std::string targetLevel = targetAPILevel.syscap;
     if (targetLevel.empty()) {
         return true;
     }
-    auto diagForSyscap = [this, &scopeSyscaps, &diagCfg, &targetLevel](DiagKindRefactor kind) {
+    // Create a lambda for diagnostic purposes that only creates a temporary collection when needed.
+    auto diagForSyscap = [this, &diagCfg, &targetLevel](const SysCapSet& syscapSet, DiagKindRefactor kind) {
         auto builder = diag.DiagnoseRefactor(kind, *diagCfg.node, targetLevel);
         std::stringstream scopeSyscapsStr;
         // 3 is maximum number of syscap limit.
-        for (size_t i = 0; i < std::min(scopeSyscaps.size(), static_cast<size_t>(3)); ++i) {
-            std::string split = scopeSyscaps[i] == scopeSyscaps.back() ? "" : ", ";
-            scopeSyscapsStr << scopeSyscaps[i] << split;
-        }
-        if (scopeSyscaps.size() > 3) {
-            scopeSyscapsStr << "...";
+        size_t limit = 3;
+        size_t count = 0;
+        for (const auto& syscap : syscapSet) {
+            if (count >= limit) {
+                scopeSyscapsStr << "...";
+                break;
+            }
+            if (count > 0) {
+                scopeSyscapsStr << ", ";
+            }
+            scopeSyscapsStr << syscap;
+            ++count;
         }
         builder.AddNote("the following syscaps are supported: " + scopeSyscapsStr.str());
     };
 
-    auto found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+    // Check unionSet (all possible syscaps)
+    // If scopeAnnoInfo.syscap is not empty and equals targetLevel, it is considered a match.
+    bool inUnionSet = (unionSet.find(targetLevel) != unionSet.end()) ||
+        (!scopeAnnoInfo.syscap.empty() && scopeAnnoInfo.syscap == targetLevel);
+    if (!inUnionSet && !diagCfg.node->begin.IsZero()) {
         if (diagCfg.reportDiag) {
-            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_error);
+            SysCapSet scopeSyscaps = unionSet;
+            if (!scopeAnnoInfo.syscap.empty()) {
+                scopeSyscaps.insert(scopeAnnoInfo.syscap);
+            }
+            diagForSyscap(scopeSyscaps, DiagKindRefactor::sema_apilevel_syscap_error);
         }
         return false;
     }
 
-    scopeSyscaps = intersectionSet;
-    if (!scopeAnnoInfo.syscap.empty()) {
-        scopeSyscaps.emplace_back(scopeAnnoInfo.syscap);
-    }
-    found = std::find(scopeSyscaps.begin(), scopeSyscaps.end(), targetLevel);
-    if (found == scopeSyscaps.end() && !diagCfg.node->begin.IsZero()) {
+    // Check intersectionSet (all syscaps supported by all devices)
+    // If scopeAnnoInfo.syscap is not empty and equals targetLevel, it is considered a match.
+    bool inIntersectionSet = (intersectionSet.find(targetLevel) != intersectionSet.end()) ||
+        (!scopeAnnoInfo.syscap.empty() && scopeAnnoInfo.syscap == targetLevel);
+    if (!inIntersectionSet && !diagCfg.node->begin.IsZero()) {
         if (diagCfg.reportDiag) {
-            diagForSyscap(DiagKindRefactor::sema_apilevel_syscap_warning);
+            SysCapSet scopeSyscaps = intersectionSet;
+            if (!scopeAnnoInfo.syscap.empty()) {
+                scopeSyscaps.insert(scopeAnnoInfo.syscap);
+            }
+            diagForSyscap(scopeSyscaps, DiagKindRefactor::sema_apilevel_syscap_warning);
         }
         return false;
     }
