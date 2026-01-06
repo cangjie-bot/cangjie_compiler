@@ -432,10 +432,10 @@ void Gnu::AddSystemLibraryPaths()
 bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
 {
     size_t codegenOutputBCNum = 0;
-    for (auto objName : objFiles) {
-        codegenOutputBCNum += objName.isForeignInput ? 0 : 1;
+    for (auto obj : objFiles) {
+        codegenOutputBCNum += obj.isForeignInput ? 0 : 1;
     }
-    if (codegenOutputBCNum == 1) {
+    if (codegenOutputBCNum <= 1) {                  // 应该是为了apc的， 
         // The '--output-type=staticlib', one more step to go, create an archive
         // file consisting of all generated object files
         if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
@@ -484,7 +484,6 @@ bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles) {
     }
     file.close();
 
-    // 这一步骤很重要 ， 直接调用了 objcopy 将不导出的符号进行local
     if (!driverOptions.symbolsNeedLocalized.empty()) {
         auto changeSymVis = std::make_unique<Tool>(
             objcopyPath, ToolType::BACKEND, driverOptions.environment.allVariables);
