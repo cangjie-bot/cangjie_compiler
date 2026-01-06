@@ -536,15 +536,18 @@ void CjoManager::AddPackageDeclMap(const std::string& fullPackageName, const std
     }
 }
 
-std::optional<std::string> CjoManager::GetPackageCjoPath(std::string fullPackageName) const
+std::optional<std::string> CjoManager::GetPackageCjoPath(const std::string& fullPackageName) const
 {
     if (auto found = impl->GetCjoFileCacheMap().find(fullPackageName); found != impl->GetCjoFileCacheMap().end()) {
         return fullPackageName; // Set dummy path for cached cjo data.
-    } else {
-        return FileUtil::FindSerializationFile(fullPackageName, SERIALIZED_FILE_EXTENSION, GetSearchPath());
     }
-
-    return std::nullopt;
+    std::string cjoPath = "";
+    if (impl->GetCjoPathFromFindCache(fullPackageName, cjoPath)) {
+        return cjoPath;
+    }
+    cjoPath = FileUtil::FindSerializationFile(fullPackageName, SERIALIZED_FILE_EXTENSION, GetSearchPath());
+    impl->CacheCjoPathForFind(fullPackageName, cjoPath);
+    return cjoPath;
 }
 
 std::pair<std::string, std::string> CjoManager::GetPackageCjo(const AST::ImportSpec& importSpec) const
@@ -557,8 +560,11 @@ std::pair<std::string, std::string> CjoManager::GetPackageCjo(const AST::ImportS
             found != impl->GetCjoFileCacheMap().end()) {
             cjoPath = cjoName; // Set dummy path for cached cjo data.
         } else {
-            cjoPath = FileUtil::FindSerializationFile(FileUtil::ToPackageName(cjoName),
-                SERIALIZED_FILE_EXTENSION, GetSearchPath());
+            if (!impl->GetCjoPathFromFindCache(cjoName, cjoPath)) {
+                cjoPath = FileUtil::FindSerializationFile(
+                    FileUtil::ToPackageName(cjoName), SERIALIZED_FILE_EXTENSION, GetSearchPath());
+                impl->CacheCjoPathForFind(cjoName, cjoPath);
+            }
         }
         if (!cjoPath.empty()) {
             break;
