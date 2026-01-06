@@ -281,33 +281,47 @@ void StructInheritanceChecker::Check()
     }
     std::vector<Ptr<InheritableDecl>> structDecls;
     std::vector<Ptr<ExtendDecl>> extendDecls;
-    Walker(&pkg, [&structDecls, &extendDecls](auto node) {
-        if (NeedCheck(*node)) {
-            if (node->astKind == ASTKind::EXTEND_DECL) {
-                extendDecls.emplace_back(RawStaticCast<ExtendDecl*>(node));
-            } else {
-                structDecls.emplace_back(RawStaticCast<InheritableDecl*>(node));
-            }
+
+    // Optimized: filter invalid declarations during collection to avoid second pass.
+    Walker(&pkg, [&structDecls, &extendDecls, this](auto node) {
+        if (!NeedCheck(*node)) {
+            return VisitAction::WALK_CHILDREN;
+        }
+        // Optimized: early filter for broken or invalid type declarations during collection.
+        if (node->TestAttr(Attribute::IS_BROKEN) || !Ty::IsTyCorrect(node->ty)) {
             return VisitAction::SKIP_CHILDREN;
         }
-        return VisitAction::WALK_CHILDREN;
+        if (node->astKind == ASTKind::EXTEND_DECL) {
+            auto extendDecl = RawStaticCast<ExtendDecl*>(node);
+            // Optimized: check visibility during collection for extend decls.
+            if (IsExtendVisibleInCurpkg(*extendDecl)) {
+                extendDecls.emplace_back(extendDecl);
+            }
+        } else {
+            structDecls.emplace_back(RawStaticCast<InheritableDecl*>(node));
+        }
+        return VisitAction::SKIP_CHILDREN;
     }).Walk();
-
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     auto sortedExtends = GetAllNeedCheckExtended();
-    extendDecls.insert(extendDecls.end(), sortedExtends.cbegin(), sortedExtends.cend());
+    // Optimized: filter and reserve space before inserting to avoid reallocation.
+    if (!sortedExtends.empty()) {
+        extendDecls.reserve(extendDecls.size() + sortedExtends.size());
+        for (auto extendDecl : sortedExtends) {
+            // Optimized: filter broken, invalid type, or invisible extends during insertion.
+            if (!extendDecl->TestAttr(Attribute::IS_BROKEN) && Ty::IsTyCorrect(extendDecl->ty) &&
+                IsExtendVisibleInCurpkg(*extendDecl)) {
+                extendDecls.emplace_back(extendDecl);
+            }
+        }
+    }
 #endif
 
+    // Optimized: all declarations are already filtered, so we can directly process them.
     for (auto decl : structDecls) {
-        if (decl->TestAttr(Attribute::IS_BROKEN) || !Ty::IsTyCorrect(decl->ty)) {
-            continue; // Do not check for incorrect structure declaration.
-        }
         CheckMembersWithInheritedDecls(*decl);
     }
     for (auto decl : extendDecls) {
-        if (decl->TestAttr(Attribute::IS_BROKEN) || !Ty::IsTyCorrect(decl->ty) || !IsExtendVisibleInCurpkg(*decl)) {
-            continue; // Do not check for incorrect structure declaration.
-        }
         CheckMembersWithInheritedDecls(*decl);
     }
     // Check generic upper bounds member confliction.
