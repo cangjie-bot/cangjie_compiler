@@ -16,6 +16,7 @@
 #include "cangjie/Lex/Lexer.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace Cangjie {
 /// arg pack for creation of LexerImpl
@@ -179,6 +180,15 @@ private:
     size_t resetToken{0};
     bool enableCollect{false};
     bool enableCollectTokenStream{false};
+    /// Hash function for Position using Hash32
+    struct PositionHash32 {
+        std::size_t operator()(const Position& p) const
+        {
+            return p.Hash32();
+        }
+    };
+    // Cache for fast lookup of token positions in collectTokens using Position::Hash32
+    std::unordered_set<Position, PositionHash32> collectTokensFindCache;
     std::vector<Token> collectTokens;
     std::set<Token> tokenStream; // use set because ParseModifiers before import may cause the tokens of the first decl
         // to be Scan()'ed multiple times.
