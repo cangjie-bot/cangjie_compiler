@@ -249,7 +249,7 @@ void ToolChain::SortInputlibraryFileAndAppend(Tool& tool, const std::vector<Temp
     // Object file compiled from the cangjie file
     AppendObjectsFromCompiled(tool, objFiles, inputOrderTuples);
 
-    AppendObjectsFromInput(inputOrderTuples);
+    AppendObjectsFromInput(inputOrderTuples); //  写的还挺好的
     AppendLibrariesFromInput(inputOrderTuples);
     AppendLinkOptionFromInput(inputOrderTuples);
     AppendLinkOptionsFromInput(inputOrderTuples);
@@ -271,7 +271,14 @@ TempFileInfo ToolChain::GetOutputFileInfo(const std::vector<TempFileInfo>& objFi
         fileKind = driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB ?
             TempFileKind::O_DYLIB : TempFileKind::O_EXE;
     }
-    return TempFileManager::Instance().CreateNewFileInfo(objFiles[0], fileKind);
+    TempFileInfo optionalInfo;
+    if (!objFiles.empty()) {
+        optionalInfo = objFiles[0];
+    } else if(!driverOptions.inputObjs.empty()){
+        optionalInfo.fileName = FileUtil::GetFileNameWithoutExtension(driverOptions.inputObjs[0]);
+    }
+
+    return TempFileManager::Instance().CreateNewFileInfo(optionalInfo, fileKind);
 }
 
 std::string ToolChain::GetArchFolderName(const Triple::ArchType& arch) const
