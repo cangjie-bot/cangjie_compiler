@@ -125,11 +125,32 @@ public:
     }
     std::optional<std::vector<std::string>> PreReadCommonPartCjoFiles(CjoManager& cjoManager);
     Ptr<ASTLoader> GetCommonPartCjo(std::string expectedName);
+
     const GlobalOptions& GetGlobalOptions()
     {
         return globalOptions;
     }
-
+    /**
+     * @brief Get the Cjo Path From Cache
+     *
+     * @param cjoName
+     * @param cjoPath
+     * @return true if found
+     * @return false if not found
+     */
+    bool GetCjoPathFromFindCache(const std::string& cjoName, std::string& cjoPath) const
+    {
+        auto found = cjoPathFindCache.find(cjoName);
+        if (found == cjoPathFindCache.end()) {
+            return false;
+        }
+        cjoPath = found->second;
+        return true;
+    }
+    void CacheCjoPathForFind(const std::string& cjoName, const std::string& cjoPath)
+    {
+        cjoPathFindCache[cjoName] = cjoPath;
+    }
 private:
     DiagnosticEngine& diag;
     TypeManager& typeManager;
@@ -149,6 +170,10 @@ private:
     // common part loader also stored in `packageNameMap`.
     OwnedPtr<ASTLoader> commonPartLoader;
     bool canInline{false};
+
+    // cache cjo file path result for skip FindSerializationFile call, key is possible cjo name without extension, value
+    // is cjo path (empty string means not found).
+    std::unordered_map<std::string, std::string> cjoPathFindCache;
 };
 } // namespace Cangjie
 #endif
