@@ -325,8 +325,14 @@ llvm::Constant* CGExtensionDef::GenerateOuterTi(const CHIR::VirtualFuncInfo& fun
     if (funcInfo.instance == nullptr) {
         return llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(llvmCtx));
     }
-
     auto parentType = DeRef(*funcInfo.typeInfo.parentType);
+    if (parentType->GetTypeArgs().empty()) {
+        // If `parentType` has no type arguments, it will not be accessed in the function, meaning
+        // the value of `outerTypeinfo` is unimportant and can be filled with any data. To reduce
+        // relocation, we choose to fill it with 0x1 instead of a TypeInfo pointer.
+        return llvm::ConstantExpr::getIntToPtr(
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvmCtx), 0x1), llvm::Type::getInt8PtrTy(llvmCtx));
+    }
     auto outerTi = CGType::GetOrCreate(cgMod, parentType)->GetOrCreateTypeInfo();
     return llvm::ConstantExpr::getBitCast(outerTi, llvm::Type::getInt8PtrTy(llvmCtx));
 }
