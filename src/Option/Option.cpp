@@ -44,6 +44,7 @@ const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
+const std::string OJBC_EXTENSION= "obj";
 #elif defined(__APPLE__)
 const std::string DL_EXTENSION = "dylib";
 #else
@@ -526,6 +527,10 @@ bool GlobalOptions::CheckLtoOptions() const
         Errorln("Windows does not support LTO optimization.");
         return false;
     }
+    if (outputMode == OutputMode::OBJ ) {
+        Errorln("--output is not allowed in LTO model");
+        return false;
+    }
     if (outputMode == OutputMode::STATIC_LIB && !bcInputFiles.empty()) {
         Errorln("The input file cannot be bc files When generating a static library in LTO mode.");
         return false;
@@ -638,6 +643,7 @@ void GlobalOptions::DisableStaticStdForOhos()
     }
 }
 
+//  fixme:  跟 .a 的直接公用了
 bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::string& value)
 {
     auto maybePath = ValidateInputFilePath(value, DiagKindRefactor::driver_invalid_binary_file);

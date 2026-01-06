@@ -82,7 +82,7 @@ static bool IsEmptyInputFile(const DefaultCompilerInstance& instance)
         // In scan dependency mode, .cjo file input is required or `-p` must be specified (with package path input).
         return !globalOptions.compilePackage && globalOptions.inputCjoFile.empty();
     } else {
-        // In code compilation mode, .cj file input is required or `-p` must be specified (with package path input).
+        // In code compilation mode, .cj file input or is required or `-p` must be specified (with package path input).
         return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty();
     }
 }
@@ -90,7 +90,9 @@ static bool IsEmptyInputFile(const DefaultCompilerInstance& instance)
 static bool HandleEmptyInputFileSituation(const DefaultCompilerInstance& instance)
 {
     auto& globalOptions = instance.invocation.globalOptions;
-    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty()) {
+    if (!globalOptions.scanDepPkg && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && 
+        globalOptions.inputObjs.empty()) {
+
         instance.diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
@@ -107,6 +109,12 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
     bool isEmitCHIR = instance.invocation.globalOptions.IsEmitCHIREnable();
     if (IsEmptyInputFile(instance) && opts.dumpAction != FrontendOptions::DumpAction::DESERIALIZE_CHIR) {
         return HandleEmptyInputFileSituation(instance);
+    }
+
+    // 当 cj文件空的，并且 .o文件以及.a 文件时候
+    auto& globalOptions = instance.invocation.globalOptions;
+    if (!globalOptions.compilePackage && globalOptions.srcFiles.empty() && !globalOptions.inputObjs.empty()) {
+        return true;
     }
 
     if (opts.dumpAction != FrontendOptions::DumpAction::NO_ACTION) {
