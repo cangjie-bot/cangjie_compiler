@@ -84,15 +84,41 @@ void EnumCtorTIOrTTGenerator::GenerateNonGenericEnumCtorTypeInfo(llvm::GlobalVar
         CGCustomType::GenTypeInfoArray(cgMod, tiName + ".fields", fieldConstants, CJTI_FIELDS_ATTR);
 
     auto layoutType = GetLLVMStructType(cgMod, fieldsTypes, GetClassObjLayoutName(className));
-    typeInfoVec[static_cast<size_t>(TYPEINFO_SIZE)] = llvm::ConstantInt::get(i32Ty, 8U);
+    
+    std::vector<llvm::Constant*> offSets(fieldsTypes.size());
+    uint32_t totalSize = 0;
+    for (size_t i = 0; i < fieldsTypes.size(); ++i) {
+        auto fieldType = fieldsTypes[i];
+        offSets[i] = llvm::ConstantInt::get(i32Ty, totalSize);
+        auto cgField = CGType::GetOrCreate(cgMod, DeRef(*fieldType));
+        auto fieldSize = cgField->GetSize().value_or(0);
+        totalSize += fieldSize;
+    }
+    typeInfoVec[static_cast<size_t>(TYPEINFO_SIZE)] = llvm::ConstantInt::get(i32Ty, totalSize);
     typeInfoVec[static_cast<size_t>(TYPEINFO_UUID)] = llvm::Constant::getNullValue(i32Ty);
     typeInfoVec[static_cast<size_t>(TYPEINFO_ALIGN)] = llvm::ConstantInt::get(i8Ty, 8U);
     typeInfoVec[static_cast<size_t>(TYPEINFO_SOURCE_GENERIC)] = GenSourceGenericOfTypeInfo();
     typeInfoVec[static_cast<size_t>(TYPEINFO_TYPE_ARGS_NUM)] = GenTypeArgsNumOfTypeInfo();
     typeInfoVec[static_cast<size_t>(TYPEINFO_INHERITED_CLASS_NUM)] =
         llvm::ConstantInt::get(i16Ty, INHERITED_CLASS_NUM_FE_FLAG);
-    typeInfoVec[static_cast<size_t>(TYPEINFO_OFFSETS)] =
-        CGCustomType::GenOffsetsArray(cgMod, tiName + ".offsets", layoutType);
+    auto cgEnumType = StaticCast<CGEnumType*>(CGType::GetOrCreate(cgMod, &chirEnumType));
+    bool isCompact = (cgEnumType->IsAllAssociatedValuesAreNonRef());
+    if(isCompact) {
+        if(layoutType->elements().empty()) {
+            typeInfoVec[static_cast<size_t>(TYPEINFO_OFFSETS)] = llvm::ConstantPointerNull::get(i32Ty->getPointerTo());
+        } else{
+            auto i32ArrType = llvm::ArrayType::get(i32Ty, fieldsTypes.size());
+            std::string name = tiName + ".offsets";
+            auto typeInfoOfFields =
+                llvm::cast<llvm::GlobalVariable>(cgMod.GetLLVMModule()->getOrInsertGlobal(name, i32ArrType));
+            typeInfoOfFields->setInitializer(llvm::ConstantArray::get(i32ArrType, offSets));
+            typeInfoOfFields->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
+            typeInfoOfFields->addAttribute(CJTI_OFFSETS_ATTR);
+            typeInfoVec[static_cast<size_t>(TYPEINFO_OFFSETS)] = llvm::ConstantExpr::getBitCast(typeInfoOfFields, i32Ty->getPointerTo());
+        }
+    } else{
+        typeInfoVec[static_cast<size_t>(TYPEINFO_OFFSETS)] = CGCustomType::GenOffsetsArray(cgMod, tiName + ".offsets", layoutType);
+    }
     typeInfoVec[static_cast<size_t>(TYPEINFO_TYPE_ARGS)] = GenTypeArgsOfTypeInfo();
     typeInfoVec[static_cast<size_t>(TYPEINFO_SUPER)] =
         CGType::GetOrCreate(cgMod, &chirEnumType)->GetOrCreateTypeInfo();
@@ -109,6 +135,11 @@ void EnumCtorTIOrTTGenerator::GenerateNonGenericEnumCtorTypeInfo(llvm::GlobalVar
     ti.addAttribute(GC_KLASS_ATTR);
     auto meta = llvm::MDTuple::get(llvmCtx, {llvm::MDString::get(llvmCtx, layoutType->getStructName().str())});
     ti.setMetadata(GC_TYPE_META_NAME, meta);
+    std::string mangledName = ctors[ctorIndex].annoInfo.mangledName;
+    auto innerNode = llvm::MDTuple::get(llvmCtx,  
+        {llvm::MDString::get(llvmCtx, "enumCtor"),llvm::MDString::get(llvmCtx, mangledName)});
+    auto outerNode = llvm::MDTuple::get(llvmCtx, {innerNode});
+    ti.setMetadata("Reflection", outerNode);
     // This line seems only for Parallel-Compilation:
     cgCtx.AddGeneratedStructType(layoutType->getStructName().str());
     cgCtx.RegisterStaticGIName(ti.getName());
@@ -179,7 +210,11 @@ void EnumCtorTIOrTTGenerator::GenerateGenericEnumCtorTypeTemplate(llvm::GlobalVa
     typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_EXTENSIONDEF_PTR)] =
         llvm::ConstantPointerNull::get(CGType::GetOrCreateExtensionDefPtrType(llvmCtx)->getPointerTo());
     typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_INHERITED_CLASS_NUM)] = llvm::ConstantInt::get(i16Ty, 0U);
-
+    std::string mangledName = ctors[ctorIndex].annoInfo.mangledName;
+    auto innerNode = llvm::MDTuple::get(llvmCtx,  
+        {llvm::MDString::get(llvmCtx, "enumCtor"),llvm::MDString::get(llvmCtx, mangledName)});
+    auto outerNode = llvm::MDTuple::get(llvmCtx, {innerNode});
+    tt.setMetadata("Reflection", outerNode);
     tt.setInitializer(llvm::ConstantStruct::get(CGType::GetOrCreateTypeTemplateType(llvmCtx), typeTemplateVec));
     tt.addAttribute(TYPE_TEMPLATE_ATTR);
 }
