@@ -674,6 +674,8 @@ std::string EnumMetadataInfo::GenerateCtorFn(
         auto entryBB = irBuilder.CreateEntryBasicBlock(getTiFn, "entry");
         irBuilder.SetInsertPoint(entryBB);
         llvm::Value* ti{nullptr};
+        auto ctorInfo = enumDef.GetCtor(index);
+        std::string mangledName = ctorInfo.annoInfo.mangledName;
         auto chirEnumType = StaticCast<CHIR::EnumType*>(enumDef.GetType());
         if (CGType::GetOrCreate(module, chirEnumType)->IsDynamicGI()) {
             auto tt = module.GetOrCreateEnumCtorTIOrTT(*chirEnumType, index);
