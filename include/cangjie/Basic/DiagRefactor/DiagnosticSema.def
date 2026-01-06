@@ -229,6 +229,7 @@ ERROR(sema_cjmapping_struct_inheritance_interface_not_supported, "cangjie mirror
 ERROR(sema_cjmapping_decl_not_supported, "cangjie mirror decl type is not supported for %s")
 ERROR(sema_cjmapping_method_arg_not_supported, "argument type of cangjie mirror decl type member function is not supported")
 ERROR(sema_cjmapping_method_ret_unsupported, "return type '%s' of function inside %s type is not supported")
+ERROR(sema_cj_mapping_generic_method_not_get_instance_config, "Instance configuration '%s' has incorrect format.")
 
 // VArray
 ERROR(sema_varray_size_match, "mismatch 'VArray' type's size", "expected size is %s, found %s")
