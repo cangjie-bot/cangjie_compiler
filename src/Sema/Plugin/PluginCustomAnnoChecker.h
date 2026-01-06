@@ -73,7 +73,7 @@ struct PluginCustomAnnoInfo {
     std::optional<bool> hasHideAnno{std::nullopt};
 };
 
-using SysCapSet = std::vector<std::string>;
+using SysCapSet = std::set<std::string>;
 
 class PluginCustomAnnoChecker {
 public:
