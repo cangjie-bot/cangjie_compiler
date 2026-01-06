@@ -160,7 +160,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeMethod(
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
         GetArgsAndRetGenericActualTyVector(
-            genericConfig, sampleMethod, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager);
+            genericConfig, sampleMethod, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager, diag);
     }
     auto instantTy = GetInstantyForGenericTy(decl, actualTyArgMap, typeManager);
     auto retActualTy = retTy->HasGeneric() ? GetGenericInstTy(genericConfig, retTy, typeManager) : retTy;
@@ -357,7 +357,7 @@ OwnedPtr<Decl> JavaDesugarManager::GenerateNativeInitCjObjectFunc(FuncDecl& ctor
     std::vector<OwnedPtr<Type>> actualPrimitiveType;
     if (genericConfig && genericConfig->instTypes.size() != 0) {
         GetArgsAndRetGenericActualTyVector(
-            genericConfig, ctor, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager);
+            genericConfig, ctor, actualTyArgMap, funcTyParams, actualPrimitiveType, typeManager, diag);
     }
     for (size_t argIdx = 0; argIdx < ctor.funcBody->paramLists[0]->params.size(); ++argIdx) {
         auto& arg = ctor.funcBody->paramLists[0]->params[argIdx];

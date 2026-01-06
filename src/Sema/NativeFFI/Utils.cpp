@@ -355,7 +355,7 @@ std::string GetGenericActualType(const GenericConfigInfo* config, std::string ge
 }
 
 // Current generic just support primitive type
-TypeKind GetActualTypeKind(std::string configType)
+TypeKind GetActualTypeKind(std::string configType, DiagnosticEngine* diag)
 {
     static const std::unordered_map<std::string, TypeKind> typeMap = {{"Int", TypeKind::TYPE_INT32},
         {"Int8", TypeKind::TYPE_INT8}, {"Int16", TypeKind::TYPE_INT16}, {"Int32", TypeKind::TYPE_INT32},
@@ -365,24 +365,29 @@ TypeKind GetActualTypeKind(std::string configType)
         {"Float32", TypeKind::TYPE_FLOAT32}, {"Float64", TypeKind::TYPE_FLOAT64}, {"Bool", TypeKind::TYPE_BOOLEAN},
         {"Boolean", TypeKind::TYPE_BOOLEAN}, {"Unit", TypeKind::TYPE_UNIT}};
     auto it = typeMap.find(configType);
+
+    if (it == typeMap.end()) {
+        diag->DiagnoseRefactor(DiagKindRefactor::sema_cj_mapping_generic_method_not_get_instance_config, Position(), configType);
+    }
+
     CJC_ASSERT(it != typeMap.end());
     return it->second;
 }
 
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName)
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName, DiagnosticEngine* diag)
 {
     auto actualTypeName = GetGenericActualType(config, genericName);
     if (actualTypeName.empty()) {
         return Ty::GetInitialTy();
     }
-    return GetTyByName(actualTypeName);
+    return GetTyByName(actualTypeName, diag);
 }
 
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager)
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager, DiagnosticEngine* diag)
 {
     switch (genericTy->kind) {
         case TypeKind::TYPE_GENERICS:
-            return GetGenericInstTy(config, genericTy->name);
+            return GetGenericInstTy(config, genericTy->name, diag);
         case TypeKind::TYPE_FUNC: {
             auto funcTy = StaticCast<FuncTy*>(genericTy);
             CJC_NULLPTR_CHECK(funcTy);
@@ -390,12 +395,12 @@ Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& generic
             std::vector<Ptr<Ty>> paramTys;
             Ptr<Ty> retTy = funcTy->retTy;
             if (funcTy->retTy && funcTy->retTy->HasGeneric()) {
-                retTy = GetGenericInstTy(config, funcTy->retTy, typeManager);
+                retTy = GetGenericInstTy(config, funcTy->retTy, typeManager, diag);
             }
 
             for (auto& paramTy : funcTy->paramTys) {
                 if (paramTy && paramTy->HasGeneric()) {
-                    paramTys.push_back(GetGenericInstTy(config, paramTy, typeManager));
+                    paramTys.push_back(GetGenericInstTy(config, paramTy, typeManager, diag));
                 } else {
                     paramTys.push_back(paramTy);
                 }
@@ -407,7 +412,7 @@ Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& generic
             std::vector<Ptr<Ty>> elements;
             for (const auto& it : genericTy->typeArgs) {
                 if (it->IsGeneric()) {
-                    elements.emplace_back(GetGenericInstTy(config, it->name));
+                    elements.emplace_back(GetGenericInstTy(config, it->name, diag));
                     continue;
                 }
                 elements.emplace_back(it);
@@ -420,9 +425,9 @@ Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& generic
     }
 }
 
-Ptr<Ty> GetTyByName(std::string typeStr)
+Ptr<Ty> GetTyByName(std::string typeStr, DiagnosticEngine* diag)
 {
-    auto typeKind = GetActualTypeKind(typeStr);
+    auto typeKind = GetActualTypeKind(typeStr, diag);
     // Current only support primitive type.
     auto ty = TypeManager::GetPrimitiveTy(typeKind);
     return ty;
@@ -512,12 +517,12 @@ void ReplaceGenericTyForFunc(Ptr<FuncDecl> funcDecl, GenericConfigInfo* genericC
 // Match generic parameters in all function parameters to their corresponding Ptr<Ty>.
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
     std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, std::vector<Ptr<Ty>>& funcTyParams,
-    std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager)
+    std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager, DiagnosticEngine& diag)
 {
     if (ctor.outerDecl) {
         for (auto argTy : ctor.outerDecl->ty->typeArgs) {
             if (argTy->IsGeneric()) {
-                auto actualRetTy = GetGenericInstTy(config, argTy, typeManager);
+                auto actualRetTy = GetGenericInstTy(config, argTy, typeManager, &diag);
                 actualTyArgMap[argTy->name] = actualRetTy;
                 actualPrimitiveType.emplace_back(GetTypeByName(actualRetTy->String()));
             }
@@ -528,7 +533,7 @@ void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDec
     for (size_t argIdx = 0; argIdx < ctor.funcBody->paramLists[0]->params.size(); ++argIdx) {
         auto& arg = ctor.funcBody->paramLists[0]->params[argIdx];
         if (arg->ty->HasGeneric()) {
-            if (auto actualTy = GetGenericInstTy(config, arg->ty, typeManager)) {
+            if (auto actualTy = GetGenericInstTy(config, arg->ty, typeManager, &diag)) {
                 funcTyParams.emplace_back(actualTy);
             } else {
                 funcTyParams.emplace_back(arg->ty);

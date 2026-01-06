@@ -503,6 +503,25 @@ void ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& 
 bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
 {
     try {
+            {
+                std::ifstream file(filePath);
+                if (!file.is_open()) {
+                    std::cerr << "Error: Cannot open configuration file." << filePath << std::endl;
+                    return false;
+                }
+
+                std::string content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+                file.close();
+
+                // Check /* */
+                if (content.find("/*") != std::string::npos) {
+                    std::cerr << "Failed to open configuration file. Error: Unsupported block comment '/*' detected." <<
+                        "Please use line comment '#' instead." << std::endl;
+                    return false;
+                }
+            }
+
         toml::Table tbl = toml::parseFile(filePath).value.as<toml::Table>();
 
         ParseDefaultConfig(tbl, *this);

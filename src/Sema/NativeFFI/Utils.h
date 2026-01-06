@@ -174,10 +174,10 @@ OwnedPtr<Type> GetTypeByName(std::string typeStr);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, std::string genericName);
 OwnedPtr<Type> GetGenericInstType(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager);
 std::string GetGenericActualType(const GenericConfigInfo* config, std::string genericName);
-TypeKind GetActualTypeKind(std::string configType);
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName);
-Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager);
-Ptr<Ty> GetTyByName(std::string typeStr);
+TypeKind GetActualTypeKind(std::string configType, DiagnosticEngine* diag = nullptr);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, std::string genericName, DiagnosticEngine* diag = nullptr);
+Ptr<Ty> GetGenericInstTy(const GenericConfigInfo* config, const Ptr<Ty>& genericTy, TypeManager& typeManager, DiagnosticEngine* diag = nullptr);
+Ptr<Ty> GetTyByName(std::string typeStr, DiagnosticEngine* diag = nullptr);
 
 bool IsGenericParam(const Ptr<Ty> ty, const AST::Decl& decl, Native::FFI::GenericConfigInfo* genericConfig);
 
@@ -201,7 +201,7 @@ void ReplaceGenericTyForFuncTy(Ptr<Ty> ty, GenericConfigInfo* genericConfig, Typ
 
 void GetArgsAndRetGenericActualTyVector(const GenericConfigInfo* config, FuncDecl& ctor,
     std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, std::vector<Ptr<Ty>>& funcTyParams,
-    std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager);
+    std::vector<OwnedPtr<Type>>& actualPrimitiveType, TypeManager& typeManager, DiagnosticEngine& diag);
 
 Ptr<Ty> GetInstantyForGenericTy(
     Decl& decl, const std::unordered_map<std::string, Ptr<Ty>>& actualTyArgMap, TypeManager& typeManager);
