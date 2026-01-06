@@ -13,6 +13,7 @@
 #include "cangjie/Basic/SourceManager.h"
 #include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/Utils/FileUtil.h"
+#include "cangjie/Utils/SafePointer.h"
 
 using namespace Cangjie;
 
@@ -168,17 +169,27 @@ std::string SourceManager::GetContentBetween(
     CJC_ASSERT(INVALID_POSITION < begin && begin <= end);
 
     auto& sourceWithFileID = fileID >= sources.size() ? sources[0] : sources[fileID];
-    const auto& source = sourceWithFileID.buffer.empty() && !importGenericContent.empty()
-        ? Source(sourceWithFileID.fileID, sourceWithFileID.path, importGenericContent)
-        : sourceWithFileID;
-    const auto& buffer = source.buffer;
+
+    // Use OwnedPtr for temporary Source to avoid mixed return types in ternary operator (? tempObj : ref).
+    // This helps compiler optimization by having consistent pointer types
+    OwnedPtr<Source> tempSource;
+    Ptr<const Source> sourcePtr;
+
+    if (sourceWithFileID.buffer.empty() && !importGenericContent.empty()) {
+        tempSource = MakeOwned<Source>(sourceWithFileID.fileID, sourceWithFileID.path, importGenericContent);
+        sourcePtr = tempSource.get();
+    } else {
+        sourcePtr = &sourceWithFileID;
+    }
+
+    const auto& buffer = sourcePtr->buffer;
 
     if (buffer.empty()) {
         return "";
     }
 
-    auto startOffset = source.PosToOffset(begin);
-    auto endOffset = source.PosToOffset(end);
+    auto startOffset = sourcePtr->PosToOffset(begin);
+    auto endOffset = sourcePtr->PosToOffset(end);
     return buffer.substr(startOffset, endOffset - startOffset);
 }
 
