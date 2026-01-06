@@ -321,9 +321,57 @@ llvm::Constant* CGExtensionDef::GenerateWhereConditionFn()
 
 llvm::Constant* CGExtensionDef::GenerateFuncTableForType(const std::vector<CHIR::VirtualFuncInfo>& virtualFuncInfos)
 {
-    auto i8PtrType = llvm::Type::getInt8PtrTy(cgCtx.GetLLVMContext());
-    auto funcTableSize = virtualFuncInfos.size();
-    if (funcTableSize == 0) {
+    auto& llvmCtx = cgMod.GetLLVMContext();
+    if (funcInfo.GetVirtualMethod() == nullptr) {
+        return llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(llvmCtx));
+    }
+    auto parentType = DeRef(*funcInfo.GetInstParentType());
+    if (parentType->GetTypeArgs().empty()) {
+        // If `parentType` has no type arguments, it will not be accessed in the function, meaning
+        // the value of `outerTypeinfo` is unimportant and can be filled with any data. To reduce
+        // relocation, we choose to fill it with 0x1 instead of a TypeInfo pointer.
+        return llvm::ConstantExpr::getIntToPtr(
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvmCtx), 0x1), llvm::Type::getInt8PtrTy(llvmCtx));
+    }
+    auto outerTi = CGType::GetOrCreate(cgMod, parentType)->GetOrCreateTypeInfo();
+    return llvm::ConstantExpr::getBitCast(outerTi, llvm::Type::getInt8PtrTy(llvmCtx));
+}
+
+llvm::Constant* CGExtensionDef::GenerateOuterTiFn(const CHIR::VirtualMethodInfo& funcInfo)
+{
+    auto& llvmCtx = cgMod.GetLLVMContext();
+    if (funcInfo.GetVirtualMethod() == nullptr) {
+        return llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(llvmCtx));
+    }
+
+    auto fnName = extendDefName + "_" + funcInfo.GetVirtualMethod()->GetIdentifierWithoutPrefix() + "_GetOuterTiFn";
+    auto getOuterTiFn = cgMod.GetLLVMModule()->getFunction(fnName);
+    if (!getOuterTiFn) {
+        cgCtx.AddLLVMUsedVars(fnName);
+        auto typeInfoPtrType = CGType::GetOrCreateTypeInfoPtrType(llvmCtx);
+        llvm::FunctionType* getOuterTiFnType = llvm::FunctionType::get(typeInfoPtrType, {typeInfoPtrType}, false);
+        getOuterTiFn =
+            llvm::Function::Create(getOuterTiFnType, llvm::Function::PrivateLinkage, fnName, cgMod.GetLLVMModule());
+        auto entryBB = llvm::BasicBlock::Create(llvmCtx, "entry", getOuterTiFn);
+        IRBuilder2 irBuilder(cgMod, entryBB);
+        innerTypeMap.emplace(targetType, InnerTiInfo{getOuterTiFn->getArg(0), true});
+        auto parentType = DeRef(*funcInfo.GetInstParentType());
+        auto outerTi = irBuilder.CreateTypeInfo(*parentType, genericParamsMap, false);
+        innerTypeMap.clear();
+        irBuilder.CreateRet(irBuilder.CreateBitCast(outerTi, typeInfoPtrType));
+    } else {
+        CJC_ASSERT(false &&
+            "GenerateOuterTiFn should not be called multiple times for the same function. SomeThing is wrong.");
+    }
+    return llvm::ConstantExpr::getBitCast(getOuterTiFn, llvm::Type::getInt8PtrTy(llvmCtx));
+}
+
+llvm::Constant* CGExtensionDef::GenerateFuncTableForType(
+    const CHIR::ClassType& inheritedType, const CHIR::VTableInType& vtableInType)
+{
+    auto& llvmCtx = cgMod.GetLLVMContext();
+    auto i8PtrType = llvm::Type::getInt8PtrTy(llvmCtx);
+    if (vtableInType.IsEmpty()) {
         return llvm::Constant::getNullValue(i8PtrType);
     }
     auto tableType = llvm::ArrayType::get(i8PtrType, funcTableSize);
