@@ -129,7 +129,19 @@ public:
     {
         return globalOptions;
     }
-
+    bool GetCjoPathFromCache(const std::string& cjoName, std::string& cjoPath) const
+    {
+        auto found = cjoPathCache.find(cjoName);
+        if (found == cjoPathCache.end()) {
+            return false;
+        }
+        cjoPath = found->second;
+        return true;
+    }
+    void CacheCjoPath(const std::string& cjoName, const std::string& cjoPath)
+    {
+        cjoPathCache[cjoName] = cjoPath;
+    }
 private:
     DiagnosticEngine& diag;
     TypeManager& typeManager;
@@ -149,6 +161,9 @@ private:
     // common part loader also stored in `packageNameMap`.
     OwnedPtr<ASTLoader> commonPartLoader;
     bool canInline{false};
+
+    // cache for cjo file path
+    std::unordered_map<std::string, std::string> cjoPathCache;
 };
 } // namespace Cangjie
 #endif

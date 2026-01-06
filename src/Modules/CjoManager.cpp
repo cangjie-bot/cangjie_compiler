@@ -536,12 +536,19 @@ void CjoManager::AddPackageDeclMap(const std::string& fullPackageName, const std
     }
 }
 
-std::optional<std::string> CjoManager::GetPackageCjoPath(std::string fullPackageName) const
+std::optional<std::string> CjoManager::GetPackageCjoPath(const std::string& fullPackageName) const
 {
+    std::string cjoPath;
+    if (impl->GetCjoPathFromCache(fullPackageName, cjoPath)) {
+        return cjoPath;
+    }
     if (auto found = impl->GetCjoFileCacheMap().find(fullPackageName); found != impl->GetCjoFileCacheMap().end()) {
+        impl->CacheCjoPath(fullPackageName, fullPackageName);
         return fullPackageName; // Set dummy path for cached cjo data.
     } else {
-        return FileUtil::FindSerializationFile(fullPackageName, SERIALIZED_FILE_EXTENSION, GetSearchPath());
+        cjoPath = FileUtil::FindSerializationFile(fullPackageName, SERIALIZED_FILE_EXTENSION, GetSearchPath());
+        impl->CacheCjoPath(fullPackageName, cjoPath);
+        return cjoPath;
     }
 
     return std::nullopt;
@@ -553,12 +560,21 @@ std::pair<std::string, std::string> CjoManager::GetPackageCjo(const AST::ImportS
     std::string cjoName;
     for (auto it : GetPossibleCjoNames(importSpec)) {
         cjoName = it;
+        if (impl->GetCjoPathFromCache(cjoName, cjoPath)) {
+            if (!cjoPath.empty()) {
+                break;
+            } else {
+                continue;
+            }
+        }
         if (auto found = impl->GetCjoFileCacheMap().find(FileUtil::ToPackageName(cjoName));
             found != impl->GetCjoFileCacheMap().end()) {
             cjoPath = cjoName; // Set dummy path for cached cjo data.
+            impl->CacheCjoPath(cjoName, cjoPath);
         } else {
-            cjoPath = FileUtil::FindSerializationFile(FileUtil::ToPackageName(cjoName),
-                SERIALIZED_FILE_EXTENSION, GetSearchPath());
+            cjoPath = FileUtil::FindSerializationFile(
+                FileUtil::ToPackageName(cjoName), SERIALIZED_FILE_EXTENSION, GetSearchPath());
+            impl->CacheCjoPath(cjoName, cjoPath);
         }
         if (!cjoPath.empty()) {
             break;
