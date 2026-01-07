@@ -291,4 +291,84 @@ void ParserImpl::CheckConstructorBody(AST::FuncDecl& ctor, ScopeKind scopeKind, 
         ctor.EnableAttr(Attribute::HAS_BROKEN);
     }
 }
+
+const std::pair<TokenKind, TokenKind>* ParserImpl::LookupExprsFollowedCommas(ExprKind ek)
+{
+    static const std::pair<TokenKind, TokenKind> tuple{TokenKind::LPAREN, TokenKind::RPAREN};
+    static const std::pair<TokenKind, TokenKind> array{TokenKind::LSQUARE, TokenKind::RSQUARE};
+    static const std::pair<TokenKind, TokenKind> callSuffix{TokenKind::LPAREN, TokenKind::RPAREN};
+    static const std::pair<TokenKind, TokenKind> annotation{TokenKind::LSQUARE, TokenKind::RSQUARE};
+
+    switch (ek) {
+        case ExprKind::EXPR_IN_TUPLE:
+            return &tuple;
+        case ExprKind::EXPR_IN_ARRAY:
+            return &array;
+        case ExprKind::EXPR_IN_CALLSUFFIX:
+            return &callSuffix;
+        case ExprKind::EXPR_IN_ANNOTATION:
+            return &annotation;
+        default:
+            return nullptr;
+    }
+}
+
+// Combinator lookup - checks if seeing a combinator sequence and returns combined token info
+const ParserImpl::CombinatorInfo* ParserImpl::LookupSeenCombinator()
+{
+    // Order matters: rshiftAssign before rshift (longer match first)
+    static const std::vector<TokenKind> rshiftAssignSeq{TokenKind::GT, TokenKind::GT, TokenKind::ASSIGN};
+    static const CombinatorInfo rshiftAssignInfo = {TokenKind::RSHIFT_ASSIGN, ">>="};
+    static const std::vector<TokenKind> rshiftSeq{TokenKind::GT, TokenKind::GT};
+    static const CombinatorInfo rshiftInfo{TokenKind::RSHIFT, ">>"};
+    static const std::vector<TokenKind> geSeq{TokenKind::GT, TokenKind::ASSIGN};
+    static const CombinatorInfo geInfo{TokenKind::GE, ">="};
+    static const std::vector<TokenKind> coalescingSeq{TokenKind::QUEST, TokenKind::QUEST};
+    static const CombinatorInfo coalescingInfo{TokenKind::COALESCING, "??"};
+
+    // Check longest matches first
+    if (SeeingCombinator(rshiftAssignSeq)) {
+        return &rshiftAssignInfo;
+    }
+    if (SeeingCombinator(rshiftSeq)) {
+        return &rshiftInfo;
+    }
+    if (SeeingCombinator(geSeq)) {
+        return &geInfo;
+    }
+    if (SeeingCombinator(coalescingSeq)) {
+        return &coalescingInfo;
+    }
+    return nullptr;
+}
+
+AST::TypeKind LookupPrimitiveTypeKind(TokenKind kind)
+{
+    static constexpr int first = static_cast<int>(TokenKind::INT8);
+    static constexpr int last = static_cast<int>(TokenKind::UNIT);
+    static constexpr AST::TypeKind table[] = {
+        AST::TypeKind::TYPE_INT8,
+        AST::TypeKind::TYPE_INT16,
+        AST::TypeKind::TYPE_INT32,
+        AST::TypeKind::TYPE_INT64,
+        AST::TypeKind::TYPE_INT_NATIVE,
+        AST::TypeKind::TYPE_UINT8,
+        AST::TypeKind::TYPE_UINT16,
+        AST::TypeKind::TYPE_UINT32,
+        AST::TypeKind::TYPE_UINT64,
+        AST::TypeKind::TYPE_UINT_NATIVE,
+        AST::TypeKind::TYPE_FLOAT16,
+        AST::TypeKind::TYPE_FLOAT32,
+        AST::TypeKind::TYPE_FLOAT64,
+        AST::TypeKind::TYPE_RUNE,
+        AST::TypeKind::TYPE_BOOLEAN,
+        AST::TypeKind::TYPE_NOTHING,
+        AST::TypeKind::TYPE_UNIT,
+    };
+    int idx = static_cast<int>(kind) - first;
+    if (idx < 0 || idx > last - first) {
+        return AST::TypeKind::TYPE_INVALID;
+    }
+    return table[idx];
+}
 }
