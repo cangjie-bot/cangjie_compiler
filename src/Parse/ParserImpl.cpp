@@ -297,4 +297,54 @@ void ParserImpl::CheckConstructorBody(AST::FuncDecl& ctor, ScopeKind scopeKind, 
         ctor.EnableAttr(Attribute::HAS_BROKEN);
     }
 }
+
+const std::pair<TokenKind, TokenKind>* ParserImpl::LookupExprsFollowedCommas(ExprKind ek)
+{
+    static const std::pair<TokenKind, TokenKind> TUPLE = {TokenKind::LPAREN, TokenKind::RPAREN};
+    static const std::pair<TokenKind, TokenKind> ARRAY = {TokenKind::LSQUARE, TokenKind::RSQUARE};
+    static const std::pair<TokenKind, TokenKind> CALLSUFFIX = {TokenKind::LPAREN, TokenKind::RPAREN};
+    static const std::pair<TokenKind, TokenKind> ANNOTATION = {TokenKind::LSQUARE, TokenKind::RSQUARE};
+
+    switch (ek) {
+        case ExprKind::EXPR_IN_TUPLE:
+            return &TUPLE;
+        case ExprKind::EXPR_IN_ARRAY:
+            return &ARRAY;
+        case ExprKind::EXPR_IN_CALLSUFFIX:
+            return &CALLSUFFIX;
+        case ExprKind::EXPR_IN_ANNOTATION:
+            return &ANNOTATION;
+        default:
+            return nullptr;
+    }
+}
+
+// Combinator lookup - checks if seeing a combinator sequence and returns combined token info
+const ParserImpl::CombinatorInfo* ParserImpl::LookupSeenCombinator()
+{
+    // Order matters: RSHIFT_ASSIGN before RSHIFT (longer match first)
+    static const std::vector<TokenKind> RSHIFT_ASSIGN_SEQ = {TokenKind::GT, TokenKind::GT, TokenKind::ASSIGN};
+    static const CombinatorInfo RSHIFT_ASSIGN_INFO = {TokenKind::RSHIFT_ASSIGN, ">>="};
+    static const std::vector<TokenKind> RSHIFT_SEQ = {TokenKind::GT, TokenKind::GT};
+    static const CombinatorInfo RSHIFT_INFO = {TokenKind::RSHIFT, ">>"};
+    static const std::vector<TokenKind> GE_SEQ = {TokenKind::GT, TokenKind::ASSIGN};
+    static const CombinatorInfo GE_INFO = {TokenKind::GE, ">="};
+    static const std::vector<TokenKind> COALESCING_SEQ = {TokenKind::QUEST, TokenKind::QUEST};
+    static const CombinatorInfo COALESCING_INFO = {TokenKind::COALESCING, "??"};
+
+    // Check longest matches first
+    if (SeeingCombinator(RSHIFT_ASSIGN_SEQ)) {
+        return &RSHIFT_ASSIGN_INFO;
+    }
+    if (SeeingCombinator(RSHIFT_SEQ)) {
+        return &RSHIFT_INFO;
+    }
+    if (SeeingCombinator(GE_SEQ)) {
+        return &GE_INFO;
+    }
+    if (SeeingCombinator(COALESCING_SEQ)) {
+        return &COALESCING_INFO;
+    }
+    return nullptr;
+}
 }
