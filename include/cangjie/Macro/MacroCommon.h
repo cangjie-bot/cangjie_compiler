@@ -64,18 +64,18 @@ bool CheckAddSpace(Token curToken, Token nextToken);
 class MacroFormatter {
 public:
     MacroFormatter(
-        const TokenVector ts, std::vector<Position> eposVec, int offset)
+        const TokenVector& ts, std::vector<Position> eposVec, int offset)
         : input(ts), escapePosVec(eposVec), offset(offset)
     {
     }
-    MacroFormatter(const TokenVector ts) : input(ts)
+    MacroFormatter(const TokenVector& ts) : input(ts)
     {
         PushIntoLines();
     }
     const std::string Produce(bool hasComment = true);
 
 private:
-    std::vector<Token> input;
+    const TokenVector& input;
     std::vector<TokenVector> lines;
     std::vector<Position> escapePosVec;
     std::string retStr;

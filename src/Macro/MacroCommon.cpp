@@ -160,43 +160,61 @@ bool CheckAddSpace(Token curToken, Token nextToken)
 bool MacroFormatter::SeeCurlyBracket(const TokenVector& lineOfTk, const TokenKind& tk) const
 {
     TokenKind other;
-    TokenVector temp = lineOfTk;
     if (tk == TokenKind::RCURL) {
         other = TokenKind::LCURL;
+        // Look forward for RCURL
+        for (const auto& token : lineOfTk) {
+            if (token.kind == other) {
+                return false;
+            }
+            if (token.kind == tk) {
+                return true;
+            }
+        }
     } else if (tk == TokenKind::LCURL) {
         other = TokenKind::RCURL;
-        // Look for bracket from backwards.
-        std::reverse(temp.begin(), temp.end());
+        // Look backward for LCURL without copying/reversing
+        for (auto itr = lineOfTk.rbegin(); itr != lineOfTk.rend(); ++itr) {
+            if (itr->kind == other) {
+                return false;
+            }
+            if (itr->kind == tk) {
+                return true;
+            }
+        }
     } else {
         return false;
-    }
-    // Return true if see a single bracket in lineOfTk.
-    for (auto itr = temp.begin(); itr != temp.end(); ++itr) {
-        if ((*itr).kind == other) {
-            return false;
-        }
-        if ((*itr).kind == tk) {
-            return true;
-        }
     }
     return false;
 }
 
 void MacroFormatter::PushIntoLines()
 {
+    lines.clear();
+    // Estimate number of lines (at least 1, typically NL tokens + 1)
+    size_t estimatedLines = 1;
+    for (const auto& tok : input) {
+        if (tok.kind == TokenKind::NL) {
+            estimatedLines++;
+        }
+    }
+    lines.reserve(estimatedLines);
+    
     TokenVector tmp;
+    // Reserve space for typical line length to reduce reallocations
+    tmp.reserve(32);
+    
     for (const auto& tok : input) {
         tmp.push_back(tok);
         if (tok.kind == TokenKind::NL) {
-            lines.push_back(tmp);
+            lines.push_back(std::move(tmp));
             tmp.clear();
+            tmp.reserve(32); // Re-reserve for next line
         }
     }
     if (!tmp.empty()) {
-        lines.push_back(tmp);
-        tmp.clear();
+        lines.push_back(std::move(tmp));
     }
-    return;
 }
 
 void MacroFormatter::LinesToString(bool hasComment)
@@ -205,29 +223,69 @@ void MacroFormatter::LinesToString(bool hasComment)
     if (lines.empty()) {
         return;
     }
-    auto genIndent = [](int times) {
-        std::string tab = "    ";
-        return RepeatString(tab, times);
+    
+    // Pre-compute and cache indent strings to avoid repeated generation
+    constexpr int MAX_INDENT_CACHE = 20; // Cache up to 20 levels of indentation
+    std::vector<std::string> indentCache;
+    indentCache.reserve(MAX_INDENT_CACHE + 1);
+    const std::string tab = "    ";
+    for (int i = 0; i <= MAX_INDENT_CACHE; ++i) {
+        indentCache.push_back(RepeatString(tab, i));
+    }
+    
+    auto getIndent = [&indentCache, &tab](int times) -> const std::string& {
+        if (times >= 0 && times < static_cast<int>(indentCache.size())) {
+            return indentCache[times];
+        }
+        // For deep indentation, generate on the fly (rare case)
+        static thread_local std::string deepIndent;
+        deepIndent = RepeatString(tab, times);
+        return deepIndent;
     };
+    
     auto initialIndent = (offset - 1) / SPACE_NUM;
     auto indentation = 0;
+    
+    // Estimate total string size to reduce reallocations
+    size_t estimatedSize = 0;
+    for (const auto& line : lines) {
+        estimatedSize += line.size() * 8; // Rough estimate: 8 chars per token
+    }
+    retStr.reserve(estimatedSize);
+    
     for (size_t i = 0; i < lines.size(); i++) {
-        if (lines[i].size() == 0) {
+        if (lines[i].empty()) {
             continue;
         }
+        
+        // Handle comment token if needed (avoid erase by using index)
+        size_t lineStartIdx = 0;
         if (hasComment && lines[i].size() > 1) {
             if (i == 0) {
                 retStr += lines[i][0].Value();
             } else {
-                retStr += genIndent(initialIndent) + lines[i][0].Value();
+                retStr += getIndent(initialIndent) + lines[i][0].Value();
             }
-            (void)lines[i].erase(lines[i].begin());
+            lineStartIdx = 1; // Process remaining tokens starting from index 1
         }
-        auto lineStr = LineToString(lines[i]);
+        
+        // Build line string from remaining tokens (avoid full copy when possible)
+        TokenVector lineForToString;
+        if (lineStartIdx > 0) {
+            // Only copy the tokens we need (from lineStartIdx to end)
+            lineForToString.reserve(lines[i].size() - lineStartIdx);
+            lineForToString.assign(lines[i].begin() + lineStartIdx, lines[i].end());
+        } else {
+            // No comment to skip, use the line directly
+            lineForToString = lines[i];
+        }
+        
+        auto lineStr = LineToString(lineForToString);
         if (i == 0) {
-            retStr += genIndent(indentation) + lineStr;
+            retStr += getIndent(indentation) + lineStr;
             continue;
         }
+        
         // Determine the indentation.
         if (!lines[i - 1].empty() && SeeCurlyBracket(lines[i - 1], TokenKind::LCURL)) {
             indentation += 1; // Right ident when see "{" last line.
@@ -235,7 +293,7 @@ void MacroFormatter::LinesToString(bool hasComment)
         if (!lines[i].empty() && SeeCurlyBracket(lines[i], TokenKind::RCURL)) {
             indentation -= 1; // Left ident when see "}" this line.
         }
-        retStr += genIndent(indentation) + lineStr;
+        retStr += getIndent(indentation) + lineStr;
     }
 }
 

@@ -131,6 +131,23 @@ void CheckWhenAfterMacroExpand(Ptr<const Node> curNode, DiagnosticEngine& diag)
     ConstWalker walker(curNode, checkWhen);
     walker.Walk();
 }
+
+void SortMacroCalls(std::vector<MacroCall>& macCalls)
+{
+    // The macroCall is not collected by order strictly, need sort.
+    // Optimize comparison: use Position's operator< directly, avoid creating tuple
+    if (macCalls.empty()) {
+        return;
+    }
+    std::sort(macCalls.begin(), macCalls.end(), [](const auto& m1, const auto& m2) {
+        const auto& pos1 = m1.GetBeginPos();
+        const auto& pos2 = m2.GetBeginPos();
+        if (pos1.fileID != pos2.fileID) {
+            return pos1.fileID < pos2.fileID;
+        }
+        return pos1 < pos2;
+    });
+}
 } // namespace
 
 void MacroExpansion::ReplaceEachFileNode(const File& file)
@@ -173,12 +190,7 @@ void MacroExpansion::CollectMacros(Package& package)
             ((macroCollector.macCalls.size() > oldMacCallNum || macroCollector.macroDefFuncs.size() > oldMacDefNum) &&
                 "Collect Macro Failed."));
     }
-    // The macroCall is not collected by order strictly, need sort.
-    std::sort(macroCollector.macCalls.begin(), macroCollector.macCalls.end(), [](auto& m1, auto& m2) -> bool {
-        auto pos1 = m1.GetBeginPos();
-        auto pos2 = m2.GetBeginPos();
-        return std::tie(pos1.fileID, pos1) < std::tie(pos2.fileID, pos2);
-    });
+    SortMacroCalls(macroCollector.macCalls);
     macroCollector.importedMacroPkgs = ci->importManager.GetImportedPkgsForMacro();
 }
 
