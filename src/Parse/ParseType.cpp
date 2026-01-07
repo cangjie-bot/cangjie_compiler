@@ -33,7 +33,7 @@ OwnedPtr<AST::Type> ParserImpl::ParseBaseType()
         primType->begin = lookahead.Begin();
         primType->end = lookahead.End();
         primType->str = lookahead.Value();
-        primType->kind = TOKENKIND_TO_PRIMITIVE_TYPEKIND_MAP.at(lookahead.kind);
+        primType->kind = LookupPrimitiveTypeKind(lookahead.kind);
         Next();
         return primType;
     }
