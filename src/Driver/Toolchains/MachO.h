@@ -63,8 +63,6 @@ protected:
     // Generate the static link options of built-in libraries except 'std-ast'.
     // The 'std-ast' library is dynamically linked by default.
     void GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const override;
-    TempFileInfo MachO::ComputeOutputFileInfo( const std::vector<TempFileInfo>& objFiles,
-    const DriverOptions& driverOptions,TempFileKind kind);
     // Generate the dynamic link options of built-in libraries.
     void GenerateLinkOptionsOfBuiltinLibsForDyLink(Tool& tool) const override;
 };
