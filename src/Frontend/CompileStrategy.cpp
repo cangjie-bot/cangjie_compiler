@@ -55,7 +55,7 @@ bool CompileStrategy::ConditionCompile() const
 {
     auto beforeErrCnt = ci->diag.GetErrorCount();
     ConditionalCompilation cc{ci};
-    for (auto& pkg : ci->srcPkgs) { 
+    for (auto& pkg : ci->srcPkgs) {
         cc.HandleConditionalCompilation(*pkg.get());
     }
     return beforeErrCnt == ci->diag.GetErrorCount();

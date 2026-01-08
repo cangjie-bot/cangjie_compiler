@@ -53,6 +53,7 @@ ERROR(driver_invalid_require_extension, "output to '%s' is not allowed, extensio
 ERROR(driver_path_exceeds_length_limit, "the path length for %s exceeds the system limit (%s characters)")
 ERROR(driver_unsupported_target_cpu, "cpu type '%s' is not supported for the current target")
 ERROR(driver_require_chir_directory, "expected one chir path to build")
+ERROR(driver_invalid_compile_target, "--compile-target only takes effect when output-type=obj")
 
 // condition compilation arg error and warnings
 ERROR(driver_cfg_value_err, "user defined condition should be like: k1=v1,k2=v2 or <directory path of cfg.toml>")
@@ -70,8 +71,6 @@ WARNING(driver_cfg_path_ignored, DRIVER_ARG,
 
 ERROR(driver_invalid_compile_as_exe, "--compile-as-exe only takes effect when lto mode is enabled")
 ERROR(driver_invalid_compile_as_exe_platform, "Windows, Mac, IOS does not support --compile-as-exe")
-
-ERROR(driver_invalid_compile_target, "--compile_target only takes effect when output-type=obj")
 WARNING(driver_useless_option, DEPRECATED, "option '%s' is deprecated and will be removed in the future")
 
 // module arg warning

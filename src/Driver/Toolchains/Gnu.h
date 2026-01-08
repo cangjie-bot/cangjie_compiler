@@ -45,7 +45,6 @@ protected:
     virtual std::string GenerateGCCLibPath(const std::pair<std::string, std::string>& gccCrtFilePair) const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);
-    virtual void GenerateObjTool(const std::vector<TempFileInfo>& objFiles);
     // utility method to find clang library, used to find asan and libfuzzer
     // clang library format: libclang_rt.<module name>[-<arch>].<suffix>
     std::optional<std::string> SearchClangLibrary(const std::string libName, const std::string libSuffix);
