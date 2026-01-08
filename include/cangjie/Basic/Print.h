@@ -144,6 +144,24 @@ template <typename... Args> inline void Error(Args&&... args)
     std::cerr << RED_ERROR_MARK;
     ((std::cerr << args), ...);
 }
+#ifdef _WIN32
+
+inline void WErrorf(const wchar_t *fmt, ...)
+{
+    std::optional<std::warning> werrMark = Cangjie::StringConvertor::StringToWString(RED_ERROR_MARK);
+    if (!WerrMark.has_value()){
+        return ;
+    }
+    std::wcerr << werrMark.value().c_str();
+    va_list myargs;
+    va_start(myargs, fmt);
+    (void)vfprintf(stderr, fmt, myargs);
+    va_end(myargs);
+    std::wcerr << std::flush;
+}
+#endif 
+
+
 
 // format Error print with new line
 inline void Errorf(const char* fmt, ...)
