@@ -245,6 +245,7 @@ bool GlobalOptions::SetOptimizationLevel(OptimizationLevel level)
 bool GlobalOptions::PerformPostActions()
 {
     SetupChirOptions();
+    SetupCompileTargetOptions();
     bool success = SetupConditionalCompilationCfg();
     // ReprocessInputs depends on the normalized output path which is processed in ReprocessOutputs,
     // so ReprocessOutputs must be run before ReprocessInputs.
@@ -258,6 +259,7 @@ bool GlobalOptions::PerformPostActions()
     success = success && CheckLtoOptions();
     success = success && CheckCompileAsExeOptions();
     success = success && CheckPgoOptions();
+    success = success && CheckOutputModeOptions();
     success = success && ReprocessObfuseOption();
     RefactJobs();
     RefactAggressiveParallelCompileOption();
@@ -279,6 +281,13 @@ void GlobalOptions::SetupChirOptions()
     // If using interpreter we need CHIR graph to be closure converted
     if (interpreter) {
         chirCC = true;
+    }
+}
+
+void GlobalOptions::SetupCompileTargetOptions()
+{
+     if(outputMode == OutputMode::OBJ  && compileTarget == COMPILETARGET::DEFAULT){
+        compileTarget = COMPILETARGET::EXECUTABLE;
     }
 }
 
@@ -528,7 +537,7 @@ bool GlobalOptions::CheckLtoOptions() const
         return false;
     }
     if (outputMode == OutputMode::OBJ ) {
-        Errorln("--output is not allowed in LTO model");
+        Errorln("--output-type=obj is not allowed in LTO model");
         return false;
     }
     if (outputMode == OutputMode::STATIC_LIB && !bcInputFiles.empty()) {
@@ -541,6 +550,21 @@ bool GlobalOptions::CheckLtoOptions() const
     }
     return true;
 }
+
+bool GlobalOptions::CheckOutputModeOptions() const {
+    if(outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT){
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
+        return false;
+    }
+    if(srcFiles.empty() && outputMode == OutputMode::OBJ){
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
+        return false;
+    }
+    return true;
+}
+
 
 bool GlobalOptions::CheckCompileAsExeOptions() const 
 {

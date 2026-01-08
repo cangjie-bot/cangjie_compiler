@@ -44,6 +44,7 @@ protected:
     virtual std::string GetTargetArchString() const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);
+    void GenerateObjTool(const std::vector<TempFileInfo>& objFiles);
     void HandleLLVMLinkOptions(const std::vector<TempFileInfo>& objFiles, Tool& tool);
     virtual void HandleLibrarySearchPaths(Tool& tool, const std::string& cangjieLibPath);
 
@@ -62,6 +63,8 @@ protected:
     // Generate the static link options of built-in libraries except 'std-ast'.
     // The 'std-ast' library is dynamically linked by default.
     void GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const override;
+    TempFileInfo MachO::ComputeOutputFileInfo( const std::vector<TempFileInfo>& objFiles,
+    const DriverOptions& driverOptions,TempFileKind kind);
     // Generate the dynamic link options of built-in libraries.
     void GenerateLinkOptionsOfBuiltinLibsForDyLink(Tool& tool) const override;
 };
