@@ -224,7 +224,7 @@ bool TempFileManager::Init(const GlobalOptions& options, bool isFrontend)
         {TempFileKind::O_MACRO, [this]() { return GetDylibSuffix(); }},
         {TempFileKind::O_OBJ, [this]() { return GetObjSuffix(); }},
         {TempFileKind::T_OPT_BC, []() { return ".opt.bc"; }},
-        {TempFileKind::O_OPT_BC, []() { return ".o"; }},
+        {TempFileKind::O_OPT_BC, []() { return ".bc"; }},
         {TempFileKind::T_ASM, []() { return ".s"; }},
 #endif
         {TempFileKind::O_CHIR, []() { return CHIR_SERIALIZATION_FILE_EXTENSION; }},
