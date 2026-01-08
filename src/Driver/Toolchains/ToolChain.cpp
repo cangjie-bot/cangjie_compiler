@@ -82,7 +82,6 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const
     const std::function<void(std::string)> appendStaticLibsToTool =
         [this, &dynamicLibraries, &staticLibraries, &ltoBuiltInDependencies, &dyDependencies]
             (const std::string& cjoFileName) {
-            std::cout<<" is here "<< cjoFileName <<std::endl;
             auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);
             if (dyDependencies.find(staticLib) != dyDependencies.end() && !driverOptions.linkStatic) {
                 dynamicLibraries.emplace(LINK_PREFIX +
