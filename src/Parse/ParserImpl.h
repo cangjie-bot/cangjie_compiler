@@ -686,11 +686,23 @@ private:
     // Parse 'this' or 'super'.
     OwnedPtr<AST::RefExpr> ParseThisOrSuper() const;
     OwnedPtr<AST::ReturnExpr> ParseReturnExpr();
+
     OwnedPtr<AST::QuoteExpr> ParseQuoteExpr();
     void ParseQuoteTokens(AST::QuoteExpr& qe);
+    enum ParserContext {
+        NORMAL,
+        QUOTE,
+        QUOTE_INTERPOLATE,
+    };
+    std::vector<ParserContext> ctx;
+    void EnterQuoteExprMod();
+    void ExitQuoteExprMod();
+    void EnterQuoteInterpolateMod();
+    void ExitQuoteInterpolateMod();
     void ParseQuoteDollarInterpolationWithParen(AST::QuoteExpr& qe);
     void ParseQuoteDollarInterpolation(AST::QuoteExpr& qe);
     void ParseQuoteEscapeToken(std::vector<Token>& tokens);
+
     void ParsePatternsInCase(const OwnedPtr<AST::MatchCase>& matchCase, const AST::MatchExpr& matchExpr);
     void ParseMatchCases(AST::MatchExpr& matchExpr);
     void ParseMatchNoSelector(AST::MatchExpr& matchExpr);

@@ -207,6 +207,7 @@ ParserImpl::ParserImpl(unsigned int fileID, const std::string& input, Diagnostic
       enableAttachComment(attachComment), parseDeclFile{parsingDeclFiles}, mpImpl{new MPParserImpl(*this)},
       ffiParser{new FFIParserImpl(*this)}
 {
+    ctx.push_back(ParserContext::NORMAL);
 }
 
 ParserImpl::ParserImpl(const std::string& input, DiagnosticEngine& diag, SourceManager& sm, const Position& pos,
@@ -216,6 +217,7 @@ ParserImpl::ParserImpl(const std::string& input, DiagnosticEngine& diag, SourceM
       enableAttachComment{attachComment}, parseDeclFile{parsingDeclFiles}, mpImpl{new MPParserImpl(*this)},
       ffiParser{new FFIParserImpl(*this)}
 {
+    ctx.push_back(ParserContext::NORMAL);
 }
 
 ParserImpl::ParserImpl(const std::vector<Token>& inputTokens, DiagnosticEngine& diag, SourceManager& sm,
@@ -225,6 +227,7 @@ ParserImpl::ParserImpl(const std::vector<Token>& inputTokens, DiagnosticEngine& 
       enableAttachComment{attachComment}, parseDeclFile{parsingDeclFiles}, mpImpl{new MPParserImpl(*this)},
       ffiParser{new FFIParserImpl(*this)}
 {
+    ctx.push_back(ParserContext::NORMAL);
 }
 
 ParserImpl::~ParserImpl()
