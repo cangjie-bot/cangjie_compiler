@@ -151,26 +151,6 @@ bool Gnu::PrepareDependencyPath()
     return true;
 }
 
-//TODO: 将两个合成一个
-void Gnu::GenerateObjTool(const std::vector<TempFileInfo>& objFiles) {
-    if (objFiles.empty()) {
-        return;
-    }
-    std::string srcFile = objFiles[0].filePath;
-    TempFileInfo finalFileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], TempFileKind::O_OBJ);
-    std::string destFile = finalFileInfo.filePath;
-    if (srcFile == destFile) {
-        return;
-    }
-
-    auto copyTool = std::make_unique<Tool>(
-        "CacheCopy", ToolType::INTERNAL_IMPLEMENTED, driverOptions.environment.allVariables);
-    copyTool->AppendArg(srcFile);
-    copyTool->AppendArg(destFile);
-
-    backendCmds.emplace_back(MakeSingleToolBatch({std::move(copyTool)}));
-}
-
 void Gnu::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
 {
     auto tool = std::make_unique<Tool>(arPath, ToolType::BACKEND, driverOptions.environment.allVariables);
@@ -181,7 +161,8 @@ void Gnu::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
 
     // When we reach here, we must be at the final phase of the compilation,
     // which means that is the final output.
-    TempFileInfo fileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], TempFileKind::O_STATICLIB);
+    //TempFileInfo fileInfo = TempFileManager::Instance().CreateNewFileInfo(optionalInfo, TempFileKind::O_STATICLIB);
+    TempFileInfo fileInfo = CreateNewFileInfoWrapper(objFiles, TempFileKind::O_STATICLIB);
     std::string outputFile = fileInfo.filePath;
 
     // If archive exists, ar attempts to insert given obj files into the archive.
