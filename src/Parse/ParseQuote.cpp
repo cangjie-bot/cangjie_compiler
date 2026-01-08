@@ -139,3 +139,65 @@ void ParserImpl::ParseQuoteTokens(QuoteExpr& qe)
     }
     GenerateTokenPart(qe, tokens);
 }
+
+void ParserImpl::EnterQuoteExprMod()
+{
+    ctx.push_back(ParserContext::QUOTE);
+    lexer->EnterQuoteMod();
+}
+void ParserImpl::ExitQuoteExprMod()
+{
+    CJC_ASSERT(ctx.back() == ParserContext::QUOTE);
+    ctx.pop_back();
+    lexer->ExitQuoteMod();
+}
+void ParserImpl::EnterQuoteInterpolateMod()
+{
+    ctx.push_back(ParserContext::QUOTE_INTERPOLATE);
+    lexer->EnterNormalMod();
+}
+void ParserImpl::ExitQuoteInterpolateMod()
+{
+    CJC_ASSERT(ctx.back() == ParserContext::QUOTE_INTERPOLATE);
+    ctx.pop_back();
+    lexer->ExitNormalMod();
+}
+void ParserImpl::EnterNormalMod()
+{
+    ctx.push_back(ParserContext::NORMAL);
+    lexer->EnterNormalMod();
+}
+void ParserImpl::ExitNormalMod()
+{
+    CJC_ASSERT(ctx.back() == ParserContext::NORMAL);
+    ctx.pop_back();
+    lexer->ExitNormalMod();
+}
+
+OwnedPtr<QuoteExpr> ParserImpl::ParseQuoteExpr()
+{
+    OwnedPtr<QuoteExpr> ret = MakeOwned<QuoteExpr>();
+    ret->begin = lookahead.Begin();
+    ret->quotePos = lookahead.Begin();
+    skipNL = false;
+    if (Skip(TokenKind::NL) || newlineSkipped) {
+        ParseDiagnoseRefactor(DiagKindRefactor::parse_unexpected_line_break, lastToken);
+        ret->EnableAttr(Attribute::HAS_BROKEN);
+    }
+    SkipBlank(TokenKind::NL);
+    if (Skip(TokenKind::LPAREN)) {
+        ret->leftParenPos = lastToken.Begin();
+        ParseQuoteTokens(*ret);
+        if (!Skip(TokenKind::RPAREN)) {
+            DiagExpectedRightDelimiter("(", ret->leftParenPos);
+        }
+        ret->rightParenPos = lastToken.Begin();
+    } else {
+        if (!ret->TestAttr(Attribute::HAS_BROKEN)) {
+            ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_left_paren, lookahead, ConvertToken(lookahead));
+        }
+    }
+    skipNL = true;
+    ret->end = lastToken.End();
+    return ret;
+}

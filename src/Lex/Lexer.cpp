@@ -1252,6 +1252,47 @@ void LexerImpl::ConsumeNChar(uint32_t n)
     }
 }
 
+void LexerImpl::EnterQuoteMod()
+{
+    ctx.push_back(LexerContext::QUOTE);
+}
+void LexerImpl::ExitQuoteMod()
+{
+    CJC_ASSERT(ctx.back() == LexerContext::QUOTE);
+    ctx.pop_back();
+}
+
+void LexerImpl::EnterNormalMod()
+{
+    ctx.push_back(LexerContext::NORMAL);
+}
+void LexerImpl::ExitNormalMod()
+{
+    CJC_ASSERT(ctx.back() == LexerContext::NORMAL);
+    ctx.pop_back();
+}
+bool LexerImpl::IsQuoteContext() const
+{
+    return ctx.back() == LexerContext::QUOTE;
+}
+
+void Lexer::EnterQuoteMod()
+{
+    impl->EnterQuoteMod();
+}
+void Lexer::ExitQuoteMod()
+{
+    impl->ExitQuoteMod();
+}
+void Lexer::EnterNormalMod()
+{
+    impl->EnterNormalMod();
+}
+void Lexer::ExitNormalMod()
+{
+    impl->ExitNormalMod();
+}
+
 std::pair<Token, bool> LexerImpl::ScanMultiLineRawString(const char* pStart)
 {
     uint32_t delimiterNum = 0;
@@ -1260,6 +1301,12 @@ std::pair<Token, bool> LexerImpl::ScanMultiLineRawString(const char* pStart)
         ReadUTF8Char();
     }
     if (currentChar != '"' && currentChar != '\'' && success) {
+        if (IsQuoteContext()) {
+            // send the first scanned # as a HASH token
+            pNext = pStart + 1;
+            pCurrent = pStart;
+            return {Token(TokenKind::HASH, std::string(pStart, pNext), GetPos(pStart), GetPos(pNext)), false};
+        }
         auto builder = diag.DiagnoseRefactor(
             DiagKindRefactor::lex_expected_quote_in_raw_string, GetPos(pCurrent), ConvertCurrentChar());
         builder.AddHint(MakeRange(GetPos(pStart), GetPos(pCurrent)));
@@ -1283,6 +1330,13 @@ std::pair<Token, bool> LexerImpl::ScanMultiLineRawString(const char* pStart)
             count = delimiterNum;
         } else if (currentChar == -1) {
             if (success) {
+                if (IsQuoteContext()) {
+                    // #'s not matched or meet eof before raw string end, send the first # as a token
+                    // the next round it scans till here, the possiblity of scanning a raw string end increases
+                    pCurrent = pStart;
+                    pNext = pCurrent + 1;
+                    return {Token(TokenKind::HASH, std::string(pStart, pNext), GetPos(pStart), GetPos(pNext)), false};
+                }
                 DiagUnterminatedRawString(pStart);
                 success = false;
             }
