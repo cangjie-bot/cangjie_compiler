@@ -115,26 +115,21 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
     auto& globalOptions = instance.invocation.globalOptions;
     if (!globalOptions.compilePackage && globalOptions.srcFiles.empty() && !globalOptions.inputObjs.empty()) {
         using namespace std::literals;
-        static constexpr std::string_view CJ_STD_PREFIX = "cangjie-std";
-        const std::string staticLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "lib"), globalOptions.GetCangjieLibTargetPathName());
-        const std::string dyLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "runtime/lib"), globalOptions.GetCangjieLibTargetPathName());
+        static constexpr std::string_view CJ_PREFIX = "cangjie-";
+        // const std::string staticLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "lib"), globalOptions.GetCangjieLibTargetPathName());
+        // const std::string dyLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "runtime/lib"), globalOptions.GetCangjieLibTargetPathName());
         auto it = std::remove_if(globalOptions.inputLibraryOrder.begin(), globalOptions.inputLibraryOrder.end(), [&](const auto& tuple){
             const std::string& rawName = std::get<0>(tuple);
             std::string_view nameView(rawName);
-            
-            if (nameView.size() >= CJ_STD_PREFIX.size() && nameView.compare(0, CJ_STD_PREFIX.size(), CJ_STD_PREFIX) == 0) {
-                std::string fullStaticPathBase = FileUtil::JoinPath(staticLibDir, "lib"+rawName);
-                std::string fulldyPathBase = FileUtil::JoinPath(dyLibDir, "lib"+rawName);
-                auto ext = globalOptions.GetSharedLibraryExtension(globalOptions.target.os);
-                if (FileUtil::FileExist(fullStaticPathBase + ".a") || FileUtil::FileExist(fulldyPathBase + ext)) {
-                    std::string libName = rawName.substr(8);
-                    size_t dashPos = libName.find('-');
-                    if (dashPos != std::string::npos) {
-                        libName[dashPos] = '.';
-                    }
-                    globalOptions.indirectBuiltinDependencies.insert(libName+".cjo");
-                    return true;
-                }
+            if (nameView.size() <= CJ_PREFIX.size() ||  nameView.compare(0, CJ_PREFIX.size(), CJ_PREFIX) != 0) {
+                return false;
+            }
+            std::string potentialPkgName = rawName.substr(CJ_PREFIX.size());
+            std::replace(potentialPkgName.begin(), potentialPkgName.end(), '-', '.');
+            if (rawName == FileUtil::ConvertPackageNameToLibCangjieBaseFormat(potentialPkgName)){
+                globalOptions.indirectBuiltinDependencies.insert(potentialPkgName+".cjo");
+                // .cjo is same as .xx
+                return true;   
             }
             return false;
         });

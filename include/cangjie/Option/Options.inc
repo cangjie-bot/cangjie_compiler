@@ -172,9 +172,9 @@ PREDEFVALUE(output_type_list, {
 });
 PREDEFVALUE(compile_target_list, {
     // for CJNATIVE backend
-    VALUE("exe", "compile executable (default)", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
-    VALUE("staticlib", "compile static library", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
-    VALUE("dylib", "compile dynamic library", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
+    VALUE("exe", "compile executable (default)", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+    VALUE("staticlib", "compile static library", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
+    VALUE("dylib", "compile dynamic library", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
 });
 PREDEFVALUE(lto_mode, {
     VALUE("full", "", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
@@ -546,7 +546,7 @@ OPTION("--output-type", OUTPUT_TYPE, SEPARATED, { BACKEND(ALL) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, output_type_list, SINGLE_OCCURRENCE,
     "Specify output file type")
 OPTION("--compile-target", COMPILE_TARGET, SEPARATED, { BACKEND(ALL) },
-    { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, compile_target_list, SINGLE_OCCURRENCE,
+    { GROUP(DRIVER) COMMA GROUP(VISIBLE) }, nullptr, compile_target_list, SINGLE_OCCURRENCE,
     "Specify compile target for obj")
 OPTION("-O0", OPTIMIZATION_0, FLAG, { BACKEND(CJNATIVE) },
     { GROUP(GLOBAL) COMMA GROUP(STABLE) COMMA GROUP(VISIBLE) }, nullptr, {}, MULTIPLE_OCCURRENCE,

@@ -42,9 +42,9 @@ const std::string CJ_EXTENSION = "cj";
 const std::string CHIR_EXTENSION = "chir";
 const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
+const std::string OBJC_EXTENSION= "obj";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
-const std::string OJBC_EXTENSION= "obj";
 #elif defined(__APPLE__)
 const std::string DL_EXTENSION = "dylib";
 #else
@@ -557,14 +557,13 @@ bool GlobalOptions::CheckOutputModeOptions() const {
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
         return false;
     }
-    if(srcFiles.empty() && outputMode == OutputMode::OBJ){
+    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage){
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
     return true;
 }
-
 
 bool GlobalOptions::CheckCompileAsExeOptions() const 
 {
@@ -667,7 +666,6 @@ void GlobalOptions::DisableStaticStdForOhos()
     }
 }
 
-//  fixme:  跟 .a 的直接公用了
 bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::string& value)
 {
     auto maybePath = ValidateInputFilePath(value, DiagKindRefactor::driver_invalid_binary_file);
@@ -679,7 +677,12 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_archive_file, value, maybePath.value());
         return true;
     }
-    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION) {
+    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION ) {
+        RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
+        return true;
+    }
+
+    if (ext == OBJC_EXTENSION  && GetFileExtension(maybePath.value()) != OBJC_EXTENSION){
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
@@ -809,7 +812,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
             return;
         }
         std::string ext = GetFileExtension(value);
-        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION) {
+        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == OBJC_EXTENSION) {
             ret = HandleArchiveExtension(diag, value);
         } else if (ext == CJ_EXTENSION && !compileCjd) {
             ret = HandleCJExtension(diag, value);
@@ -963,7 +966,6 @@ void GlobalOptions::DeprecatedOptionCheck(const OptionArgInstance& arg) const
     }
 }
 
-// 这代码写的有点东西的
 bool GlobalOptions::TryParseOption(OptionArgInstance& arg, ArgList& argList)
 {
 #ifdef CANGJIE_VISIBLE_OPTIONS_ONLY
