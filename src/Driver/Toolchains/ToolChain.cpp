@@ -66,6 +66,7 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const
         [this, &dyDependencies](const std::unordered_set<std::string>& dependencies) {
             for (auto& cjoFileName : dependencies) {
                 auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);
+               
                 if (ALWAYS_DYNAMIC_LINK_STD_LIBRARIES.find(staticLib) !=
                     ALWAYS_DYNAMIC_LINK_STD_LIBRARIES.end()) {
                     dyDependencies.emplace(staticLib);
@@ -81,6 +82,7 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const
     const std::function<void(std::string)> appendStaticLibsToTool =
         [this, &dynamicLibraries, &staticLibraries, &ltoBuiltInDependencies, &dyDependencies]
             (const std::string& cjoFileName) {
+            std::cout<<" is here "<< cjoFileName <<std::endl;
             auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);
             if (dyDependencies.find(staticLib) != dyDependencies.end() && !driverOptions.linkStatic) {
                 dynamicLibraries.emplace(LINK_PREFIX +
@@ -271,14 +273,38 @@ TempFileInfo ToolChain::GetOutputFileInfo(const std::vector<TempFileInfo>& objFi
         fileKind = driverOptions.outputMode == GlobalOptions::OutputMode::SHARED_LIB ?
             TempFileKind::O_DYLIB : TempFileKind::O_EXE;
     }
+    return CreateNewFileInfoWrapper(objFiles, fileKind);
+}
+
+TempFileInfo ToolChain::CreateNewFileInfoWrapper(const std::vector<TempFileInfo>& objFiles,TempFileKind kind) const
+{
     TempFileInfo optionalInfo;
-    if (!objFiles.empty()) {
-        optionalInfo = objFiles[0];
-    } else if(!driverOptions.inputObjs.empty()){
-        optionalInfo.fileName = FileUtil::GetFileNameWithoutExtension(driverOptions.inputObjs[0]);
+        if (!objFiles.empty()) {
+            optionalInfo = objFiles[0];
+        } else if (!driverOptions.inputObjs.empty()) {
+            optionalInfo.fileName = FileUtil::GetFileNameWithoutExtension(driverOptions.inputObjs[0]);
+        }
+        return TempFileManager::Instance().CreateNewFileInfo(optionalInfo, kind);
+}
+
+void ToolChain::GenerateObjTool(const std::vector<TempFileInfo>& objFiles)
+{
+    if (objFiles.empty()) {
+        return;
+    }
+    std::string srcFile = objFiles[0].filePath;
+    TempFileInfo finalFileInfo = TempFileManager::Instance().CreateNewFileInfo(objFiles[0], TempFileKind::O_OBJ);
+    std::string destFile = finalFileInfo.filePath;
+    if (srcFile == destFile) {
+        return;
     }
 
-    return TempFileManager::Instance().CreateNewFileInfo(optionalInfo, fileKind);
+    auto copyTool = std::make_unique<Tool>(
+        "CacheCopy", ToolType::INTERNAL_IMPLEMENTED, driverOptions.environment.allVariables);
+    copyTool->AppendArg(srcFile);
+    copyTool->AppendArg(destFile);
+
+    backendCmds.emplace_back(MakeSingleToolBatch({std::move(copyTool)}));
 }
 
 std::string ToolChain::GetArchFolderName(const Triple::ArchType& arch) const
