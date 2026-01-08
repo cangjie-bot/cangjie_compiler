@@ -112,6 +112,16 @@ public:
     std::vector<Token> GetComments();
     const std::set<Token>& GetTokenStream() const;
 
+    /// interface between Lexer and Parser
+    /// Enter quote context. That is, # ` \\ can be parsed as tokens.
+    void EnterQuoteMod();
+    /// Exit quote context
+    void ExitQuoteMod();
+    /// Enter normal context. This is usually called upon init.
+    void EnterNormalMod();
+    /// Exit normal context
+    void ExitNormalMod();
+
     /// Cache the current lookahead and read pointer.
     void SetResetPoint();
     /// Restore to the previous state when \ref SetResetPoint is called.

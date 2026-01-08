@@ -3292,3 +3292,117 @@ TEST(ParserTest2, Zerox1foo)
     Parser parser{code, diag, sm, Position{0, 1, 1}, true, true};
     ASSERT_EQ(diag.GetErrorCount(), 0);
 }
+
+// Quote expression token parsing tests
+TEST(ParserTest2, QuoteTokens1_Hash)
+{
+    std::string code = R"(let a = quote( # ))";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].kind, TokenKind::HASH);
+    EXPECT_EQ(tokens[0].Value(), "#");
+}
+
+TEST(ParserTest2, QuoteTokens2_HashAndString)
+{
+    std::string code = R"(let a = quote(#"hello world!"))";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].kind, TokenKind::HASH);
+    EXPECT_EQ(tokens[0].Value(), "#");
+    EXPECT_EQ(tokens[1].kind, TokenKind::STRING_LITERAL);
+    EXPECT_EQ(tokens[1].Value(), "hello world!");
+}
+
+TEST(ParserTest2, QuoteTokens3_RawStringAnd2Hash)
+{
+    std::string code = R"(let a = quote(#"hello"###))";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 3);
+    EXPECT_EQ(tokens[0].kind, TokenKind::MULTILINE_RAW_STRING);
+    EXPECT_EQ(tokens[0].Value(), "hello");
+    EXPECT_EQ(tokens[1].kind, TokenKind::HASH);
+    EXPECT_EQ(tokens[2].kind, TokenKind::HASH);
+}
+
+TEST(ParserTest2, QuoteTokens4_HashAndMultilineRawString)
+{
+    std::string code = "let a = quote(###\"\nhello\n\"##)";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].kind, TokenKind::HASH);
+    EXPECT_EQ(tokens[1].kind, TokenKind::MULTILINE_RAW_STRING);
+}
+
+TEST(ParserTest2, QuoteTokens5_MultilineRawString)
+{
+    std::string code = "let a = quote(###\"\nhello\n\"###)";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].kind, TokenKind::MULTILINE_RAW_STRING);
+}
+
+TEST(ParserTest2, QuoteTokens6_MultilineRawStringAndHash)
+{
+    std::string code = "let a = quote(###\"\nhello\n\"####)";
+    SourceManager sm;
+    DiagnosticEngine diag;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_EQ(diag.GetErrorCount(), 0);
+    auto& d = StaticCast<VarDecl>(*file->decls[0]);
+    auto& quote = StaticCast<QuoteExpr>(*d.initializer);
+    ASSERT_EQ(quote.exprs.size(), 1);
+    auto& tokens = StaticCast<TokenPart>(*quote.exprs[0]).tokens;
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].kind, TokenKind::MULTILINE_RAW_STRING);
+    EXPECT_EQ(tokens[0].Value(), "\nhello\n");
+    EXPECT_EQ(tokens[1].kind, TokenKind::HASH);
+}
+

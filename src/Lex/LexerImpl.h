@@ -244,6 +244,18 @@ private:
     void ScanIdentifierOrKeyword(Token& res, const char* pStart);
     Token ScanSingleOrMultiLineString(const char* pStart);
     bool IsIllegalStartDecimalPart(const char* pStart, const char* pEnd) const;
+
+    enum LexerContext {
+        NORMAL,
+        QUOTE,
+    };
+    std::vector<LexerContext> ctx;
+    void EnterQuoteMod();
+    void ExitQuoteMod();
+    void EnterNormalMod();
+    void ExitNormalMod();
+    bool IsQuoteContext() const;
+
     void DiagUnexpectedDecimalPoint(const char* reasonPoint);
     void DiagExpectedDigit(const char base);
     inline void DiagSmallExpectedDigit(const bool& hasDigit, const char base);
