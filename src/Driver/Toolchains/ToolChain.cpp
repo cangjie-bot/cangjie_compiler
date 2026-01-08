@@ -82,7 +82,6 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const
     const std::function<void(std::string)> appendStaticLibsToTool =
         [this, &dynamicLibraries, &staticLibraries, &ltoBuiltInDependencies, &dyDependencies]
             (const std::string& cjoFileName) {
-            std::cout<<" is here "<< cjoFileName <<std::endl;
             auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);
             if (dyDependencies.find(staticLib) != dyDependencies.end() && !driverOptions.linkStatic) {
                 dynamicLibraries.emplace(LINK_PREFIX +
@@ -251,7 +250,7 @@ void ToolChain::SortInputlibraryFileAndAppend(Tool& tool, const std::vector<Temp
     // Object file compiled from the cangjie file
     AppendObjectsFromCompiled(tool, objFiles, inputOrderTuples);
 
-    AppendObjectsFromInput(inputOrderTuples); //  写的还挺好的
+    AppendObjectsFromInput(inputOrderTuples);
     AppendLibrariesFromInput(inputOrderTuples);
     AppendLinkOptionFromInput(inputOrderTuples);
     AppendLinkOptionsFromInput(inputOrderTuples);

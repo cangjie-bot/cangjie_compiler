@@ -557,14 +557,13 @@ bool GlobalOptions::CheckOutputModeOptions() const {
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
         return false;
     }
-    if(srcFiles.empty() && outputMode == OutputMode::OBJ){
+    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR)){
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
     return true;
 }
-
 
 bool GlobalOptions::CheckCompileAsExeOptions() const 
 {
@@ -667,7 +666,6 @@ void GlobalOptions::DisableStaticStdForOhos()
     }
 }
 
-//  fixme:  跟 .a 的直接公用了
 bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::string& value)
 {
     auto maybePath = ValidateInputFilePath(value, DiagKindRefactor::driver_invalid_binary_file);
@@ -963,7 +961,6 @@ void GlobalOptions::DeprecatedOptionCheck(const OptionArgInstance& arg) const
     }
 }
 
-// 这代码写的有点东西的
 bool GlobalOptions::TryParseOption(OptionArgInstance& arg, ArgList& argList)
 {
 #ifdef CANGJIE_VISIBLE_OPTIONS_ONLY
