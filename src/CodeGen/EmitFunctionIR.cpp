@@ -190,7 +190,8 @@ void FunctionGeneratorImpl::EmitIR()
     auto rawFunction = cgFunc->GetRawFunction();
     bool isMockMode = (cgMod.GetCGContext().GetCompileOptions().mock == MockMode::ON) 
                       || cgMod.GetCGContext().GetCompileOptions().enableCompileTest;
-    if(!(chirFunc.TestAttr(CHIR::Attribute::IMPORTED)) || isMockMode) {
+    bool shouldGenDebugInfo = isMockMode || chirFunc.IsFuncWithBody();
+    if(shouldGenDebugInfo) {
         cgMod.diBuilder->SetSubprogram(&chirFunc, rawFunction);
     }
     auto chirFuncTy = chirFunc.GetFuncType();
