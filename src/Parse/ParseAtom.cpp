@@ -93,8 +93,17 @@ OwnedPtr<Expr> ParserImpl::ParseAtom(ExprKind ek)
     auto tokenKind = Peek().kind;
     if (auto handler = LookupExprHandler(tokenKind)) {
         lastToken = lookahead;
+        // we put enter/exit here because the following Next() would scan inner tokens of quote expr if it is one.
+        // otherwise we must call Next() as the first line of each expr handler.
+        if (tokenKind == TokenKind::QUOTE) {
+            EnterQuoteExprMod();
+        }
         Next();
-        return (this->*handler)(tokenKind);
+        auto ret = (this->*handler)(tokenKind);
+        if (tokenKind == TokenKind::QUOTE) {
+            ExitQuoteExprMod();
+        }
+        return ret;
     }
     if (Seeing(TokenKind::IDENTIFIER) || SeeingContextualKeyword()) {
         return ParseRefExpr(ek);
@@ -899,34 +908,6 @@ OwnedPtr<MatchExpr> ParserImpl::ParseMatchExpr()
     matchExpr->rightCurlPos = lookahead.Begin();
     matchExpr->end = lastToken.End();
     return matchExpr;
-}
-
-OwnedPtr<QuoteExpr> ParserImpl::ParseQuoteExpr()
-{
-    OwnedPtr<QuoteExpr> ret = MakeOwned<QuoteExpr>();
-    ret->begin = lookahead.Begin();
-    ret->quotePos = lookahead.Begin();
-    skipNL = false;
-    if (Skip(TokenKind::NL) || newlineSkipped) {
-        ParseDiagnoseRefactor(DiagKindRefactor::parse_unexpected_line_break, lastToken);
-        ret->EnableAttr(Attribute::HAS_BROKEN);
-    }
-    SkipBlank(TokenKind::NL);
-    if (Skip(TokenKind::LPAREN)) {
-        ret->leftParenPos = lookahead.Begin();
-        ParseQuoteTokens(*ret);
-        if (!Skip(TokenKind::RPAREN)) {
-            DiagExpectedRightDelimiter("(", ret->leftParenPos);
-        }
-        ret->rightParenPos = lookahead.Begin();
-    } else {
-        if (!ret->TestAttr(Attribute::HAS_BROKEN)) {
-            ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_left_paren, lookahead, ConvertToken(lookahead));
-        }
-    }
-    skipNL = true;
-    ret->end = lastToken.End();
-    return ret;
 }
 
 OwnedPtr<ReturnExpr> ParserImpl::ParseReturnExpr()
