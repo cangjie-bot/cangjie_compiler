@@ -44,7 +44,6 @@ protected:
     virtual std::string GetTargetArchString() const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);
-    void GenerateObjTool(const std::vector<TempFileInfo>& objFiles);
     void HandleLLVMLinkOptions(const std::vector<TempFileInfo>& objFiles, Tool& tool);
     virtual void HandleLibrarySearchPaths(Tool& tool, const std::string& cangjieLibPath);
 
