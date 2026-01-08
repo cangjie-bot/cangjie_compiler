@@ -426,6 +426,7 @@ std::string JavaSourceCodeGenerator::MapCJTypeToJavaType(
             break;
         case TypeKind::TYPE_FUNC:
             javaType = GetLambdaJavaClassName(ty);
+            break;
         default:
             if (ty->name == "String") {
                 javaType = "String";

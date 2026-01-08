@@ -45,7 +45,7 @@ void GenerateGlueCode::HandleImpl(InteropContext& ctx)
         codegen.Generate();
     };
 
-    auto processContainer = [&](auto& container) {
+    auto processContainer = [&genGlueCode, &genGlueCodeWithGenericConfigs](auto& container) {
         for (auto& item : container) {
             std::vector<Native::FFI::GenericConfigInfo*> genericConfigsVector;
             bool isGenericGlueCode = false;
