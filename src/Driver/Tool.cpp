@@ -34,7 +34,7 @@ namespace {
         // 
         char msg[512] = {0};
         DWORD size = FormatMessageA(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSGAE_IGNORE_INSERTS,
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             NULL,
             errCode,
             MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
@@ -54,7 +54,7 @@ namespace {
     std::string GetSystemErrorMessage(int error){
         constexpr size_t buffSize = 512 ;
         char buf[buffSize] = {0};
-#if defined(_APPLE_)
+#if defined(__APPLE__)
         if(strerror_r(error , buf , buffsize) !=0 ){
             return "";
         }
