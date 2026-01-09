@@ -59,8 +59,9 @@ fi
 if [ "$hw_arch" = "" ]; then
     hw_arch="x86_64"
 fi
+hw_arch="${sys_name}_${hw_arch}"
 
 export PATH=${CANGJIE_HOME}/bin:${CANGJIE_HOME}/tools/bin:$PATH:${HOME}/.cjpm/bin
-export LD_LIBRARY_PATH=${CANGJIE_HOME}/runtime/lib/linux${sys_name}_${hw_arch}_cjnative:${CANGJIE_HOME}/tools/lib:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=${CANGJIE_HOME}/runtime/lib/linux${hw_arch}_cjnative:${CANGJIE_HOME}/tools/lib:${LD_LIBRARY_PATH}
 unset hw_arch
 unset sys_name
