@@ -34,7 +34,7 @@ namespace {
         // 
         char msg[512] = {0};
         DWORD size = FormateMessageA(
-            FORMAT_MESSAGE_FROM_SYSTEM | FROMAT_MESSGAE_IGNORE_INSERTS,
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSGAE_IGNORE_INSERTS,
             NULL,
             errCode,
             MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
