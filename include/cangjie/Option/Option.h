@@ -627,7 +627,6 @@ public:
     enum class COMPILETARGET :uint8_t {
         EXECUTABLE, STATIC_LIB, SHARED_LIB,DEFAULT
     };
-
     COMPILETARGET compileTarget = COMPILETARGET::DEFAULT;
 
     bool enableFuncSections = false;
@@ -867,9 +866,6 @@ public:
     {
          return ( outputMode == GlobalOptions::OutputMode::OBJ && compileTarget != COMPILETARGET::EXECUTABLE);
     }
-
-
-
     /**
      * @brief Get options backend type.
      *
