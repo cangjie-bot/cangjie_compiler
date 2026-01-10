@@ -1177,12 +1177,14 @@ bool ToCHIR::Run()
     RunOptimizationPass();
     RecordCHIRExprNum("opt");
     // 7. do closure conversion
+    RemoveUnusedImports(false);
     DoClosureConversion();
     RecordCHIRExprNum("cc");
     // 8. run constant evaluation
     if (!RunConstantEvaluation()) {
         return false;
     }
+    RemoveUnusedImports(true);
     // 9. replace source code imported functions and variables with imported symbols,
     //    this pass must be after `RunConstantEvaluation`, because we need to calculate const var from imported package
     ReplaceSrcCodeImportedVal(*chirPkg, implicitFuncs, builder).Run(
@@ -1431,12 +1433,6 @@ void ToCHIR::Canonicalization()
     // 2. calculate virtual method offset and store it in Invoke/InvokeStatic
     // 3. update callee of Apply, it may be replaced by mut wrapper func
     generator.UpdateFuncCall();
-
-    // 4. create compiler added extend def which declared in current package
-    //    because vtable may not be created in imported package
-    if (kind != IncreKind::INCR) {
-        CreateExtendDefForImportedParent(*chirPkg, builder).Run();
-    }
 
     // 5. add has invited flag to class which has finalizer, in case of finalize before init
     MarkClassHasInited(builder).RunOnPackage(*chirPkg);
