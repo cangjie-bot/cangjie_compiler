@@ -485,6 +485,25 @@ bool CGExtensionDef::CreateExtensionDefForType(CGModule& cgMod, const std::strin
     return true;
 }
 
+namespace {
+bool IsSameRootPackage(const std::string& packageName1, const std::string& packageName2)
+{
+    size_t pos = 0U;
+    char ch = packageName1[pos];
+    while (ch == packageName2[pos]) {
+        if (ch == '.' | ch == ':') {
+            return true;
+        }
+        ++pos;
+        ch = packageName1[pos];
+        if ((ch == ':' && packageName2[pos] == '.') || (ch == '.' && packageName2[pos] == ':')) {
+            return true;
+        }
+    }
+    return false;
+}
+}
+
 bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedType)
 {
     auto& vtable = chirDef.GetVTable();
@@ -501,8 +520,22 @@ bool CGExtensionDef::CreateExtensionDefForType(const CHIR::ClassType& inheritedT
     content[static_cast<size_t>(INTERFACE_FN_OR_INTERFACE_TI)] = iFnOrTi;
     content[static_cast<size_t>(IS_INTERFACE_TI)] =
         llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(isTi));
-    auto flag = 0b00000001;
+    // "the lowest bit is 1" means funcTable has outerTypeInfos besides vfuncPtrs.
+    // outerTypeInfos are designed to optimize runtime performance.
+    uint8_t flag = 0b00000001;
+    // "the highest bit is 1" means inheritedType is the direct super type of targetType.
+    // It is designed to optimize runtime performance.
     flag |= inheritedType.IsDirectSuperTypeOf(*targetType, cgCtx.GetCHIRBuilder()) ? 0b10000000 : 0b00000000;
+    if (targetType->IsCustomType()) {
+        const auto& name1 = StaticCast<CHIR::CustomType>(targetType)->GetCustomTypeDef()->GetPackageName();
+        const auto& name2 = inheritedType.GetClassDef()->GetPackageName();
+        if (IsSameRootPackage(name1, name2)) {
+            // "the 2nd and 3rd bits are 11" means inheritedType and targetType are within the same root package,
+            // so there is no need for the runtime to refresh the funcTable. It is designed to optimize runtime
+            // performance.
+            flag |= 0b00000110;
+        }
+    }
     content[static_cast<size_t>(FLAG)] =
         llvm::ConstantInt::get(llvm::Type::getInt8Ty(cgCtx.GetLLVMContext()), static_cast<uint8_t>(flag));
     content[static_cast<size_t>(WHERE_CONDITION_FN)] = GenerateWhereConditionFn();
