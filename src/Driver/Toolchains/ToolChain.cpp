@@ -250,7 +250,7 @@ void ToolChain::SortInputlibraryFileAndAppend(Tool& tool, const std::vector<Temp
     // Object file compiled from the cangjie file
     AppendObjectsFromCompiled(tool, objFiles, inputOrderTuples);
 
-    AppendObjectsFromInput(inputOrderTuples); //  写的还挺好的
+    AppendObjectsFromInput(inputOrderTuples);
     AppendLibrariesFromInput(inputOrderTuples);
     AppendLinkOptionFromInput(inputOrderTuples);
     AppendLinkOptionsFromInput(inputOrderTuples);
