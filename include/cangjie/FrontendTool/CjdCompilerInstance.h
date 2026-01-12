@@ -50,14 +50,12 @@ public:
     {
         return true;
     }
-    bool PerformCjoAndBchirSaving() override
+    bool PerformResultsSaving() override
     {
-        Utils::ProfileRecorder recorder("Main Stage", "Save cjo");
-        bool ret = true;
-        for (auto& srcPkg : GetSourcePackages()) {
-            ret = ret && SaveCjo(*srcPkg);
+        if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+            return PerformCjoSaving();
         }
-        return ret;
+        return true;
     }
     ///@}
 };

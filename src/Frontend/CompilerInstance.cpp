@@ -21,20 +21,17 @@
 #include "cangjie/Basic/Print.h"
 #include "cangjie/Basic/Version.h"
 #include "cangjie/CHIR/CHIR.h"
-#include "cangjie/CHIR/Utils/CHIRPrinter.h"
-#include "cangjie/CHIR/Interpreter/CHIR2BCHIR.h"
 #include "cangjie/CHIR/Serializer/CHIRDeserializer.h"
-#include "cangjie/CHIR/Serializer/CHIRSerializer.h"
+#include "cangjie/CHIR/Utils/CHIRPrinter.h"
 #include "cangjie/CHIR/Utils/UserDefinedType.h"
 #include "cangjie/Frontend/CompileStrategy.h"
+#include "cangjie/Driver/TempFileManager.h"
 #include "cangjie/IncrementalCompilation/ASTCacheCalculator.h"
 #include "cangjie/IncrementalCompilation/IncrementalCompilationLogger.h"
 #include "cangjie/Mangle/BaseMangler.h"
 #include "cangjie/Modules/ImportManager.h"
-#include "cangjie/Modules/ModulesUtils.h"
 #include "cangjie/Modules/PackageManager.h"
 #include "cangjie/Parse/ASTHasher.h"
-#include "cangjie/Sema/Desugar.h"
 #include "cangjie/Sema/GenericInstantiationManager.h"
 #include "cangjie/Sema/TestManager.h"
 #include "cangjie/Sema/TypeChecker.h"
@@ -54,6 +51,7 @@
 #endif
 
 using namespace Cangjie;
+using namespace AST;
 
 CompilerInstance::CompilerInstance(CompilerInvocation& invocation, DiagnosticEngine& diag)
     : invocation(invocation),
@@ -120,7 +118,7 @@ bool CompilerInstance::InitCompilerInstance()
     performMap.insert_or_assign(CompileStage::MANGLING, &CompilerInstance::PerformMangling);
     performMap.insert_or_assign(CompileStage::CHIR, &CompilerInstance::PerformCHIRCompilation);
     performMap.insert_or_assign(CompileStage::CODEGEN, &CompilerInstance::PerformCodeGen);
-    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformCjoAndBchirSaving);
+    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformResultsSaving);
     return true;
 }
 
@@ -843,6 +841,9 @@ bool CompilerInstance::PerformMangling()
     if (!srcPkgs.empty() && invocation.globalOptions.NeedDumpAST()) {
         DumpAST(GetSourcePackages(), invocation.globalOptions.output, "mangle", invocation.globalOptions.dumpToScreen);
     }
+    if (invocation.globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
+        return PerformCjoSaving();
+    }
     return true;
 }
 
@@ -1005,6 +1006,7 @@ bool CompilerInstance::ImportPackages()
     AddSourceToMember();
 
     if (invocation.globalOptions.scanDepPkg) {
+        importManager.UpdateSearchPath(cangjieModules);
         if (!invocation.globalOptions.inputCjoFile.empty()) {
             depPackageInfo = importManager.GeneratePkgDepInfoByCjo(invocation.globalOptions.inputCjoFile);
         } else {
