@@ -226,6 +226,14 @@ public:
     }
 
     /**
+     * Export AST and generate cjo.
+     */
+    virtual bool PerformCjoSaving()
+    {
+        return true;
+    }
+
+    /**
      * Export AST and generate cjo, bchir.
      */
     virtual bool PerformCjoAndBchirSaving()

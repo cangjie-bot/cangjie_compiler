@@ -1074,12 +1074,12 @@ std::string ImportContent::GetImportedPackageName() const
         }
         if (i == 0 && hasDoubleColon) {
             ss << TOKENS[static_cast<int>(TokenKind::DOUBLE_COLON)];
-        } else {
+        } else if (i + 1 != prefixPaths.size()) {
             ss << TOKENS[static_cast<int>(TokenKind::DOT)];
         }
     }
-    if (kind != ImportKind::IMPORT_ALL) {
-        ss << identifier.Val();
+    if (kind != ImportKind::IMPORT_ALL && !isDecl) {
+        ss << TOKENS[static_cast<int>(TokenKind::DOT)] << identifier.Val();
     }
     return ss.str();
 }
