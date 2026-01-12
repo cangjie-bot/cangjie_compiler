@@ -224,16 +224,17 @@ void AnalyzeLinkageBasedOnModifier(Package& pkg, const GlobalOptions& opt)
 
 class ExternalLinkageAnalyzer {
 public:
-    explicit ExternalLinkageAnalyzer(const Package& pkg) : pkg(pkg)
+    explicit ExternalLinkageAnalyzer(const Package& pkg, const GlobalOptions& opt) : pkg(pkg), opt(opt)
     {
     }
     void Run()
     {
         IterateToplevelDecls(pkg, [this](auto& decl) { PerformPublicType(decl); });
 
-        while (!srcExportedDecls.empty() || !exportedTys.empty()) {
+        while (!srcExportedDecls.empty() || !exportedTys.empty() || !srcExportedExprs.empty()) {
             AnalyzeExternalLinkageBySrcExportedDecl();
             AnalyzeExternalLinkageByExportedTy();
+            AnalyzeExternalLinkageBySrcExportedExpr();
         }
     }
 
@@ -242,6 +243,7 @@ private:
     void HandleMemberDeclInTopLevelDecl(Decl& decl);
     void AnalyzeExternalLinkageBySrcExportedDecl();
     void AnalyzeExternalLinkageByExportedTy();
+    void AnalyzeExternalLinkageBySrcExportedExpr();
     void HandleMemberDeclsByTy(const InheritableDecl& id);
     // Target of a reference node will not be propDecl,
     // since all propDecl accesses will be rearraged to getter/setter function which belongs to the propDecl.
@@ -266,6 +268,10 @@ private:
             srcExportedDecls.emplace(decl);
         }
     }
+    void AddSrcExportedExpr(Ptr<Expr> expr)
+    {
+        srcExportedExprs.emplace(expr);
+    }
     void AddExportedTy(Ptr<Ty> ty)
     {
         if (visitedExportedTys.count(ty) == 0) {
@@ -274,8 +280,10 @@ private:
     }
 
     const Package& pkg;
+    const GlobalOptions& opt;
     std::unordered_set<Ptr<Decl>> srcExportedDecls; // Include FuncDecl and VarDecl.
     std::unordered_set<Ptr<Ty>> exportedTys;
+    std::unordered_set<Ptr<Expr>> srcExportedExprs;
     std::unordered_set<Ptr<Decl>> visitedSrcExportedDecls;
     std::unordered_set<Ptr<Ty>> visitedExportedTys;
 };
@@ -313,6 +321,18 @@ void ExternalLinkageAnalyzer::PerformPublicType(const OwnedPtr<Decl>& decl)
     }
     for (auto& super : id->GetAllSuperDecls()) {
         AddExportedTy(super->ty);
+    }
+
+    if (opt.outputMode == GlobalOptions::OutputMode::OBJ) {
+        if (auto classDecl = DynamicCast<ClassDecl>(decl.get())) {
+            for (const auto& anno : classDecl->annotations) {
+                if (anno->kind == AnnotationKind::ANNOTATION) {
+                    for (const auto& arg : anno->args) {
+                        AddSrcExportedExpr(arg->expr);
+                    }
+                }
+            }
+        }
     }
 
     IterateAllMembersInStruct(*id, [this](Decl& decl) { HandleMemberDeclInTopLevelDecl(decl); });
@@ -393,6 +413,38 @@ void ExternalLinkageAnalyzer::AnalyzeExternalLinkageBySrcExportedDecl()
         };
 
         Walker walker(decl, id, visitor);
+        walker.Walk();
+    }
+}
+
+void ExternalLinkageAnalyzer::AnalyzeExternalLinkageBySrcExportedExpr()
+{
+    while (!srcExportedExprs.empty()) {
+        auto expr = *srcExportedExprs.begin();
+        srcExportedExprs.erase(expr);
+
+        auto id = Walker::GetNextWalkerID();
+        std::function<VisitAction(Ptr<Node>)> visitor = [this](Ptr<Node> n) {
+            if (auto fd = DynamicCast<FuncDecl*>(n)) {
+                bool shouldMarkExternal = !IsInternalSrcExportedFunction(*fd);
+                if (shouldMarkExternal) {
+                    MarkFunctionAsExternalLinkage(*fd);
+                }
+                if (CanBeSrcExported(*fd)) {
+                    AddSrcExportedDecl(fd);
+                }
+                return VisitAction::WALK_CHILDREN;
+            }
+            auto target = TypeCheckUtil::GetRealTarget(n->GetTarget());
+            if (target == nullptr) {
+                return VisitAction::WALK_CHILDREN;
+            }
+            SetTargetLinkage(n->GetTarget());
+            SetTargetLinkage(target);
+            return VisitAction::WALK_CHILDREN;
+        };
+
+        Walker walker(expr, id, visitor);
         walker.Walk();
     }
 }
@@ -572,7 +624,7 @@ void ExternalLinkageAnalyzer::SetVarTargetLinkage(VarDecl& vd, bool byTy)
 void TypeChecker::TypeCheckerImpl::AnalyzeFunctionLinkage(Package& pkg) const
 {
     AnalyzeLinkageBasedOnModifier(pkg, ci->invocation.globalOptions);
-    ExternalLinkageAnalyzer(pkg).Run();
+    ExternalLinkageAnalyzer(pkg, ci->invocation.globalOptions).Run();
     IterateToplevelDecls(pkg, [](auto& decl) {
         if (auto id = DynamicCast<InheritableDecl>(decl.get()); id && id->linkage == Linkage::INTERNAL) {
             IterateAllFunctionInStruct(*id, MarkFunctionAsInternalLinkage);
