@@ -557,7 +557,7 @@ bool GlobalOptions::CheckOutputModeOptions() const {
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
         return false;
     }
-    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR)){
+    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage){
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
