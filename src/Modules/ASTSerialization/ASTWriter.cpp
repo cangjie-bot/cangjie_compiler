@@ -1657,9 +1657,17 @@ std::vector<TAnnoOffset> ASTWriter::ASTWriterImpl::SaveAnnotations(const Decl& d
             auto custom = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_Custom,
                 builder.CreateString(annotation->identifier.Val()), args, targetIdx);
             annotations.emplace_back(custom);
+        } else if (annotation->kind == AST::AnnotationKind::ANNOTATION) {
+            if (annotation->args.empty()) {
+                annotation->EnableAllTargets();
+            } else {
+                auto args = builder.CreateVector<TAnnoArgOffset>(SaveAnnotationArgs(*annotation));
+                auto annoTarget = PackageFormat::CreateAnno(builder, PackageFormat::AnnoKind_Annotation,
+                    builder.CreateString(annotation->identifier.Val()), args);
+                annotations.emplace_back(annoTarget);
+            }
         }
     }
-
     return annotations;
 }
 
