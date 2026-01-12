@@ -94,22 +94,6 @@ CGType* GetCGType(CGModule& cgMod, const llvm::Type& llvmTy)
     // Rollback
     return CGType::GetInt8CGType(cgMod);
 }
-
-#ifdef __APPLE__
-inline void AddAttrForIntTypeArgOnMacMx(llvm::Function& llvmFunc, const llvm::Argument& arg)
-{
-    auto intType = llvm::dyn_cast<llvm::IntegerType>(arg.getType());
-    if (!intType) {
-        return;
-    }
-    AddParamAttr(&llvmFunc, arg.getArgNo(), llvm::Attribute::NoUndef);
-    if (intType->isIntegerTy(1u)) { // 1u means bool type.
-        AddParamAttr(&llvmFunc, arg.getArgNo(), llvm::Attribute::ZExt);
-    } else if (intType->getBitWidth() < 32) { // 32 means int32_t type.
-        AddParamAttr(&llvmFunc, arg.getArgNo(), llvm::Attribute::SExt);
-    }
-}
-#endif
 } // namespace
 
 bool LinuxCJNativeCGCFFI::ProcessInvocation(
@@ -976,18 +960,32 @@ bool LinuxAarch64CJNativeCGCFFI::IsHomogeneousAggregate(llvm::Type& type, llvm::
     }
     return members > 0 && members <= 4; // 4 is maximum number of homogeneous aggregate's members.
 }
+
 #ifdef __APPLE__
 void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy, llvm::Function& llvmFunc)
 {
     LinuxAarch64CJNativeCGCFFI::AddFunctionAttr(chirFuncTy, llvmFunc);
-    for (auto& arg : llvmFunc.args()) {
-        AddAttrForIntTypeArgOnMacMx(llvmFunc, arg);
+    CJC_ASSERT(chirFuncTy.GetNumOfParams() == llvmFunc.arg_size());
+    for (unsigned i = 0; i < llvmFunc.arg_size(); ++i) {
+        if (auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType()); intArgType) {
+            AddParamAttr(&llvmFunc, i, llvm::Attribute::NoUndef);
+            if (intArgType->getBitWidth() >= 32) {
+                continue;
+            }
+            auto argType = chirFuncTy.GetParamType(i);
+            if (argType->IsBoolean() || argType->IsUnsignedInteger()) {
+                AddParamAttr(&llvmFunc, i, llvm::Attribute::ZExt);
+            } else {  // Signed integers use sign extension.
+                AddParamAttr(&llvmFunc, i, llvm::Attribute::SExt);
+            }
+        }
     }
     if (auto intRetType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getReturnType());
-        intRetType && chirFuncTy.GetReturnType()->IsPrimitive()) {
-        if (intRetType->isIntegerTy(1u)) { // 1u means bool type.
+        intRetType && intRetType->getBitWidth() < 32) {
+        auto retType = chirFuncTy.GetReturnType();
+        if (retType->IsBoolean() || retType->IsUnsignedInteger()) {
             AddRetAttr(&llvmFunc, llvm::Attribute::ZExt);
-        } else if (intRetType->getBitWidth() < 32) { // 32 means int32_t type.
+        } else {  // Signed integers use sign extension.
             AddRetAttr(&llvmFunc, llvm::Attribute::SExt);
         }
     }
@@ -1011,6 +1009,7 @@ llvm::Type* MacAArch64CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chir
     return LinuxAarch64CJNativeCGCFFI::GetStructReturnType(chirTy, params);
 }
 #endif
+
 llvm::FunctionType* WindowsAmd64CJNativeCGCFFI::GetCFuncType(const CHIR::FuncType& chirFuncTy)
 {
     if (auto found = cfuncMap.find(&chirFuncTy); found != cfuncMap.end()) {
