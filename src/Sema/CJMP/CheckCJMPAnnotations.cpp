@@ -69,6 +69,7 @@ bool PostCheckDeprecatedAnnotation(const AST::Decl& platform, DiagnosticEngine& 
     return true;
 }
 
+
 bool FuncArgEquals(const AST::FuncArg& a, const AST::FuncArg& b)
 {
     if (a.name != b.name) {
