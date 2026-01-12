@@ -1062,7 +1062,7 @@ std::string ImportContent::GetPrefixPath() const
     }
     return ss.str();
 }
- 
+
 std::string ImportContent::GetImportedPackageName() const
 {
     std::stringstream ss;
@@ -1084,6 +1084,26 @@ std::string ImportContent::GetImportedPackageName() const
     return ss.str();
 }
 
+std::string ImportContent::GetImportedPackageNameWithIsDecl() const
+{
+    std::stringstream ss;
+    for (size_t i{0}; i < prefixPaths.size(); ++i) {
+        ss << prefixPaths[i];
+        // do not add . if this is the last of import xxx.*, because * is not part of package name
+        if (kind == ImportKind::IMPORT_ALL && i + 1 == prefixPaths.size()) {
+            continue;
+        }
+        if (i == 0 && hasDoubleColon) {
+            ss << TOKENS[static_cast<int>(TokenKind::DOUBLE_COLON)];
+        } else if (i + 1 != prefixPaths.size()) {
+            ss << TOKENS[static_cast<int>(TokenKind::DOT)];
+        }
+    }
+    if (kind != ImportKind::IMPORT_ALL && !isDecl) {
+        ss << TOKENS[static_cast<int>(TokenKind::DOT)] << identifier.Val();
+    }
+    return ss.str();
+}
 
 std::vector<std::string> ImportContent::GetPossiblePackageNames() const
 {

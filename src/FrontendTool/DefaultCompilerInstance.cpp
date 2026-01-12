@@ -40,9 +40,9 @@ public:
     ~DefaultCIImpl();
 
     bool PerformCodeGen();
-    bool PerformCjoAndBchirSaving();
+    bool PerformCjoSaving();
+    bool PerformResultsSaving();
     void DumpDepPackage();
-    bool SaveCjoAndBchir(AST::Package& pkg);
     bool SaveCjo(const AST::Package& pkg);
     void RearrangeImportedPackageDependence();
     bool CodegenOnePackage(AST::Package& pkg, bool enableIncrement);
@@ -51,11 +51,6 @@ private:
     DefaultCompilerInstance& ci;
 
     bool EmitLLVMSimilarBytecode(AST::Package& pkg, bool enableIncrement);
-#ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    void SaveBchir([[maybe_unused]] const AST::Package& pkg) const
-    {
-    }
-#endif
     std::string GenerateFileName(const std::string& fullPackageName, const std::string& idx) const;
     std::string GenerateBCFilePathAndUpdateToInvocation(
         const TempFileKind& kind, const std::string& pkgName, const std::string& idx = "");
@@ -187,26 +182,32 @@ bool DefaultCIImpl::SaveCjo(const AST::Package& pkg)
         saveFileWithAbsPath = ci.invocation.globalOptions.enableCoverage;
     }
     std::vector<uint8_t> astData;
-    Utils::ProfileRecorder::Start("Save cjo and bchir", "Serialize ast");
+    Utils::ProfileRecorder::Start("Save cjo", "Serialize ast");
     ci.importManager.ExportAST(saveFileWithAbsPath, astData, pkg);
-    Utils::ProfileRecorder::Stop("Save cjo and bchir", "Serialize ast");
+    Utils::ProfileRecorder::Stop("Save cjo", "Serialize ast");
     // Write astData into file according to given package name by '--output' opt.
     TempFileInfo astFileInfo =
         TempFileManager::Instance().CreateNewFileInfo(TempFileInfo{pkgName, ""}, TempFileKind::O_CJO);
     std::string astFileName = astFileInfo.filePath;
-    Utils::ProfileRecorder::Start("Save cjo and bchir", "Save ast");
+    Utils::ProfileRecorder::Start("Save cjo", "Save ast");
     bool res = FileUtil::WriteBufferToASTFile(astFileName, astData);
-    Utils::ProfileRecorder::Stop("Save cjo and bchir", "Save ast");
+    Utils::ProfileRecorder::Stop("Save cjo", "Save ast");
     if (!res) {
         Errorln("fail to generate file: " + astFileName);
+    } else if (ci.invocation.globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
+        // Update cjo.flag file to indicate the cjo file is generated.
+        // if update failed, cjpm will wait for cjo ready until cjc exits.
+        TempFileInfo astFlagFileInfo =
+            TempFileManager::Instance().CreateNewFileInfo(TempFileInfo{pkgName, ""}, TempFileKind::O_CJO_FLAG);
+        if (FileUtil::FileExist(astFlagFileInfo.filePath)) {
+            FileUtil::Remove(astFlagFileInfo.filePath);
+        }
+        std::ofstream file(astFlagFileInfo.filePath);
+        if (file.is_open()) {
+            file.close();
+        }
     }
     return res;
-}
-
-bool DefaultCIImpl::SaveCjoAndBchir(Package& pkg)
-{
-    SaveBchir(pkg);
-    return SaveCjo(pkg);
 }
 
 bool DefaultCIImpl::CodegenOnePackage(Package& pkg, bool enableIncrement)
@@ -305,14 +306,22 @@ bool DefaultCIImpl::PerformCodeGen()
     return ret;
 }
 
-bool DefaultCIImpl::PerformCjoAndBchirSaving()
+bool DefaultCIImpl::PerformCjoSaving()
 {
-    Utils::ProfileRecorder recorder("Main Stage", "Save cjo and bchir");
+    Utils::ProfileRecorder recorder("Main Stage", "Save cjo");
     bool ret = true;
     for (auto& srcPkg : ci.GetSourcePackages()) {
-        ret = ret && SaveCjoAndBchir(*srcPkg);
+        ret = ret && SaveCjo(*srcPkg);
     }
     return ret;
+}
+
+bool DefaultCIImpl::PerformResultsSaving()
+{
+    if (ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+        return PerformCjoSaving();
+    }
+    return true;
 }
 
 void DefaultCompilerInstance::DumpDepPackage()
@@ -337,17 +346,13 @@ bool DefaultCompilerInstance::PerformCodeGen()
 {
     return impl->PerformCodeGen();
 }
-bool DefaultCompilerInstance::PerformCjoAndBchirSaving()
+bool DefaultCompilerInstance::PerformCjoSaving()
 {
-    return impl->PerformCjoAndBchirSaving();
+    return impl->PerformCjoSaving();
 }
-bool DefaultCompilerInstance::SaveCjoAndBchir(AST::Package& pkg) const
+bool DefaultCompilerInstance::PerformResultsSaving()
 {
-    return impl->SaveCjoAndBchir(pkg);
-}
-bool DefaultCompilerInstance::SaveCjo(const AST::Package& pkg) const
-{
-    return impl->SaveCjo(pkg);
+    return impl->PerformResultsSaving();
 }
 void DefaultCompilerInstance::RearrangeImportedPackageDependence() const
 {
