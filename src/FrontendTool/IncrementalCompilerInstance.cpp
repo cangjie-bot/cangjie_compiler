@@ -502,7 +502,9 @@ bool IncrementalCompilerInstance::PerformCjoAndBchirSaving()
     }
     bool ret = true;
     for (auto& srcPkg : GetSourcePackages()) {
-        ret = ret && SaveCjoAndBchir(*srcPkg);
+        if (invocation.globalOptions.outputMode != GlobalOptions::OutputMode::OBJ) {
+            ret = ret && PerformCjoSaving();
+        }
         if (ret && !srcPkg->IsEmpty()) {
             // Write astData for incremental compilation in cache path.
             std::string cachedCjo =
