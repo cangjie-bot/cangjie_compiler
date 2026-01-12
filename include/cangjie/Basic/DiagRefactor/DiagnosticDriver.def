@@ -80,6 +80,7 @@ WARNING(driver_unsupport_compile_source_file_with_path, UNSUPPORT_COMPILE_SOURCE
 WARNING(driver_deprecated_option, DEPRECATED, "option '%s' is deprecated and will be removed in future%s.")
 // pgo errors
 ERROR(driver_pgo_both_gen_and_use, "using both '--pgo-instr-gen' and '--pgo-instr-use' is not allowed.")
+ERROR(driver_ohos_pgo_gen_without_file, "using '--pgo-instr-gen' on OHOS targets needs to specify the profile generation path, like '--pgo-instr-gen=/data/storage/el2/base/cjpgo/cj_%m_%p.profraw'.")
 ERROR(driver_pgo_invalid_profile_extension, "Not a .profdata file: '%s'")
 
 // Plugin

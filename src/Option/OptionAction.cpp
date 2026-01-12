@@ -1019,7 +1019,13 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::NO_DATA_SECTIONS, OPTION_TRUE_ACTION(opts.enableDataSections = false) },
     { Options::ID::GC_SECTIONS, OPTION_TRUE_ACTION(opts.enableGcSections = true) },
     { Options::ID::NO_GC_SECTIONS, OPTION_TRUE_ACTION(opts.enableGcSections = false) },
-    { Options::ID::PGO_INSTR_GEN, OPTION_TRUE_ACTION(opts.enablePgoInstrGen = true) },
+    { Options::ID::PGO_INSTR_GEN, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+        opts.enablePgoInstrGen = true;
+        if (arg.value != "") {
+            opts.pgoProfileFile = arg.value;
+        }
+        return true;
+    }},
     { Options::ID::PGO_INSTR_USE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         opts.enablePgoInstrUse = true;
         opts.pgoProfileFile = arg.value;
