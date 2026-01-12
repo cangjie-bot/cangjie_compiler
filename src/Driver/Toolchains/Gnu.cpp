@@ -306,6 +306,9 @@ void Gnu::HandleLLVMLinkOptions(
         tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, cjldScript));
     }
     tool.AppendArg(FileUtil::JoinPath(cangjieLibPath, "cjstart.o"));
+    if (driverOptions.target.env == Cangjie::Triple::Environment::OHOS) {
+        tool.AppendArgIf(driverOptions.enablePgoInstrGen, FileUtil::JoinPath(cangjieLibPath, "cjpgo.o"));
+    }
 
     // 3. Frontend output or Input files
     // 3.1 Frontend output files (.o)

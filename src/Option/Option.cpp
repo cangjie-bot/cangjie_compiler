@@ -564,6 +564,11 @@ bool GlobalOptions::CheckPgoOptions() const
         (void)diag.DiagnoseRefactor(DiagKindRefactor::driver_pgo_both_gen_and_use, DEFAULT_POSITION);
         return false;
     }
+    // Check if the pgo-profile-gen-file is set
+    if (enablePgoInstrGen && target.env == Triple::Environment::OHOS && pgoProfileFile == "") {
+        (void)diag.DiagnoseRefactor(DiagKindRefactor::driver_ohos_pgo_gen_without_file, DEFAULT_POSITION);
+        return false;
+    }
     // Check if the pgo-profile-file is valid.
     if (enablePgoInstrUse) {
         if (!FileExist(pgoProfileFile)) {

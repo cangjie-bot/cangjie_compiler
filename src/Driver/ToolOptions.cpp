@@ -166,6 +166,9 @@ void SetPgoOptions(SetFuncType setOptionHandler, const DriverOptions& driverOpti
 {
     if (driverOptions.enablePgoInstrGen) {
         setOptionHandler("-pgo-kind=pgo-instr-gen-pipeline");
+        if (driverOptions.pgoProfileFile != "") {
+            setOptionHandler("-profile-file=" + driverOptions.pgoProfileFile);
+        }
         setOptionHandler("-runtime-counter-relocation");
     }
 
@@ -288,6 +291,9 @@ void SetPgoOptions(SetFuncType setOptionHandler, const DriverOptions& driverOpti
 {
     if (driverOptions.enablePgoInstrGen) {
         setOptionHandler("-cj-pgo-kind=pgo-instr-gen-pipeline");
+        if (driverOptions.pgoProfileFile != "") {
+            setOptionHandler("-cj-profile-file=" + driverOptions.pgoProfileFile);
+        }
     }
 
     if (driverOptions.enablePgoInstrUse) {
