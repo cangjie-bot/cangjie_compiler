@@ -188,7 +188,7 @@ private:
         if (tr.opts.enIncrementalCompilation && !decl.toBeCompiled) {
             return true;
         }
-        return IsImported(decl);
+        return false;
     }
 
     // collect @Annotation info placed on `decl`
@@ -371,7 +371,7 @@ const std::string_view ANNOTATION_TARGET_2_STRING[]{
 
 class AnnotationChecker {
 public:
-    explicit AnnotationChecker(const DiagAdapter& d) : diag{d}
+    explicit AnnotationChecker(const DiagAdapter& d, const GlobalOptions& opts) : diag{d}, opts{opts}
     {
     }
 
@@ -385,20 +385,26 @@ public:
 
 private:
     const DiagAdapter& diag;
+    const GlobalOptions& opts;
 
     // write @Annotation info from the result of consteval back to the AST nodes
     void WriteBackAnnotations()
     {
         std::unordered_map<const ClassDef*, AnnotationTarget> cmap;
-        for (auto info : g_annoInfo) {
-            if (!info.first->TestAttr(Attribute::IMPORTED)) {
-                // write back to AST if not imported
-                WriteBackAnnotation(info.second);
+        for (auto it = g_annoInfo.begin(); it != g_annoInfo.end();) {
+            if (!it->first->TestAttr(Attribute::IMPORTED) && opts.outputMode != GlobalOptions::OutputMode::OBJ) {
+                // write back to AST if not imported and not output mode is OBJ
+                // Note: In OBJ output mode, annotations are preserved in CJO files instead of
+                // being written back to AST, which may cause incremental compilation cache CJO
+                // files to differ from the original CJO files.
+                WriteBackAnnotation(it->second);
+                cmap.emplace(it->first, AnnotationTarget{it->second.anno->target});
+                it = g_annoInfo.erase(it);
+            } else {
+                cmap.emplace(it->first, AnnotationTarget{it->second.anno->target});
+                ++it;
             }
-            // this operation is mutable and cannot be run in parallel
-            cmap.emplace(info.first, AnnotationTarget{info.second.anno->target});
         }
-        g_annoInfo.clear();
         checkMap = std::move(cmap);
     }
 
@@ -421,6 +427,38 @@ private:
         }
     }
 
+    AnnotationTargetT GetAnnotationTargetFromInfo(const AnnotationInfo& info) const
+    {
+        auto& vars = info.vars;
+        if (vars.empty()) {
+            return static_cast<AnnotationTargetT>(~0u);
+        }
+        AnnotationTargetT target = 0;
+        for (size_t i{0}; i < vars.size(); ++i) {
+            if (!vars[i]->GetInitializer() || vars[i]->GetInitializer()->IsNullLiteral()) {
+                // if const eval fails to replace the initializer with a constant value, find the store
+                // statement from its init func
+                auto unsignedVal = GetUnsignedValFromInit(*info.funcs[i]);
+                target |= static_cast<AnnotationTargetT>(
+                    static_cast<AnnotationTargetT>(1) << static_cast<AnnotationTargetT>(unsignedVal));
+            } else {
+                auto unsignedVal = StaticCast<IntLiteral*>(vars[i]->GetInitializer())->GetUnsignedVal();
+                target |= static_cast<AnnotationTargetT>(
+                    static_cast<AnnotationTargetT>(1) << static_cast<AnnotationTargetT>(unsignedVal));
+            }
+        }
+        return target;
+    }
+
+    void UpdateAnnotationCheckMap(const ClassDef* def)
+    {
+        auto annoInfo = g_annoInfo.find(def);
+        if (annoInfo == g_annoInfo.end()) {
+            return;
+        }
+        checkMap[def] = AnnotationTarget{.val = GetAnnotationTargetFromInfo(annoInfo->second)};
+    }
+
     // check map, from Annotation class to AnnotationTarget
     std::unordered_map<const ClassDef*, AnnotationTarget> checkMap;
 
@@ -441,7 +479,7 @@ private:
     }
 
     // paralle version. Current impl uses the serialised version
-    [[maybe_unused]] bool CheckAnnotationsParallelImpl() const
+    [[maybe_unused]] bool CheckAnnotationsParallelImpl()
     {
         constexpr unsigned f{8};
         constexpr unsigned g{9};
@@ -462,7 +500,7 @@ private:
         g_valueAnnoInfo.clear();
         return std::all_of(results.begin(), results.end(), [](auto& res) { return res.get(); });
     }
-    bool CheckAnnotationsImpl() const
+    bool CheckAnnotationsImpl()
     {
         bool res = true;
         for (auto& info : g_typeAnnoInfo) {
@@ -503,13 +541,17 @@ private:
         return static_cast<TargetT>(AST::AnnotationTarget::MEMBER_FUNCTION);
     }
 
-    bool CheckValue(const CustomAnnoInfoOnDecl& info) const
+    bool CheckValue(const CustomAnnoInfoOnDecl& info)
     {
         auto targetid = GetTarget(*info.decl);
         unsigned target = 1u << targetid;
         bool res{true};
         for (auto& annotation : info.annos) {
             auto targets = checkMap.at(annotation.def);
+            if (targets.val == 0) {
+                UpdateAnnotationCheckMap(annotation.def);
+                targets = checkMap.at(annotation.def);
+            }
             if (!targets.Matches(target)) {
                 (void)diag.diag.DiagnoseRefactor(DiagKindRefactor::chir_annotation_not_applicable, *annotation.src,
                     annotation.src->identifier, std::string{ANNOTATION_TARGET_2_STRING[targetid]});
@@ -526,7 +568,7 @@ private:
     }
 #endif
 
-    bool CheckType(const CustomAnnoInfoOnType& info) const
+    bool CheckType(const CustomAnnoInfoOnType& info)
     {
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
         auto targetid = GetTarget(*info.type);
@@ -535,6 +577,10 @@ private:
         bool res{true};
         for (auto& annotation : info.annos) {
             auto targets = checkMap.at(annotation.def);
+            if (targets.val == 0) {
+                UpdateAnnotationCheckMap(annotation.def);
+                targets = checkMap.at(annotation.def);
+            }
             if (!targets.Matches(target)) {
                 (void)diag.diag.DiagnoseRefactor(DiagKindRefactor::chir_annotation_not_applicable, *annotation.src,
                     annotation.src->identifier, std::string{ANNOTATION_TARGET_2_STRING[targetid]});
@@ -549,7 +595,7 @@ private:
 bool ToCHIR::RunAnnotationChecks()
 {
     Utils::ProfileRecorder r{"CHIR", "AnnotationCheck"};
-    if (!AnnotationChecker{diag}.CheckAnnotations()) {
+    if (!AnnotationChecker{diag, opts}.CheckAnnotations()) {
         return false;
     }
     return true;

@@ -230,6 +230,7 @@ bool TempFileManager::Init(const GlobalOptions& options, bool isFrontend)
         {TempFileKind::T_OBJ, []() { return ".o"; }},
         {TempFileKind::T_EXE_MAC, []() { return  "_temp"; }},
         {TempFileKind::T_DYLIB_MAC, []() { return "_temp.dylib"; }},
+        {TempFileKind::O_CJO_FLAG, []() { return SERIALIZED_FILE_FLAG_EXTENSION; }},
     };
     return InitTempDir();
 }
@@ -302,6 +303,7 @@ TempFileInfo TempFileManager::CreateNewFileInfo(const TempFileInfo& info, TempFi
         case TempFileKind::O_CJO:
         case TempFileKind::O_FULL_BCHIR:
         case TempFileKind::O_BCHIR:
+        case TempFileKind::O_CJO_FLAG:
             newInfo = CreateIntermediateFileInfo(info, kind);
             break;
         case TempFileKind::O_CHIR:
