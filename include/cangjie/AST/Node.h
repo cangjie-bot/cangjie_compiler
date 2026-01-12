@@ -2827,6 +2827,7 @@ struct ImportContent : Node {
     std::string ToString() const override;
     std::string GetPrefixPath() const;
     std::string GetImportedPackageName() const;
+    std::string GetImportedPackageNameWithIsDecl() const;
     std::vector<std::string> GetPossiblePackageNames() const;
 };
 
