@@ -27,8 +27,8 @@ public:
     std::string decl;
 
     MappedCType(std::string usage, std::string decl): usage(usage), decl(decl) {}
-    MappedCType(const char* usage): usage(usage) {}
-    MappedCType(std::string usage): usage(usage) {}
+    explicit MappedCType(const char* usage): usage(usage) {}
+    explicit MappedCType(std::string usage): usage(usage) {}
 };
 
 class TypeMapper {
