@@ -131,11 +131,26 @@ void ParserImpl::ParseQuoteTokens(QuoteExpr& qe)
                 lparenCnt -= static_cast<int>(Seeing(TokenKind::RPAREN));
                 continue;
             }
+            // Don't add newline to tokens if next token is RPAREN
             auto token = Peek();
-            tokens.emplace_back(token);
+            if (token.kind == TokenKind::NL) {
+                // Skip newline before closing parenthesis
+                Next();
+                if (Seeing(TokenKind::RPAREN)) {
+                    lparenCnt--;
+                    // Don't call Next() again, as we've already processed the RPAREN
+                    break;
+                }
+                // If next token is not RPAREN, add the newline back
+                tokens.emplace_back(token);
+                Next();
+                lparenCnt -= static_cast<int>(Seeing(TokenKind::RPAREN));
+            } else {
+                tokens.emplace_back(token);
+                Next();
+                lparenCnt -= static_cast<int>(Seeing(TokenKind::RPAREN));
+            }
         }
-        Next();
-        lparenCnt -= static_cast<int>(Seeing(TokenKind::RPAREN));
     }
     GenerateTokenPart(qe, tokens);
 }
