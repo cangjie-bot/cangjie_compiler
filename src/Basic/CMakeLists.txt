@@ -22,6 +22,10 @@ set(BASIC_SRC ${BASIC_SRC} Version.cpp)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/tinytoml)
 
 add_library(CangjieBasic OBJECT ${BASIC_SRC})
+target_link_libraries(CangjieBasic
+    PUBLIC
+        shlwapi
+)
 target_compile_options(CangjieBasic PRIVATE -Wno-deprecated-declarations)
 target_compile_options(CangjieBasic PRIVATE ${CJC_EXTRA_WARNINGS})
 set_source_files_properties(InteropCJPackageConfigReader.cpp PROPERTIES COMPILE_OPTIONS "-fexceptions")
