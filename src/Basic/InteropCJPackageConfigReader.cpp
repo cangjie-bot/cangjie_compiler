@@ -621,9 +621,31 @@ bool ParsePackageConfigurations(toml::Table& tbl, InteropCJPackageConfigReader& 
 bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
 {
     try {
-        std::ifstream file(filePath);
+#ifdef _WIN32
+        char fullPath[MAX_PATH] = {0};
+        DWORD fullPathLen = GetFullPathNameA(filePath.c_str(), MAX_PATH, fullPath, nullptr);
+
+        if (fullPathLen == 0 || fullPathLen >= MAX_PATH) {
+            return false;
+        }
+
+        char canonicalBuffer[MAX_PATH] = {0};
+        if (!PathCanonicalizeA(canonicalBuffer, fullPath)) {
+            return false;
+        }
+        std::string canonicalPathStr = canonicalBuffer;
+#elif defined(__linux__) || defined(__APPLE__)
+        char *rawPath  = realpath(filePath.c_str(), nullptr);
+        if (!rawPath) {
+            std::cerr << "Error: Cannot get canonical path for: " << filePath << std::endl;
+            return false;
+        }
+        std::string canonicalPathStr(rawPath);
+        std::free(rawPath);
+#endif
+        std::ifstream file(canonicalPathStr);
         if (!file.is_open()) {
-            std::cerr << "Error: Cannot open configuration file." << filePath << std::endl;
+            std::cerr << "Error: Cannot open configuration file." << canonicalPathStr << std::endl;
             return false;
         }
 
@@ -638,7 +660,7 @@ bool InteropCJPackageConfigReader::Parse(const std::string& filePath)
             return false;
         }
 
-        toml::Table tbl = toml::parseFile(filePath).value.as<toml::Table>();
+        toml::Table tbl = toml::parseFile(canonicalPathStr).value.as<toml::Table>();
 
         ParseDefaultConfig(tbl, *this);
 
