@@ -413,8 +413,19 @@ public:
     bool compileOnePackageFromSrcFiles = false;
     // Read source code from cache.
     bool loadSrcFilesFromCache = false;
+    // SrcCodeChangeState
+    enum class SrcCodeChangeState : uint8_t {
+        UNCHANGED = 0,
+        CHANGED = 1,
+        ADDED = 2,
+        DELETED = 3,
+    };
+    struct SrcCodeCacheInfo {
+        SrcCodeChangeState state{SrcCodeChangeState::ADDED};
+        std::string code;
+    };
     // the source code cache map use for LSP. Key is path, Value is source code.
-    std::unordered_map<std::string, std::string> bufferCache;
+    std::unordered_map<std::string, SrcCodeCacheInfo> srcBuffer;
 
     // tokensEvalInMacro for DumpMacro, error report.
     std::vector<std::string> tokensEvalInMacro;
@@ -506,6 +517,10 @@ public:
     // we need to remove this later
     std::unordered_map<Ptr<AST::Package>, Ptr<CHIR::Package>> astPkg2chirPkgMap;
 #endif
+    bool HasTypeChecker() const
+    {
+        return typeChecker != nullptr;
+    }
 
 protected:
     /**
@@ -552,6 +567,13 @@ private:
     virtual void UpdateCachedInfo();
     bool WriteCachedInfo();
     bool ShouldWriteCacheFile() const;
+
+    void UpdateCompletedStage(CompileStage stage);
+
+    bool ParsedInLastCompile() const;
+    bool ImportedPackagesInLastCompile() const;
+    bool SemaedInLastCompile() const;
+    CompileStage completedStage{CompileStage::LOAD_PLUGINS};
 
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     std::vector<HANDLE> pluginHandles;

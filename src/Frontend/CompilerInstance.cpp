@@ -972,9 +972,7 @@ ASTContext* CompilerInstance::GetASTContextByPackage(Ptr<Package> pkg) const
 
 void CompilerInstance::AddSourceToMember()
 {
-    if (!pkgs.empty()) {
-        return;
-    }
+    pkgs.clear();
     for (auto& it : GetSourcePackages()) {
         pkgs.push_back(it);
     }
@@ -1008,7 +1006,9 @@ bool CompilerInstance::ImportPackages()
         return false;
     }
 
+    pkgCtxMap.clear(); // clear the pkgCtxMap to avoid the cache of the previous compilation in lsp.
     MergePackages();
+
     ModularizeCompilation();
     return true;
 }

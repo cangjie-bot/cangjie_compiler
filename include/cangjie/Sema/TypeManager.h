@@ -230,7 +230,9 @@ public:
         tyExtendInterfaceTyMap.clear();
         tyToSuperTysMap.clear();
         overrideOrShadowCache.clear();
+        overrideMap.clear();
         ClearRecordUsedExtends();
+        subtypeCache.clear();
     }
 
     std::unordered_set<Ptr<AST::ExtendDecl>> GetBoxUsedExtends() const
