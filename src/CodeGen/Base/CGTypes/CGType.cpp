@@ -308,6 +308,13 @@ CGType* CGType::GetInt64CGType(CGModule& cgMod)
     return CGType::GetOrCreate(cgMod, cgMod.GetCGContext().GetCHIRBuilder().GetInt64Ty());
 }
 
+CGType* CGType::GetIntNativeCGType(CGModule& cgMod)
+{
+    return cgMod.GetCGContext().GetCompileOptions().target.arch == Triple::ArchType::ARM32
+        ? CGType::GetOrCreate(cgMod, cgMod.GetCGContext().GetCHIRBuilder().GetInt32Ty())
+        : CGType::GetOrCreate(cgMod, cgMod.GetCGContext().GetCHIRBuilder().GetInt64Ty());
+}
+
 CGType* CGType::GetUInt8CGType(CGModule& cgMod)
 {
     return CGType::GetOrCreate(cgMod, cgMod.GetCGContext().GetCHIRBuilder().GetUInt8Ty());

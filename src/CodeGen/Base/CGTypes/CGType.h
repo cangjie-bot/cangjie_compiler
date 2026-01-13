@@ -355,6 +355,7 @@ public:
     static CGType* GetInt16CGType(CGModule& cgMod);
     static CGType* GetInt32CGType(CGModule& cgMod);
     static CGType* GetInt64CGType(CGModule& cgMod);
+    static CGType* GetIntNativeCGType(CGModule& cgMod);
     static CGType* GetUInt8CGType(CGModule& cgMod);
     static CGType* GetUInt16CGType(CGModule& cgMod);
     static CGType* GetUInt32CGType(CGModule& cgMod);
