@@ -112,7 +112,9 @@ llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llv
             : cgType.GetLLVMType();
         auto allocaInst = CreateEntryAlloca(allocatedType, nullptr, name);
         auto& options = cgMod.GetCGContext().GetCompileOptions();
-        if (allocatedType->isStructTy() && options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) {
+        auto isOptionLike = cgType.IsCGEnum() && StaticCast<const CGEnumType*>(&cgType)->IsOptionLikeNonRef();
+        if ((allocatedType->isStructTy() && options.enableCompileDebug && 
+        options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) || (options.cjdbMode && isOptionLike)) {
             (void)CreateMemsetStructWith0(allocaInst);
         }
         return allocaInst;
