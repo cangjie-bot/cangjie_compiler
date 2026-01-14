@@ -112,7 +112,12 @@ llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llv
             : cgType.GetLLVMType();
         auto allocaInst = CreateEntryAlloca(allocatedType, nullptr, name);
         auto& options = cgMod.GetCGContext().GetCompileOptions();
-        if (allocatedType->isStructTy() && options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) {
+        auto isOptionLikeNonRef = cgType.IsCGEnum() && StaticCast<const CGEnumType*>(&cgType)->IsOptionLikeNonRef();
+        // Zero-initialize memory if:
+        // 1. It is a struct in O0 debug builds.
+        // 2. It is an OptionLikeNonRef type in CJDB mode.
+        if ((allocatedType->isStructTy() && options.enableCompileDebug && 
+        options.optimizationLevel == GlobalOptions::OptimizationLevel::O0) || (options.cjdbMode && isOptionLikeNonRef)) {
             (void)CreateMemsetStructWith0(allocaInst);
         }
         return allocaInst;
