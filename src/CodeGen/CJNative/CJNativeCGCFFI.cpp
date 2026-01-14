@@ -1001,10 +1001,15 @@ llvm::Type* MacAArch64CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chir
     }
     llvm::Type* base = nullptr;
     if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
-        return type;
+        ABIArgInfo info = ABIArgInfo::GetDirect(type);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     if (size < BYTES_PER_WORD) {
-        return llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        ABIArgInfo info = ABIArgInfo::GetDirect(resTy);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     return LinuxAarch64CJNativeCGCFFI::GetStructReturnType(chirTy, params);
 }
