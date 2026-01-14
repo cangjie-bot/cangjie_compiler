@@ -42,9 +42,9 @@ const std::string CJ_EXTENSION = "cj";
 const std::string CHIR_EXTENSION = "chir";
 const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
+const std::string OBJC_EXTENSION= "obj";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
-const std::string OJBC_EXTENSION= "obj";
 #elif defined(__APPLE__)
 const std::string DL_EXTENSION = "dylib";
 #else
@@ -677,7 +677,7 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_archive_file, value, maybePath.value());
         return true;
     }
-    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION) {
+    if (ext == OBJECT_EXTENSION && (GetFileExtension(maybePath.value()) != OBJECT_EXTENSION || GetFileExtension(maybePath.value()) != OBJC_EXTENSION)) {
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
