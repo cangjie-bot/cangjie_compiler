@@ -184,7 +184,7 @@ public:
 
     bool PreReadCommonPartCjo() const
     {
-        bool hasInputCHIR = s.ci->invocation.globalOptions.inputChirFiles.size() > 0;
+        bool hasInputCHIR = s.ci->invocation.globalOptions.IsCompilingCJMP();
         if (hasInputCHIR) {
             auto mbFilesFromCommonPart = s.ci->importManager.GetCjoManager()->PreReadCommonPartCjoFiles();
             if (!mbFilesFromCommonPart) {

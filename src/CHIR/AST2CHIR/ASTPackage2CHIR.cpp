@@ -1332,7 +1332,7 @@ void AST2CHIR::TranslateNominalDecls(const AST::Package& pkg)
     TranslateVecDecl(genericNominalDecls, trans);
     // Update some info for nominal decls.
     Utils::ProfileRecorder::Stop("TranslateNominalDecls", "TranslateDecls");
-    RemoveUnusedCJMPExtends(*package, opts.inputChirFiles.size() == 1);
+    RemoveUnusedCJMPExtends(*package, opts.IsCompilingCJMP());
     SetExtendInfo();
     UpdateExtendParent();
 }

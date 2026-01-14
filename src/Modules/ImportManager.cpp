@@ -464,6 +464,9 @@ bool ImportManager::ResolveImportedPackages(const std::vector<Ptr<Package>>& pac
     bool success = true;
     for (auto pkg : packages) {
         curPackage = pkg;
+        // Files of common part need to be loaded in advance,
+        // to be able to handle `import`s of common part.
+        cjoManager->LoadFilesOfCommonPart(pkg);
         success = ResolveImportedPackageHeaders(*curPackage, false) && success;
         for (auto [_, typeWithFullPkgName] : stdDepsMap) {
             curPackage->AddDependentStdPkg(typeWithFullPkgName.second);
