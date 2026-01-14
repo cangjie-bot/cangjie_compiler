@@ -177,6 +177,8 @@ public:
     Ptr<AST::FuncDecl> GetObjCStoreLambdaAsBlockDecl();
     Ptr<AST::FuncDecl> GetObjCGetLambdaFromBlockDecl();
 
+    Ptr<AST::FuncDecl> GetObjectGetClassDecl();
+
 private:
     template <AST::ASTKind K = AST::ASTKind::DECL> auto GetInteropLibDecl(const std::string& ident)
     {
