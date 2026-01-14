@@ -965,6 +965,7 @@ bool LinuxAarch64CJNativeCGCFFI::IsHomogeneousAggregate(llvm::Type& type, llvm::
 void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy, llvm::Function& llvmFunc)
 {
     LinuxAarch64CJNativeCGCFFI::AddFunctionAttr(chirFuncTy, llvmFunc);
+    return;
     CJC_ASSERT(chirFuncTy.GetNumOfParams() == llvmFunc.arg_size());
     for (unsigned i = 0; i < llvmFunc.arg_size(); ++i) {
         if (auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType()); intArgType) {
@@ -1001,10 +1002,15 @@ llvm::Type* MacAArch64CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chir
     }
     llvm::Type* base = nullptr;
     if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
-        return type;
+        ABIArgInfo info = ABIArgInfo::GetDirect(type);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     if (size < BYTES_PER_WORD) {
-        return llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        ABIArgInfo info = ABIArgInfo::GetDirect(resTy);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     return LinuxAarch64CJNativeCGCFFI::GetStructReturnType(chirTy, params);
 }
