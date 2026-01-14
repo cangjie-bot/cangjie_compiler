@@ -38,7 +38,7 @@ using namespace TypeCheckUtil;
 MPTypeCheckerImpl::MPTypeCheckerImpl(const CompilerInstance& ci)
     : typeManager(*ci.typeManager), diag(ci.diag),
       compileCommon(ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR),
-      compilePlatform(ci.invocation.globalOptions.commonPartCjo != std::nullopt)
+      compileSpecific(ci.invocation.globalOptions.commonPartCjo != std::nullopt)
 {
 }
 
@@ -135,76 +135,76 @@ void DiagNotMatchedDecl(DiagnosticEngine &diag, const AST::Decl& decl, const std
 
 inline void DiagNotMatchedCommonDecl(DiagnosticEngine &diag, const AST::Decl& decl)
 {
-    DiagNotMatchedDecl(diag, decl, "platform", "common");
+    DiagNotMatchedDecl(diag, decl, "specific", "common");
 }
 
-inline void DiagNotMatchedPlatformDecl(DiagnosticEngine &diag, const AST::Decl& decl)
+inline void DiagNotMatchedSpecificDecl(DiagnosticEngine &diag, const AST::Decl& decl)
 {
-    DiagNotMatchedDecl(diag, decl, "common", "platform");
+    DiagNotMatchedDecl(diag, decl, "common", "specific");
 }
 
 inline void DiagNotMatchedSuperType(DiagnosticEngine &diag, const AST::Decl& decl)
 {
-    diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_super_type, decl, DeclKindToString(decl));
+    diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_has_different_super_type, decl, DeclKindToString(decl));
 }
 
 // Match nominative decl.
-bool MatchNominativeDecl(DiagnosticEngine &diag, Decl &commonDecl, Decl& platformDecl)
+bool MatchNominativeDecl(DiagnosticEngine &diag, Decl &commonDecl, Decl& specificDecl)
 {
-    if (commonDecl.astKind != platformDecl.astKind) {
-        diag.DiagnoseRefactor(DiagKindRefactor::platform_has_different_kind,
-            platformDecl, DeclKindToString(platformDecl), DeclKindToString(commonDecl));
+    if (commonDecl.astKind != specificDecl.astKind) {
+        diag.DiagnoseRefactor(DiagKindRefactor::specific_has_different_kind,
+            specificDecl, DeclKindToString(specificDecl), DeclKindToString(commonDecl));
         return false;
     }
 
     if (auto commonEnumDecl = DynamicCast<EnumDecl *>(&commonDecl)) {
-        auto platformEnumDecl = DynamicCast<EnumDecl *>(&platformDecl);
-        CJC_NULLPTR_CHECK(platformEnumDecl);
+        auto specificEnumDecl = DynamicCast<EnumDecl *>(&specificDecl);
+        CJC_NULLPTR_CHECK(specificEnumDecl);
         if (commonEnumDecl->hasEllipsis) {
-            platformDecl.EnableAttr(Attribute::COMMON_NON_EXHAUSTIVE);
-        } else if (platformEnumDecl->hasEllipsis) {
+            specificDecl.EnableAttr(Attribute::COMMON_NON_EXHAUSTIVE);
+        } else if (specificEnumDecl->hasEllipsis) {
             diag.DiagnoseRefactor(DiagKindRefactor::common_non_exaustive_platfrom_exaustive_mismatch,
-                platformDecl, DeclKindToString(commonDecl), DeclKindToString(platformDecl));
+                specificDecl, DeclKindToString(commonDecl), DeclKindToString(specificDecl));
         }
     }
     return true;
 }
 
-// Update the dependencies: common -> platform one.
+// Update the dependencies: common -> specific one.
 void UpdateVarDependencies(const Decl& decl)
 {
     for (auto& dep : decl.dependencies) {
-        if (dep->platformImplementation) {
-            dep = dep->platformImplementation;
+        if (dep->specificImplementation) {
+            dep = dep->specificImplementation;
         }
     }
 }
 
-// Check common instance member without initializer not match with platform one.
-void Check4CommonInstanceVar(DiagnosticEngine& diag, const Decl& platformDecl)
+// Check common instance member without initializer not match with specific one.
+void Check4CommonInstanceVar(DiagnosticEngine& diag, const Decl& specificDecl)
 {
-    auto platformDecls = platformDecl.GetMemberDeclPtrs();
-    for (auto decl : platformDecls) {
+    auto specificDecls = specificDecl.GetMemberDeclPtrs();
+    for (auto decl : specificDecls) {
         if (decl->astKind == ASTKind::VAR_DECL && !decl->IsStaticOrGlobal() && decl->TestAttr(Attribute::COMMON)) {
-            if (!decl->TestAttr(Attribute::COMMON_WITH_DEFAULT) && decl->platformImplementation == nullptr) {
-                DiagNotMatchedPlatformDecl(diag, *decl);
+            if (!decl->TestAttr(Attribute::COMMON_WITH_DEFAULT) && decl->specificImplementation == nullptr) {
+                DiagNotMatchedSpecificDecl(diag, *decl);
             }
         }
     }
 }
 
-// Merge common nominative decl into platform one, do some match for fields.
-void MergeCommonIntoPlatform(DiagnosticEngine& diag, Decl& commonDecl, Decl& platformDecl)
+// Merge common nominative decl into specific one, do some match for fields.
+void MergeCommonIntoSpecific(DiagnosticEngine& diag, Decl& commonDecl, Decl& specificDecl)
 {
     CJC_ASSERT(commonDecl.TestAttr(AST::Attribute::COMMON));
-    CJC_ASSERT(platformDecl.TestAttr(AST::Attribute::PLATFORM));
-    if (!MatchNominativeDecl(diag, commonDecl, platformDecl)) {
+    CJC_ASSERT(specificDecl.TestAttr(AST::Attribute::SPECIFIC));
+    if (!MatchNominativeDecl(diag, commonDecl, specificDecl)) {
         return;
     }
     auto& commonDecls = commonDecl.GetMemberDecls();
-    auto& platformDecls = platformDecl.GetMemberDecls();
+    auto& specificDecls = specificDecl.GetMemberDecls();
     std::vector<OwnedPtr<Decl>> mergedDecls;
-    mergedDecls.reserve(commonDecls.size() + platformDecls.size());
+    mergedDecls.reserve(commonDecls.size() + specificDecls.size());
     // Common instance member vars (including common member params)
     std::unordered_map<std::string, std::size_t> commonVariablesIds;
     // General member instance member vars from member params
@@ -212,7 +212,7 @@ void MergeCommonIntoPlatform(DiagnosticEngine& diag, Decl& commonDecl, Decl& pla
     // Collect candidates to be matched in common decl
     for (auto& commonDeclT : commonDecls) {
         auto newDecl = std::move(commonDeclT);
-        newDecl->outerDecl = &platformDecl;
+        newDecl->outerDecl = &specificDecl;
         newDecl->doNotExport = false;
 
         auto id = mergedDecls.size();
@@ -226,33 +226,33 @@ void MergeCommonIntoPlatform(DiagnosticEngine& diag, Decl& commonDecl, Decl& pla
         }
         mergedDecls.emplace_back(std::move(newDecl));
     }
-    // Match instance member and merge into platform decl.
-    for (auto& platformDeclT : platformDecls) {
-        if (platformDeclT->astKind == ASTKind::VAR_DECL && !platformDeclT->IsStaticOrGlobal()) {
-            auto varDecl = StaticCast<AST::VarDecl>(platformDeclT.get());
+    // Match instance member and merge into specific decl.
+    for (auto& specificDeclT : specificDecls) {
+        if (specificDeclT->astKind == ASTKind::VAR_DECL && !specificDeclT->IsStaticOrGlobal()) {
+            auto varDecl = StaticCast<AST::VarDecl>(specificDeclT.get());
             auto id = varDecl->identifier;
-            if (platformDeclT->TestAttr(Attribute::PLATFORM)) {
+            if (specificDeclT->TestAttr(Attribute::SPECIFIC)) {
                 auto commonDeclIt = commonVariablesIds.find(id);
                 if (commonDeclIt != commonVariablesIds.end()) {
                     // match
                     auto& commonDeclT = mergedDecls[commonDeclIt->second];
-                    commonDeclT->platformImplementation = platformDeclT;
-                    std::swap(platformDeclT, commonDeclT);
+                    commonDeclT->specificImplementation = specificDeclT;
+                    std::swap(specificDeclT, commonDeclT);
                     continue;
                 } else {
                     DiagNotMatchedCommonDecl(diag, *varDecl);
                 }
             } else if (varDecl->isMemberParam) {
                 if (memberParamIds.find(id) != memberParamIds.end()) {
-                    // General platform member params will merge into common if exist.
+                    // General specific member params will merge into common if exist.
                     continue;
                 }
             }
         }
-        // Merge platform members.
-        mergedDecls.emplace_back(std::move(platformDeclT));
+        // Merge specific members.
+        mergedDecls.emplace_back(std::move(specificDeclT));
     }
-    std::swap(platformDecls, mergedDecls);
+    std::swap(specificDecls, mergedDecls);
     // all the rest declarations need to be saved, because of, at least initializers of common
     // variables need to be analyzed.
     commonDecls.clear();
@@ -262,24 +262,24 @@ void MergeCommonIntoPlatform(DiagnosticEngine& diag, Decl& commonDecl, Decl& pla
         }
     }
 
-    for (auto& decl : platformDecls) {
+    for (auto& decl : specificDecls) {
         UpdateVarDependencies(*decl);
     }
-    // Check common member without initializer not match with platform one.
-    Check4CommonInstanceVar(diag, platformDecl);
+    // Check common member without initializer not match with specific one.
+    Check4CommonInstanceVar(diag, specificDecl);
 
     commonDecl.doNotExport = true;
-    commonDecl.platformImplementation = &platformDecl;
+    commonDecl.specificImplementation = &specificDecl;
 }
 }
 
 // PrepareTypeCheck for CJMP
 void MPTypeCheckerImpl::PrepareTypeCheck4CJMP(Package& pkg)
 {
-    if (!compilePlatform) {
+    if (!compileSpecific) {
         return;
     }
-    // platform package part
+    // specific package part
     MergeCJMPNominalsExceptExtension(pkg);
 }
 
@@ -297,12 +297,12 @@ void MPTypeCheckerImpl::MergeCJMPNominalsExceptExtension(Package& pkg)
                 bool hasGenericMismatch =
                     (decl->generic && !matchedDecl->generic) || (!decl->generic && matchedDecl->generic);
                 if (hasGenericMismatch) {
-                } else if (decl->TestAttr(Attribute::PLATFORM) && matchedDecl->TestAttr(Attribute::COMMON)) {
-                    MergeCommonIntoPlatform(diag, *matchedDecl, *decl);
-                } else if (decl->TestAttr(Attribute::COMMON) && matchedDecl->TestAttr(Attribute::PLATFORM)) {
-                    MergeCommonIntoPlatform(diag, *decl, *matchedDecl);
+                } else if (decl->TestAttr(Attribute::SPECIFIC) && matchedDecl->TestAttr(Attribute::COMMON)) {
+                    MergeCommonIntoSpecific(diag, *matchedDecl, *decl);
+                } else if (decl->TestAttr(Attribute::COMMON) && matchedDecl->TestAttr(Attribute::SPECIFIC)) {
+                    MergeCommonIntoSpecific(diag, *decl, *matchedDecl);
                 }
-            } else if (decl->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
+            } else if (decl->TestAnyAttr(Attribute::COMMON, Attribute::SPECIFIC)) {
                 matchedDecls.emplace(decl->identifier, decl);
             }
         }
@@ -315,7 +315,7 @@ void MPTypeCheckerImpl::MergeCJMPNominalsExceptExtension(Package& pkg)
 void MPTypeCheckerImpl::PrepareTypeCheck4CJMPExtension(CompilerInstance& ci, ScopeManager& scopeManager,
     ASTContext& ctx, const std::unordered_set<Ptr<AST::ExtendDecl>>& extends)
 {
-    if (!compilePlatform) {
+    if (!compileSpecific) {
         return;
     }
     MergeCJMPExtensions(ci, scopeManager, ctx, extends);
@@ -348,8 +348,8 @@ void UpdateDeclMap(DiagnosticEngine& diag, ASTContext& ctx, Ptr<ExtendDecl>& ed)
         if (sym->astKind == ASTKind::PROP_DECL) { // Function redefinition will not be checked in this phase.
             if (auto found = ctx.GetDeclsByName(names); !found.empty()) {
                 bool multiPlat =
-                    (sym->node->TestAttr(Attribute::COMMON) && found.front()->TestAttr(Attribute::PLATFORM)) ||
-                    (sym->node->TestAttr(Attribute::PLATFORM) && found.front()->TestAttr(Attribute::COMMON));
+                    (sym->node->TestAttr(Attribute::COMMON) && found.front()->TestAttr(Attribute::SPECIFIC)) ||
+                    (sym->node->TestAttr(Attribute::SPECIFIC) && found.front()->TestAttr(Attribute::COMMON));
                 if (!multiPlat) {
                     Sema::DiagRedefinitionWithFoundNode(diag, StaticCast<Decl>(*sym->node), *found.front());
                 }
@@ -363,10 +363,10 @@ void UpdateDeclMap(DiagnosticEngine& diag, ASTContext& ctx, Ptr<ExtendDecl>& ed)
 void MPTypeCheckerImpl::MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& scopeManager, ASTContext& ctx,
     const std::unordered_set<Ptr<ExtendDecl>>& extends)
 {
-    std::unordered_map<std::string, Ptr<ExtendDecl>> platformExtendDecls;
+    std::unordered_map<std::string, Ptr<ExtendDecl>> specificExtendDecls;
     std::unordered_map<std::string, std::set<Ptr<ExtendDecl>>> commonExtendDecls;
     for (auto ed : extends) {
-        if (!Ty::IsTyCorrect(ed->ty.get()) || !ed->TestAnyAttr(Attribute::COMMON, Attribute::PLATFORM)) {
+        if (!Ty::IsTyCorrect(ed->ty.get()) || !ed->TestAnyAttr(Attribute::COMMON, Attribute::SPECIFIC)) {
             continue;
         }
 
@@ -394,35 +394,35 @@ void MPTypeCheckerImpl::MergeCJMPExtensions(CompilerInstance& ci, ScopeManager& 
             key += CalculatedGenericConstraintsStr(ed->generic->genericConstraints, genericIdx);
         }
 
-        // After merging `common extend` into `platform extend`, the symbol table (scopeName) needs to be updated,
+        // After merging `common extend` into `specific extend`, the symbol table (scopeName) needs to be updated,
         // otherwise redefined functions cannot be detected.
         // After updating the symbol table, the `declMap` must also be updated,
         // otherwise symbols within function bodies won't find their definitions.
         if (ed->TestAttr(Attribute::COMMON)) {
-            if (auto it = platformExtendDecls.find(key); it != platformExtendDecls.end()) {
-                auto platformExtendDecl = it->second;
-                MergeCommonIntoPlatform(diag, *ed, *platformExtendDecl);
+            if (auto it = specificExtendDecls.find(key); it != specificExtendDecls.end()) {
+                auto specificExtendDecl = it->second;
+                MergeCommonIntoSpecific(diag, *ed, *specificExtendDecl);
                 Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
-                collector.BuildSymbolTable(ctx, platformExtendDecl, ci.IsBuildTrie());
-                UpdateDeclMap(diag, ctx, platformExtendDecl);
+                collector.BuildSymbolTable(ctx, specificExtendDecl, ci.IsBuildTrie());
+                UpdateDeclMap(diag, ctx, specificExtendDecl);
             }
             commonExtendDecls[key].emplace(ed);
         } else {
-            if (platformExtendDecls.find(key) != platformExtendDecls.end()) {
+            if (specificExtendDecls.find(key) != specificExtendDecls.end()) {
                 // A common declaration may have one or more matching specific declarations
                 // in descending source sets (at most one specific per source set)
                 diag.DiagnoseRefactor(
-                    DiagKindRefactor::sema_platform_has_duplicate_extensions, *ed, ed->extendedType->ToString());
+                    DiagKindRefactor::sema_specific_has_duplicate_extensions, *ed, ed->extendedType->ToString());
                 continue;
             } else if (auto it = commonExtendDecls.find(key); it != commonExtendDecls.end()) {
                 for (auto ced : it->second) {
-                    MergeCommonIntoPlatform(diag, *ced, *ed);
+                    MergeCommonIntoSpecific(diag, *ced, *ed);
                 }
                 Collector collector(scopeManager, ci.invocation.globalOptions.enableMacroInLSP);
                 collector.BuildSymbolTable(ctx, ed, ci.IsBuildTrie());
                 UpdateDeclMap(diag, ctx, ed);
             }
-            platformExtendDecls.emplace(key, ed);
+            specificExtendDecls.emplace(key, ed);
         }
     }
 }
@@ -473,20 +473,20 @@ void MPTypeCheckerImpl::PreCheckCJMPClass(const ClassDecl& cls)
     }
 }
 
-void MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(
+void MPTypeCheckerImpl::FilterOutCommonCandidatesIfSpecificExist(
     std::map<Names, std::vector<Ptr<FuncDecl>>>& candidates)
 {
     for (auto& [names, funcs] : candidates) {
-        bool hasPlatformCandidates = false;
+        bool hasSpecificCandidates = false;
 
         for (auto& func : funcs) {
-            if (func->TestAttr(Attribute::PLATFORM)) {
-                hasPlatformCandidates = true;
+            if (func->TestAttr(Attribute::SPECIFIC)) {
+                hasSpecificCandidates = true;
                 break;
             }
         }
 
-        if (hasPlatformCandidates) {
+        if (hasSpecificCandidates) {
             funcs.erase(
                 std::remove_if(funcs.begin(), funcs.end(),
                     [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::COMMON); }),
@@ -496,13 +496,13 @@ void MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(
 }
 
 // TypeCheck for CJMP
-void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<FuncDecl>>& candidates)
+void MPTypeCheckerImpl::RemoveCommonCandidatesIfHasSpecific(std::vector<Ptr<FuncDecl>>& candidates)
 {
     Utils::EraseIf(candidates, [candidates](const Ptr<FuncDecl> candidate) {
-        if (candidate->TestAttr(Attribute::COMMON) && candidate->platformImplementation) {
-            // erase if the platform decl also contains in the candidates vector
+        if (candidate->TestAttr(Attribute::COMMON) && candidate->specificImplementation) {
+            // erase if the specific decl also contains in the candidates vector
             return std::find(candidates.begin(), candidates.end(), 
-                candidate->platformImplementation) != candidates.end();
+                candidate->specificImplementation) != candidates.end();
         }
         return false;
     });
@@ -518,53 +518,53 @@ static Ptr<Ty> CheckFuncReturnType(Ptr<Ty> ty)
     return retTy;
 }
 
-void MPTypeCheckerImpl::CheckMatchedFunctionReturnTypes(FuncDecl& platformFunc, FuncDecl& commonFunc)
+void MPTypeCheckerImpl::CheckMatchedFunctionReturnTypes(FuncDecl& specificFunc, FuncDecl& commonFunc)
 {
     auto commonType = commonFunc.funcBody->ty;
-    auto platformType = platformFunc.funcBody->ty;
+    auto specificType = specificFunc.funcBody->ty;
 
     auto commonRetTy = CheckFuncReturnType(commonType);
-    auto platformRetTy = CheckFuncReturnType(platformType);
+    auto specificRetTy = CheckFuncReturnType(specificType);
 
-    if (commonRetTy == platformRetTy) return;
-    if (typeManager.IsSubtype(platformRetTy, commonRetTy)) return;
+    if (commonRetTy == specificRetTy) return;
+    if (typeManager.IsSubtype(specificRetTy, commonRetTy)) return;
 
     // the subtype check will handle most of the cases, however in the case of generics, types must 
     // be substituted properly before checking for subtype that is properly done in MatchCJMPFunction 
     // that we use as a fallback
 
     // we need to erase the pointer temporarily to avoid the multiple implementations error
-    commonFunc.platformImplementation = nullptr;
-    if (!MatchCJMPFunction(platformFunc, commonFunc)) {
+    commonFunc.specificImplementation = nullptr;
+    if (!MatchCJMPFunction(specificFunc, commonFunc)) {
         diag.DiagnoseRefactor(
             DiagKindRefactor::sema_return_type_incompatible,
-            platformFunc,
-            platformFunc.identifier);
+            specificFunc,
+            specificFunc.identifier);
     }
-    commonFunc.platformImplementation = &platformFunc;
+    commonFunc.specificImplementation = &specificFunc;
 }
 
-void MPTypeCheckerImpl::CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST::VarDecl& commonVar)
+void MPTypeCheckerImpl::CheckMatchedVariableTypes(AST::VarDecl& specificVar, AST::VarDecl& commonVar)
 {
     CJC_ASSERT_WITH_MSG(commonVar.ty && !Ty::IsInitialTy(commonVar.ty),
         "Common variable type must be already resolved");
 
-    if (!platformVar.ty || Ty::IsInitialTy(platformVar.ty)) {
+    if (!specificVar.ty || Ty::IsInitialTy(specificVar.ty)) {
         // this should already be reported as parse_expected_one_of_type_or_initializer
         // here we skip it
         return;
     }
 
-    if (commonVar.ty == platformVar.ty) return;
-    if (typeManager.IsTyEqual(platformVar.ty, commonVar.ty)) return;
+    if (commonVar.ty == specificVar.ty) return;
+    if (typeManager.IsTyEqual(specificVar.ty, commonVar.ty)) return;
 
     // the type equality check will handle most of the cases except for the generics case when types 
     // need to be substituted in order to compare them that is handled in MatchCJMPVar
     //  that is fallback here
 
     // member variables are paired during the merge, global and statics during the Match function
-    // unlike for functions, we should NOT erase the platform pointer
-    MatchCJMPVar(platformVar, commonVar); // the diagnostic is reported by the function
+    // unlike for functions, we should NOT erase the specific pointer
+    MatchCJMPVar(specificVar, commonVar); // the diagnostic is reported by the function
 }
 
 static bool IsCommon(const AST::Node& decl)
@@ -585,14 +585,14 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
                 return VisitAction::SKIP_CHILDREN;
             }
             auto common = StaticAs<ASTKind::FUNC_DECL>(node);
-            auto platform = common->platformImplementation;
-            if (platform) {
-                CJC_ASSERT_WITH_MSG(platform->astKind == AST::ASTKind::FUNC_DECL, 
+            auto specific = common->specificImplementation;
+            if (specific) {
+                CJC_ASSERT_WITH_MSG(specific->astKind == AST::ASTKind::FUNC_DECL, 
                     "Common function can be only matched to a function but got another kind");
                 auto& commonFunc = *common;
-                auto& platformFunc = *StaticCast<FuncDecl>(platform);
+                auto& specificFunc = *StaticCast<FuncDecl>(specific);
 
-                CheckMatchedFunctionReturnTypes(platformFunc, commonFunc);
+                CheckMatchedFunctionReturnTypes(specificFunc, commonFunc);
             }
             return VisitAction::SKIP_CHILDREN;
         } else if (node->astKind == ASTKind::VAR_DECL) {
@@ -600,18 +600,18 @@ void MPTypeCheckerImpl::CheckReturnAndVariableTypes(AST::Package& pkg)
                 return VisitAction::SKIP_CHILDREN;
             }
             auto common = StaticAs<ASTKind::VAR_DECL>(node);
-            auto platform = common->platformImplementation;
-            if (platform) {
-                CJC_ASSERT_WITH_MSG(platform->astKind == AST::ASTKind::VAR_DECL, 
+            auto specific = common->specificImplementation;
+            if (specific) {
+                CJC_ASSERT_WITH_MSG(specific->astKind == AST::ASTKind::VAR_DECL, 
                     "Common variable can be only matched to a variable but got another kind");
                 auto& commonVar = *common;
-                auto& platformVar = *StaticCast<VarDecl>(platform);
+                auto& specificVar = *StaticCast<VarDecl>(specific);
 
-                CheckMatchedVariableTypes(platformVar, commonVar);
+                CheckMatchedVariableTypes(specificVar, commonVar);
             } else if (!common->TestAttr(Attribute::INITIALIZED) && common->TestAttr(Attribute::FROM_COMMON_PART)) {
                 // this has been postponed, we need this to handle the case when a common var has no matched specified
                 // but it does't fail because there is an initializer for it
-                DiagNotMatchedPlatformDecl(diag, *common);
+                DiagNotMatchedSpecificDecl(diag, *common);
             }
             return VisitAction::SKIP_CHILDREN;
         }
@@ -627,11 +627,11 @@ void MPTypeCheckerImpl::ValidateMatchedAnnotationsAndModifiers(AST::Package& pkg
         if (node->IsDecl()) {
             if (!IsCommon(*node)) { return VisitAction::WALK_CHILDREN; }
             auto commonDecl = StaticCast<Decl>(node);
-            if (!commonDecl->platformImplementation) {
+            if (!commonDecl->specificImplementation) {
                 return VisitAction::WALK_CHILDREN;
             }
 
-            MatchCJMPDeclAnnotations(*commonDecl, *commonDecl->platformImplementation);
+            MatchCJMPDeclAnnotations(*commonDecl, *commonDecl->specificImplementation);
         }
         return VisitAction::WALK_CHILDREN;
     };
@@ -640,23 +640,23 @@ void MPTypeCheckerImpl::ValidateMatchedAnnotationsAndModifiers(AST::Package& pkg
 }
 
 namespace {
-// Collect common or platform decl.
+// Collect common or specific decl.
 void CollectDecl(
-    Ptr<Decl> decl, std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& platformDecls)
+    Ptr<Decl> decl, std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& specificDecls)
 {
     if (decl->TestAttr(Attribute::COMMON)) {
         commonDecls.emplace_back(decl);
-    } else if (decl->TestAttr(Attribute::PLATFORM)) {
-        platformDecls.emplace_back(decl);
+    } else if (decl->TestAttr(Attribute::SPECIFIC)) {
+        specificDecls.emplace_back(decl);
     }
 }
 
-// Collect common and platform decls.
-void CollectCJMPDecls(Package& pkg, std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& platformDecls)
+// Collect common and specific decls.
+void CollectCJMPDecls(Package& pkg, std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& specificDecls)
 {
-    std::function<VisitAction(Ptr<Node>)> visitor = [&commonDecls, &platformDecls](const Ptr<Node> &node) {
+    std::function<VisitAction(Ptr<Node>)> visitor = [&commonDecls, &specificDecls](const Ptr<Node> &node) {
         if (node->IsDecl() && node->astKind != ASTKind::PRIMARY_CTOR_DECL) {
-            CollectDecl(StaticAs<ASTKind::DECL>(node), commonDecls, platformDecls);
+            CollectDecl(StaticAs<ASTKind::DECL>(node), commonDecls, specificDecls);
         }
         if (node->astKind == ASTKind::PACKAGE || node->astKind == ASTKind::FILE ||
             node->IsNominalDecl() || node->IsNominalDeclBody()) {
@@ -669,10 +669,10 @@ void CollectCJMPDecls(Package& pkg, std::vector<Ptr<Decl>>& commonDecls, std::ve
 }
 
 // Check whether the common decl must be matched with paltform decl.
-bool MustMatchWithPlatform(const Decl& decl)
+bool MustMatchWithSpecific(const Decl& decl)
 {
     CJC_ASSERT(decl.TestAttr(Attribute::COMMON));
-    if (decl.platformImplementation) {
+    if (decl.specificImplementation) {
         return false;
     }
     // var/func with default implementation
@@ -680,13 +680,13 @@ bool MustMatchWithPlatform(const Decl& decl)
         return false;
     }
     // No match is required for enum constructors when the outer enum is marked as
-    // COMMON_WITH_DEFAULT and has no platform implementation
+    // COMMON_WITH_DEFAULT and has no specific implementation
     if (decl.TestAttr(Attribute::ENUM_CONSTRUCTOR) && decl.outerDecl &&
-        decl.outerDecl->TestAttr(AST::Attribute::COMMON_WITH_DEFAULT) && !decl.outerDecl->platformImplementation) {
+        decl.outerDecl->TestAttr(AST::Attribute::COMMON_WITH_DEFAULT) && !decl.outerDecl->specificImplementation) {
         return false;
     }
 
-    // common member in interface allow no platform member, maybe use abstract attr.
+    // common member in interface allow no specific member, maybe use abstract attr.
     if (decl.outerDecl && decl.outerDecl->astKind == ASTKind::INTERFACE_DECL) {
         return false;
     }
@@ -703,10 +703,10 @@ bool MustMatchWithPlatform(const Decl& decl)
 }
 } // namespace
 
-bool NeedToReportMissingBody(const Decl& common, const Decl& platform)
+bool NeedToReportMissingBody(const Decl& common, const Decl& specific)
 {
     if (common.outerDecl && common.TestAttr(Attribute::COMMON_WITH_DEFAULT) && !common.TestAttr(Attribute::ABSTRACT) &&
-        platform.TestAttr(Attribute::ABSTRACT)) {
+        specific.TestAttr(Attribute::ABSTRACT)) {
         return true;
     }
 
@@ -715,49 +715,49 @@ bool NeedToReportMissingBody(const Decl& common, const Decl& platform)
 
 // PostTypeCheck for CJMP
 bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
-    const std::vector<Attribute>& attrs, const Decl& common, const Decl& platform) const
+    const std::vector<Attribute>& attrs, const Decl& common, const Decl& specific) const
 {
     for (auto attr : attrs) {
-        if (common.TestAttr(attr) != platform.TestAttr(attr)) {
+        if (common.TestAttr(attr) != specific.TestAttr(attr)) {
             if ((attr == Attribute::ABSTRACT || attr == Attribute::OPEN)) {
-                // Error `sema_platform_member_must_have_implementation` should be reported
-                // If common have body, but platform not. Diagnostic about wrong modifiers is confusing.
-                if (NeedToReportMissingBody(common, platform)) {
+                // Error `sema_specific_member_must_have_implementation` should be reported
+                // If common have body, but specific not. Diagnostic about wrong modifiers is confusing.
+                if (NeedToReportMissingBody(common, specific)) {
                     continue;
                 }
-                if (platform.TestAttr(Attribute::ABSTRACT) && common.TestAttr(Attribute::OPEN) &&
+                if (specific.TestAttr(Attribute::ABSTRACT) && common.TestAttr(Attribute::OPEN) &&
                     common.IsFuncOrProp()) {
                     auto kindStr = common.astKind == ASTKind::FUNC_DECL ? "function" : "property";
-                    diag.DiagnoseRefactor(DiagKindRefactor::sema_open_abstract_platform_can_not_replace_open_common,
-                        platform, kindStr, kindStr);
+                    diag.DiagnoseRefactor(DiagKindRefactor::sema_open_abstract_specific_can_not_replace_open_common,
+                        specific, kindStr, kindStr);
                 }
                 // ABSTRACT member can be replaced with OPEN
                 bool funcOrProp = common.astKind == ASTKind::FUNC_DECL || common.astKind == ASTKind::PROP_DECL;
-                if (funcOrProp && common.TestAttr(Attribute::ABSTRACT) && platform.TestAttr(Attribute::OPEN)) {
+                if (funcOrProp && common.TestAttr(Attribute::ABSTRACT) && specific.TestAttr(Attribute::OPEN)) {
                     continue;
                 }
                 // Same as previous check, however static functions has no OPEN modifier
                 if (common.TestAttr(Attribute::ABSTRACT) &&
-                    common.TestAttr(Attribute::STATIC) && platform.TestAttr(Attribute::STATIC)) {
+                    common.TestAttr(Attribute::STATIC) && specific.TestAttr(Attribute::STATIC)) {
                     continue;
                 }
             }
             if (common.astKind == ASTKind::PROP_DECL && attr == Attribute::MUT) {
                 if (common.TestAttr(attr)) {
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_property_have_same_declaration_in_inherit_mut,
-                        platform, platform.identifier.Val());
+                        specific, specific.identifier.Val());
                 } else {
                     diag.DiagnoseRefactor(DiagKindRefactor::sema_property_have_same_declaration_in_inherit_immut,
                         common, common.identifier.Val());
                 }
             } else if (common.astKind == ASTKind::CLASS_DECL && (attr == Attribute::SEALED || attr == Attribute::OPEN) &&
                 // Keep silent due to overloaded common funcs.
-                // Allow platform sealed abstract when common is abstract
-                platform.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
+                // Allow specific sealed abstract when common is abstract
+                specific.TestAttr(Attribute::SEALED) && common.TestAttr(Attribute::ABSTRACT)) {
                 continue;
             } else {
                 diag.DiagnoseRefactor(
-                    DiagKindRefactor::sema_platform_has_different_modifier, platform, DeclKindToString(platform));
+                    DiagKindRefactor::sema_specific_has_different_modifier, specific, DeclKindToString(specific));
             }
             return false;
         }
@@ -767,37 +767,37 @@ bool MPTypeCheckerImpl::MatchCJMPDeclAttrs(
 
 
 
-void MPTypeCheckerImpl::CheckCommonSpecificGenericMatch(const AST::Decl& platformDecl, const AST::Decl& commonDecl)
+void MPTypeCheckerImpl::CheckCommonSpecificGenericMatch(const AST::Decl& specificDecl, const AST::Decl& commonDecl)
 {
     // check generic constraints
     auto parentBounds = GetAllGenericUpperBounds(typeManager, commonDecl);
-    auto childBounds = GetAllGenericUpperBounds(typeManager, platformDecl);
+    auto childBounds = GetAllGenericUpperBounds(typeManager, specificDecl);
 
-    CheckGenericTypeBoundsMapped(commonDecl, platformDecl, parentBounds, childBounds, diag, typeManager);
+    CheckGenericTypeBoundsMapped(commonDecl, specificDecl, parentBounds, childBounds, diag, typeManager);
 }
 
-// Match common nominal decl with platform for details.
-bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl& commonDecl)
+// Match common nominal decl with specific for details.
+bool MPTypeCheckerImpl::MatchCommonNominalDeclWithSpecific(const InheritableDecl& commonDecl)
 {
-    auto platformDecl = commonDecl.platformImplementation;
-    if (platformDecl == nullptr) {
+    auto specificDecl = commonDecl.specificImplementation;
+    if (specificDecl == nullptr) {
         if (commonDecl.TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
             return false;
         }
-        DiagNotMatchedPlatformDecl(diag, commonDecl);
+        DiagNotMatchedSpecificDecl(diag, commonDecl);
         return false;
     }
     // Match attributes (modifiers).
     std::vector<Attribute> matchedAttr = {
         Attribute::ABSTRACT, Attribute::PUBLIC, Attribute::OPEN, Attribute::PROTECTED, Attribute::C, Attribute::SEALED};
-    if (!MatchCJMPDeclAttrs(matchedAttr, commonDecl, *platformDecl)) {
+    if (!MatchCJMPDeclAttrs(matchedAttr, commonDecl, *specificDecl)) {
         return false;
     }
     // Match super types.
     std::set<Ptr<InterfaceTy>> comSupInters;
-    auto platSupInters = StaticCast<InheritableDecl>(platformDecl)->GetSuperInterfaceTys();
+    auto platSupInters = StaticCast<InheritableDecl>(specificDecl)->GetSuperInterfaceTys();
     TypeSubst genericTyMap;
-    MapCJMPGenericTypeArgs(genericTyMap, commonDecl, *platformDecl);
+    MapCJMPGenericTypeArgs(genericTyMap, commonDecl, *specificDecl);
     if (!genericTyMap.empty()) {
         for (auto superInterface : commonDecl.GetSuperInterfaceTys()) {
             auto updatedInterfaceType = typeManager.GetInstantiatedTy(superInterface, genericTyMap);
@@ -807,7 +807,7 @@ bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl
         comSupInters = commonDecl.GetSuperInterfaceTys();
     }
     if (comSupInters.size() != platSupInters.size()) {
-        DiagNotMatchedSuperType(diag, *platformDecl);
+        DiagNotMatchedSuperType(diag, *specificDecl);
         return false;
     }
     bool match = false;
@@ -819,21 +819,21 @@ bool MPTypeCheckerImpl::MatchCommonNominalDeclWithPlatform(const InheritableDecl
             }
         }
         if (!match) {
-            DiagNotMatchedSuperType(diag, *platformDecl);
+            DiagNotMatchedSuperType(diag, *specificDecl);
             return false;
         }
     }
     // Match super class if need.
     if (commonDecl.astKind == ASTKind::CLASS_DECL) {
         auto comSupClass = StaticCast<ClassDecl>(&commonDecl)->GetSuperClassDecl();
-        auto platSupIClass = StaticCast<ClassDecl>(platformDecl)->GetSuperClassDecl();
+        auto platSupIClass = StaticCast<ClassDecl>(specificDecl)->GetSuperClassDecl();
         if (!typeManager.IsTyEqual(comSupClass->ty, platSupIClass->ty)) {
-            DiagNotMatchedSuperType(diag, *platformDecl);
+            DiagNotMatchedSuperType(diag, *specificDecl);
             return false;
         }
     }
 
-    CheckCommonSpecificGenericMatch(*platformDecl, commonDecl);
+    CheckCommonSpecificGenericMatch(*specificDecl, commonDecl);
 
     return true;
 }
@@ -851,17 +851,17 @@ bool MPTypeCheckerImpl::IsCJMPDeclMatchable(Decl& lhsDecl, Decl& rhsDecl) const
 {
     bool isLeftCommon = lhsDecl.TestAttr(Attribute::COMMON);
     Decl& commonDecl = isLeftCommon ? lhsDecl : rhsDecl;
-    Decl& platformDecl = isLeftCommon ? rhsDecl : lhsDecl;
-    if (commonDecl.identifier.GetRawText() != platformDecl.identifier.GetRawText()) {
+    Decl& specificDecl = isLeftCommon ? rhsDecl : lhsDecl;
+    if (commonDecl.identifier.GetRawText() != specificDecl.identifier.GetRawText()) {
         return false;
     }
-    if (platformDecl.IsMemberDecl() != commonDecl.IsMemberDecl()) {
+    if (specificDecl.IsMemberDecl() != commonDecl.IsMemberDecl()) {
         return false;
     }
-    if (platformDecl.IsMemberDecl()) {
-        CJC_NULLPTR_CHECK(platformDecl.outerDecl);
+    if (specificDecl.IsMemberDecl()) {
+        CJC_NULLPTR_CHECK(specificDecl.outerDecl);
         CJC_NULLPTR_CHECK(commonDecl.outerDecl);
-        if (platformDecl.outerDecl->rawMangleName != commonDecl.outerDecl->rawMangleName) {
+        if (specificDecl.outerDecl->rawMangleName != commonDecl.outerDecl->rawMangleName) {
             return false;
         }
     }
@@ -873,215 +873,215 @@ bool MPTypeCheckerImpl::IsCJMPDeclMatchable(Decl& lhsDecl, Decl& rhsDecl) const
     return true;
 }
 
-bool MPTypeCheckerImpl::TrySetPlatformImpl(Decl& platformDecl, Decl& commonDecl, const std::string& kind)
+bool MPTypeCheckerImpl::TrySetSpecificImpl(Decl& specificDecl, Decl& commonDecl, const std::string& kind)
 {
-    if (commonDecl.platformImplementation) {
+    if (commonDecl.specificImplementation) {
         diag.DiagnoseRefactor(DiagKindRefactor::sema_multiple_common_implementations, commonDecl, kind);
         return false;
     }
-    // common with default but platform without default
-    if (NeedToReportMissingBody(commonDecl, platformDecl)) {
-        diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_member_must_have_implementation,
-            platformDecl, platformDecl.identifier.Val(), commonDecl.outerDecl->identifier.Val());
+    // common with default but specific without default
+    if (NeedToReportMissingBody(commonDecl, specificDecl)) {
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_member_must_have_implementation,
+            specificDecl, specificDecl.identifier.Val(), commonDecl.outerDecl->identifier.Val());
         return false;
     }
-    commonDecl.platformImplementation = &platformDecl;
+    commonDecl.specificImplementation = &specificDecl;
     commonDecl.doNotExport = true;
     return true;
 }
 
-bool MPTypeCheckerImpl::MatchCJMPFunction(FuncDecl& platformFunc, FuncDecl& commonFunc)
+bool MPTypeCheckerImpl::MatchCJMPFunction(FuncDecl& specificFunc, FuncDecl& commonFunc)
 {
-    if (!IsCJMPDeclMatchable(platformFunc, commonFunc)) {
+    if (!IsCJMPDeclMatchable(specificFunc, commonFunc)) {
         return false;
     }
 
     bool isGenericFuncMatch = false;
     TypeSubst genericTyMap;
-    MapCJMPGenericTypeArgs(genericTyMap, commonFunc, platformFunc);
+    MapCJMPGenericTypeArgs(genericTyMap, commonFunc, specificFunc);
     if (!genericTyMap.empty()) {
         auto newCommonFuncTy = StaticCast<FuncTy*>(typeManager.GetInstantiatedTy(commonFunc.ty, genericTyMap));
-        auto platformFuncTy = StaticCast<FuncTy*>(platformFunc.ty);
-        if (typeManager.IsFuncTySubType(*platformFuncTy, *newCommonFuncTy)) {
+        auto specificFuncTy = StaticCast<FuncTy*>(specificFunc.ty);
+        if (typeManager.IsFuncTySubType(*specificFuncTy, *newCommonFuncTy)) {
             isGenericFuncMatch = true;
         }
     }
-    if (!isGenericFuncMatch && !typeManager.IsFuncDeclSubType(platformFunc, commonFunc)) {
+    if (!isGenericFuncMatch && !typeManager.IsFuncDeclSubType(specificFunc, commonFunc)) {
         return false;
     }
     auto& commonParams = commonFunc.funcBody->paramLists[0]->params;
-    auto& platformParams = platformFunc.funcBody->paramLists[0]->params;
+    auto& specificParams = specificFunc.funcBody->paramLists[0]->params;
     for (size_t i = 0; i < commonFunc.funcBody->paramLists[0]->params.size(); i++) {
-        if (commonParams[i]->isNamedParam != platformParams[i]->isNamedParam) {
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_parameter, *platformParams[i]);
+        if (commonParams[i]->isNamedParam != specificParams[i]->isNamedParam) {
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_has_different_parameter, *specificParams[i]);
             return false;
         }
-        if (commonParams[i]->isNamedParam && platformParams[i]->isNamedParam) {
-            if (commonParams[i]->identifier.GetRawText() != platformParams[i]->identifier.GetRawText()) {
-                diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_parameter, *platformParams[i]);
+        if (commonParams[i]->isNamedParam && specificParams[i]->isNamedParam) {
+            if (commonParams[i]->identifier.GetRawText() != specificParams[i]->identifier.GetRawText()) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_has_different_parameter, *specificParams[i]);
                 return false;
             }
         }
 
-        // Check default value consistency: default values should be on either common or platform side, not both
+        // Check default value consistency: default values should be on either common or specific side, not both
         bool commonHasDefault = commonParams[i]->assignment != nullptr;
-        bool platformHasDefault = platformParams[i]->assignment != nullptr;
+        bool specificHasDefault = specificParams[i]->assignment != nullptr;
 
-        if (commonHasDefault && platformHasDefault) {
+        if (commonHasDefault && specificHasDefault) {
             diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_parameter_default_value_both_sides,
-                *platformParams[i]);
+                *specificParams[i]);
             return false;
         }
 
-        // desugar platform default value, desugarDecl export all the time, assignment only export const value
-        if (commonParams[i]->desugarDecl && !platformParams[i]->desugarDecl) {
-            platformParams[i]->assignment = ASTCloner::Clone(commonParams[i]->assignment.get());
-            platformParams[i]->desugarDecl = ASTCloner::Clone(commonParams[i]->desugarDecl.get());
-            platformParams[i]->desugarDecl->outerDecl = platformFunc.outerDecl;
-            platformParams[i]->EnableAttr(Attribute::HAS_INITIAL);
+        // desugar specific default value, desugarDecl export all the time, assignment only export const value
+        if (commonParams[i]->desugarDecl && !specificParams[i]->desugarDecl) {
+            specificParams[i]->assignment = ASTCloner::Clone(commonParams[i]->assignment.get());
+            specificParams[i]->desugarDecl = ASTCloner::Clone(commonParams[i]->desugarDecl.get());
+            specificParams[i]->desugarDecl->outerDecl = specificFunc.outerDecl;
+            specificParams[i]->EnableAttr(Attribute::HAS_INITIAL);
         }
     }
 
     // For init or primary constructor
-    if (platformFunc.TestAttr(AST::Attribute::CONSTRUCTOR) || commonFunc.TestAttr(AST::Attribute::CONSTRUCTOR)) {
-        if (!platformFunc.TestAttr(AST::Attribute::PRIMARY_CONSTRUCTOR) &&
+    if (specificFunc.TestAttr(AST::Attribute::CONSTRUCTOR) || commonFunc.TestAttr(AST::Attribute::CONSTRUCTOR)) {
+        if (!specificFunc.TestAttr(AST::Attribute::PRIMARY_CONSTRUCTOR) &&
             commonFunc.TestAttr(AST::Attribute::PRIMARY_CONSTRUCTOR)) {
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_init_common_primary_constructor, commonFunc);
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_init_common_primary_constructor, commonFunc);
             return false;
         }
-        for (size_t i = 0; i < platformParams.size(); ++i) {
-            if (commonParams[i]->isMemberParam && !platformParams[i]->isMemberParam) {
-                diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_primary_unmatched_var_decl, *platformParams[i]);
+        for (size_t i = 0; i < specificParams.size(); ++i) {
+            if (commonParams[i]->isMemberParam && !specificParams[i]->isMemberParam) {
+                diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_primary_unmatched_var_decl, *specificParams[i]);
                 return false;
             }
         }
     }
 
-    if (GenericsCount(commonFunc) != GenericsCount(platformFunc)) {
+    if (GenericsCount(commonFunc) != GenericsCount(specificFunc)) {
         diag.Diagnose(
-            platformFunc, DiagKind::sema_generic_member_type_argument_different, platformFunc.identifier.Val());
+            specificFunc, DiagKind::sema_generic_member_type_argument_different, specificFunc.identifier.Val());
         return false;
     }
 
-    CheckCommonSpecificGenericMatch(platformFunc, commonFunc);
+    CheckCommonSpecificGenericMatch(specificFunc, commonFunc);
 
-    return TrySetPlatformImpl(platformFunc, commonFunc, "function");
+    return TrySetSpecificImpl(specificFunc, commonFunc, "function");
 }
 
-bool MPTypeCheckerImpl::MatchCJMPProp(PropDecl& platformProp, PropDecl& commonProp)
+bool MPTypeCheckerImpl::MatchCJMPProp(PropDecl& specificProp, PropDecl& commonProp)
 {
-    if (!IsCJMPDeclMatchable(platformProp, commonProp)) {
+    if (!IsCJMPDeclMatchable(specificProp, commonProp)) {
         return false;
     }
-    if (!typeManager.IsTyEqual(platformProp.ty, commonProp.ty)) {
-        diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_type, platformProp, "property");
+    if (!typeManager.IsTyEqual(specificProp.ty, commonProp.ty)) {
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_has_different_type, specificProp, "property");
     }
-    bool ret = TrySetPlatformImpl(platformProp, commonProp, "property " + platformProp.identifier);
-    if (ret && !platformProp.getters.empty() && !commonProp.getters.empty()) {
-        ret &= TrySetPlatformImpl(*platformProp.getters[0], *commonProp.getters[0],
-            "property getter " + platformProp.identifier);
+    bool ret = TrySetSpecificImpl(specificProp, commonProp, "property " + specificProp.identifier);
+    if (ret && !specificProp.getters.empty() && !commonProp.getters.empty()) {
+        ret &= TrySetSpecificImpl(*specificProp.getters[0], *commonProp.getters[0],
+            "property getter " + specificProp.identifier);
     }
-    if (ret && !platformProp.setters.empty() && !commonProp.setters.empty()) {
-        ret &= TrySetPlatformImpl(*platformProp.setters[0], *commonProp.setters[0],
-            "property setter " + platformProp.identifier);
+    if (ret && !specificProp.setters.empty() && !commonProp.setters.empty()) {
+        ret &= TrySetSpecificImpl(*specificProp.setters[0], *commonProp.setters[0],
+            "property setter " + specificProp.identifier);
     }
 
     return ret;
 }
 
-bool MPTypeCheckerImpl::MatchEnumFuncTypes(const FuncDecl& platform, const FuncDecl& common)
+bool MPTypeCheckerImpl::MatchEnumFuncTypes(const FuncDecl& specific, const FuncDecl& common)
 {
-    if (typeManager.IsFuncDeclEqualType(platform, common)) {
+    if (typeManager.IsFuncDeclEqualType(specific, common)) {
         // if types are equal
         return true;
     }
 
     TypeSubst genericTyMap;
-    MapCJMPGenericTypeArgs(genericTyMap, *common.outerDecl, *platform.outerDecl);
+    MapCJMPGenericTypeArgs(genericTyMap, *common.outerDecl, *specific.outerDecl);
     if (genericTyMap.empty()) {
         return false;
     }
 
     auto mappedCommonType = typeManager.GetInstantiatedTy(common.ty, genericTyMap);
-    return typeManager.IsTyEqual(mappedCommonType, platform.ty);
+    return typeManager.IsTyEqual(mappedCommonType, specific.ty);
 }
 
-bool MPTypeCheckerImpl::MatchCJMPEnumConstructor(Decl& platformDecl, Decl& commonDecl)
+bool MPTypeCheckerImpl::MatchCJMPEnumConstructor(Decl& specificDecl, Decl& commonDecl)
 {
-    if (!IsCJMPDeclMatchable(platformDecl, commonDecl)) {
+    if (!IsCJMPDeclMatchable(specificDecl, commonDecl)) {
         return false;
     }
 
     // identifiers are already checked
-    if (platformDecl.astKind == ASTKind::FUNC_DECL) { // enum constructrs with values
-        auto& platformFunc = StaticCast<FuncDecl>(platformDecl);
+    if (specificDecl.astKind == ASTKind::FUNC_DECL) { // enum constructrs with values
+        auto& specificFunc = StaticCast<FuncDecl>(specificDecl);
         auto& commonFunc = StaticCast<FuncDecl>(commonDecl);
-        if (!MatchEnumFuncTypes(platformFunc, commonFunc)) {
+        if (!MatchEnumFuncTypes(specificFunc, commonFunc)) {
             return false;
         }
     }
 
-    auto enumName = platformDecl.outerDecl->identifier.GetRawText();
-    return TrySetPlatformImpl(platformDecl, commonDecl, "enum '" + enumName + "' constructor");
+    auto enumName = specificDecl.outerDecl->identifier.GetRawText();
+    return TrySetSpecificImpl(specificDecl, commonDecl, "enum '" + enumName + "' constructor");
 }
 
-bool MPTypeCheckerImpl::MatchCJMPVar(VarDecl& platformVar, VarDecl& commonVar)
+bool MPTypeCheckerImpl::MatchCJMPVar(VarDecl& specificVar, VarDecl& commonVar)
 {
-    if (!IsCJMPDeclMatchable(platformVar, commonVar)) {
+    if (!IsCJMPDeclMatchable(specificVar, commonVar)) {
         return false;
     }
     auto cType = commonVar.ty;
-    if (platformVar.IsMemberDecl()) {
+    if (specificVar.IsMemberDecl()) {
         TypeSubst genericTyMapForNominals;
-        MapCJMPGenericTypeArgs(genericTyMapForNominals, *commonVar.outerDecl, *platformVar.outerDecl);
+        MapCJMPGenericTypeArgs(genericTyMapForNominals, *commonVar.outerDecl, *specificVar.outerDecl);
         if (!genericTyMapForNominals.empty()) {
             cType = typeManager.GetInstantiatedTy(cType, genericTyMapForNominals);
         }
     }
-    auto pType = platformVar.ty;
+    auto pType = specificVar.ty;
     if (!typeManager.IsTyEqual(cType, pType) && !Ty::IsInitialTy(pType)) {
-        // if the platform type is initial then the check will be restarted after the type get resolved
+        // if the specific type is initial then the check will be restarted after the type get resolved
         // so we can suppress the check for now
-        auto platformKind = platformVar.isVar ? "var" : "let";
-        diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_has_different_type, platformVar, platformKind);
+        auto specificKind = specificVar.isVar ? "var" : "let";
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_has_different_type, specificVar, specificKind);
     }
-    if (platformVar.isVar != commonVar.isVar) {
-        auto platformKind = platformVar.isVar ? "var" : "let";
+    if (specificVar.isVar != commonVar.isVar) {
+        auto specificKind = specificVar.isVar ? "var" : "let";
         auto commonKind = commonVar.isVar ? "var" : "let";
-        diag.DiagnoseRefactor(DiagKindRefactor::sema_platform_var_not_match_let, platformVar, platformKind, commonKind);
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_specific_var_not_match_let, specificVar, specificKind, commonKind);
     }
-    if (platformVar.IsStaticOrGlobal()) {
-        commonVar.platformImplementation = &platformVar;
+    if (specificVar.IsStaticOrGlobal()) {
+        commonVar.specificImplementation = &specificVar;
         commonVar.doNotExport = true;
-    } else if (commonVar.TestAttr(Attribute::STATIC) == platformVar.TestAttr(Attribute::STATIC)) {
+    } else if (commonVar.TestAttr(Attribute::STATIC) == specificVar.TestAttr(Attribute::STATIC)) {
         // Instance variables must already be matched unless we have modifiers mismatch
         // that will be reported later
-        CJC_ASSERT(commonVar.platformImplementation == &platformVar);
+        CJC_ASSERT(commonVar.specificImplementation == &specificVar);
     } else {
         // we assign it even despite the mismatch
         // and let the generic validation report it later
-        commonVar.platformImplementation = &platformVar;
+        commonVar.specificImplementation = &specificVar;
     }
     return true;
 }
 
 bool MPTypeCheckerImpl::TryMatchVarWithPatternWithVarDecls(
-    AST::VarWithPatternDecl& platformDecl, const std::vector<Ptr<AST::Decl>>& commonDecls)
+    AST::VarWithPatternDecl& specificDecl, const std::vector<Ptr<AST::Decl>>& commonDecls)
 {
-    if (platformDecl.irrefutablePattern->astKind != ASTKind::TUPLE_PATTERN) {
+    if (specificDecl.irrefutablePattern->astKind != ASTKind::TUPLE_PATTERN) {
         return false;
     }
-    auto platformTuplePattern = StaticCast<TuplePattern>(platformDecl.irrefutablePattern.get());
+    auto specificTuplePattern = StaticCast<TuplePattern>(specificDecl.irrefutablePattern.get());
 
     bool matchedAll = true;
-    for (auto& pattern : platformTuplePattern->patterns) {
+    for (auto& pattern : specificTuplePattern->patterns) {
         if (pattern->astKind != ASTKind::VAR_PATTERN) {
             matchedAll = false;
             break;
         }
 
         auto patternDecl = StaticCast<VarPattern>(pattern.get());
-        if (!MatchPlatformDeclWithCommonDecls(*patternDecl->varDecl, commonDecls)) {
+        if (!MatchSpecificDeclWithCommonDecls(*patternDecl->varDecl, commonDecls)) {
             matchedAll = false;
         }
     }
@@ -1090,12 +1090,12 @@ bool MPTypeCheckerImpl::TryMatchVarWithPatternWithVarDecls(
 }
 
 // this is never invoked for nominal decls
-bool MPTypeCheckerImpl::MatchPlatformDeclWithCommonDecls(
-    AST::Decl& platformDecl, const std::vector<Ptr<AST::Decl>>& commonDecls)
+bool MPTypeCheckerImpl::MatchSpecificDeclWithCommonDecls(
+    AST::Decl& specificDecl, const std::vector<Ptr<AST::Decl>>& commonDecls)
 {
     bool matched = false;
-    bool isEnumConstructor = platformDecl.TestAttr(Attribute::ENUM_CONSTRUCTOR);
-    auto kind = platformDecl.astKind;
+    bool isEnumConstructor = specificDecl.TestAttr(Attribute::ENUM_CONSTRUCTOR);
+    auto kind = specificDecl.astKind;
     for (auto& commonDecl : commonDecls) {
         if (matched) {
             break;
@@ -1104,30 +1104,30 @@ bool MPTypeCheckerImpl::MatchPlatformDeclWithCommonDecls(
             continue;
         }
         if (isEnumConstructor && commonDecl->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
-            matched = MatchCJMPEnumConstructor(platformDecl, *commonDecl) || matched;
+            matched = MatchCJMPEnumConstructor(specificDecl, *commonDecl) || matched;
         } else if (kind == ASTKind::FUNC_DECL) {
-            matched = MatchCJMPFunction(*StaticCast<FuncDecl>(&platformDecl), *StaticCast<FuncDecl>(commonDecl)) ||
+            matched = MatchCJMPFunction(*StaticCast<FuncDecl>(&specificDecl), *StaticCast<FuncDecl>(commonDecl)) ||
                 matched;
         } else if (kind == ASTKind::PROP_DECL) {
-            matched = MatchCJMPProp(*StaticCast<PropDecl>(&platformDecl), *StaticCast<PropDecl>(commonDecl)) ||
+            matched = MatchCJMPProp(*StaticCast<PropDecl>(&specificDecl), *StaticCast<PropDecl>(commonDecl)) ||
                 matched;
         } else if (kind == ASTKind::VAR_DECL) {
-            matched = MatchCJMPVar(*StaticCast<VarDecl>(&platformDecl), *StaticCast<VarDecl>(commonDecl)) ||
+            matched = MatchCJMPVar(*StaticCast<VarDecl>(&specificDecl), *StaticCast<VarDecl>(commonDecl)) ||
                 matched;
         }
     }
 
     // VarWithPattern can match several decls from common part
     if (kind == ASTKind::VAR_WITH_PATTERN_DECL) {
-        matched = TryMatchVarWithPatternWithVarDecls(*StaticCast<VarWithPatternDecl>(&platformDecl), commonDecls);
+        matched = TryMatchVarWithPatternWithVarDecls(*StaticCast<VarWithPatternDecl>(&specificDecl), commonDecls);
     }
 
     // For enum constructor
     if (!matched) {
-        if (platformDecl.outerDecl && platformDecl.outerDecl->TestAttr(Attribute::COMMON_NON_EXHAUSTIVE)) {
+        if (specificDecl.outerDecl && specificDecl.outerDecl->TestAttr(Attribute::COMMON_NON_EXHAUSTIVE)) {
             return false;
         }
-        DiagNotMatchedCommonDecl(diag, platformDecl);
+        DiagNotMatchedCommonDecl(diag, specificDecl);
     }
 
     return matched;
@@ -1168,31 +1168,31 @@ void MPTypeCheckerImpl::CheckCommonExtensions(std::vector<Ptr<Decl>>& commonDecl
     }
 }
 
-void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& platformDecls)
+void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std::vector<Ptr<Decl>>& specificDecls)
 {
-    for (auto& platformDecl : platformDecls) {
-        CJC_ASSERT(platformDecl->TestAttr(Attribute::PLATFORM) && !platformDecl->TestAttr(Attribute::COMMON));
-        if (platformDecl->TestAttr(Attribute::IS_BROKEN) || platformDecl->IsNominalDecl()) {
+    for (auto& specificDecl : specificDecls) {
+        CJC_ASSERT(specificDecl->TestAttr(Attribute::SPECIFIC) && !specificDecl->TestAttr(Attribute::COMMON));
+        if (specificDecl->TestAttr(Attribute::IS_BROKEN) || specificDecl->IsNominalDecl()) {
             continue;
         }
-        MatchPlatformDeclWithCommonDecls(*platformDecl, commonDecls);
+        MatchSpecificDeclWithCommonDecls(*specificDecl, commonDecls);
     }
     std::unordered_set<Decl*> matchedIds;
-    // Report error for common decl having no matched platform decl.
+    // Report error for common decl having no matched specific decl.
     for (auto& decl : commonDecls) {
-        if (decl->IsNominalDecl() && MatchCommonNominalDeclWithPlatform(*StaticCast<InheritableDecl>(decl))) {
-            matchedIds.insert(decl->platformImplementation.get());
+        if (decl->IsNominalDecl() && MatchCommonNominalDeclWithSpecific(*StaticCast<InheritableDecl>(decl))) {
+            matchedIds.insert(decl->specificImplementation.get());
         }
-        if (!MustMatchWithPlatform(*decl)) {
+        if (!MustMatchWithSpecific(*decl)) {
             continue;
         }
         if (decl->astKind == ASTKind::VAR_DECL && !decl->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
             continue; // postpone the check
         }
-        DiagNotMatchedPlatformDecl(diag, *decl);
+        DiagNotMatchedSpecificDecl(diag, *decl);
     }
-    // Report error for platform nominal decl having no matched common decl.
-    for (auto& decl : platformDecls) {
+    // Report error for specific nominal decl having no matched common decl.
+    for (auto& decl : specificDecls) {
         if (decl->IsNominalDecl() && matchedIds.find(decl.get()) == matchedIds.end()) {
             DiagNotMatchedCommonDecl(diag, *decl);
         }
@@ -1204,69 +1204,69 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
         if (commonDecl->IsNominalDecl()) {
             continue; // this is already handled in the loop above
         }
-        auto platformDecl = commonDecl->platformImplementation;
-        if (platformDecl == nullptr) {
+        auto specificDecl = commonDecl->specificImplementation;
+        if (specificDecl == nullptr) {
             continue;
         }
             // need check Attribute::ABSTRACT for abstract class?
         std::vector<Attribute> matchedAttrs = { Attribute::STATIC, Attribute::MUT, Attribute::PRIVATE, Attribute::PUBLIC,
             Attribute::PROTECTED, Attribute::FOREIGN, Attribute::UNSAFE, Attribute::OPEN,
             Attribute::ABSTRACT};
-        MatchCJMPDeclAttrs(matchedAttrs, *commonDecl, *platformDecl);
+        MatchCJMPDeclAttrs(matchedAttrs, *commonDecl, *specificDecl);
     }
 }
 
-void MPTypeCheckerImpl::CheckAbstractClassMembers(const InheritableDecl& platformDecl)
+void MPTypeCheckerImpl::CheckAbstractClassMembers(const InheritableDecl& specificDecl)
 {
-    if (!platformDecl.TestAttr(Attribute::PLATFORM) || !platformDecl.TestAttr(Attribute::ABSTRACT)) {
+    if (!specificDecl.TestAttr(Attribute::SPECIFIC) || !specificDecl.TestAttr(Attribute::ABSTRACT)) {
         return;
     }
 
-    if (platformDecl.astKind != ASTKind::CLASS_DECL) {
+    if (specificDecl.astKind != ASTKind::CLASS_DECL) {
         return;
     }
 
-    const auto& classDecl = StaticCast<const ClassDecl&>(platformDecl);
+    const auto& classDecl = StaticCast<const ClassDecl&>(specificDecl);
 
     for (const auto& memberDecl : classDecl.GetMemberDeclPtrs()) {
         // Check if member is a function or property with abstract modifier
-        // and is NOT a platform-specific member or from common part
-        if (memberDecl->TestAttr(Attribute::ABSTRACT) && !memberDecl->TestAttr(Attribute::PLATFORM) &&
+        // and is NOT a specific-specific member or from common part
+        if (memberDecl->TestAttr(Attribute::ABSTRACT) && !memberDecl->TestAttr(Attribute::SPECIFIC) &&
             !memberDecl->TestAttr(Attribute::FROM_COMMON_PART) &&
             (memberDecl->astKind == ASTKind::FUNC_DECL || memberDecl->astKind == ASTKind::PROP_DECL)) {
 
-            // Report error: cannot add abstract members to platform abstract class
+            // Report error: cannot add abstract members to specific abstract class
             auto memberKind = memberDecl->astKind == ASTKind::FUNC_DECL ? "function" : "property";
-            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_non_platform_abstract_member_in_platform_class,
-                *memberDecl, platformDecl.identifier.Val(), memberKind);
+            diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_non_specific_abstract_member_in_specific_class,
+                *memberDecl, specificDecl.identifier.Val(), memberKind);
         }
     }
 }
 
-void MPTypeCheckerImpl::MatchPlatformWithCommon(Package& pkg)
+void MPTypeCheckerImpl::MatchSpecificWithCommon(Package& pkg)
 {
     std::vector<Ptr<Decl>> commonDecls;
-    std::vector<Ptr<Decl>> platformDecls;
-    CollectCJMPDecls(pkg, commonDecls, platformDecls);
+    std::vector<Ptr<Decl>> specificDecls;
+    CollectCJMPDecls(pkg, commonDecls, specificDecls);
     if (compileCommon) { // check common extensions
         CheckCommonExtensions(commonDecls);
-    } else if (compilePlatform) { // match common decls and platform decls
-        MatchCJMPDecls(commonDecls, platformDecls);
+    } else if (compileSpecific) { // match common decls and specific decls
+        MatchCJMPDecls(commonDecls, specificDecls);
     }
 
     for (auto common : commonDecls) {
-        auto platform = common->platformImplementation;
-        if (platform) {
-            PropagateCJMPDeclAnnotations(*common, *platform);
+        auto specific = common->specificImplementation;
+        if (specific) {
+            PropagateCJMPDeclAnnotations(*common, *specific);
         }
     }
 }
 
-// Maps type parameters between common and platform declarations.
+// Maps type parameters between common and specific declarations.
 void MPTypeCheckerImpl::MapCJMPGenericTypeArgs(
-    TypeSubst& genericTyMap, const AST::Decl& commonDecl, const AST::Decl& platformDecl)
+    TypeSubst& genericTyMap, const AST::Decl& commonDecl, const AST::Decl& specificDecl)
 {
-    if (!(commonDecl.TestAttr(Attribute::GENERIC) && platformDecl.TestAttr(Attribute::GENERIC))) {
+    if (!(commonDecl.TestAttr(Attribute::GENERIC) && specificDecl.TestAttr(Attribute::GENERIC))) {
         return;
     }
     // 1. Handle nominalDecl type parameters
@@ -1276,16 +1276,16 @@ void MPTypeCheckerImpl::MapCJMPGenericTypeArgs(
 
             if (commonType->IsGeneric()) {
                 Ptr<TyVar> commonGeneric = RawStaticCast<TyVar*>(commonType);
-                genericTyMap[commonGeneric] = platformDecl.ty->typeArgs[i];
+                genericTyMap[commonGeneric] = specificDecl.ty->typeArgs[i];
             }
         }
     }
 
-    CheckCommonSpecificGenericMatch(platformDecl, commonDecl);
-    if (GenericsCount(commonDecl) != GenericsCount(platformDecl)) {
+    CheckCommonSpecificGenericMatch(specificDecl, commonDecl);
+    if (GenericsCount(commonDecl) != GenericsCount(specificDecl)) {
         return;
     }
-    auto mapping = typeManager.GenerateGenericMappingFromGeneric(commonDecl, platformDecl);
+    auto mapping = typeManager.GenerateGenericMappingFromGeneric(commonDecl, specificDecl);
     genericTyMap.insert(mapping.begin(), mapping.end());
 }
 
@@ -1305,7 +1305,7 @@ void MPTypeCheckerImpl::UpdateGenericTyInMemberFromCommon(TypeSubst& genericTyMa
     walker.Walk();
 }
 
-void MPTypeCheckerImpl::UpdatePlatformMemberGenericTy(
+void MPTypeCheckerImpl::UpdateSpecificMemberGenericTy(
     ASTContext& ctx, const std::function<std::vector<AST::Symbol*>(ASTContext&, ASTKind)>& getSymsFunc)
 {
     // Collect all relevant symbol types
@@ -1319,16 +1319,16 @@ void MPTypeCheckerImpl::UpdatePlatformMemberGenericTy(
     auto extendSyms = getSymsFunc(ctx, ASTKind::EXTEND_DECL);
     syms.insert(syms.end(), extendSyms.begin(), extendSyms.end());
 
-    // Process common declarations and update generic types in platform members
+    // Process common declarations and update generic types in specific members
     for (auto sym : syms) {
         CJC_ASSERT(sym && sym->node);
         auto decl = StaticCast<Decl*>(sym->node);
         if (decl->TestAttr(Attribute::COMMON) && decl->TestAttr(Attribute::GENERIC)) {
-            auto platformDecl = decl->platformImplementation;
-            if (platformDecl) {
+            auto specificDecl = decl->specificImplementation;
+            if (specificDecl) {
                 TypeSubst genericTyMap;
-                MapCJMPGenericTypeArgs(genericTyMap, *decl, *platformDecl);
-                for (auto& member : platformDecl->GetMemberDecls()) {
+                MapCJMPGenericTypeArgs(genericTyMap, *decl, *specificDecl);
+                for (auto& member : specificDecl->GetMemberDecls()) {
                     if (member->TestAttr(Attribute::FROM_COMMON_PART)) {
                         auto ptr = member.get();
                         UpdateGenericTyInMemberFromCommon(genericTyMap, ptr);
@@ -1340,17 +1340,17 @@ void MPTypeCheckerImpl::UpdatePlatformMemberGenericTy(
 }
 
 
-void MPTypeCheckerImpl::GetInheritedTypesWithPlatformImpl(
-    std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasPlatformImpl, bool compilePlatform)
+void MPTypeCheckerImpl::GetInheritedTypesWithSpecificImpl(
+    std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasSpecificImpl, bool compileSpecific)
 {
-    if (!compilePlatform || hasPlatformImpl) {
+    if (!compileSpecific || hasSpecificImpl) {
         return;
     }
 
     for (auto& inhType : inheritedTypes) {
         auto decl = Ty::GetDeclOfTy(inhType->ty);
-        if (decl && decl->platformImplementation) {
-            inhType->ty = decl->platformImplementation->ty;
+        if (decl && decl->specificImplementation) {
+            inhType->ty = decl->specificImplementation->ty;
         }
     }
 }

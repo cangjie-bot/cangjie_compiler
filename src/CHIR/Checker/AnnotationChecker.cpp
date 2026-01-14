@@ -320,8 +320,8 @@ void Translator::CollectTypeAnnotation(const InheritableDecl& decl, const Custom
 {
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     // neither collect nor check annotations in compute annotations stage
-    // Since annotations must be consistent between common and platform sides,
-    // platform declarations can reuse serialized annotations directly.
+    // Since annotations must be consistent between common and specific sides,
+    // specific declarations can reuse serialized annotations directly.
     if (isComputingAnnos || cl.TestAttr(CHIR::Attribute::DESERIALIZED)) {
         return;
     }
@@ -335,10 +335,10 @@ void Translator::CollectValueAnnotation(const Decl& decl)
         return;
     }
 #endif
-    // Since annotations must be consistent between common and platform sides,
-    // platform declarations can reuse serialized annotations directly.
+    // Since annotations must be consistent between common and specific sides,
+    // specific declarations can reuse serialized annotations directly.
     if (decl.TestAttr(AST::Attribute::IMPORTED) || decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED) ||
-        decl.TestAttr(AST::Attribute::PLATFORM)) {
+        decl.TestAttr(AST::Attribute::SPECIFIC)) {
         return;
     }
     AnnotationTranslator{*this, builder, opts}.CollectAnnoInfo(decl);

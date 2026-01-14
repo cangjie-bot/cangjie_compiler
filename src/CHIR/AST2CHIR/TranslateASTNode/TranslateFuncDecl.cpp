@@ -236,7 +236,7 @@ Ptr<Value> Translator::Visit(const AST::FuncBody& funcBody)
         auto func = funcBody.funcDecl;
         if (IsInstanceConstructor(*func)) {
             CJC_NULLPTR_CHECK(func->outerDecl);
-            if (func->outerDecl->TestAnyAttr(AST::Attribute::COMMON, AST::Attribute::PLATFORM)) {
+            if (func->outerDecl->TestAnyAttr(AST::Attribute::COMMON, AST::Attribute::SPECIFIC)) {
                 ret = TranslateConstructorFunc(*func->outerDecl, funcBody);
             } else {
                 ret = TranslateConstructorFuncInline(*func->outerDecl, funcBody);

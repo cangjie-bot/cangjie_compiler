@@ -63,10 +63,10 @@ bool RequireInstantiation(const Decl& decl)
 {
     // Skip instantiations in common code compilation because:
     // 1. Common code may be incomplete at this stage
-    // 2. Platform source sets can modify the implementation
+    // 2. Specific source sets can modify the implementation
     //
-    // Also skip common declarations with platform implementations
-    if (g_outputMode == GlobalOptions::OutputMode::CHIR || decl.IsCommonMatchedWithPlatform()) {
+    // Also skip common declarations with specific implementations
+    if (g_outputMode == GlobalOptions::OutputMode::CHIR || decl.IsCommonMatchedWithSpecific()) {
         return false;
     }
     if (IsCPointerFrozenMember(decl)) {

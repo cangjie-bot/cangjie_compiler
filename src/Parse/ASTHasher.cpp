@@ -273,7 +273,7 @@ struct ASTHasherImpl {
         // attrs below are set before sema
         auto nonSemaAttr = {Attribute::ABSTRACT, Attribute::CONSTRUCTOR, Attribute::DEFAULT,
             Attribute::ENUM_CONSTRUCTOR, Attribute::INTERNAL, Attribute::FOREIGN, Attribute::COMMON,
-            Attribute::PLATFORM, Attribute::GENERIC, Attribute::GLOBAL,
+            Attribute::SPECIFIC, Attribute::GENERIC, Attribute::GLOBAL,
             Attribute::INTRINSIC, Attribute::JAVA_APP, Attribute::JAVA_MIRROR, Attribute::OBJ_C_MIRROR,
             Attribute::OBJ_C_MIRROR_SUBTYPE, Attribute::MACRO_EXPANDED_NODE, Attribute::MACRO_FUNC,
             Attribute::MUT, Attribute::NUMERIC_OVERFLOW, Attribute::OPERATOR, Attribute::PRIVATE, Attribute::PUBLIC,
@@ -1110,8 +1110,8 @@ struct ASTHasherImpl {
 // serves to create a lambda that wraps the member function with the specific type and a corresponding name with a
 // lambda that safely cast the Ptr<Node> to the member's dynamic type.
 // Note that if type Node strictly single inherits, it may be assumed that a pointer to the base class has the same
-// value as the pointer to the derived class of the same object, if the platform uses a type-independent pointer
-// representation (which most platforms satisfy). However, this behaviour is nowhere specified in the C++ standard
+// value as the pointer to the derived class of the same object, if the specific uses a type-independent pointer
+// representation (which most specifics satisfy). However, this behaviour is nowhere specified in the C++ standard
 // and not adapted here.
 #define ASTKIND(KIND, VALUE, NODE, SIZE)                                                                               \
     template <class, int v, class = void> struct HasHash##NODE : std::false_type {                                     \

@@ -304,7 +304,7 @@ void ASTLoader::ASTLoaderImpl::PreloadCommonPartOfPackage(AST::Package& pkg)
     package = PackageFormat::GetPackage(data.data());
     CJC_NULLPTR_CHECK(package);
 
-    curPackage = &pkg; // Deserialize common part AST into current platform package AST
+    curPackage = &pkg; // Deserialize common part AST into current specific package AST
 
     allTypes.resize(package->allTypes()->size(), nullptr);
     auto fileSize = package->allFiles()->size();
@@ -379,7 +379,7 @@ void ASTLoader::ASTLoaderImpl::LoadPackageDecls()
     Utils::EraseIf(
         importNonGenericSrcFuncDecls, [](auto it) { return IsInDeclWithAttribute(*it, Attribute::GENERIC); });
     curPackage->srcImportedNonGenericDecls = importNonGenericSrcFuncDecls;
-    // hasSourceImportedDecl true will trait as import package, but common part is not when compile platform
+    // hasSourceImportedDecl true will trait as import package, but common part is not when compile specific
     if (!deserializingCommon) {
         curPackage->hasSourceImportedDecl = !allLoadedExprs.empty() || curPackage->TestAttr(Attribute::TOOL_ADD);
     }
