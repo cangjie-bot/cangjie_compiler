@@ -104,7 +104,7 @@ llvm::AllocaInst* IRBuilder2::CreateEntryAlloca(llvm::Type* type, llvm::Value* a
     return allocaInst;
 }
 
-llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llvm::Twine& name)
+llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llvm::Twine& name, bool isLocalRegion)
 {
     if (!GetCGContext().GetCompileOptions().disableInstantiation || cgType.GetSize()) {
         auto allocatedType = cgType.IsCGFunction()
@@ -129,7 +129,7 @@ llvm::Instruction* IRBuilder2::CreateEntryAlloca(const CGType& cgType, const llv
     }
 
     llvm::Value* size = GetLayoutSize_32(cgType.GetOriginal());
-    auto allocaInst = CallIntrinsicAllocaGeneric({CreateTypeInfo(cgType.GetOriginal()), size});
+    auto allocaInst = CallIntrinsicAllocaGeneric({CreateTypeInfo(cgType.GetOriginal()), size}, isLocalRegion);
     allocaInst->setDebugLoc(llvm::DebugLoc());
     return allocaInst;
 }

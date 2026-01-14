@@ -1114,7 +1114,8 @@ llvm::Value* IRBuilder2::AllocateArray(const CHIR::RawArrayType& rawArrayType, l
     }
     auto elementSize = GetSize_64(*rawArrayType.GetElementType());
     bool isArrayElementGeneric = CGType::GetOrCreate(cgMod, rawArrayType.GetElementType())->IsDynamicGI();
-    auto allocFunc = isArrayElementGeneric ? GetArrayGenericElemMalloc() : GetArrayNonGenericElemMalloc();
+    auto isLocalRegion = rawArrayType.Modal().local != AST::LocalModal::NOT;
+    auto allocFunc = isArrayElementGeneric ? GetArrayGenericElemMalloc(isLocalRegion) : GetArrayNonGenericElemMalloc(isLocalRegion);
     std::vector<llvm::Value*> args = {rawArrayTI, length};
     if (!isArrayElementGeneric) {
         args.emplace_back(elementSize);
@@ -1124,18 +1125,18 @@ llvm::Value* IRBuilder2::AllocateArray(const CHIR::RawArrayType& rawArrayType, l
     return callInst;
 }
 
-llvm::Function* IRBuilder2::GetArrayNonGenericElemMalloc() const
+llvm::Function* IRBuilder2::GetArrayNonGenericElemMalloc(bool isLocalRegion) const
 {
     auto gcArrayMallocFunc =
-        llvm::Intrinsic::getDeclaration(GetLLVMModule(), static_cast<unsigned>(llvm::Intrinsic::cj_malloc_array));
+        llvm::Intrinsic::getDeclaration(GetLLVMModule(), static_cast<unsigned>(isLocalRegion ? llvm::Intrinsic::cj_malloc_local_array : llvm::Intrinsic::cj_malloc_array));
     AddRetAttr(gcArrayMallocFunc, llvm::Attribute::NoAlias);
     return gcArrayMallocFunc;
 }
 
-llvm::Function* IRBuilder2::GetArrayGenericElemMalloc() const
+llvm::Function* IRBuilder2::GetArrayGenericElemMalloc(bool isLocalRegion) const
 {
     auto gcArrayMallocFunc = llvm::Intrinsic::getDeclaration(
-        GetLLVMModule(), static_cast<unsigned>(llvm::Intrinsic::cj_malloc_array_generic));
+        GetLLVMModule(), static_cast<unsigned>(isLocalRegion ? llvm::Intrinsic::cj_malloc_local_array_generic : llvm::Intrinsic::cj_malloc_array_generic));
     AddRetAttr(gcArrayMallocFunc, llvm::Attribute::NoAlias);
     return gcArrayMallocFunc;
 }

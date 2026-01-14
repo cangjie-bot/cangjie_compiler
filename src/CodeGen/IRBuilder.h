@@ -88,7 +88,7 @@ public:
 
     llvm::AllocaInst* CreateEntryAlloca(
         llvm::Type* type, llvm::Value* arraySize = nullptr, const llvm::Twine& name = "");
-    llvm::Instruction* CreateEntryAlloca(const CGType& cgType, const llvm::Twine& name = "");
+    llvm::Instruction* CreateEntryAlloca(const CGType& cgType, const llvm::Twine& name = "", bool isLocalRegion = false);
 
     llvm::Value* CreateLoad(llvm::Type* elementType, llvm::Value* addr, const llvm::Twine& name = "");
 
@@ -382,8 +382,8 @@ public:
     llvm::Value* ReleaseRawData(const CHIRIntrinsicWrapper& intrinsic);
     ///*----------------- Class related --------------------//
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-    llvm::Value* CallClassIntrinsicAlloc(const CHIR::Type& type);
-    llvm::Instruction* CallClassIntrinsicAlloc(const std::vector<llvm::Value*>& parameters);
+    llvm::Value* CallClassIntrinsicAlloc(const CHIR::Type& type, bool isLocalRegion = false);
+    llvm::Instruction* CallClassIntrinsicAlloc(const std::vector<llvm::Value*>& parameters, bool isLocalRegion = false);
 #endif
     llvm::Value* CallClassIntrinsicInstanceOf(llvm::Value* instance, const CHIR::Type* targetTy);
     llvm::Value* CallArrayIntrinsicAllocWithConstantContent(llvm::Value* array, const std::vector<CGValue*>& args,
@@ -391,8 +391,8 @@ public:
     llvm::Value* CreateEnumGEP(const CHIR::Field& field);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     llvm::Value* AllocateArray(const CHIR::RawArrayType& rawArrayType, llvm::Value* length);
-    llvm::Function* GetArrayNonGenericElemMalloc() const;
-    llvm::Function* GetArrayGenericElemMalloc() const;
+    llvm::Function* GetArrayNonGenericElemMalloc(bool isLocalRegion = false) const;
+    llvm::Function* GetArrayGenericElemMalloc(bool isLocalRegion = false) const;
     llvm::Value* InitArrayFilledWithConstant(llvm::Value* array, const CHIR::RawArrayType& arrTy,
         const std::vector<llvm::Constant*>& arrayConstantElems, const std::string& serialized);
     void CreateCopyTo(ArrayCopyToInfo arrayCopyToInfo);
@@ -430,7 +430,7 @@ public:
     llvm::Instruction* CallIntrinsicIsSubtype(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallIntrinsicIsTupleTypeOf(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallIntrinsicIsTypeEqualTo(const std::vector<llvm::Value*>& parameters);
-    llvm::Instruction* CallIntrinsicAllocaGeneric(const std::vector<llvm::Value*>& parameters);
+    llvm::Instruction* CallIntrinsicAllocaGeneric(const std::vector<llvm::Value*>& parameters, bool isLocalRegion = false);
     llvm::Instruction* CallIntrinsicGCWriteGeneric(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallGCWriteGenericPayload(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallGCReadGeneric(const std::vector<llvm::Value*>& parameters);

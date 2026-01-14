@@ -23,9 +23,11 @@ using namespace CodeGen;
 llvm::Value* CodeGen::GenerateAllocate(IRBuilder2& irBuilder, const CHIRAllocateWrapper& alloca)
 {
     auto allocaType = alloca.GetType();
+    auto mode = allocaType->Modal();
+    bool isLocalRegion = mode.local != AST::LocalModal::NOT;
     if (allocaType->IsClass()) {
         auto classType = StaticCast<CHIR::ClassType*>(allocaType);
-        auto ret = irBuilder.CallClassIntrinsicAlloc(*classType);
+        auto ret = irBuilder.CallClassIntrinsicAlloc(*classType, isLocalRegion);
         if (classType->IsAutoEnv()) {
             CJC_ASSERT(!classType->IsAutoEnvBase());
             auto payload = irBuilder.GetPayloadFromObject(ret);
@@ -42,6 +44,6 @@ llvm::Value* CodeGen::GenerateAllocate(IRBuilder2& irBuilder, const CHIRAllocate
     } else {
         CJC_ASSERT(!allocaType->IsThis() && "CHIR should not try to allocate memory for `ThisType`.");
         auto cgType = CGType::GetOrCreate(irBuilder.GetCGModule(), allocaType);
-        return irBuilder.CreateEntryAlloca(*cgType);
+        return irBuilder.CreateEntryAlloca(*cgType, "", isLocalRegion);
     }
 }

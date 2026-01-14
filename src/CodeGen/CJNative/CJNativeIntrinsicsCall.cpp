@@ -683,19 +683,19 @@ llvm::Value* IRBuilder2::GenerateOverflowCheckedFunc(
 }
 
 namespace {
-llvm::Function* GetGCIntrinsicAlloc(const CGModule& cgMod)
+llvm::Function* GetGCIntrinsicAlloc(const CGModule& cgMod, bool isLocalRegion = false)
 {
     auto module = cgMod.GetLLVMModule();
-    auto function = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::cj_malloc_object);
+    auto function = llvm::Intrinsic::getDeclaration(module, isLocalRegion ? llvm::Intrinsic::cj_malloc_local_object : llvm::Intrinsic::cj_malloc_object);
     function->addAttributeAtIndex(static_cast<llvm::Intrinsic::ID>(llvm::AttributeList::ReturnIndex),
         llvm::Attribute::get(function->getContext(), llvm::Attribute::NoAlias));
     return function;
 }
 } // namespace
 
-llvm::Value* IRBuilder2::CallClassIntrinsicAlloc(const CHIR::Type& type)
+llvm::Value* IRBuilder2::CallClassIntrinsicAlloc(const CHIR::Type& type, bool isLocalRegion)
 {
-    auto value = CallClassIntrinsicAlloc({CreateTypeInfo(type), GetLayoutSize_32(type)});
+    auto value = CallClassIntrinsicAlloc({CreateTypeInfo(type), GetLayoutSize_32(type)}, isLocalRegion);
     auto& llvmCtx = getContext();
     if (type.IsClass()) {
         CJC_ASSERT(!type.IsAutoEnvBase() && "Should not reach here, please check CHIR.");
@@ -719,10 +719,10 @@ llvm::Value* IRBuilder2::CallClassIntrinsicAlloc(const CHIR::Type& type)
 }
 
 // parameters = {TypeInfo* ti, i32 size}
-llvm::Instruction* IRBuilder2::CallClassIntrinsicAlloc(const std::vector<llvm::Value*>& parameters)
+llvm::Instruction* IRBuilder2::CallClassIntrinsicAlloc(const std::vector<llvm::Value*>& parameters, bool isLocalRegion)
 {
     CJC_ASSERT(parameters.size() == 2U);
-    auto allocFunc = GetGCIntrinsicAlloc(cgMod);
+    auto allocFunc = GetGCIntrinsicAlloc(cgMod, isLocalRegion);
     auto fixedParams = {CreateBitCast(parameters[0], getInt8PtrTy()), parameters[1]};
     auto callInst = CreateCallOrInvoke(allocFunc, fixedParams);
     callInst->addAttributeAtIndex(
@@ -1233,12 +1233,12 @@ llvm::Instruction* IRBuilder2::CallIntrinsicIsTypeEqualTo(const std::vector<llvm
 }
 
 // parameters = {TypeInfo* ti, i32 size}
-llvm::Instruction* IRBuilder2::CallIntrinsicAllocaGeneric(const std::vector<llvm::Value*>& parameters)
+llvm::Instruction* IRBuilder2::CallIntrinsicAllocaGeneric(const std::vector<llvm::Value*>& parameters, bool isLocalRegion)
 {
     auto curLoc = getCurrentDebugLocation();
     SetCurrentDebugLocation(llvm::DebugLoc());
     CJC_ASSERT(parameters.size() == 2U);
-    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), llvm::Intrinsic::cj_alloca_generic);
+    llvm::Function* func = llvm::Intrinsic::getDeclaration(cgMod.GetLLVMModule(), isLocalRegion ? llvm::Intrinsic::cj_alloca_local_generic : llvm::Intrinsic::cj_alloca_generic);
     auto fixedParams = {CreateBitCast(parameters[0], getInt8PtrTy()), parameters[1]};
     auto inst = CreateCallOrInvoke(func, fixedParams);
     SetCurrentDebugLocation(curLoc);

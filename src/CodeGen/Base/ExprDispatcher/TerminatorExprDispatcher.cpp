@@ -90,7 +90,7 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
         case CHIR::ExprKind::ENTER_EXCLAVE: {
             auto& exclave = StaticCast<CHIR::EnterExclave>(chirExpr);
             auto succ = exclave.GetDestination();
-            // TODO: implement enter exclave, treat it as a goto
+            irBuilder.CallIntrinsicFunction(llvm::Type::getVoidTy(irBuilder.GetLLVMContext()), "MCC_StartLocalRegion", {});
             return irBuilder.CreateBr(cgMod.GetMappedBB(succ));
         }
         case CHIR::ExprKind::EXIT: {
