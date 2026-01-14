@@ -25,7 +25,7 @@ inline std::map<Cangjie::AST::Attribute, Attribute> g_attrMap = {
     {Cangjie::AST::Attribute::IMPLICIT_ADD, Attribute::NO_DEBUG_INFO},
     {Cangjie::AST::Attribute::GENERIC, Attribute::GENERIC}, {Cangjie::AST::Attribute::IMPORTED, Attribute::IMPORTED},
     {Cangjie::AST::Attribute::NO_REFLECT_INFO, Attribute::NO_REFLECT_INFO},
-    {Cangjie::AST::Attribute::COMMON, Attribute::COMMON}, {Cangjie::AST::Attribute::PLATFORM, Attribute::PLATFORM},
+    {Cangjie::AST::Attribute::COMMON, Attribute::COMMON}, {Cangjie::AST::Attribute::SPECIFIC, Attribute::SPECIFIC},
     {Cangjie::AST::Attribute::JAVA_MIRROR, Attribute::JAVA_MIRROR},
     {Cangjie::AST::Attribute::OBJ_C_MIRROR, Attribute::OBJ_C_MIRROR},
     {Cangjie::AST::Attribute::HAS_INITED_FIELD, Attribute::HAS_INITED_FIELD},

@@ -37,16 +37,16 @@ const TokenKind ACCESS_PUBLIC[] = {TokenKind::PRIVATE, TokenKind::INTERNAL, Toke
 const TokenKind ACCESS_PRIVATE[] = {TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED};
 const TokenKind ACCESS_INTERNAL[] = {TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::PROTECTED};
 const TokenKind ACCESS_PROTECTED[] = {TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL};
-const TokenKind COMMON_PLATFORM[] = {TokenKind::PLATFORM};
-const TokenKind PLATFORM_COMMON[] = {TokenKind::COMMON};
+const TokenKind COMMON_SPECIFIC[] = {TokenKind::SPECIFIC};
+const TokenKind SPECIFIC_COMMON[] = {TokenKind::COMMON};
 const TokenKind OVERRIDE_STATIC_REDEF[] = {TokenKind::STATIC, TokenKind::REDEF};
 const TokenKind MUT_STATIC[] = {TokenKind::STATIC};
 const TokenKind OPERATOR_STATIC[] = {TokenKind::STATIC};
 const TokenKind OPEN_STATIC_REDEF[] = {TokenKind::STATIC, TokenKind::REDEF};
 const TokenKind REDEF_OVERRIDE_OPEN_OPERATOR[] = {TokenKind::OVERRIDE, TokenKind::OPEN, TokenKind::OPERATOR};
-const TokenKind CONST_COMMON_PLATFORM[] = {TokenKind::COMMON, TokenKind::PLATFORM};
-const TokenKind COMMON_CONST_PLATFORM[] = {TokenKind::CONST, TokenKind::PLATFORM};
-const TokenKind PLATFORM_CONST_COMMON[] = {TokenKind::CONST, TokenKind::COMMON};
+const TokenKind CONST_COMMON_SPECIFIC[] = {TokenKind::COMMON, TokenKind::SPECIFIC};
+const TokenKind COMMON_CONST_SPECIFIC[] = {TokenKind::CONST, TokenKind::SPECIFIC};
+const TokenKind SPECIFIC_CONST_COMMON[] = {TokenKind::CONST, TokenKind::COMMON};
 const TokenKind STATIC_OVERRIDE[] = {TokenKind::OVERRIDE};
 const TokenKind OVERRIDE_STATIC_REDEF2[] = {TokenKind::STATIC, TokenKind::REDEF};
 const TokenKind REDEF_OVERRIDE[] = {TokenKind::OVERRIDE};
@@ -71,76 +71,76 @@ const ConflictRule TOPLEVEL_COMMON_MODIFIERS[] = {
 const ConflictRule TOPLEVEL_ENUM_MODIFIERS[] = {
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::COMMON,
-        TokenKind::PLATFORM),
+        TokenKind::SPECIFIC),
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
-    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::PRIVATE, TokenKind::COMMON),
+    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::PRIVATE, TokenKind::COMMON),
 };
 
 const ConflictRule CLASS_BODY_VARIABLE_MODIFIERS[] = {
-    CR_ARR(TokenKind::CONST, CONST_COMMON_PLATFORM),
+    CR_ARR(TokenKind::CONST, CONST_COMMON_SPECIFIC),
     CR_EMPTY(TokenKind::STATIC),
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR_ARR(TokenKind::PRIVATE, ACCESS_PRIVATE),
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule TOPLEVEL_STRUCT_MODIFIERS[] = {
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::COMMON,
-        TokenKind::PLATFORM),
+        TokenKind::SPECIFIC),
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
-    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::PRIVATE, TokenKind::COMMON),
+    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::PRIVATE, TokenKind::COMMON),
 };
 
 const ConflictRule TOPLEVEL_CLASS_MODIFIERS[] = {
     CR(TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::FOREIGN),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::SEALED,
-        TokenKind::COMMON, TokenKind::PLATFORM),
+        TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::INTERNAL, TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::PROTECTED, TokenKind::SEALED),
     CR(TokenKind::PROTECTED, TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::SEALED),
     CR_EMPTY(TokenKind::ABSTRACT),
     CR(TokenKind::SEALED, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED),
     CR_EMPTY(TokenKind::OPEN),
     CR(TokenKind::FOREIGN, TokenKind::PUBLIC),
-    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::PRIVATE, TokenKind::COMMON),
+    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::PRIVATE, TokenKind::COMMON),
 };
 
 const ConflictRule TOPLEVEL_INTERFACE_MODIFIERS[] = {
     CR(TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::FOREIGN),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::SEALED,
-        TokenKind::COMMON, TokenKind::PLATFORM),
+        TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::INTERNAL, TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::PROTECTED, TokenKind::SEALED),
     CR(TokenKind::PROTECTED, TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::SEALED),
     CR(TokenKind::SEALED, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED),
     CR_EMPTY(TokenKind::OPEN),
     CR(TokenKind::FOREIGN, TokenKind::PUBLIC),
-    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::PRIVATE, TokenKind::COMMON),
+    CR(TokenKind::COMMON, TokenKind::PRIVATE, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::PRIVATE, TokenKind::COMMON),
 };
 
 const ConflictRule TOPLEVEL_VARIABLE_MODIFIERS[] = {
-    CR(TokenKind::CONST, TokenKind::FOREIGN, TokenKind::COMMON, TokenKind::PLATFORM),
+    CR(TokenKind::CONST, TokenKind::FOREIGN, TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::FOREIGN),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::COMMON,
-        TokenKind::PLATFORM),
+        TokenKind::SPECIFIC),
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
     CR(TokenKind::FOREIGN, TokenKind::CONST, TokenKind::PUBLIC, TokenKind::UNSAFE, TokenKind::COMMON,
-        TokenKind::PLATFORM),
-    CR(TokenKind::COMMON, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::COMMON),
+        TokenKind::SPECIFIC),
+    CR(TokenKind::COMMON, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::COMMON),
 };
 
 const ConflictRule TOPLEVEL_FUNCDECL_MODIFIERS[] = {
-    CR(TokenKind::CONST, TokenKind::FOREIGN, TokenKind::COMMON, TokenKind::PLATFORM),
+    CR(TokenKind::CONST, TokenKind::FOREIGN, TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::FOREIGN),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::FOREIGN,
         TokenKind::COMMON),
@@ -149,8 +149,8 @@ const ConflictRule TOPLEVEL_FUNCDECL_MODIFIERS[] = {
     CR(TokenKind::FOREIGN, TokenKind::CONST, TokenKind::PUBLIC, TokenKind::PRIVATE, TokenKind::INTERNAL,
         TokenKind::PROTECTED, TokenKind::UNSAFE, TokenKind::COMMON),
     CR(TokenKind::UNSAFE, TokenKind::FOREIGN),
-    CR(TokenKind::COMMON, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::PLATFORM),
-    CR(TokenKind::PLATFORM, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::COMMON),
+    CR(TokenKind::COMMON, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::FOREIGN, TokenKind::SPECIFIC),
+    CR(TokenKind::SPECIFIC, TokenKind::CONST, TokenKind::PRIVATE, TokenKind::COMMON),
 };
 
 const ConflictRule TOPLEVEL_MACRODECL_MODIFIERS[] = {
@@ -165,7 +165,7 @@ const ConflictRule TOPLEVEL_MAINDECL_MODIFIERS[] = {
 };
 
 const ConflictRule CLASS_BODY_FUNCDECL_MODIFIERS[] = {
-    CR(TokenKind::CONST, TokenKind::OPEN, TokenKind::COMMON, TokenKind::PLATFORM),
+    CR(TokenKind::CONST, TokenKind::OPEN, TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::STATIC, TokenKind::OVERRIDE, TokenKind::OPEN, TokenKind::OPERATOR),
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR(TokenKind::PRIVATE, TokenKind::PUBLIC, TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::OPEN),
@@ -177,12 +177,12 @@ const ConflictRule CLASS_BODY_FUNCDECL_MODIFIERS[] = {
     CR(TokenKind::OPEN, TokenKind::CONST, TokenKind::STATIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::REDEF),
     CR_EMPTY(TokenKind::UNSAFE),
     CR_ARR(TokenKind::OPERATOR, OVERRIDE_STATIC_REDEF),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule INTERFACE_BODY_FUNCDECL_MODIFIERS[] = {
-    CR_ARR(TokenKind::CONST, CONST_COMMON_PLATFORM),
+    CR_ARR(TokenKind::CONST, CONST_COMMON_SPECIFIC),
     CR(TokenKind::STATIC, TokenKind::OVERRIDE, TokenKind::OPEN, TokenKind::MUT, TokenKind::OPERATOR),
     CR_EMPTY(TokenKind::PUBLIC),
     CR_ARR(TokenKind::OVERRIDE, OVERRIDE_STATIC_REDEF),
@@ -191,12 +191,12 @@ const ConflictRule INTERFACE_BODY_FUNCDECL_MODIFIERS[] = {
     CR_ARR(TokenKind::MUT, MUT_STATIC),
     CR_EMPTY(TokenKind::UNSAFE),
     CR_ARR(TokenKind::OPERATOR, OPERATOR_STATIC),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule STRUCT_BODY_FUNCDECL_MODIFIERS[] = {
-    CR(TokenKind::CONST, TokenKind::MUT, TokenKind::COMMON, TokenKind::PLATFORM),
+    CR(TokenKind::CONST, TokenKind::MUT, TokenKind::COMMON, TokenKind::SPECIFIC),
     CR(TokenKind::STATIC, TokenKind::MUT, TokenKind::OPERATOR),
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR_ARR(TokenKind::PRIVATE, ACCESS_PRIVATE),
@@ -207,12 +207,12 @@ const ConflictRule STRUCT_BODY_FUNCDECL_MODIFIERS[] = {
     CR(TokenKind::MUT, TokenKind::CONST, TokenKind::STATIC),
     CR_EMPTY(TokenKind::UNSAFE),
     CR_ARR(TokenKind::OPERATOR, OPERATOR_STATIC),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule ENUM_BODY_FUNCDECL_MODIFIERS[] = {
-    CR_ARR(TokenKind::CONST, CONST_COMMON_PLATFORM),
+    CR_ARR(TokenKind::CONST, CONST_COMMON_SPECIFIC),
     CR(TokenKind::STATIC, TokenKind::OPERATOR),
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR_ARR(TokenKind::PRIVATE, ACCESS_PRIVATE),
@@ -222,8 +222,8 @@ const ConflictRule ENUM_BODY_FUNCDECL_MODIFIERS[] = {
     CR(TokenKind::REDEF, TokenKind::OVERRIDE, TokenKind::OPERATOR),
     CR_EMPTY(TokenKind::UNSAFE),
     CR(TokenKind::OPERATOR, TokenKind::STATIC),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule FUNC_BODY_FUNCDECL_MODIFIERS[] = {
@@ -232,14 +232,14 @@ const ConflictRule FUNC_BODY_FUNCDECL_MODIFIERS[] = {
 };
 
 const ConflictRule STRUCT_BODY_VARIABLE_MODIFIERS[] = {
-    CR_ARR(TokenKind::CONST, CONST_COMMON_PLATFORM),
+    CR_ARR(TokenKind::CONST, CONST_COMMON_SPECIFIC),
     CR_EMPTY(TokenKind::STATIC),
     CR_ARR(TokenKind::PUBLIC, ACCESS_PUBLIC),
     CR_ARR(TokenKind::PRIVATE, ACCESS_PRIVATE),
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
-    CR_ARR(TokenKind::COMMON, COMMON_CONST_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_CONST_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_CONST_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_CONST_COMMON),
 };
 
 const ConflictRule EXTEND_BODY_FUNCDECL_MODIFIERS[] = {
@@ -252,8 +252,8 @@ const ConflictRule EXTEND_BODY_FUNCDECL_MODIFIERS[] = {
     CR_ARR(TokenKind::MUT, MUT_STATIC),
     CR_EMPTY(TokenKind::UNSAFE),
     CR_ARR(TokenKind::OPERATOR, OPERATOR_STATIC),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule CLASS_BODY_PROP_MODIFIERS[] = {
@@ -267,8 +267,8 @@ const ConflictRule CLASS_BODY_PROP_MODIFIERS[] = {
     CR_EMPTY(TokenKind::ABSTRACT),
     CR(TokenKind::OPEN, TokenKind::STATIC, TokenKind::PRIVATE, TokenKind::INTERNAL, TokenKind::REDEF),
     CR_EMPTY(TokenKind::MUT),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule INTERFACE_BODY_PROP_MODIFIERS[] = {
@@ -278,8 +278,8 @@ const ConflictRule INTERFACE_BODY_PROP_MODIFIERS[] = {
     CR_ARR(TokenKind::REDEF, REDEF_OVERRIDE_OPEN),
     CR_ARR(TokenKind::OPEN, OPEN_STATIC_REDEF),
     CR_EMPTY(TokenKind::MUT),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule STRUCT_BODY_PROP_MODIFIERS[] = {
@@ -291,8 +291,8 @@ const ConflictRule STRUCT_BODY_PROP_MODIFIERS[] = {
     CR_ARR(TokenKind::OVERRIDE, OVERRIDE_STATIC_REDEF2),
     CR_ARR(TokenKind::REDEF, REDEF_OVERRIDE),
     CR_EMPTY(TokenKind::MUT),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule ENUM_BODY_PROP_MODIFIERS[] = {
@@ -303,8 +303,8 @@ const ConflictRule ENUM_BODY_PROP_MODIFIERS[] = {
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
     CR_ARR(TokenKind::OVERRIDE, OVERRIDE_STATIC_REDEF2),
     CR_ARR(TokenKind::REDEF, REDEF_OVERRIDE),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule EXTEND_BODY_PROP_MODIFIERS[] = {
@@ -314,8 +314,8 @@ const ConflictRule EXTEND_BODY_PROP_MODIFIERS[] = {
     CR_ARR(TokenKind::INTERNAL, ACCESS_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, ACCESS_PROTECTED),
     CR_EMPTY(TokenKind::MUT),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 // AGGREGATE means class and struct in Cangjie here.
@@ -339,8 +339,8 @@ const ConflictRule AGGREGATE_BODY_INIT_MODIFIERS[] = {
     CR_ARR(TokenKind::PRIVATE, AGG_PRIVATE),
     CR_ARR(TokenKind::INTERNAL, AGG_INTERNAL),
     CR_ARR(TokenKind::PROTECTED, AGG_PROTECTED),
-    CR_ARR(TokenKind::COMMON, COMMON_PLATFORM),
-    CR_ARR(TokenKind::PLATFORM, PLATFORM_COMMON),
+    CR_ARR(TokenKind::COMMON, COMMON_SPECIFIC),
+    CR_ARR(TokenKind::SPECIFIC, SPECIFIC_COMMON),
 };
 
 const ConflictRule FUNC_BODY_VARIABLE_MODIFIERS[] = {
@@ -530,8 +530,8 @@ std::optional<AST::Attribute> GetAttributeByModifier(TokenKind tokenKind)
     if (tokenKind == TokenKind::COMMON) {
         return AST::Attribute::COMMON;
     }
-    if (tokenKind == TokenKind::PLATFORM) {
-        return AST::Attribute::PLATFORM;
+    if (tokenKind == TokenKind::SPECIFIC) {
+        return AST::Attribute::SPECIFIC;
     }
     if (tokenKind == TokenKind::INOUT) {
         return std::nullopt;

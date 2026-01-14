@@ -52,7 +52,7 @@ enum class Attribute {
     UNREACHABLE,     ///< Mark a Block is unreachable.
     NO_SIDE_EFFECT,  ///< Mark a Func does't have side effect.
     COMMON,          ///< Mark whether it's common declaration.
-    PLATFORM,        ///< Mark whether it's platform declaration.
+    SPECIFIC,        ///< Mark whether it's specific declaration.
     SKIP_ANALYSIS,   ///< Mark node that is not used for analysis.
                      ///< e.g. Node can be skiped if it has no body when creating 'common part'
     DESERIALIZED,    ///< Node deserialized from .chir file
@@ -81,7 +81,7 @@ const std::unordered_map<Attribute, std::string> ATTR_TO_STRING{{Attribute::STAT
     {Attribute::NO_REFLECT_INFO, "noReflectInfo"}, {Attribute::NO_INLINE, "noInline"},
     {Attribute::NO_DEBUG_INFO, "noDebugInfo"}, {Attribute::UNREACHABLE, "unreachable"},
     {Attribute::NO_SIDE_EFFECT, "noSideEffect"}, {Attribute::FINAL, "final"},
-    {Attribute::COMMON, "common"}, {Attribute::PLATFORM, "platform"},
+    {Attribute::COMMON, "common"}, {Attribute::SPECIFIC, "specific"},
     {Attribute::SKIP_ANALYSIS, "skip_analysis"}, {Attribute::DESERIALIZED, "deserialized"},
     {Attribute::INITIALIZER, "initializer"},
     {Attribute::UNSAFE, "unsafe"}, {Attribute::JAVA_MIRROR, "javaMirror"}, {Attribute::JAVA_IMPL, "javaImpl"},

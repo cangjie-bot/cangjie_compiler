@@ -984,9 +984,9 @@ template <typename T> Ptr<T> Ty::GetDeclPtrOfTy(Ptr<const Ty> ty)
             break;
         default:;
     }
-    // Map common type to platform decl if exist.
-    if (decl && decl->platformImplementation) {
-        decl = decl->platformImplementation;
+    // Map common type to specific decl if exist.
+    if (decl && decl->specificImplementation) {
+        decl = decl->specificImplementation;
     }
     return DynamicCast<T*>(decl);
 }

@@ -599,7 +599,7 @@ bool IsVirtualMember(const Decl& decl)
 std::vector<VarDeclWithPosition> GetVarsInitializationOrderWithPositions(const Decl& parentDecl)
 {
     std::vector<VarDeclWithPosition> commonDecls;
-    std::vector<VarDeclWithPosition> platformDecls;
+    std::vector<VarDeclWithPosition> specificDecls;
 
     std::size_t idx = 0;
     for (auto& decl : parentDecl.GetMemberDecls()) {
@@ -611,46 +611,46 @@ std::vector<VarDeclWithPosition> GetVarsInitializationOrderWithPositions(const D
         if (varDecl->TestAttr(AST::Attribute::FROM_COMMON_PART)) {
             commonDecls.push_back({varDecl, idx});
         } else {
-            platformDecls.push_back({varDecl, idx});
+            specificDecls.push_back({varDecl, idx});
         }
         idx++;
     }
 
-    std::sort(platformDecls.begin(), platformDecls.end(), [](const auto& lhs, const auto& rhs) {
+    std::sort(specificDecls.begin(), specificDecls.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.decl->begin < rhs.decl->begin;
     });
 
     std::vector<VarDeclWithPosition> resultDecls;
-    auto platformDeclsIt = platformDecls.begin();
-    std::unordered_set<Ptr<const Decl>> wasPlatformVars;
+    auto specificDeclsIt = specificDecls.begin();
+    std::unordered_set<Ptr<const Decl>> wasSpecificVars;
     for (auto& [commonDecl, commonDeclOffset] : commonDecls) {
-        std::unordered_set<Ptr<const Decl>> platformVarsDeps;
+        std::unordered_set<Ptr<const Decl>> specificVarsDeps;
         for (auto& dep : commonDecl->dependencies) {
-            if (!dep->TestAttr(Attribute::PLATFORM)) {
+            if (!dep->TestAttr(Attribute::SPECIFIC)) {
                 continue;
             }
 
-            auto [_, inserted] = wasPlatformVars.emplace(dep);
+            auto [_, inserted] = wasSpecificVars.emplace(dep);
             if (inserted) {
-                platformVarsDeps.emplace(dep);
+                specificVarsDeps.emplace(dep);
             }
         }
 
-        while (!platformVarsDeps.empty()) {
-            CJC_ASSERT(platformDeclsIt != platformDecls.end());
-            auto it = platformVarsDeps.find(platformDeclsIt->decl);
-            if (it != platformVarsDeps.end()) {
-                platformVarsDeps.erase(it);
+        while (!specificVarsDeps.empty()) {
+            CJC_ASSERT(specificDeclsIt != specificDecls.end());
+            auto it = specificVarsDeps.find(specificDeclsIt->decl);
+            if (it != specificVarsDeps.end()) {
+                specificVarsDeps.erase(it);
             }
-            resultDecls.emplace_back(*platformDeclsIt);
-            platformDeclsIt++;
+            resultDecls.emplace_back(*specificDeclsIt);
+            specificDeclsIt++;
         }
 
         resultDecls.push_back({commonDecl, commonDeclOffset});
     }
 
-    for (; platformDeclsIt != platformDecls.end(); platformDeclsIt++) {
-        resultDecls.emplace_back(*platformDeclsIt);
+    for (; specificDeclsIt != specificDecls.end(); specificDeclsIt++) {
+        resultDecls.emplace_back(*specificDeclsIt);
     }
 
     return resultDecls;

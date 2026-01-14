@@ -118,9 +118,9 @@ bool Translator::IsVirtualFuncCall(
         public class C <: I2 {}
         public func goo(x: C) { x.foo() } // for now, maybe I::foo is expected
 
-        platform package cmp
+        specific package cmp
         public interface I { func foo() {} }
-        platform public interface I2 <: I { func foo() {} }
+        specific public interface I2 <: I { func foo() {} }
         public class C <: I2 {}
 
         default package
@@ -133,15 +133,15 @@ bool Translator::IsVirtualFuncCall(
         common public interface I2 <: I {}
         public class C <: I2 {}
 
-        platform package cmp
+        specific package cmp
         public interface I { func foo() {} }
-        platform public interface I2 <: I { func foo() {} }
+        specific public interface I2 <: I { func foo() {} }
         public class C <: I2 {}
 
         default package
         import cmp.*
         main() { C().foo() } // we need to call I2::foo, so we need to use `Invoke`, not `Apply` here
-                             // this package imports cjo from common package, not platform package, so we can't
+                             // this package imports cjo from common package, not specific package, so we can't
                              // decide which function is expected according to the information in current package
     */
     return FuncDeclIsOpen(funcDecl) && funcDecl.outerDecl->IsOpen() && InheritedChainHasCommon(obj);

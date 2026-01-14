@@ -985,14 +985,14 @@ Ptr<FuncDecl> Decl::GetDesugarDecl() const
     return nullptr;
 }
 
-bool Decl::IsCommonOrPlatform() const
+bool Decl::IsCommonOrSpecific() const
 {
-    return TestAttr(AST::Attribute::COMMON) || TestAttr(AST::Attribute::PLATFORM);
+    return TestAttr(AST::Attribute::COMMON) || TestAttr(AST::Attribute::SPECIFIC);
 }
 
-bool Decl::IsCommonMatchedWithPlatform() const
+bool Decl::IsCommonMatchedWithSpecific() const
 {
-    return TestAttr(AST::Attribute::COMMON) && platformImplementation;
+    return TestAttr(AST::Attribute::COMMON) && specificImplementation;
 }
 
 /**

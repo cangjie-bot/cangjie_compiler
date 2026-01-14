@@ -2307,8 +2307,8 @@ bool TypeChecker::TypeCheckerImpl::GetCallBaseCandidates(
     const ASTContext& ctx, const CallExpr& ce, Expr& expr, Ptr<Decl>& target, std::vector<Ptr<FuncDecl>>& candidates)
 {
     target = GetRealTarget(&expr, expr.GetTarget());
-    if (target->TestAttr(Attribute::COMMON) && target->platformImplementation) {
-        target = target->platformImplementation;
+    if (target->TestAttr(Attribute::COMMON) && target->specificImplementation) {
+        target = target->specificImplementation;
     }
     CJC_NULLPTR_CHECK(target);
     if (IsBuiltinTypeAlias(*target) || target->IsBuiltIn()) {
@@ -2337,7 +2337,7 @@ bool TypeChecker::TypeCheckerImpl::GetCallBaseCandidates(
         RemoveNonAnnotationCandidates(candidates);
     }
     // Add for cjmp
-    mpImpl->RemoveCommonCandidatesIfHasPlatform(candidates);
+    mpImpl->RemoveCommonCandidatesIfHasSpecific(candidates);
     auto ds = DiagSuppressor(diag);
     candidates = FilterCandidatesWithReExport(ctx, candidates, ce);
     if (expr.astKind == ASTKind::REF_EXPR && candidates.empty() && target->astKind == ASTKind::PACKAGE_DECL) {

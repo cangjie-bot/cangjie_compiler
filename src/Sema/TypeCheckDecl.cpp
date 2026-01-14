@@ -37,9 +37,9 @@ using namespace TypeCheckUtil;
 namespace {
 void InsertEnumConstructors(ASTContext& ctx, const EnumDecl& ed, bool enableMacroInLsp)
 {
-    // Skip enum constructor insertion when common enum has platform match.
-    // During platform compilation, platform constructors take priority over common ones.
-    if (ed.IsCommonMatchedWithPlatform()) {
+    // Skip enum constructor insertion when common enum has specific match.
+    // During specific compilation, specific constructors take priority over common ones.
+    if (ed.IsCommonMatchedWithSpecific()) {
         return;
     }
     for (auto& ctor : ed.constructors) {

@@ -58,9 +58,9 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
         decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED);
     classDef.Set<LinkTypeInfo>(isImportedInstantiated ? Linkage::INTERNAL : decl.linkage);
 
-    // common and platform upper bounds are same, do not set again
-    // platform instantiations require inheritance setup because common side uses templates without instantiation
-    if (!mergingPlatform || !decl.TestAttr(AST::Attribute::PLATFORM) || decl.TestAttr(AST::Attribute::IMPORTED) ||
+    // common and specific upper bounds are same, do not set again
+    // specific instantiations require inheritance setup because common side uses templates without instantiation
+    if (!mergingSpecific || !decl.TestAttr(AST::Attribute::SPECIFIC) || decl.TestAttr(AST::Attribute::IMPORTED) ||
         decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED)) {
         // set super class
         SetClassSuperClass(classDef, decl);
@@ -100,7 +100,7 @@ void Translator::AddMemberVarDecl(CustomTypeDef& def, const AST::VarDecl& decl)
 {
     // Member variables of generic instantiated classes or structs need to be regenerated because the common side
     // doesn't have instantiated versions.
-    if (decl.TestAttr(AST::Attribute::PLATFORM) && !def.TestAttr(Attribute::GENERIC_INSTANTIATED)) {
+    if (decl.TestAttr(AST::Attribute::SPECIFIC) && !def.TestAttr(Attribute::GENERIC_INSTANTIATED)) {
         return;
     }
     if (decl.TestAttr(AST::Attribute::STATIC)) {
@@ -143,7 +143,7 @@ Func* Translator::ClearOrCreateVarInitFunc(const AST::Decl& decl)
     const AST::Decl& outerDecl = decl.outerDecl == nullptr ? decl : *decl.outerDecl;
 
     if (outerDecl.TestAttr(AST::Attribute::IMPORTED) ||
-        !outerDecl.TestAnyAttr(AST::Attribute::COMMON, AST::Attribute::PLATFORM)) {
+        !outerDecl.TestAnyAttr(AST::Attribute::COMMON, AST::Attribute::SPECIFIC)) {
         return nullptr;
     }
 
@@ -265,7 +265,7 @@ Func* Translator::TranslateVarsInit(const AST::Decl& decl)
 
 bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& member) const
 {
-    if (!mergingPlatform) {
+    if (!mergingSpecific) {
         return true;
     }
 
@@ -273,7 +273,7 @@ bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& m
         return true;
     }
 
-    if (!decl.TestAttr(AST::Attribute::PLATFORM)) {
+    if (!decl.TestAttr(AST::Attribute::SPECIFIC)) {
         return true;
     }
 
@@ -283,7 +283,7 @@ bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& m
     }
 
     if (member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
-        // Skip decls from common part when compiling platform
+        // Skip decls from common part when compiling specific
         return false;
     }
 
@@ -318,27 +318,27 @@ void Translator::AddMemberMethodToCustomTypeDef(const AST::FuncDecl& decl, Custo
     CreateAnnoFactoryFuncsForFuncDecl(decl, &def);
 }
 
-inline bool Translator::IsOpenPlatformReplaceAbstractCommon(ClassDef& classDef, const AST::FuncDecl& decl) const
+inline bool Translator::IsOpenSpecificReplaceAbstractCommon(ClassDef& classDef, const AST::FuncDecl& decl) const
 {
     // Case 1: Open methods in abstract classes
     bool isAbstractClass = classDef.IsClass() && classDef.IsAbstract();
     bool isOpenInAbstractClass = decl.TestAttr(AST::Attribute::OPEN) && isAbstractClass;
     // Case 2: Static methods in interfaces
     bool isStaticAbstractInInterface = classDef.IsInterface() && decl.TestAttr(AST::Attribute::STATIC);
-    // Case 3: Platform providing concrete implementation for abstract interface method
+    // Case 3: Specific providing concrete implementation for abstract interface method
     /**
      * public common interface I {
      *      common func foo1(): Unit
      * }
      *
-     * public platform interface I {
-     *      platform func foo1(): Unit { println("foo1 of I in platform") }
+     * public specific interface I {
+     *      specific func foo1(): Unit { println("foo1 of I in specific") }
      * }
      *
      */
     bool isNonAbstractMemberInInterface = classDef.IsInterface() && !decl.TestAttr(AST::Attribute::ABSTRACT);
 
-    if (decl.TestAttr(AST::Attribute::PLATFORM) &&
+    if (decl.TestAttr(AST::Attribute::SPECIFIC) &&
         (isOpenInAbstractClass || isStaticAbstractInInterface || isStaticAbstractInInterface ||
             isNonAbstractMemberInInterface)) {
         return true;
@@ -361,8 +361,8 @@ inline void Translator::RemoveAbstractMethod(ClassDef& classDef, const AST::Func
 
 void Translator::TranslateClassLikeMemberFuncDecl(ClassDef& classDef, const AST::FuncDecl& decl)
 {
-    // Handle member function during platform merging with deserialized classes
-    if (SkipMemberFuncInPlatformMerging(classDef, decl)) {
+    // Handle member function during specific merging with deserialized classes
+    if (SkipMemberFuncInSpecificMerging(classDef, decl)) {
         return;
     }
 
@@ -381,10 +381,10 @@ void Translator::TranslateClassLikeMemberFuncDecl(ClassDef& classDef, const AST:
     }
 }
 
-bool Translator::SkipMemberFuncInPlatformMerging(ClassDef& classDef, const AST::FuncDecl& decl)
+bool Translator::SkipMemberFuncInSpecificMerging(ClassDef& classDef, const AST::FuncDecl& decl)
 {
-    // Check if we're in platform merging mode with deserialized class
-    if (!mergingPlatform || !classDef.TestAttr(CHIR::Attribute::DESERIALIZED)) {
+    // Check if we're in specific merging mode with deserialized class
+    if (!mergingSpecific || !classDef.TestAttr(CHIR::Attribute::DESERIALIZED)) {
         return false;
     }
 
@@ -400,8 +400,8 @@ bool Translator::SkipMemberFuncInPlatformMerging(ClassDef& classDef, const AST::
         }
     }
 
-    // Handle platform member function replacing abstract common method
-    if (IsOpenPlatformReplaceAbstractCommon(classDef, decl)) {
+    // Handle specific member function replacing abstract common method
+    if (IsOpenSpecificReplaceAbstractCommon(classDef, decl)) {
         RemoveAbstractMethod(classDef, decl);
     }
 

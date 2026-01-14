@@ -335,8 +335,8 @@ bool IsOverrideOrShadow(TypeManager& typeManager, const FuncDecl& src, const Fun
         }
         if (typeManager.IsFuncParameterTypesIdentical(srcParamTys, targetParamTys)) {
             bool isCrossPlatform =
-                (src.TestAttr(AST::Attribute::COMMON) && target.TestAttr(AST::Attribute::PLATFORM)) ||
-                (src.TestAttr(AST::Attribute::PLATFORM) && target.TestAttr(AST::Attribute::COMMON));
+                (src.TestAttr(AST::Attribute::COMMON) && target.TestAttr(AST::Attribute::SPECIFIC)) ||
+                (src.TestAttr(AST::Attribute::SPECIFIC) && target.TestAttr(AST::Attribute::COMMON));
             if (isCrossPlatform) {
                 continue;
             }
@@ -1287,21 +1287,21 @@ bool IsLegalAccess(Symbol* curComposite, const Decl& d, const AST::Node& node, I
     }
     // 4. otherwise accessing private decl must inside same decl.
     auto expectedOuter = outerDeclOfTarget;
-    if (expectedOuter->platformImplementation) {
-        expectedOuter = expectedOuter->platformImplementation;
+    if (expectedOuter->specificImplementation) {
+        expectedOuter = expectedOuter->specificImplementation;
     }
     return curComposite && curComposite->node == expectedOuter;
 }
 
-Ptr<Decl> FindCorrespondingCommonDecl(const Decl& platformDecl)
+Ptr<Decl> FindCorrespondingCommonDecl(const Decl& specificDecl)
 {
-    if (platformDecl.curFile == nullptr || platformDecl.curFile->curPackage == nullptr) {
+    if (specificDecl.curFile == nullptr || specificDecl.curFile->curPackage == nullptr) {
         return nullptr;
     }
 
-    for (const auto& file : platformDecl.curFile->curPackage->files) {
+    for (const auto& file : specificDecl.curFile->curPackage->files) {
         for (const auto& decl : file->decls) {
-            if (decl->platformImplementation == &platformDecl) {
+            if (decl->specificImplementation == &specificDecl) {
                 return decl;
             }
         }
