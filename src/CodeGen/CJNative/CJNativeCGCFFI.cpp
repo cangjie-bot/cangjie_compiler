@@ -967,12 +967,12 @@ void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy,
     LinuxAarch64CJNativeCGCFFI::AddFunctionAttr(chirFuncTy, llvmFunc);
     CJC_ASSERT(chirFuncTy.GetNumOfParams() == llvmFunc.arg_size());
     for (unsigned i = 0; i < llvmFunc.arg_size(); ++i) {
-        if (auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType()); intArgType) {
+        if (auto argType = chirFuncTy.GetParamType(i); argType->IsBoolean() || argType->IsInteger()) {
             AddParamAttr(&llvmFunc, i, llvm::Attribute::NoUndef);
-            if (intArgType->getBitWidth() >= 32) {
+            auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType());
+            if (!intArgType || intArgType->getBitWidth() >= BITS_PER_BYTE * 4) {
                 continue;
             }
-            auto argType = chirFuncTy.GetParamType(i);
             if (argType->IsBoolean() || argType->IsUnsignedInteger()) {
                 AddParamAttr(&llvmFunc, i, llvm::Attribute::ZExt);
             } else {  // Signed integers use sign extension.
@@ -980,9 +980,11 @@ void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy,
             }
         }
     }
-    if (auto intRetType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getReturnType());
-        intRetType && intRetType->getBitWidth() < 32) {
-        auto retType = chirFuncTy.GetReturnType();
+    if (auto retType = chirFuncTy.GetReturnType(); retType->IsBoolean() || retType->IsInteger()) {
+        auto intRetType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getReturnType());
+        if (!intRetType || intRetType->getBitWidth() >= BITS_PER_BYTE * 4) {
+            return;
+        }
         if (retType->IsBoolean() || retType->IsUnsignedInteger()) {
             AddRetAttr(&llvmFunc, llvm::Attribute::ZExt);
         } else {  // Signed integers use sign extension.
@@ -1001,10 +1003,15 @@ llvm::Type* MacAArch64CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chir
     }
     llvm::Type* base = nullptr;
     if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
-        return type;
+        ABIArgInfo info = ABIArgInfo::GetDirect(type);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     if (size < BYTES_PER_WORD) {
-        return llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        ABIArgInfo info = ABIArgInfo::GetDirect(resTy);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     return LinuxAarch64CJNativeCGCFFI::GetStructReturnType(chirTy, params);
 }
