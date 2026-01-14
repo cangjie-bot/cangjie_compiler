@@ -126,7 +126,7 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
             }
             std::string potentialPkgName = rawName.substr(CJ_PREFIX.size());
             std::replace(potentialPkgName.begin(), potentialPkgName.end(), '-', '.');
-            if (rawName == FileUtil::ConvertPackageNameToLibCangjieBaseFormat(potentialPkgName + ".cjo")){
+            if (rawName == FileUtil::ConvertPackageNameToLibCangjieBaseFormat(potentialPkgName)){
                 globalOptions.indirectBuiltinDependencies.insert(potentialPkgName+".cjo");
                 // .cjo is same as .xx
                 return true;   
