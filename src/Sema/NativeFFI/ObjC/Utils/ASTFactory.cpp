@@ -443,14 +443,14 @@ OwnedPtr<Expr> ASTFactory::WrapObjCMirrorOption(
     return WrapReturningLambdaCall(typeManager, std::move(nodes));
 }
 
-OwnedPtr<Expr> ASTFactory::CreateOptionalMethodGuard(OwnedPtr<Expr> msgSend, OwnedPtr<Expr> id, const std::string& selector,
+OwnedPtr<Expr> ASTFactory::CreateOptionalMethodGuard(OwnedPtr<Expr> msgSend, OwnedPtr<Expr> cls, const std::string& selector,
     const Ptr<File> curFile)
 {
     std::vector<OwnedPtr<Node>> nodes;
     auto baseTy = msgSend->ty;
     auto selectorCall = CreateRegisterNameCall(selector, curFile);
     auto isRespondToSelectorCall = CreateObjCRespondsToSelectorCall(
-        std::move(id),
+        std::move(cls),
         std::move(selectorCall),
         curFile
     );
@@ -1696,13 +1696,13 @@ OwnedPtr<Expr> ASTFactory::CreateObjCReleaseCall(OwnedPtr<Expr> nativeHandle)
         TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT), CallKind::CALL_DECLARED_FUNCTION);
 }
 
-OwnedPtr<Expr> ASTFactory::CreateObjCRespondsToSelectorCall(OwnedPtr<Expr> id, OwnedPtr<Expr> sel, Ptr<File> file)
+OwnedPtr<Expr> ASTFactory::CreateObjCRespondsToSelectorCall(OwnedPtr<Expr> cls, OwnedPtr<Expr> sel, Ptr<File> file)
 {
     auto responseToSelDecl = bridge.GetObjCRespondsToSelectorDecl();
     auto responseToSelExpr = CreateRefExpr(*responseToSelDecl);
 
     std::vector<OwnedPtr<FuncArg>> args;
-    args.emplace_back(CreateFuncArg(std::move(id)));
+    args.emplace_back(CreateFuncArg(std::move(cls)));
     args.emplace_back(CreateFuncArg(std::move(sel)));
     return WithinFile(CreateCallExpr(std::move(responseToSelExpr), std::move(args), responseToSelDecl,
         typeManager.GetBoolTy(), CallKind::CALL_DECLARED_FUNCTION), file);
@@ -2210,4 +2210,14 @@ OwnedPtr<CallExpr> ASTFactory::CreateObjCMsgSendSuperCall(OwnedPtr<Expr> objCSup
     // CFunc<...>(msgSendSuper)(...)
     return CreateCallExpr(
         std::move(cFuncCallExpr), std::move(msgSendSuperCallArgs), nullptr, retType->ty, CallKind::CALL_FUNCTION_PTR);
+}
+
+OwnedPtr<Expr> ASTFactory::CreateObjectGetClassCall(OwnedPtr<Expr> id, Ptr<File> curFile) {
+    auto objectGetClassDecl = bridge.GetObjectGetClassDecl();
+    auto objectGetClassExpr = CreateRefExpr(*objectGetClassDecl);
+
+    std::vector<OwnedPtr<FuncArg>> args;
+    args.emplace_back(CreateFuncArg(std::move(id)));
+    return WithinFile(CreateCallExpr(std::move(objectGetClassExpr), std::move(args), objectGetClassDecl,
+        typeManager.GetBoolTy(), CallKind::CALL_DECLARED_FUNCTION), curFile);
 }

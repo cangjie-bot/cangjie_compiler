@@ -93,7 +93,7 @@ void DesugarMirrors::HandleImpl(InteropContext& ctx)
 }
 
 void DesugarMirrors::DesugarCtor(InteropContext& ctx, ClassLikeDecl& mirror, FuncDecl& ctor)
-{ 
+{
     CJC_ASSERT(ctor.TestAttr(Attribute::CONSTRUCTOR));
     auto curFile = ctor.curFile;
     CJC_NULLPTR_CHECK(ctor.funcBody);
@@ -148,7 +148,8 @@ void DesugarMirrors::DesugarMethod(InteropContext& ctx, ClassLikeDecl& mirror, F
 
     if (method.HasAnno(AST::AnnotationKind::OBJ_C_OPTIONAL)) {
         auto selectorName = ctx.nameGenerator.GetObjCDeclName(method);
-        auto guardCall = ctx.factory.CreateOptionalMethodGuard(std::move(arpScopeCall), ASTCloner::Clone(nativeHandle.get()), selectorName, curFile);
+        auto cls = ctx.factory.CreateObjectGetClassCall(ASTCloner::Clone(nativeHandle.get()), curFile);
+        auto guardCall = ctx.factory.CreateOptionalMethodGuard(std::move(arpScopeCall), std::move(cls), selectorName, curFile);
         guardCall->curFile = curFile;
         method.funcBody->body->body.emplace_back(std::move(guardCall));
     } else {

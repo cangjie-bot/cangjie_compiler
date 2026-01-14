@@ -57,6 +57,7 @@ constexpr auto MUTEX_LOCK_IDENT = "lock";
 constexpr auto MUTEX_UNLOCK_IDENT = "unlock";
 constexpr auto INTEROPLIB_OBJC_STORE_LAMBDA_AS_BLOCK = "registerCangjieLambdaAsBlock";
 constexpr auto INTEROPLIB_OBJC_GET_LAMBDA_FROM_BLOCK = "getCangjieLambdaFromBlock";
+constexpr auto INTEROPLIB_OBJ_C_OBJECT_GET_CLASS= "objectGetClass";
 
 // objc.lang
 constexpr auto OBJ_C_FUNC_GET_FPOINTER = "unsafeGetFunctionPointer";
@@ -537,4 +538,9 @@ Ptr<FuncDecl> InteropLibBridge::GetObjCStoreLambdaAsBlockDecl()
 Ptr<FuncDecl> InteropLibBridge::GetObjCGetLambdaFromBlockDecl()
 {
     return GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJC_GET_LAMBDA_FROM_BLOCK);
+}
+
+Ptr<FuncDecl> InteropLibBridge::GetObjectGetClassDecl() {
+    static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_OBJECT_GET_CLASS);
+    return decl;
 }
