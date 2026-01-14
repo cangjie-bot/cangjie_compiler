@@ -951,7 +951,7 @@ struct Decl : Node {
     Ptr<Decl> genericDecl{nullptr};     /**< Pointer to generic declaration if it is an instantiated one. */
     Linkage linkage{Linkage::EXTERNAL}; /**< The linkage of a decl. Default: external */
     bool doNotExport{false};            /**< If the flag is true, the Decl will not be exported. */
-    Ptr<Decl> platformImplementation;
+    Ptr<Decl> specificImplementation;
     mutable std::vector<Ptr<const Decl>> dependencies; /**< Variables that the current one depends on */
 
     Decl() : Node(ASTKind::DECL)
@@ -1029,9 +1029,9 @@ struct Decl : Node {
      */
     Ptr<FuncDecl> GetDesugarDecl() const;
 
-    bool IsCommonOrPlatform() const;
+    bool IsCommonOrSpecific() const;
 
-    bool IsCommonMatchedWithPlatform() const;
+    bool IsCommonMatchedWithSpecific() const;
 
 protected:
     Decl(ASTKind kind) : Node(kind)
@@ -2889,7 +2889,7 @@ struct PackageSpec : Node {
     std::vector<Position> prefixDotPoses; /**< Dot positions in packageName. */
     Identifier packageName;               /**< Package name. */
     bool hasMacro{false};
-    bool hasPlatform{false};
+    bool hasSpecific{false};
     bool hasCommon{false};
     PackageSpec() : Node(ASTKind::PACKAGE_SPEC)
     {
@@ -2917,7 +2917,7 @@ struct File : Node {
     std::vector<OwnedPtr<Node>> originalMacroCallNodes; /**< Owner of MacroCall ASTs after macro expansion. */
     std::vector<OwnedPtr<Decl>> exportedInternalDecls;  /**< Ptr to the exported internal declarations. */
     bool isCommon{false};
-    bool isPlatform{false};
+    bool isSpecific{false};
     File() : Node(ASTKind::FILE)
     {
     }

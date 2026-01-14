@@ -48,7 +48,7 @@ public:
           opts(opts),
           gim(gim),
           increKind(kind),
-          mergingPlatform(opts.IsCompilingCJMP()),
+          mergingSpecific(opts.IsCompilingCJMP()),
           deserializedVals(deserializedVals),
           annoFactoryFuncs(annoFactories),
           maybeUnreachable(maybeUnreachable),
@@ -601,7 +601,7 @@ private:
     // Record nesting scope info, it is used for 1. debug info; 2. compare scope of try-finally and control flow expr.
     std::vector<int> scopeInfo{0};
     const IncreKind& increKind;
-    const bool mergingPlatform; // add by cjmp
+    const bool mergingSpecific; // add by cjmp
     const std::unordered_map<std::string, Value*>& deserializedVals; // add by cjmp
     std::vector<std::pair<const AST::Decl*, Func*>>& annoFactoryFuncs;
     std::unordered_map<Block*, Terminator*>& maybeUnreachable;
@@ -729,10 +729,10 @@ private:
     */
     Ptr<FuncType> CreateVirtualFuncType(const AST::FuncDecl& decl);
     void AddMemberVarDecl(CustomTypeDef& def, const AST::VarDecl& decl);
-    inline bool IsOpenPlatformReplaceAbstractCommon(ClassDef& classDef, const AST::FuncDecl& decl) const;
+    inline bool IsOpenSpecificReplaceAbstractCommon(ClassDef& classDef, const AST::FuncDecl& decl) const;
     inline void RemoveAbstractMethod(ClassDef& classDef, const AST::FuncDecl& decl) const;
     void TranslateClassLikeMemberFuncDecl(ClassDef& classDef, const AST::FuncDecl& decl);
-    bool SkipMemberFuncInPlatformMerging(ClassDef& classDef, const AST::FuncDecl& decl);
+    bool SkipMemberFuncInSpecificMerging(ClassDef& classDef, const AST::FuncDecl& decl);
     void AddMemberFunctionGenericInstantiations(
         ClassDef& classDef, const std::vector<AST::FuncDecl*>& instFuncs, const AST::FuncDecl& originalDecl);
     void AddMemberPropDecl(CustomTypeDef& def, const AST::PropDecl& decl);
@@ -742,12 +742,12 @@ private:
     // Micro refactoring for CJMP.
     void SetClassSuperClass(ClassDef& classDef, const AST::ClassLikeDecl& decl);
     void SetClassImplementedInterface(ClassDef& classDef, const AST::ClassLikeDecl& decl);
-    // Translate member var init func for common/platform decls.
-    // Return empty `xxx$varInit` func for member var of common/platform decl, otherwise return nullptr.
+    // Translate member var init func for common/specific decls.
+    // Return empty `xxx$varInit` func for member var of common/specific decl, otherwise return nullptr.
     Func* ClearOrCreateVarInitFunc(const AST::Decl& decl);
-    // Translate `xxx$varInit` func for member var of common/platform decl, otherwise return nullptr.
+    // Translate `xxx$varInit` func for member var of common/specific decl, otherwise return nullptr.
     Func* TranslateVarInit(const AST::VarDecl& varDecl);
-    // Translate `A$varInit` func for member vars of common/platform decl, otherwise return nullptr.
+    // Translate `A$varInit` func for member vars of common/specific decl, otherwise return nullptr.
     Func* TranslateVarsInit(const AST::Decl& decl);
     // Add `apply` `xxx$varInit` func of all fields into `A$varInit` func.
     void TranslateVariablesInit(const AST::Decl& parent, CHIR::Parameter& thisVar);

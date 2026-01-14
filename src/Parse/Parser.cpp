@@ -453,7 +453,7 @@ void ParserImpl::CheckClassLikePropAbstractness(AST::PropDecl& prop)
     bool isCommon = prop.TestAttr(Attribute::COMMON);
     auto outerModifiers = prop.outerDecl->modifiers;
     bool inAbstract = HasModifier(outerModifiers, TokenKind::ABSTRACT);
-    bool inCJMP = HasModifier(outerModifiers, TokenKind::PLATFORM) || HasModifier(outerModifiers, TokenKind::COMMON);
+    bool inCJMP = HasModifier(outerModifiers, TokenKind::SPECIFIC) || HasModifier(outerModifiers, TokenKind::COMMON);
     bool inAbstractCJMP = inAbstract && inCJMP;
     bool inClass = prop.outerDecl->astKind == ASTKind::CLASS_DECL;
     bool inAbstractCJMPClass = inAbstractCJMP && inClass;

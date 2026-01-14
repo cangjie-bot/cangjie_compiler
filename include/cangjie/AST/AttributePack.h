@@ -545,15 +545,15 @@ enum class Attribute {
      */
     FROM_COMMON_PART,
     /**
-     * Inform if `platform enum` matched with non-exhaustive `common enum`
+     * Inform if `specific enum` matched with non-exhaustive `common enum`
      */
     COMMON_NON_EXHAUSTIVE,
     /**
-     * Mark whether it is "platform" declaration.
+     * Mark whether it is "specific" declaration.
      * W: ASTSerialization
      * R: ASTChecker, AST2CHIR
      */
-    PLATFORM,
+    SPECIFIC,
     /**
      * Mark node that is common decl with default implementation.
      * The decl is including common func/var/prop
@@ -752,7 +752,7 @@ static const std::unordered_map<AST::Attribute, std::string> ATTR2STR{
     {AST::Attribute::COMMON, "COMMON"},
     {AST::Attribute::FROM_COMMON_PART, "FROM_COMMON_PART"},
     {AST::Attribute::COMMON_NON_EXHAUSTIVE, "COMMON_NON_EXHAUSTIVE"},
-    {AST::Attribute::PLATFORM, "PLATFORM"},
+    {AST::Attribute::SPECIFIC, "SPECIFIC"},
     {AST::Attribute::COMMON_WITH_DEFAULT, "COMMON_WITH_DEFAULT"},
     {AST::Attribute::JAVA_MIRROR, "JAVA_MIRROR"},
     {AST::Attribute::JAVA_MIRROR_SUBTYPE, "JAVA_MIRROR_SUBTYPE"},
