@@ -87,8 +87,8 @@ private:
         std::vector<Cangjie::Utils::TaskResult<std::unique_ptr<CHIR::CHIRBuilder>>> results;
         Utils::TaskQueue contextTaskQueue(threadsNum);
         for (size_t i = 0; i < funcNum; i++) {
-            results.emplace_back(contextTaskQueue.AddTask<std::unique_ptr<CHIR::CHIRBuilder>>([this, i]() {
-                auto subBuilder = std::make_unique<CHIR::CHIRBuilder>(this->builder.GetChirContext(), i);
+            results.emplace_back(contextTaskQueue.AddTask<std::unique_ptr<CHIR::CHIRBuilder>>([this]() {
+                auto subBuilder = std::make_unique<CHIR::CHIRBuilder>(this->builder.GetChirContext());
                 return subBuilder;
             }));
         }

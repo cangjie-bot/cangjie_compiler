@@ -3626,7 +3626,9 @@ void CHIRChecker::CheckField(const Field& expr, const Func& topLevelFunc)
 
 void CHIRChecker::CheckFieldByName(const FieldByName& expr, const Func& topLevelFunc)
 {
-    ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `Field`.");
+    if (optionalRules.find(Rule::FIELD_NAME_SHOULD_GONE) != optionalRules.end()) {
+        ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `Field`.");
+    }
 }
 
 void CHIRChecker::CheckApply(const Apply& expr, const Func& topLevelFunc)
@@ -3644,12 +3646,18 @@ void CHIRChecker::CheckInvoke(const Invoke& expr, const Func& topLevelFunc)
     if (!OperandNumAtLeast(1, expr, topLevelFunc)) {
         return;
     }
+    if (optionalRules.find(Rule::CHECK_VTABLE) == optionalRules.end()) {
+        return;
+    }
     CheckInvokeBase(InvokeBase(&expr), topLevelFunc);
 }
 
 void CHIRChecker::CheckInvokeStatic(const InvokeStatic& expr, const Func& topLevelFunc)
 {
     if (!OperandNumAtLeast(1, expr, topLevelFunc)) {
+        return;
+    }
+    if (optionalRules.find(Rule::CHECK_VTABLE) == optionalRules.end()) {
         return;
     }
     CheckInvokeStaticBase(InvokeStaticBase(&expr), topLevelFunc);
@@ -4191,7 +4199,9 @@ void CHIRChecker::CheckGetElementRef(const GetElementRef& expr, const Func& topL
 
 void CHIRChecker::CheckGetElementByName(const GetElementByName& expr, const Func& topLevelFunc)
 {
-    ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `GetElementRef`.");
+    if (optionalRules.find(Rule::FIELD_NAME_SHOULD_GONE) != optionalRules.end()) {
+        ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `GetElementRef`.");
+    }
 }
 
 void CHIRChecker::CheckStoreElementRef(const StoreElementRef& expr, const Func& topLevelFunc)
@@ -4248,5 +4258,7 @@ void CHIRChecker::CheckStoreElementRef(const StoreElementRef& expr, const Func& 
 
 void CHIRChecker::CheckStoreElementByName(const StoreElementByName& expr, const Func& topLevelFunc)
 {
-    ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `StoreElementRef`.");
+    if (optionalRules.find(Rule::FIELD_NAME_SHOULD_GONE) != optionalRules.end()) {
+        ErrorInExpr(topLevelFunc, expr, "you should convert this expression to `StoreElementRef`.");
+    }
 }

@@ -21,6 +21,7 @@
 #include "cangjie/CHIR/IR/Type/ExtendDef.h"
 #include "cangjie/CHIR/IR/Type/StructDef.h"
 #include "cangjie/CHIR/IR/Value/Value.h"
+#include "cangjie/CHIR/Utils/Utils.h"
 
 using namespace Cangjie::CHIR;
 
@@ -137,6 +138,11 @@ static void DivideArray(size_t len, size_t threadNum, std::vector<std::vector<si
 CHIRContext::CHIRContext(std::unordered_map<unsigned int, std::string>* fnMap, size_t threadsNum)
     : curPackage(nullptr), fileNameMap(fnMap), threadsNum(threadsNum)
 {
+    Init();
+}
+
+void CHIRContext::Init()
+{
     unitTy = GetType<UnitType>();
     boolTy = GetType<BooleanType>();
     runeTy = GetType<RuneType>();
@@ -157,8 +163,8 @@ CHIRContext::CHIRContext(std::unordered_map<unsigned int, std::string>* fnMap, s
     cstringTy = GetType<CStringType>();
     voidTy = GetType<VoidType>();
 }
- 
-CHIRContext::~CHIRContext()
+
+void CHIRContext::DeleteAll()
 {
     if (threadsNum == 1) {
         std::vector<size_t> indexs{0, allocatedValues.size(), 0, allocatedExprs.size(), 0, allocatedBlockGroups.size(),
@@ -196,6 +202,11 @@ CHIRContext::~CHIRContext()
     allocatedStructs.clear();
     allocatedClasses.clear();
     allocatedEnums.clear();
+}
+
+CHIRContext::~CHIRContext()
+{
+    DeleteAll();
 }
 
 // FileName API
@@ -261,4 +272,140 @@ Type* CHIRContext::ToSelectorType(Type::TypeKind kind) const
         default:
             return GetBoolTy();
     }
+}
+
+ClassType* CHIRContext::SearchObjectTyInPackage() const
+{
+    for (auto classDef : this->curPackage->GetImportedClasses()) {
+        if (IsCoreObject(*classDef)) {
+            return classDef->GetType();
+        }
+    }
+    for (auto classDef : this->curPackage->GetClasses()) {
+        if (IsCoreObject(*classDef)) {
+            return classDef->GetType();
+        }
+    }
+    return nullptr;
+}
+
+ClassType* CHIRContext::SearchAnyTyInPackage() const
+{
+    for (auto classDef : this->curPackage->GetImportedClasses()) {
+        if (IsCoreAny(*classDef)) {
+            return classDef->GetType();
+        }
+    }
+    for (auto classDef : this->curPackage->GetClasses()) {
+        if (IsCoreAny(*classDef)) {
+            return classDef->GetType();
+        }
+    }
+    return nullptr;
+}
+
+void CHIRContext::SwapContext(CHIRContext& other)
+{
+    auto temp1 = other.curPackage;
+    other.curPackage = curPackage;
+    curPackage = temp1;
+    auto temp2 = other.fileNameMap;
+    other.fileNameMap = fileNameMap;
+    fileNameMap = temp2;
+    auto temp3 = other.allocatedExprs;
+    other.allocatedExprs = allocatedExprs;
+    allocatedExprs = temp3;
+    auto temp4 = other.allocatedValues;
+    other.allocatedValues = allocatedValues;
+    allocatedValues = temp4;
+    auto temp5 = other.allocatedBlockGroups;
+    other.allocatedBlockGroups = allocatedBlockGroups;
+    allocatedBlockGroups = temp5;
+    auto temp6 = other.allocatedBlocks;
+    other.allocatedBlocks = allocatedBlocks;
+    allocatedBlocks = temp6;
+    auto temp7 = other.allocatedStructs;
+    other.allocatedStructs = allocatedStructs;
+    allocatedStructs = temp7;
+    auto temp8 = other.allocatedClasses;
+    other.allocatedClasses = allocatedClasses;
+    allocatedClasses = temp8;
+    auto temp9 = other.allocatedEnums;
+    other.allocatedEnums = allocatedEnums;
+    allocatedEnums = temp9;
+    auto temp10 = other.allocatedExtends;
+    other.allocatedExtends = allocatedExtends;
+    allocatedExtends = temp10;
+    auto temp11 = other.threadsNum;
+    other.threadsNum = threadsNum;
+    threadsNum = temp11;
+    auto temp12 = other.dynamicAllocatedTys;
+    other.dynamicAllocatedTys = dynamicAllocatedTys;
+    dynamicAllocatedTys = temp12;
+    auto temp13 = other.constAllocatedTys;
+    other.constAllocatedTys = constAllocatedTys;
+    constAllocatedTys = temp13;
+    auto temp14 = other.unitTy;
+    other.unitTy = unitTy;
+    unitTy = temp14;
+    auto temp15 = other.boolTy;
+    other.boolTy = boolTy;
+    boolTy = temp15;
+    auto temp16 = other.runeTy;
+    other.runeTy = runeTy;
+    runeTy = temp16;
+    auto temp17 = other.nothingTy;
+    other.nothingTy = nothingTy;
+    nothingTy = temp17;
+    auto temp18 = other.int8Ty;
+    other.int8Ty = int8Ty;
+    int8Ty = temp18;
+    auto temp19 = other.int16Ty;
+    other.int16Ty = int16Ty;
+    int16Ty = temp19;
+    auto temp20 = other.int32Ty;
+    other.int32Ty = int32Ty;
+    int32Ty = temp20;
+    auto temp21 = other.int64Ty;
+    other.int64Ty = int64Ty;
+    int64Ty = temp21;
+    auto temp22 = other.intNativeTy;
+    other.intNativeTy = intNativeTy;
+    intNativeTy = temp22;
+    auto temp23 = other.uint8Ty;
+    other.uint8Ty = uint8Ty;
+    uint8Ty = temp23;
+    auto temp24 = other.uint16Ty;
+    other.uint16Ty = uint16Ty;
+    uint16Ty = temp24;
+    auto temp25 = other.uint32Ty;
+    other.uint32Ty = uint32Ty;
+    uint32Ty = temp25;
+    auto temp26 = other.uint64Ty;
+    other.uint64Ty = uint64Ty;
+    uint64Ty = temp26;
+    auto temp27 = other.uintNativeTy;
+    other.uintNativeTy = uintNativeTy;
+    uintNativeTy = temp27;
+    auto temp28 = other.float16Ty;
+    other.float16Ty = float16Ty;
+    float16Ty = temp28;
+    auto temp29 = other.float32Ty;
+    other.float32Ty = float32Ty;
+    float32Ty = temp29;
+    auto temp30 = other.float64Ty;
+    other.float64Ty = float64Ty;
+    float64Ty = temp30;
+    auto temp31 = other.cstringTy;  
+    other.cstringTy = cstringTy;
+    cstringTy = temp31;
+    auto temp32 = other.objectTy;
+    other.objectTy = objectTy;
+    objectTy = temp32;
+    auto temp33 = other.anyTy;
+    other.anyTy = anyTy;
+    anyTy = temp33;
+    auto temp34 = other.voidTy;
+    other.voidTy = voidTy;
+    voidTy = temp34;
 }

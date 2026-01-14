@@ -69,7 +69,7 @@ struct ConstEvalResult {
     CHIR::Package* pkg;
     AnnoMap map;
     ConstEvalResult(std::unordered_map<unsigned int, std::string>& fileNameMap, size_t jobs)
-        : ctx{}, builder{ctx, jobs}, pkg{}, map{}
+        : ctx{}, builder{ctx}, pkg{}, map{}
     {
         ctx.SetFileNameMap(&fileNameMap);
         ctx.SetThreadNum(jobs);

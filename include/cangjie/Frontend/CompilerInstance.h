@@ -91,7 +91,7 @@ private:
     // used by interpreter
     std::vector<CHIR::FuncBase*> initFuncsForConstVar;
     // only for AnalysisWrapper
-    CHIR::CHIRBuilder builder{cctx, 0};
+    CHIR::CHIRBuilder builder{cctx};
     // provide the capability and results of constant analysis, used by cjlint
     CHIR::ConstAnalysisWrapper constAnalysisWrapper{builder};
 };

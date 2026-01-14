@@ -84,7 +84,7 @@ public:
 
         for (size_t i = 0; i < funcNum; i++) {
             results.emplace_back(builderTaskQueue.AddTask<std::unique_ptr<CHIR::CHIRBuilder>>(
-                [this, i]() { return std::make_unique<CHIR::CHIRBuilder>(builder.GetChirContext(), i); }));
+                [this]() { return std::make_unique<CHIR::CHIRBuilder>(builder.GetChirContext()); }));
         }
         builderTaskQueue.RunAndWaitForAllTasksCompleted();
         std::vector<std::unique_ptr<CHIR::CHIRBuilder>> builderList;
@@ -176,6 +176,18 @@ private:
     void ReplaceSrcCodeImportedValueWithSymbol();
     void Canonicalization();
     void UpdateMemberVarPath();
+    void PrepareBeforePlugin(
+        std::unordered_set<std::string>& srcCodeImportedFuncNames,
+        std::unordered_set<std::string>& srcCodeImportedVarNames,
+        std::vector<std::string>& initFuncsForConstVarNames,
+        std::unordered_set<std::string>& implicitFuncNames,
+        std::unordered_map<std::string, std::pair<std::string, std::string>>& unreachableBlockNames);
+    void UpdateAfterPlugin(
+        std::unordered_set<std::string>& srcCodeImportedFuncNames,
+        std::unordered_set<std::string>& srcCodeImportedVarNames,
+        std::vector<std::string>& initFuncsForConstVarNames,
+        std::unordered_set<std::string>& implicitFuncNames,
+        std::unordered_map<std::string, std::pair<std::string, std::string>>& unreachableBlockNames);
 
     template <typename T>
     std::pair<Value*, Apply*> DoCFFIFuncWrapper(T& curFunc, bool isForeign, bool isExternal = true);

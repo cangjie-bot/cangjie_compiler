@@ -1313,6 +1313,7 @@ flatbuffers::Offset<PackageFormat::CustomTypeDef> CHIRSerializer::CHIRSerializer
         ? SerializeVec<PackageFormat::MemberVarInfo>(StaticCast<const ClassDef&>(obj).GetDirectInstanceVars())
         : SerializeVec<PackageFormat::MemberVarInfo>(obj.GetAllInstanceVars());
     auto staticMemberVars = GetId<Value>(obj.GetStaticMemberVars());
+    auto extends = GetId<CustomTypeDef>(obj.GetExtends());
     auto attributes = obj.GetAttributeInfo().GetRawAttrs().to_ulong();
     auto annoInfo = Serialize<PackageFormat::AnnoInfo>(obj.GetAnnoInfo());
     auto vtable = SerializeVTable(obj.GetDefVTable());
@@ -1320,8 +1321,8 @@ flatbuffers::Offset<PackageFormat::CustomTypeDef> CHIRSerializer::CHIRSerializer
     return PackageFormat::CreateCustomTypeDefDirect(builder, base, kind, customTypeDefID, srcCodeIdentifier.data(),
         identifier.data(), packageName.data(), type, genericDecl, methods.empty() ? nullptr : &methods,
         implementedInterfaces.empty() ? nullptr : &implementedInterfaces, &instanceMemberVars,
-        staticMemberVars.empty() ? nullptr : &staticMemberVars, attributes, annoInfo, &vtable, nullptr,
-        varInitializationFunc);
+        staticMemberVars.empty() ? nullptr : &staticMemberVars, attributes, annoInfo, &vtable,
+        extends.empty() ? nullptr : &extends, varInitializationFunc);
 }
 
 template <>

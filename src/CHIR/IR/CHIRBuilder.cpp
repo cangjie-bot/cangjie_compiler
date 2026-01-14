@@ -25,7 +25,7 @@
 
 using namespace Cangjie::CHIR;
 
-CHIRBuilder::CHIRBuilder(CHIRContext& context, size_t threadIdx) : context(context), threadIdx(threadIdx)
+CHIRBuilder::CHIRBuilder(CHIRContext& context) : context(context)
 {
 }
 

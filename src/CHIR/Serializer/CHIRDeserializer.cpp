@@ -80,12 +80,8 @@ void CHIRDeserializer::Deserialize(uint8_t* data, int64_t size, CHIRBuilder& chi
         return;
     }
     const PackageFormat::CHIRPackage* package = PackageFormat::GetCHIRPackage(data);
-    printf("package name: %s\n", package->name()->str().c_str());
     CHIRDeserializerImpl deserializer(chirBuilder, false);
     deserializer.Run(package);
-    printf("func size in cpp: %zu\n", chirBuilder.GetCurPackage()->GetGlobalFuncs().size());
-    chirBuilder.GetCurPackage()->Dump();
-    printf("CHIR plugin run success !!!\n");
 }
 
 template <typename T, typename FBT>
@@ -1595,6 +1591,11 @@ void CHIRDeserializer::CHIRDeserializerImpl::ConfigCustomTypeDef(
     for (auto var : staticMemberVars) {
         CJC_NULLPTR_CHECK(var);
         obj.AddStaticMemberVar(var);
+    }
+    if (buffer->extends() != nullptr) {
+        for (auto extend : *buffer->extends()) {
+            obj.AddExtend(*StaticCast<ExtendDef*>(GetCustomTypeDef(extend)));
+        }
     }
     obj.AppendAttributeInfo(CreateAttr(buffer->attributes()));
     if (compilePlatform) {

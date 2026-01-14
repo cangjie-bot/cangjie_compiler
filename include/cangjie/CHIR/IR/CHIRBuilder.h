@@ -27,9 +27,9 @@ class CHIRBuilder {
     CHIRBuilder() = delete;
 
 public:
-    explicit CHIRBuilder(CHIRContext& context, size_t threadIdx = 0);
+    explicit CHIRBuilder(CHIRContext& context);
     CHIRBuilder(const CHIRBuilder& builder)
-        : context(builder.context), markAsCompileTimeValue(builder.markAsCompileTimeValue), threadIdx(builder.threadIdx)
+        : context(builder.context), markAsCompileTimeValue(builder.markAsCompileTimeValue)
     {
     }
     ~CHIRBuilder();
@@ -336,6 +336,17 @@ public:
         return context.dynamicAllocatedTys.size();
     }
 
+    size_t GetThreadNum() const
+    {
+        return context.GetThreadNum();
+    }
+
+    void UpdateTypeInCorePackage()
+    {
+        context.SetObjectTy(context.SearchObjectTyInPackage());
+        context.SetAnyTy(context.SearchAnyTyInPackage());
+    }
+
     void MergeAllocatedInstance()
     {
         context.GetAllocatedExprs().insert(
@@ -377,7 +388,6 @@ private:
     // A flag indicate if the created CHIR value/expression should be marked as compile time value for const evaluation
     bool markAsCompileTimeValue = false;
     bool enableIRCheckerAfterPlugin = true;
-    size_t threadIdx;
     std::vector<Expression*> allocatedExprs;
     std::vector<Value*> allocatedValues;
     std::vector<BlockGroup*> allocatedBlockGroups;

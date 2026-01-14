@@ -879,7 +879,7 @@ bool CompilerInstance::GenerateCHIRForPkg(AST::Package& pkg)
     (void)CHIR::ComputeAnnotations(pkg, *this);
     auto& constAnalysisWrapper = chirData.GetConstAnalysisResultRef();
 #endif
-    CHIR::CHIRBuilder builder1(GetCHIRContext(), invocation.globalOptions.GetJobs());
+    CHIR::CHIRBuilder builder1(GetCHIRContext());
     CHIR::ToCHIR convertor(*this, pkg, constAnalysisWrapper, builder1);
     bool success = convertor.Run();
     auto chirPkg = convertor.GetPackage();

@@ -23,7 +23,9 @@ public:
         CHECK_FUNC_BODY,                    // check all expressions in func body, including their types
         GET_INSTANTIATE_VALUE_SHOULD_GONE,  // `GetInstantiateValue` shouldn't be in IR
         CHIR_GET_RTTI_STATIC_TYPE,          // type in GetRTTIStatic should be This or Generic type
-        RETURN_TYPE_NEED_BE_VOID            // global func's return type need to be `Void`
+        RETURN_TYPE_NEED_BE_VOID,           // global func's return type need to be `Void`
+        FIELD_NAME_SHOULD_GONE,             // FieldByName, StoreElementByName, GetElementByName shouldn't be in IR
+        CHECK_VTABLE                        // check vtable
     };
     CHIRChecker(const Package& package, const Cangjie::GlobalOptions& opts, CHIRBuilder& builder);
 

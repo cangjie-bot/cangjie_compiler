@@ -543,6 +543,7 @@ public:
     void AddBlocks(const std::vector<Block*>& newBlocks);
     Block* GetBlockByIdx(size_t idx) const;
     std::vector<Block*> GetBlocks() const;
+    std::vector<Block*> GetAllBlocks() const;
 
     Block* GetEntryBlock() const;
     void SetEntryBlock(Block* block);

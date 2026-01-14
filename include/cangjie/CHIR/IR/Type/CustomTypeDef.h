@@ -275,6 +275,7 @@ protected:
     void PrintStaticVar(std::stringstream& ss) const;
     void PrintMethod(std::stringstream& ss) const;
     void PrintVTable(std::stringstream& ss) const;
+    void PrintExtends(std::stringstream& ss) const;
 
 protected:
     CustomDefKind kind : 8;

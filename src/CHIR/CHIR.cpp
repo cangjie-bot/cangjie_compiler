@@ -701,6 +701,8 @@ bool ToCHIR::RunIRChecker(const Phase& phase)
     // after AST2CHIR, there are many empty block, we need to clean them
     if (phase != Phase::RAW && phase != Phase::PLUGIN) {
         rules.emplace(CHIRChecker::Rule::EMPTY_BLOCK);
+        rules.emplace(CHIRChecker::Rule::FIELD_NAME_SHOULD_GONE);
+        rules.emplace(CHIRChecker::Rule::CHECK_VTABLE);
     }
     // we need to translate correct InvokeStatic, but after function inline,
     // some InvokeStatic may be optimized to Apply, we will handle it later
@@ -1079,9 +1081,6 @@ bool ToCHIR::ComputeAnnotations(std::vector<const AST::Decl*>&& annoOnly)
         return true;
     }
 #endif
-    if (!PerformPlugin(*chirPkg)) {
-        return false;
-    }
     Canonicalization();
     if (!opts.enIncrementalCompilation && !RunIRChecker(Phase::RAW)) {
         return false;
@@ -1264,6 +1263,129 @@ struct PluginResult {
     bool success;
 };
 
+void ToCHIR::PrepareBeforePlugin(
+    std::unordered_set<std::string>& srcCodeImportedFuncNames,
+    std::unordered_set<std::string>& srcCodeImportedVarNames,
+    std::vector<std::string>& initFuncsForConstVarNames,
+    std::unordered_set<std::string>& implicitFuncNames,
+    std::unordered_map<std::string, std::pair<std::string, std::string>>& unreachableBlockNames)
+{
+    for (auto f : srcCodeImportedFuncs) {
+        srcCodeImportedFuncNames.emplace(f->GetIdentifierWithoutPrefix());
+    }
+    for (auto v : srcCodeImportedVars) {
+        srcCodeImportedVarNames.emplace(v->GetIdentifierWithoutPrefix());
+    }
+    for (auto f : initFuncsForConstVar) {
+        initFuncsForConstVarNames.emplace_back(f->GetIdentifierWithoutPrefix());
+    }
+    for (auto& it : implicitFuncs) {
+        implicitFuncNames.emplace(it.first);
+    }
+    for (auto& it : maybeUnreachable) {
+        auto funcName = it.first->GetTopLevelFunc()->GetIdentifierWithoutPrefix();
+        auto blockName = it.first->GetIdentifierWithoutPrefix();
+        // maybe a terminator is created and removed in AST2CHIR, so it doesn't have a parent block
+        if (it.second->GetParentBlock()) {
+            auto terminatorName = it.second->GetParentBlock()->GetIdentifierWithoutPrefix();
+            unreachableBlockNames[funcName] = {blockName, terminatorName};
+        }
+    }
+    builder.GetChirContext().DeleteAll();
+    builder.GetChirContext().Init();
+}
+
+void ToCHIR::UpdateAfterPlugin(
+    std::unordered_set<std::string>& srcCodeImportedFuncNames,
+    std::unordered_set<std::string>& srcCodeImportedVarNames,
+    std::vector<std::string>& initFuncsForConstVarNames,
+    std::unordered_set<std::string>& implicitFuncNames,
+    std::unordered_map<std::string, std::pair<std::string, std::string>>& unreachableBlockNames)
+{
+    chirPkg = builder.GetCurPackage();
+    for (auto def : chirPkg->GetAllExtendDef()) {
+        auto builtinType = DynamicCast<BuiltinType*>(def->GetExtendedType());
+        if (builtinType == nullptr) {
+            continue;
+        }
+        GetBuiltinTypeWithVTable(*builtinType, builder)->AddExtend(*def);
+    }
+    builder.UpdateTypeInCorePackage();
+
+    implicitFuncs.clear();
+    for (auto& it : implicitFuncNames) {
+        for (auto f : chirPkg->GetImportedVarAndFuncs()) {
+            if (f->GetIdentifierWithoutPrefix() == it) {
+                implicitFuncs.emplace(it, StaticCast<ImportedFunc*>(f));
+                break;
+            }
+        }
+    }
+    srcCodeImportedFuncs.clear();
+    for (auto& it : srcCodeImportedFuncNames) {
+        for (auto f : chirPkg->GetGlobalFuncs()) {
+            if (f->GetIdentifierWithoutPrefix() == it) {
+                srcCodeImportedFuncs.emplace(f);
+                break;
+            }
+        }
+    }
+    srcCodeImportedVars.clear();
+    for (auto& it : srcCodeImportedVarNames) {
+        for (auto v : chirPkg->GetGlobalVars()) {
+            if (v->GetIdentifierWithoutPrefix() == it) {
+                srcCodeImportedVars.emplace(v);
+                break;
+            }
+        }
+    }
+    initFuncsForConstVar.clear();
+    for (auto& it : initFuncsForConstVarNames) {
+        bool found = false;
+        for (auto f : chirPkg->GetGlobalFuncs()) {
+            if (f->GetIdentifierWithoutPrefix() == it) {
+                initFuncsForConstVar.emplace_back(f);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            for (auto f : chirPkg->GetImportedVarAndFuncs()) {
+                if (f->GetIdentifierWithoutPrefix() == it) {
+                    initFuncsForConstVar.emplace_back(StaticCast<ImportedFunc*>(f));
+                    found = true;
+                    break;
+                }
+            }
+        }
+    }
+    maybeUnreachable.clear();
+    for (auto& it : unreachableBlockNames) {
+        for (auto f : chirPkg->GetGlobalFuncs()) {
+            if (f->GetIdentifierWithoutPrefix() != it.first) {
+                continue;
+            }
+            auto allBlocks = f->GetBody()->GetAllBlocks();
+            Block* bb = nullptr;
+            Terminator* tt = nullptr;
+            for (auto block : allBlocks) {
+                if (bb != nullptr && tt != nullptr) {
+                    break;
+                }
+                if (block->GetIdentifierWithoutPrefix() == it.second.first) {
+                    bb = block;
+                }
+                if (block->GetIdentifierWithoutPrefix() == it.second.second) {
+                    tt = block->GetTerminator();
+                }
+            }
+            if (bb != nullptr && tt != nullptr) {
+                maybeUnreachable.emplace(bb, tt);
+            }
+        }
+    }
+}
+
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
 bool ToCHIR::PerformPlugin(CHIR::Package& package)
 {
@@ -1271,7 +1393,13 @@ bool ToCHIR::PerformPlugin(CHIR::Package& package)
         return true;
     }
     bool succeed = true;
-    bool hasPluginForCHIR = false;
+    std::unordered_set<std::string> srcCodeImportedFuncNames;
+    std::unordered_set<std::string> srcCodeImportedVarNames;
+    std::vector<std::string> initFuncsForConstVarNames;
+    std::unordered_set<std::string> implicitFuncNames;
+    std::unordered_map<std::string, std::pair<std::string, std::string>> unreachableBlockNames;
+    PrepareBeforePlugin(srcCodeImportedFuncNames,
+        srcCodeImportedVarNames, initFuncsForConstVarNames, implicitFuncNames, unreachableBlockNames);
 #ifndef CANGJIE_ENABLE_GCOV
     try {
 #endif
@@ -1292,11 +1420,9 @@ bool ToCHIR::PerformPlugin(CHIR::Package& package)
             printf("CHIR plugin failed in cpp\n");
             return false;
         }
-        CHIR::CHIRContext cctxTmp;
-        cctxTmp.SetFileNameMap(builder.GetChirContext().GetFileNameMap());
-        CHIR::CHIRBuilder builderTmp(cctxTmp, 1);
-        builderTmp.CreatePackage("plugin");
-        CHIRDeserializer::Deserialize(pluginResult.data, pluginResult.size, builderTmp);
+        CHIRDeserializer::Deserialize(pluginResult.data, pluginResult.size, builder);
+        UpdateAfterPlugin(srcCodeImportedFuncNames,
+            srcCodeImportedVarNames, initFuncsForConstVarNames, implicitFuncNames, unreachableBlockNames);
         fPtr = InvokeRuntime::GetMethod(handle, "freeSerializedMemory");
         if (!fPtr) {
             printf("get freeSerializedMemory failed\n");
@@ -1310,10 +1436,11 @@ bool ToCHIR::PerformPlugin(CHIR::Package& package)
 #endif
     if (!succeed) {
         diag.DiagnoseRefactor(DiagKindRefactor::plugin_throws_exception, DEFAULT_POSITION);
-    } else if (hasPluginForCHIR && builder.IsEnableIRCheckerAfterPlugin()) {
+    } else {
         DumpCHIRToFile("PLUGIN");
         succeed = RunIRChecker(Phase::PLUGIN);
     }
+    
     return succeed;
 }
 #endif

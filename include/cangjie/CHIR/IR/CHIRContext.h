@@ -56,6 +56,8 @@ public:
     const std::unordered_map<unsigned int, std::string>* GetFileNameMap() const;
     /** @brief Move the dynamicAllocatedTys in CHIRContext into constAllocatedTys of CHIRContext in this.*/
     void MergeTypes();
+    void DeleteAll();
+    void Init();
     void SetFileNameMap(std::unordered_map<unsigned int, std::string>* fnMap)
     {
         fileNameMap = fnMap;
@@ -68,6 +70,25 @@ public:
     {
         threadsNum = num;
     }
+    size_t GetThreadNum() const
+    {
+        return threadsNum;
+    }
+    template <typename T>
+    void SwapVector(std::vector<T*>& vec1, std::vector<T*>& vec2)
+    {
+        std::vector<T*> tmp = vec1;
+        vec1 = vec2;
+        vec2 = tmp;
+    }
+    template <typename T>
+    void SwapUnorderedSet(std::unordered_set<T*, TypePtrHash, TypePtrEqual>& set1, std::unordered_set<T*, TypePtrHash, TypePtrEqual>& set2)
+    {
+        std::unordered_set<T*, TypePtrHash, TypePtrEqual> tmp = set1;
+        set1 = set2;
+        set2 = tmp;
+    }
+    void SwapContext(CHIRContext& other);
 
     // ===--------------------------------------------------------------------===//
     // Type API
@@ -178,6 +199,7 @@ public:
     {
         objectTy = ty;
     }
+    ClassType* SearchObjectTyInPackage() const;
     ClassType* GetObjectTy() const
     {
         CJC_ASSERT(objectTy != nullptr);
@@ -189,6 +211,7 @@ public:
         anyTy = ty;
     }
 
+    ClassType* SearchAnyTyInPackage() const;
     ClassType* GetAnyTy() const
     {
         CJC_ASSERT(anyTy != nullptr);

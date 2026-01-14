@@ -365,8 +365,25 @@ std::string CustomTypeDef::ToString() const
     PrintStaticVar(ss);  // has a \n in the end
     PrintMethod(ss);     // has a \n in the end
     PrintVTable(ss);     // has a \n in the end
+    PrintExtends(ss);    // has a \n in the end
     ss << "}";
     return ss.str();
+}
+
+void CustomTypeDef::PrintExtends(std::stringstream& ss) const
+{
+    if (extends.empty()) {
+        return;
+    }
+    unsigned indent = 1;
+    PrintIndent(ss, indent++);
+    ss << "extend {\n";
+    for (auto extend : extends) {
+        PrintIndent(ss, indent);
+        ss << "extend " << extend->GetIdentifier() << "\n";
+    }
+    PrintIndent(ss, --indent);
+    ss << "}\n";
 }
 
 std::vector<GenericType*> CustomTypeDef::GetGenericTypeParams() const
