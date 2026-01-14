@@ -223,9 +223,17 @@ public:
     {
     }
     void AddFunctionAttr(const CHIR::FuncType& chirFuncTy, llvm::Function& llvmFunc) override;
+    void ProcessParam(CHIR::Type& chirParamTy, LLVMFuncArgIt& arg, llvm::Value* place, IRBuilder2& builder) override;
 
 protected:
+    void ProcessInvocationArg(CHIR::StructType& chirParamTy, ProcessKind kind, size_t& argIdx,
+        std::vector<CGValue*>& args, IRBuilder2& builder) override;
     llvm::Type* GetStructReturnType(CHIR::StructType& chirTy, std::vector<llvm::Type*>& params) override;
+
+    std::unordered_map<Ptr<CHIR::Type>, ABIArgInfo> paramTypeMap;
+
+private:
+    ABIArgInfo GetMappingArgInfo(CHIR::StructType& chirTy, bool isArg);
 };
 #endif
 class WindowsAmd64CJNativeCGCFFI : public LinuxCJNativeCGCFFI {
