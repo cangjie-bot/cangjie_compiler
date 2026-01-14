@@ -29,7 +29,7 @@ Ptr<Value> Translator::Visit(const AST::ExtendDecl& decl)
 
     // step 3: set member func
     for (auto& member : decl.members) {
-        if (member->IsCommonMatchedWithPlatform()) {
+        if (member->IsCommonMatchedWithSpecific()) {
             /**
              * Source Definitions:
              *   // common.cj
@@ -37,21 +37,21 @@ Ptr<Value> Translator::Visit(const AST::ExtendDecl& decl)
              *     common func foo:Unit {}
              *   }
              *
-             *   // platform.cj
-             *   platform extend A {
-             *     platform func foo:Unit { println("hello") }
+             *   // specific.cj
+             *   specific extend A {
+             *     specific func foo:Unit { println("hello") }
              *   }
              *
              * After Sema Merge:
-             *   platform extend A {
+             *   specific extend A {
              *     common func foo:Unit;     // Declaration from common extend
-             *     platform func foo:Unit {  // Implementation from platform extend
+             *     specific func foo:Unit {  // Implementation from specific extend
              *       println("hello")
              *     }
              *   }
              * Note:
              * The common declaration of `foo` should be skiped because it is already covered by the
-             * platform-specific implementation. This ensures that the platform implementation is used, avoiding
+             * specific implementation. This ensures that the specific implementation is used, avoiding
              * redundancy.
              */
             continue;

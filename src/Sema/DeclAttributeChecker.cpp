@@ -284,10 +284,10 @@ void DeclAttributeChecker::CheckClassAttribute(ClassDecl& cd) const
 
 void DeclAttributeChecker::CheckCJMPAttributesForPropAndFuncDeclInClass(const ClassDecl& cd, Decl& member) const
 {
-    bool inCJMP = cd.TestAttr(Attribute::COMMON) || cd.TestAttr(Attribute::PLATFORM);
+    bool inCJMP = cd.TestAttr(Attribute::COMMON) || cd.TestAttr(Attribute::SPECIFIC);
     bool inAbstractCJMP = cd.TestAttr(Attribute::ABSTRACT) && inCJMP;
 
-    bool isCJMP = member.TestAttr(Attribute::COMMON) || member.TestAttr(Attribute::PLATFORM);
+    bool isCJMP = member.TestAttr(Attribute::COMMON) || member.TestAttr(Attribute::SPECIFIC);
     bool isAbstract = member.TestAttr(Attribute::ABSTRACT);
 
     bool compilerAddedOrConstructor = member.TestAttr(Attribute::COMPILER_ADD) ||
@@ -317,7 +317,7 @@ void DeclAttributeChecker::CheckCJMPAttributesForPropAndFuncDeclInClass(const Cl
     bool checkedBefore = member.TestAttr(Attribute::FROM_COMMON_PART);
     // member of `common abstract` must be explicitly marked with common or abstract or have body
     if (inAbstractCJMP && !isCJMP && !isAbstract && !compilerAddedOrConstructor && !hasBody && !checkedBefore) {
-        auto cjmpKind = cd.TestAttr(Attribute::COMMON) ? "common" : "platform";
+        auto cjmpKind = cd.TestAttr(Attribute::COMMON) ? "common" : "specific";
         diag.DiagnoseRefactor(DiagKindRefactor::sema_cjmp_abstract_class_member_has_no_explicit_modifier, member,
             MakeRange(member.identifier), cjmpKind, memberKind, cjmpKind);
     }

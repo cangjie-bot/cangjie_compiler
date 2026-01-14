@@ -50,7 +50,7 @@ private:
     Ptr<Value> GetGlobalVariable(const AST::VarDecl& decl);
     template <typename T, typename... Args> Ptr<Func> CreateGVInitFunc(const T& node, Args&& ... args) const;
     void RemoveInitializerForVarDecl(const AST::VarDecl& varDecl, Func& fileInit) const;
-    void RemoveCommonInitializersReplacedWithPlatform(
+    void RemoveCommonInitializersReplacedWithSpecific(
         Func& fileInit, const std::vector<Ptr<const AST::Decl>>& decls) const;
     Ptr<Func> TryGetFileInitialializer(const AST::File& file, const std::string& suffix = "");
     Ptr<Func> TranslateFileInitializer(const AST::File& file, const std::vector<Ptr<const AST::Decl>>& decls);
@@ -73,7 +73,7 @@ private:
     template<typename T>
     T* TryGetDeserialized(const std::string& mangledName)
     {
-        // merging platform
+        // merging specific
         if (opts.IsCompilingCJMP()) {
             return TryGetFromCache<Value, T>(GLOBAL_VALUE_PREFIX + mangledName, trans.deserializedVals);
         }

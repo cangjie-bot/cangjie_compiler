@@ -460,7 +460,7 @@ LiteralValue* GlobalVar::GetInitializer() const
 void GlobalVar::SetInitFunc(Func& func)
 {
     this->initFunc = &func;
-    initializer = nullptr; // platform var need to clear
+    initializer = nullptr; // specific var need to clear
 }
 
 const std::string& GlobalVarBase::GetRawMangledName() const

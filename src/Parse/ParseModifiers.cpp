@@ -21,7 +21,7 @@ bool ParserImpl::SeeingModifier()
 {
     return (Peek().kind >= TokenKind::STATIC && Peek().kind <= TokenKind::OPERATOR) ||
         (Peek().kind == TokenKind::CONST) || (Peek().kind == TokenKind::COMMON) ||
-        (Peek().kind == TokenKind::PLATFORM);
+        (Peek().kind == TokenKind::SPECIFIC);
 }
 
 void ParserImpl::SetDeclBeginPos(AST::Decl& decl) const

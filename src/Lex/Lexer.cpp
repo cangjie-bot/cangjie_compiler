@@ -47,7 +47,7 @@ const std::vector<TokenKind>& GetContextualKeyword()
 {
     static const std::vector<TokenKind> CONTEXTUAL_KEYWORD_TOKEN = {TokenKind::PUBLIC, TokenKind::PRIVATE,
         TokenKind::INTERNAL, TokenKind::PROTECTED, TokenKind::OVERRIDE, TokenKind::REDEF, TokenKind::ABSTRACT,
-        TokenKind::SEALED, TokenKind::OPEN, TokenKind::COMMON, TokenKind::PLATFORM, TokenKind::FEATURES};
+        TokenKind::SEALED, TokenKind::OPEN, TokenKind::COMMON, TokenKind::SPECIFIC, TokenKind::FEATURES};
     return CONTEXTUAL_KEYWORD_TOKEN;
 }
 bool IsContextualKeyword(std::string_view s)
@@ -298,8 +298,8 @@ TokenKind LexerImpl::LookupKeyword(const std::string& literal)
         map[TOKENS[atExclIndex]] = static_cast<TokenKind>(atExclIndex);
         auto commonIndex = static_cast<unsigned char>(TokenKind::COMMON);
         map[TOKENS[commonIndex]] = static_cast<TokenKind>(commonIndex);
-        auto platformIndex = static_cast<unsigned char>(TokenKind::PLATFORM);
-        map[TOKENS[platformIndex]] = static_cast<TokenKind>(platformIndex);
+        auto specificIndex = static_cast<unsigned char>(TokenKind::SPECIFIC);
+        map[TOKENS[specificIndex]] = static_cast<TokenKind>(specificIndex);
         auto dcIndex = static_cast<unsigned char>(TokenKind::DOUBLE_COLON);
         map[TOKENS[dcIndex]] = static_cast<TokenKind>(dcIndex);
         map["true"] = TokenKind::BOOL_LITERAL;

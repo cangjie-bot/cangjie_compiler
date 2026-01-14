@@ -1146,7 +1146,7 @@ OwnedPtr<Decl> ASTCloner::CloneDecl(Ptr<Decl> decl, const VisitFunc& visitor)
     ret->moduleName = decl->moduleName;
     ret->fullPackageName = decl->fullPackageName;
     ret->outerDecl = decl->outerDecl;
-    ret->platformImplementation = decl->platformImplementation;
+    ret->specificImplementation = decl->specificImplementation;
     ret->checkFlag = decl->checkFlag;
     ret->captureIndex = decl->captureIndex;
     ret->linkage = decl->linkage;

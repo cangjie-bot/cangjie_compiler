@@ -735,8 +735,8 @@ bool TypeManager::IsGenericSubtype(Ty& leaf, Ty& root, bool implicitBoxed, bool 
     return false;
 }
 
-// Treating platform and common classes/struct/enums types as subtypes of each other
-bool IsCommonAndPlatformRelation(const Ty& leafTy, const Ty& rootTy)
+// Treating specific and common classes/struct/enums types as subtypes of each other
+bool IsCommonAndSpecificRelation(const Ty& leafTy, const Ty& rootTy)
 {
     if (!leafTy.IsNominal() || !rootTy.IsNominal()) {
         return false;
@@ -744,9 +744,9 @@ bool IsCommonAndPlatformRelation(const Ty& leafTy, const Ty& rootTy)
     auto leafDecl = Ty::GetDeclOfTy(&leafTy);
     auto rootDecl = Ty::GetDeclOfTy(&rootTy);
     if (leafDecl && rootDecl) {
-        leafDecl = leafDecl->platformImplementation == nullptr ? leafDecl : leafDecl->platformImplementation;
-        rootDecl = rootDecl->platformImplementation == nullptr ? rootDecl : rootDecl->platformImplementation;
-        if (!leafDecl->TestAttr(Attribute::PLATFORM) || !rootDecl->TestAttr(Attribute::PLATFORM)) {
+        leafDecl = leafDecl->specificImplementation == nullptr ? leafDecl : leafDecl->specificImplementation;
+        rootDecl = rootDecl->specificImplementation == nullptr ? rootDecl : rootDecl->specificImplementation;
+        if (!leafDecl->TestAttr(Attribute::SPECIFIC) || !rootDecl->TestAttr(Attribute::SPECIFIC)) {
             return false;
         }
         return leafDecl == rootDecl;
@@ -790,7 +790,7 @@ bool TypeManager::IsPlaceholderEqual(Ty& leaf, Ty& root)
 
 bool TypeManager::IsClassTyEqual(Ty& leaf, Ty& root)
 {
-    if (&leaf == &root || IsCommonAndPlatformRelation(leaf, root)) {
+    if (&leaf == &root || IsCommonAndSpecificRelation(leaf, root)) {
         return true;
     }
     if (auto ctt = DynamicCast<ClassThisTy*>(&leaf); ctt) {
@@ -1025,7 +1025,7 @@ bool TypeManager::IsSubtype(Ptr<Ty> leaf, Ptr<Ty> root, bool implicitBoxed, bool
         return cacheResult->second;
     }
     auto cacheEntry = subtypeCache.emplace(std::make_pair(cacheKey, false)).first;
-    if (IsCommonAndPlatformRelation(*leaf, *root)) {
+    if (IsCommonAndSpecificRelation(*leaf, *root)) {
         cacheEntry->second = true;
     } else if (IsPlaceholderSubtype(*leaf, *root)) {
         cacheEntry->second = true;
@@ -1169,7 +1169,7 @@ TypeCompatibility TypeManager::CheckTypeCompatibility(
     if (!Ty::AreTysCorrect(std::set{lvalue, rvalue})) {
         return TypeCompatibility::INCOMPATIBLE;
     }
-    if (lvalue == rvalue || IsCommonAndPlatformRelation(*lvalue, *rvalue)) {
+    if (lvalue == rvalue || IsCommonAndSpecificRelation(*lvalue, *rvalue)) {
         return TypeCompatibility::IDENTICAL;
     }
     if (IsSubtype(lvalue, rvalue, implicitBoxed)) {
