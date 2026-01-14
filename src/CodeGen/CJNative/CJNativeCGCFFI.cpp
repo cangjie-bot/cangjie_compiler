@@ -966,13 +966,14 @@ void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy,
 {
     LinuxAarch64CJNativeCGCFFI::AddFunctionAttr(chirFuncTy, llvmFunc);
     CJC_ASSERT(chirFuncTy.GetNumOfParams() == llvmFunc.arg_size());
+    const unsigned int SMALL_INT_THRESHOLD = 32;
     for (unsigned i = 0; i < llvmFunc.arg_size(); ++i) {
-        if (auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType()); intArgType) {
+        if (auto argType = chirFuncTy.GetParamType(i); argType->IsBoolean() || argType->IsInteger()) {
             AddParamAttr(&llvmFunc, i, llvm::Attribute::NoUndef);
-            if (intArgType->getBitWidth() >= 32) {
+            auto intArgType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getArg(i)->getType());
+            if (!intArgType || intArgType->getBitWidth() >= SMALL_INT_THRESHOLD) {
                 continue;
             }
-            auto argType = chirFuncTy.GetParamType(i);
             if (argType->IsBoolean() || argType->IsUnsignedInteger()) {
                 AddParamAttr(&llvmFunc, i, llvm::Attribute::ZExt);
             } else {  // Signed integers use sign extension.
@@ -980,14 +981,83 @@ void MacAArch64CJNativeCGCFFI::AddFunctionAttr(const CHIR::FuncType& chirFuncTy,
             }
         }
     }
-    if (auto intRetType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getReturnType());
-        intRetType && intRetType->getBitWidth() < 32) {
-        auto retType = chirFuncTy.GetReturnType();
+    if (auto retType = chirFuncTy.GetReturnType(); retType->IsBoolean() || retType->IsInteger()) {
+        auto intRetType = llvm::dyn_cast<llvm::IntegerType>(llvmFunc.getReturnType());
+        if (!intRetType || intRetType->getBitWidth() >= SMALL_INT_THRESHOLD) {
+            return;
+        }
         if (retType->IsBoolean() || retType->IsUnsignedInteger()) {
             AddRetAttr(&llvmFunc, llvm::Attribute::ZExt);
         } else {  // Signed integers use sign extension.
             AddRetAttr(&llvmFunc, llvm::Attribute::SExt);
         }
+    }
+}
+
+llvm::FunctionType* MacAArch64CJNativeCGCFFI::GetCFuncType(const CHIR::FuncType& chirFuncTy)
+{
+    return LinuxAarch64CJNativeCGCFFI::GetCFuncType(chirFuncTy);
+}
+
+void MacAArch64CJNativeCGCFFI::ProcessParam(
+    CHIR::Type& chirParamTy, LLVMFuncArgIt& arg, llvm::Value* place, IRBuilder2& builder)
+{
+    if (!chirParamTy.IsStruct()) {
+        return;
+    }
+    auto found = paramTypeMap.find(&chirParamTy);
+    if (found == paramTypeMap.end()) {
+        return;
+    }
+    auto& argInfo = found->second;
+    if (argInfo.IsDirect()) {
+        auto argType = arg->getType();
+        llvm::Value* argVal = arg;
+
+        auto alloca = builder.CreateEntryAlloca(argType);
+        builder.CreateStore(argVal, alloca);
+
+        size_t actualSize = GetTypeSize(cgMod, chirParamTy);
+        builder.CreateMemCpy(place, GetAlign(cgMod, chirParamTy), alloca, GetAlign(cgMod, *argType), actualSize);
+    }
+    CJC_ASSERT(!argInfo.IsExpand() && "ArgInfo in aarch64 cannot be Expand.");
+}
+
+void MacAArch64CJNativeCGCFFI::ProcessInvocationArg(
+    CHIR::StructType& chirParamTy, ProcessKind kind, size_t& argIdx, std::vector<CGValue*>& args, IRBuilder2& builder)
+{
+    if (kind == ProcessKind::INDIRECT) {
+        return;
+    }
+    if (kind != ProcessKind::DIRECT) {
+        CJC_ASSERT(false && "ArgInfo in aarch64 cannot be Expand.");
+        return;
+    }
+    auto found = paramTypeMap.find(&chirParamTy);
+    CJC_ASSERT(found != paramTypeMap.end());
+    auto& info = found->second;
+    CJC_ASSERT(info.IsDirect());
+    CJC_ASSERT(argIdx < args.size());
+    auto arg = args[argIdx];
+    size_t actualSize = GetTypeSize(cgMod, chirParamTy);
+    if (info[0]->isIntegerTy()) {
+        auto numBits = static_cast<unsigned>(AsBits(actualSize));
+        auto actualIntTy = llvm::IntegerType::get(ctx.GetLLVMContext(), numBits);
+        const unsigned int addrSpace = arg->GetRawValue()->getType()->getPointerAddressSpace();
+        auto tmpVal = builder.CreateBitCast(arg->GetRawValue(), actualIntTy->getPointerTo(addrSpace));
+        tmpVal = builder.LLVMIRBuilder2::CreateLoad(actualIntTy, tmpVal);
+        if (GetTypeSize(cgMod, *info[0]) != actualSize) {
+            tmpVal = builder.CreateIntCast(tmpVal, info[0], false);
+        }
+        args[argIdx] = cgMod.CreateGhostCFuncArgValue(*tmpVal, *GetCGType(cgMod, *info[0]));
+    } else {
+        CJC_ASSERT(info[0]->isArrayTy());
+        auto tmpVal = builder.CreateEntryAlloca(info[0], nullptr, "arg.copy");
+        builder.CreateMemCpy(
+            tmpVal, GetAlign(cgMod, *info[0]), arg->GetRawValue(), GetAlign(cgMod, chirParamTy), actualSize);
+
+        args[argIdx] = cgMod.CreateGhostCFuncArgValue(
+            *builder.LLVMIRBuilder2::CreateLoad(info[0], tmpVal), *GetCGType(cgMod, *info[0]));
     }
 }
 
@@ -1001,12 +1071,53 @@ llvm::Type* MacAArch64CJNativeCGCFFI::GetStructReturnType(CHIR::StructType& chir
     }
     llvm::Type* base = nullptr;
     if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
-        return type;
+        ABIArgInfo info = ABIArgInfo::GetDirect(type);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     if (size < BYTES_PER_WORD) {
-        return llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+        ABIArgInfo info = ABIArgInfo::GetDirect(resTy);
+        typeMap.emplace(&chirTy, info);
+        return info[0];
     }
     return LinuxAarch64CJNativeCGCFFI::GetStructReturnType(chirTy, params);
+}
+
+ProcessKind MacAArch64CJNativeCGCFFI::GetParamType(CHIR::Type& chirTy, std::vector<llvm::Type*>& params)
+{
+    return LinuxAarch64CJNativeCGCFFI::GetParamType(chirTy, params);
+}
+
+ABIArgInfo MacAArch64CJNativeCGCFFI::GetMappingArgInfo(CHIR::StructType& chirTy, bool isArg)
+{
+    auto& map = isArg ? paramTypeMap : typeMap;
+    auto found = map.find(&chirTy);
+    if (found != map.end()) {
+        return found->second;
+    }
+    auto type = GetLLVMType(chirTy);
+    size_t size = GetTypeSize(cgMod, *type);
+    llvm::Type* base = nullptr;
+    if (size_t members = 0; IsHomogeneousAggregate(*type, base, members)) {
+        return map.emplace(&chirTy, ABIArgInfo::GetDirect(llvm::ArrayType::get(base, members))).first->second;
+    }
+
+    const size_t limitSizeOfSmallStruct = 16;
+    if (size > limitSizeOfSmallStruct) {
+        return map.emplace(&chirTy, ABIArgInfo::GetIndirect()).first->second;
+    }
+
+    size_t alignment = GetTypeAlignment(cgMod, *type);
+    size = llvm::alignTo(size, BYTES_PER_WORD);
+    auto& llvmCtx = ctx.GetLLVMContext();
+    if (alignment < limitSizeOfSmallStruct && size == limitSizeOfSmallStruct) {
+        llvm::Type* baseTy = llvm::Type::getInt64Ty(llvmCtx);
+        llvm::Type* resTy = llvm::ArrayType::get(baseTy, static_cast<uint64_t>(size) / BYTES_PER_WORD);
+        return map.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
+    }
+    llvm::Type* resTy = llvm::IntegerType::get(llvmCtx, static_cast<unsigned>(size) * BITS_PER_BYTE);
+    return map.emplace(&chirTy, ABIArgInfo::GetDirect(resTy)).first->second;
 }
 #endif
 
