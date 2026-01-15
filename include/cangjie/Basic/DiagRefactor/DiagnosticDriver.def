@@ -53,7 +53,7 @@ ERROR(driver_invalid_require_extension, "output to '%s' is not allowed, extensio
 ERROR(driver_path_exceeds_length_limit, "the path length for %s exceeds the system limit (%s characters)")
 ERROR(driver_unsupported_target_cpu, "cpu type '%s' is not supported for the current target")
 ERROR(driver_require_chir_directory, "expected one chir path to build")
-ERROR(driver_invalid_compile_target, "--compile_target only takes effect when output-type=obj")
+ERROR(driver_invalid_compile_target, "--compile-target only takes effect when output-type=obj")
 
 // condition compilation arg error and warnings
 ERROR(driver_cfg_value_err, "user defined condition should be like: k1=v1,k2=v2 or <directory path of cfg.toml>")
