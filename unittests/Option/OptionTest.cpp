@@ -51,6 +51,29 @@ TEST_F(OptionTest, GlobalOptionParseFromArgsTest)
     EXPECT_EQ(gblOpts->outputMode, GlobalOptions::OutputMode::STATIC_LIB);
 }
 
+TEST_F(OptionTest, PgoOptionsTest01)
+{
+    std::vector<std::string> argStrs = {"cjc", "--pgo-instr-gen=cj.profraw", srcFile};
+    ArgList argList;
+    bool succ = optTbl->ParseArgs(argStrs, argList);
+    EXPECT_TRUE(succ);
+
+    succ = gblOpts->ParseFromArgs(argList);
+    EXPECT_TRUE(succ);
+    EXPECT_EQ(gblOpts->pgoProfileFile, "cj.profraw");
+}
+
+TEST_F(OptionTest, PgoOptionsTest02)
+{
+    std::vector<std::string> argStrs = {"cjc", "--pgo-instr-gen", "--target=aarch64-linux-ohos"};
+    ArgList argList;
+    bool succ = optTbl->ParseArgs(argStrs, argList);
+    EXPECT_TRUE(succ);
+
+    succ = gblOpts->ParseFromArgs(argList);
+    EXPECT_FALSE(succ);
+}
+
 TEST_F(OptionTest, NoArgsTest)
 {
     // Nothing input.
