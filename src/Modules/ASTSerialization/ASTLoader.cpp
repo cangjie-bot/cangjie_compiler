@@ -668,6 +668,9 @@ OwnedPtr<Annotation> ASTLoader::ASTLoaderImpl::LoadAnnotation(const PackageForma
             annotation->kind = AnnotationKind::CUSTOM;
             annotation->isCompileTimeVisible = true;
             break;
+        case PackageFormat::AnnoKind_Annotation:
+            annotation->kind = AnnotationKind::ANNOTATION;
+            break;
         default:
             InternalError("Unhandled annotation kind.");
     }
