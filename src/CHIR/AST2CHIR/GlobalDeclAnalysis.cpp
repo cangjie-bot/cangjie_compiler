@@ -300,11 +300,11 @@ static bool DoesStaticInitDependOnStaticVar(const Ptr<const AST::FuncDecl>& stat
     Ptr<Cangjie::AST::VarDecl> &staticVar)
 {
     std::optional<unsigned int> staticVarInitializerFileId = std::nullopt;
-    if (staticVar->platformImplementation) {
-        auto platformStaticVar = DynamicCast<AST::VarDecl>(staticVar->platformImplementation);
-        CJC_NULLPTR_CHECK(platformStaticVar);
-        if (platformStaticVar->initializer) {
-            staticVarInitializerFileId = platformStaticVar->initializer->begin.fileID;
+    if (staticVar->specificImplementation) {
+        auto specificStaticVar = DynamicCast<AST::VarDecl>(staticVar->specificImplementation);
+        CJC_NULLPTR_CHECK(specificStaticVar);
+        if (specificStaticVar->initializer) {
+            staticVarInitializerFileId = specificStaticVar->initializer->begin.fileID;
         }
     } else {
         if (staticVar->initializer) {
@@ -344,11 +344,11 @@ void GlobalDeclAnalysis::AdditionalAnalysisDepOfStaticInit(
     dependencies = filtedDependencies;
 }
 
-static void ReplaceCommonDependenciesWithPlatform(std::vector<Ptr<const AST::Decl>>& dependencies)
+static void ReplaceCommonDependenciesWithSpecific(std::vector<Ptr<const AST::Decl>>& dependencies)
 {
     for (size_t i = 0; i < dependencies.size(); i++) {
-        if (dependencies[i]->platformImplementation) {
-            dependencies[i] = dependencies[i]->platformImplementation;
+        if (dependencies[i]->specificImplementation) {
+            dependencies[i] = dependencies[i]->specificImplementation;
         }
     }
 }
@@ -363,9 +363,9 @@ static void SaveCJMPDependencies(Ptr<const AST::Decl> decl, std::vector<Ptr<cons
 static void RestoreCJMPDependencies(Ptr<const AST::Decl> decl, std::vector<Ptr<const AST::Decl>>& dependencies)
 {
     for (auto dependency : decl->dependencies) {
-        if (dependency->platformImplementation) {
+        if (dependency->specificImplementation) {
             dependencies.emplace_back(dependency);
-            dependencies.emplace_back(dependency->platformImplementation);
+            dependencies.emplace_back(dependency->specificImplementation);
         } else {
             dependencies.emplace_back(dependency);
         }
@@ -397,8 +397,8 @@ void GlobalDeclAnalysis::AnalysisDependency(const ElementList<Ptr<const AST::Dec
         if (outputChir) {
             SaveCJMPDependencies(node, dependencies);
         }
-        if (mergingPlatform) {
-            ReplaceCommonDependenciesWithPlatform(dependencies);
+        if (mergingSpecific) {
+            ReplaceCommonDependenciesWithSpecific(dependencies);
             RestoreCJMPDependencies(node, dependencies);
         }
         (void)std::remove_if(dependencies.begin(), dependencies.end(),

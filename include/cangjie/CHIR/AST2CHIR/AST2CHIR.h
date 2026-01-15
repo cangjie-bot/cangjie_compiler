@@ -354,7 +354,7 @@ private:
             auto it = deserializedVals.find(key);
             res = it == deserializedVals.end() ? nullptr : dynamic_cast<T*>(it->second);
         }
-        if (res && !decl.TestAttr(AST::Attribute::PLATFORM)) {
+        if (res && !decl.TestAttr(AST::Attribute::SPECIFIC)) {
             deserializedDecls.insert(&decl);
         }
         return res;
@@ -362,14 +362,14 @@ private:
     // build symbol table for deserialized decls from common part.
     void BuildDeserializedTable();
 
-    // Reset platform func for CJMP.
-    void ResetPlatformFunc(const AST::FuncDecl& funcDecl, Func& func);
+    // Reset specific func for CJMP.
+    void ResetSpecificFunc(const AST::FuncDecl& funcDecl, Func& func);
     // Check whether the decl need be translated for CJMP.
     inline bool NeedTranslate(const AST::Decl& decl) const
     {
         return deserializedDecls.find(&decl) == deserializedDecls.end();
     }
-    void ProcessCommonAndPlatformExtends();
+    void ProcessCommonAndSpecificExtends();
     const GlobalOptions& opts;
     const GenericInstantiationManager* gim;
     ImportManager& importManager;
@@ -458,7 +458,7 @@ private:
     std::unordered_set<Ptr<const AST::Decl>> usedSrcImportedNonGenericDecls;
     /* Add fields for CJMP. */
     bool outputCHIR{false}; // Output type is CHIR
-    bool mergingPlatform{false}; // Merging platform part over already compiled chir
+    bool mergingSpecific{false}; // Merging specific part over already compiled chir
     std::unordered_set<Ptr<const AST::Decl>> deserializedDecls; // decls which don't need to be retranslated.
     // Deserialized node cache table, key is identifier.
     std::unordered_map<std::string, CustomTypeDef*> deserializedDefs;

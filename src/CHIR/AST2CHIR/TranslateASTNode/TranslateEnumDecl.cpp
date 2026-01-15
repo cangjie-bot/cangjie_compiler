@@ -16,7 +16,7 @@ namespace {
     bool ShouldTranslateConstructor(const AST::EnumDecl& decl, const AST::Decl& ctor)
     {
         CJC_ASSERT(ctor.astKind == AST::ASTKind::VAR_DECL || ctor.astKind == AST::ASTKind::FUNC_DECL);
-        if (ctor.TestAttr(AST::Attribute::COMMON) && decl.platformImplementation) {
+        if (ctor.TestAttr(AST::Attribute::COMMON) && decl.specificImplementation) {
             return false;
         }
         return true;

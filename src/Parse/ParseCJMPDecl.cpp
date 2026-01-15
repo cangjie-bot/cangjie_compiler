@@ -23,8 +23,8 @@ namespace {
 // Check whether the decl has body or initializer.
 bool HasDefault(const AST::Decl& decl)
 {
-    // Check on match CJMP decl for platform member.
-    if (decl.TestAttr(Attribute::PLATFORM)) {
+    // Check on match CJMP decl for specific member.
+    if (decl.TestAttr(Attribute::SPECIFIC)) {
         return true;
     }
     switch (decl.astKind) {
@@ -102,33 +102,33 @@ std::string GetDiagKind(const AST::Node& node)
 void MPParserImpl::SetCompileOptions(const GlobalOptions& opts)
 {
     this->compileCommon = (opts.outputMode == GlobalOptions::OutputMode::CHIR);
-    this->compilePlatform = (opts.commonPartCjo != std::nullopt);
+    this->compileSpecific = (opts.commonPartCjo != std::nullopt);
 }
 
 bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) const
 {
     auto currentFile = ref->currentFile;
-    if (ref->HasModifier(modifiers, TokenKind::PLATFORM)) {
-        if (!compilePlatform) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_platform_in_non_platform_file, *currentFile);
+    if (ref->HasModifier(modifiers, TokenKind::SPECIFIC)) {
+        if (!compileSpecific) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_specific_in_non_specific_file, *currentFile);
             return false;
         }
         if (currentFile->isCommon) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_platform_in_the_same_file, *currentFile);
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_specific_in_the_same_file, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
-            currentFile->package->hasPlatform = true;
+            currentFile->package->hasSpecific = true;
         }
-        currentFile->isPlatform = true;
+        currentFile->isSpecific = true;
     }
     if (ref->HasModifier(modifiers, TokenKind::COMMON)) {
         if (!compileCommon) {
             ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_in_non_common_file, *currentFile);
             return false;
         }
-        if (currentFile->isPlatform) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_platform_in_the_same_file, *currentFile);
+        if (currentFile->isSpecific) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_specific_in_the_same_file, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
@@ -141,7 +141,7 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
 
 void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 {
-    if (!compileCommon && !compilePlatform) {
+    if (!compileCommon && !compileSpecific) {
         return;
     }
     if (!CheckCJMPModifiersOf(decl)) {
@@ -173,8 +173,8 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 
     // Check sema rules
     if (decl.astKind == ASTKind::INTERFACE_DECL) {
-        // Check that the member of platform interface must have the body
-        CheckPlatformInterface(StaticCast<AST::InterfaceDecl&>(decl));
+        // Check that the member of specific interface must have the body
+        CheckSpecificInterface(StaticCast<AST::InterfaceDecl&>(decl));
     } else if ((decl.astKind == ASTKind::CLASS_DECL || decl.astKind == ASTKind::STRUCT_DECL) && 
         decl.TestAttr(Attribute::COMMON)) {
         CheckCJMPCtorPresence(decl);
@@ -183,10 +183,10 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 
 bool MPParserImpl::HasCJMPModifiers(const AST::Modifier& modifier) const
 {
-    if (!compileCommon && !compilePlatform) {
+    if (!compileCommon && !compileSpecific) {
         return false;
     }
-    return (modifier.modifier == TokenKind::COMMON || modifier.modifier == TokenKind::PLATFORM);
+    return (modifier.modifier == TokenKind::COMMON || modifier.modifier == TokenKind::SPECIFIC);
 }
 
 static bool CheckGenericDeclFrozen(const AST::Decl& decl, DiagnosticEngine& diag)
@@ -233,8 +233,8 @@ void MPParserImpl::CheckCJMPCtorPresence(const AST::Decl& decl) const
 
 bool MPParserImpl::CheckCJMPModifiersOf(const AST::Decl& decl) const
 {
-    if (decl.IsCommonOrPlatform()) {
-        auto kind = decl.TestAttr(Attribute::COMMON) ? "common" : "platform";
+    if (decl.IsCommonOrSpecific()) {
+        auto kind = decl.TestAttr(Attribute::COMMON) ? "common" : "specific";
         // generic decl
         if (decl.TestAttr(Attribute::GENERIC)) {
             if (!CheckGenericDeclFrozen(decl, ref->diag)) {
@@ -277,22 +277,22 @@ bool MPParserImpl::CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::
         DiagOuterDeclMissMatch(inner, p0, "common", GetDiagKind(outer), "common");
         return false;
     }
-    if (inner.TestAttr(Attribute::PLATFORM) && !outer.TestAttr(Attribute::PLATFORM)) {
-        DiagOuterDeclMissMatch(inner, p0, "platform", GetDiagKind(outer), "platform");
+    if (inner.TestAttr(Attribute::SPECIFIC) && !outer.TestAttr(Attribute::SPECIFIC)) {
+        DiagOuterDeclMissMatch(inner, p0, "specific", GetDiagKind(outer), "specific");
         return false;
     }
     return true;
 }
 
-void MPParserImpl::CheckPlatformInterface(const AST::InterfaceDecl& decl) const
+void MPParserImpl::CheckSpecificInterface(const AST::InterfaceDecl& decl) const
 {
-    if (!decl.TestAttr(Attribute::PLATFORM)) {
+    if (!decl.TestAttr(Attribute::SPECIFIC)) {
         return;
     }
-    // Check that the general member of platform interface must have the body
+    // Check that the general member of specific interface must have the body
     for (auto& member : decl.GetMemberDeclPtrs()) {
         if (!HasDefault(*member)) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_platform_member_must_have_implementation,
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_specific_member_must_have_implementation,
                 *member, member->identifier.Val(), decl.identifier.Val());
         }
     }

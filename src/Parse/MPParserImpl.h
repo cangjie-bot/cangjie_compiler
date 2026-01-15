@@ -30,7 +30,7 @@ public:
     bool CheckCJMPModifiers(const std::set<AST::Modifier> &modifiers) const;
     // The entry of checking CJMP decl rules.
     void CheckCJMPDecl(AST::Decl& decl) const;
-    // Check whether the given modifier is a CJMP modifier (COMMON or PLATFORM).
+    // Check whether the given modifier is a CJMP modifier (COMMON or SPECIFIC).
     bool HasCJMPModifiers(const AST::Modifier& modifier) const;
     // Check presence of ctor in common class/struct
     void CheckCJMPCtorPresence(const AST::Decl& decl) const;
@@ -38,14 +38,14 @@ public:
 private:
     bool CheckCJMPModifiersOf(const AST::Decl& decl) const;
     bool CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::Decl& outer) const;
-    void CheckPlatformInterface(const AST::InterfaceDecl& decl) const;
+    void CheckSpecificInterface(const AST::InterfaceDecl& decl) const;
     // Diag report
     void DiagOuterDeclMissMatch(const AST::Node& node,
         const std::string& p0, const std::string& p1, const std::string& p2, const std::string& p3) const;
 private:
     const ParserImpl* ref;
     bool compileCommon{false}; // true if compiling common part
-    bool compilePlatform{false}; // true if compiling platform part
+    bool compileSpecific{false}; // true if compiling specific part
 };
 
 } // namespace Cangjie
