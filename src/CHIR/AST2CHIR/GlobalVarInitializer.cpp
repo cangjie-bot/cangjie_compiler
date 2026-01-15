@@ -251,7 +251,7 @@ bool NeedInitGlobalVarByInitFunc(const AST::VarDecl& decl)
     // common/specific cannot be initialized with literal value,
     // it can change to non literal initializer in the future.
     // So, initializer function need to be generated for such variables.
-    if (decl.IsCommonOrPlatform()) {
+    if (decl.IsCommonOrSpecific()) {
         return true;
     }
     return !(IsSimpleLiteralValue(*decl.initializer) && decl.ty == decl.initializer->ty);
@@ -351,11 +351,11 @@ FuncBase* GlobalVarInitializer::TranslateSingleInitializer(const AST::VarDecl& d
     if (!CanInitBeGenerated(decl)) {
         return nullptr;
     }
-    if (decl.platformImplementation) {
+    if (decl.specificImplementation) {
         return nullptr;
     }
     if (auto func = TryGetDeserialized<Func>(GetVarInitName(decl)); func) {
-        if (!decl.TestAttr(AST::Attribute::PLATFORM)) {
+        if (!decl.TestAttr(AST::Attribute::SPECIFIC)) {
             return func;
         }
     }
@@ -486,11 +486,11 @@ void GlobalVarInitializer::RemoveInitializerForVarDecl(const AST::VarDecl& varDe
     }
 }
 
-void GlobalVarInitializer::RemoveCommonInitializersReplacedWithPlatform(
+void GlobalVarInitializer::RemoveCommonInitializersReplacedWithSpecific(
     Func& fileInit, const std::vector<Ptr<const AST::Decl>>& decls) const
 {
     for (auto decl : decls) {
-        if (decl->IsCommonMatchedWithPlatform()) {
+        if (decl->IsCommonMatchedWithSpecific()) {
             CJC_ASSERT(decl->astKind == AST::ASTKind::VAR_DECL);
             const AST::VarDecl& varDecl = StaticCast<const AST::VarDecl>(*decl);
 
@@ -506,7 +506,7 @@ Ptr<Func> GlobalVarInitializer::TranslateFileInitializer(
     if (fileInit) {
         CJC_ASSERT(fileInit->TestAttr(Attribute::INITIALIZER));
 
-        RemoveCommonInitializersReplacedWithPlatform(*fileInit, decls);
+        RemoveCommonInitializersReplacedWithSpecific(*fileInit, decls);
 
         return fileInit;
     }
@@ -540,8 +540,8 @@ bool GlobalVarInitializer::NeedVarLiteralInitFunc(const AST::Decl& decl)
     if (vd == nullptr || !vd->initializer || NeedInitGlobalVarByInitFunc(*vd)) {
         return false;
     }
-    // common var with platform one should not be retranslated.
-    if (decl.TestAttr(AST::Attribute::COMMON) && decl.platformImplementation) {
+    // common var with specific one should not be retranslated.
+    if (decl.TestAttr(AST::Attribute::COMMON) && decl.specificImplementation) {
         return false;
     }
     // `decl` may be a wildcard, like: `var _ = 1`, doesn't need to be translated;
@@ -885,9 +885,9 @@ void GlobalVarInitializer::CreatePackageLiteralInit(const AST::Package& curPacka
         if (!fileAndVars.second.empty()) {
             if (fileAndVars.second[0]->TestAttr(AST::Attribute::IMPORTED)) {
                 for (auto var : fileAndVars.second) {
-                    if (var->IsCommonOrPlatform()) {
+                    if (var->IsCommonOrSpecific()) {
                         // They are always initialized via init functions in corresponding file init,
-                        // because e.g. it can be literal in common and not literal in platform,
+                        // because e.g. it can be literal in common and not literal in specific,
                         // and therefore they are not inlined in importing package.
                         continue;
                     }

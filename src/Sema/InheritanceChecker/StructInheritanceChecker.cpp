@@ -189,8 +189,8 @@ bool NeedRecheck(InheritableDecl& id)
     if (id.astKind == ASTKind::EXTEND_DECL) {
         auto ed = RawStaticCast<ExtendDecl*>(&id);
         if (auto decl = Ty::GetDeclPtrOfTy(ed->extendedType->ty); decl && decl->IsNominalDecl()) {
-            // extend in common part for platform decl.
-            if (decl->TestAttr(Attribute::PLATFORM)) {
+            // extend in common part for specific decl.
+            if (decl->TestAttr(Attribute::SPECIFIC)) {
                 return true;
             }
             extendDecls = RawStaticCast<InheritableDecl*>(decl)->GetAllSuperDecls();
@@ -489,9 +489,9 @@ MemberMap StructInheritanceChecker::GetAndCheckInheritedMembers(const Inheritabl
     if (!baseDecl || !Ty::IsTyCorrect(baseTy) || baseDecl->TestAttr(Attribute::IN_REFERENCE_CYCLE)) {
         return {};
     }
-    // If common decl is with platform implementation, using platform one.
-    if (baseDecl->platformImplementation) {
-        baseDecl = RawStaticCast<InheritableDecl*>(baseDecl->platformImplementation);
+    // If common decl is with specific implementation, using specific one.
+    if (baseDecl->specificImplementation) {
+        baseDecl = RawStaticCast<InheritableDecl*>(baseDecl->specificImplementation);
     }
     CheckMembersWithInheritedDecls(*baseDecl);
     if (decl.curFile) {
@@ -570,8 +570,8 @@ std::optional<bool> StructInheritanceChecker::DeterminingSkipExtendByInheritance
                 GenerateTypeMappingByTy(mappingOfExtended2CurExtend[tyArgGen], mappingOfExtended2Ed[tyArgGen]);
             curDeclSuperInsTy = typeManager.GetInstantiatedTy(curDeclSuperInsTy, mappingOfCurExtend2Extend);
         }
-        Cangjie::MPTypeCheckerImpl::GetInheritedTypesWithPlatformImpl(
-            ed.inheritedTypes, ed.platformImplementation != nullptr, opts.commonPartCjo != std::nullopt);
+        Cangjie::MPTypeCheckerImpl::GetInheritedTypesWithSpecificImpl(
+            ed.inheritedTypes, ed.specificImplementation != nullptr, opts.commonPartCjo != std::nullopt);
         for (auto& edSuper : ed.inheritedTypes) {
             if (edSuper->ty == curDeclSuperInsTy) {
                 continue;

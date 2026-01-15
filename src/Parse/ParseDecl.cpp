@@ -1494,9 +1494,9 @@ void ParserImpl::ParseCaseBody(EnumDecl& enumDecl)
         ParseDiagnoseRefactor(DiagKindRefactor::parse_unknown_enum_constructor, *caseBody);
     }
     SetMemberParentInheritableDecl(enumDecl, caseBody);
-    // common/platform enum attributes propagate to it's constructors to be used in further resolve
-    if (enumDecl.TestAttr(Attribute::PLATFORM)) {
-        caseBody->EnableAttr(Attribute::PLATFORM);
+    // common/specific enum attributes propagate to it's constructors to be used in further resolve
+    if (enumDecl.TestAttr(Attribute::SPECIFIC)) {
+        caseBody->EnableAttr(Attribute::SPECIFIC);
     } else if (enumDecl.TestAttr(Attribute::COMMON)) {
         caseBody->EnableAttr(Attribute::COMMON);
     }
@@ -2053,8 +2053,8 @@ OwnedPtr<FuncDecl> ParserImpl::ParseFuncDecl(
     if (ret->TestAttr(Attribute::COMMON) && hasNoReturnType && hasNoBody) {
         ParseDiagnoseRefactor(DiagKindRefactor::parse_common_function_must_have_return_type, *ret);
     }
-    if (ret->TestAttr(Attribute::PLATFORM) && hasNoReturnType && hasNoBody) {
-        ParseDiagnoseRefactor(DiagKindRefactor::parse_platform_function_must_have_return_type, *ret);
+    if (ret->TestAttr(Attribute::SPECIFIC) && hasNoReturnType && hasNoBody) {
+        ParseDiagnoseRefactor(DiagKindRefactor::parse_specific_function_must_have_return_type, *ret);
     }
     if (HasModifier(modifiers, TokenKind::UNSAFE) || HasModifier(modifiers, TokenKind::FOREIGN)) {
         SetUnsafe(ret.get(), modifiers);
@@ -2159,7 +2159,7 @@ void ParserImpl::CheckClassLikeFuncBodyAbstractness(FuncDecl& decl)
     bool isCommon = decl.TestAttr(Attribute::COMMON);
     auto outerModifiers = decl.outerDecl->modifiers;
     bool inAbstract = HasModifier(outerModifiers, TokenKind::ABSTRACT);
-    bool inCJMP = HasModifier(outerModifiers, TokenKind::PLATFORM) || HasModifier(outerModifiers, TokenKind::COMMON);
+    bool inCJMP = HasModifier(outerModifiers, TokenKind::SPECIFIC) || HasModifier(outerModifiers, TokenKind::COMMON);
     bool inAbstractCJMP = inAbstract && inCJMP;
     bool inObjCMirror = decl.outerDecl->TestAttr(Attribute::OBJ_C_MIRROR);
 

@@ -170,7 +170,7 @@ std::pair<InitOrder, bool> AST2CHIR::SortGlobalVarDecl(const AST::Package& pkg)
     }
 
     auto analysis = GlobalDeclAnalysis(
-        diag, gim, kind, funcsAndVars, localConstVars, staticInitFuncInfoMap, outputCHIR, mergingPlatform);
+        diag, gim, kind, funcsAndVars, localConstVars, staticInitFuncInfoMap, outputCHIR, mergingSpecific);
     auto initOrder = analysis.Run(nodesWithDeps, fileAndVarMap, cachedInfo);
 
     // Speically, now we want to flattern the local const VarWithPattern decl which will be useful in translation later.
@@ -248,9 +248,9 @@ void AST2CHIR::FlatternPattern(const AST::Pattern& pattern, bool isLocalConst)
 void AST2CHIR::SetInitFuncForStaticVar()
 {
     for (auto& skipedStaticVar : varsInitedByStaticInitFunc) {
-        // If common var with platform one, need to skip
+        // If common var with specific one, need to skip
         auto skipedStaticVarVal = globalCache.TryGet(*skipedStaticVar);
-        if (skipedStaticVarVal == nullptr || skipedStaticVar->platformImplementation) {
+        if (skipedStaticVarVal == nullptr || skipedStaticVar->specificImplementation) {
             continue;
         }
         CJC_ASSERT(skipedStaticVar->astKind == AST::ASTKind::VAR_DECL);
@@ -483,7 +483,7 @@ bool AST2CHIR::TryToDeserializeCHIR()
     ToCHIR::Phase phase;
     if (chirFiles.size() == 1) {
         bool success = CHIRDeserializer::Deserialize(chirFiles.at(0), builder, phase, true);
-        mergingPlatform = true;
+        mergingSpecific = true;
         return success;
     }
     // synthetic limitation, however need to distinguish different chir sources
@@ -517,8 +517,8 @@ bool AST2CHIR::ToCHIRPackage(AST::Package& node)
     } else {
         return false;
     }
-    // Translating common alongside with merging platform is not supported
-    CJC_ASSERT(!(outputCHIR && mergingPlatform));
+    // Translating common alongside with merging specific is not supported
+    CJC_ASSERT(!(outputCHIR && mergingSpecific));
     package->SetPackageAccessLevel(BuildPackageAccessLevel(node.accessible));
     RegisterAllSources();
     CJC_NULLPTR_CHECK(package);

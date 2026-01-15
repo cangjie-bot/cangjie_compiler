@@ -202,8 +202,8 @@ CHIRContext::~CHIRContext()
 void CHIRContext::RegisterSourceFileName(unsigned fileId, const std::string& fileName) const
 {
     // we need to insert or assign, because this `fileNameMap` may be set in deserialization when
-    // we are compiling platform package, so this old `fileNameMap` is from common package,
-    // it's not guaranteed that common package's file order and size are same with platform's
+    // we are compiling specific package, so this old `fileNameMap` is from common package,
+    // it's not guaranteed that common package's file order and size are same with specific's
     fileNameMap->insert_or_assign(fileId, fileName);
 }
 

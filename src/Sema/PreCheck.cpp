@@ -247,9 +247,9 @@ void TypeChecker::TypeCheckerImpl::CollectDeclMapAndCheckRedefinitionForOneSymbo
             found.front()->TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
             sym.node->curFile != found.front()->curFile;
         bool multiPlat =
-            sym.node->TestAttr(Cangjie::AST::Attribute::COMMON) && found.front()->TestAttr(Attribute::PLATFORM);
+            sym.node->TestAttr(Cangjie::AST::Attribute::COMMON) && found.front()->TestAttr(Attribute::SPECIFIC);
         multiPlat =
-            multiPlat || (sym.node->TestAttr(Attribute::PLATFORM) && found.front()->TestAttr(Attribute::COMMON));
+            multiPlat || (sym.node->TestAttr(Attribute::SPECIFIC) && found.front()->TestAttr(Attribute::COMMON));
         if (!privateGlobalInDifferentFile && !multiPlat) {
             DiagRedefinitionWithFoundNode(diag, StaticCast<Decl>(*sym.node), *found.front());
         }
@@ -398,8 +398,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::GetTyFromASTType(ASTContext& ctx, RefType&
             if (d1->scopeLevel > d2->scopeLevel) {
                 return true;
             } else if (d1->scopeLevel == d2->scopeLevel) {
-                // Ranking overloads also by platform > common
-                if (d1->TestAttr(Attribute::PLATFORM)) {
+                // Ranking overloads also by specific > common
+                if (d1->TestAttr(Attribute::SPECIFIC)) {
                     return true;
                 }
             }
@@ -425,8 +425,8 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::GetTyFromASTType(ASTContext& ctx, RefType&
         // this condition. scopeTargets is sorted, so only need to check whether
         // scope levels are equal or not. If they are equal then rt is ambiguous.
         (targets[0]->scopeLevel > targets[1]->scopeLevel) ||
-        // With equal scope levels platform declaration are prefered over the common ones
-        (targets[0]->TestAttr(Attribute::PLATFORM))) {
+        // With equal scope levels specific declaration are prefered over the common ones
+        (targets[0]->TestAttr(Attribute::SPECIFIC))) {
         target = targets[0];
         if (auto builtin = DynamicCast<BuiltInDecl>(target); builtin && builtin->type == BuiltInType::CFUNC) {
             auto ty = GetTyFromASTCFuncType(ctx, rt);
@@ -1627,7 +1627,7 @@ void TypeChecker::TypeCheckerImpl::PreCheckFuncRedefinition(const ASTContext& ct
             candidates[names] = {fd};
         }
     }
-    MPTypeCheckerImpl::FilterOutCommonCandidatesIfPlatformExist(candidates);
+    MPTypeCheckerImpl::FilterOutCommonCandidatesIfSpecificExist(candidates);
     auto candidatesForImport = candidates;
     for (const auto& [names, funcs] : std::as_const(candidates)) {
         PreCheckMacroRedefinition(funcs);
@@ -1791,7 +1791,7 @@ void TypeChecker::TypeCheckerImpl::PreCheckUsage(ASTContext& ctx, const Package&
     // Build and check extend decls for each type.
     BuildExtendMap(ctx);
 
-    mpImpl->UpdatePlatformMemberGenericTy(
+    mpImpl->UpdateSpecificMemberGenericTy(
         ctx, [this](ASTContext& ctx, ASTKind kind) { return this->GetSymsByASTKind(ctx, kind); });
     // Check duplicate interface inheritance for nominal decls. NOTE: Should resolve typeAlias first.
     StructDeclCircleOrDupCheck(ctx);

@@ -347,9 +347,9 @@ void UpdateExtendMap(TypeManager& typeManager, const std::unordered_set<Ptr<AST:
     // For single package or file compilation case: clear right before invocation of this function is OK.
     for (const auto& extendDecl : extends) {
         CJC_NULLPTR_CHECK(extendDecl);
-        if (extendDecl->isInMacroCall || !extendDecl->extendedType || extendDecl->platformImplementation) {
+        if (extendDecl->isInMacroCall || !extendDecl->extendedType || extendDecl->specificImplementation) {
             // The extendDecl in macrocall is only for lsp, and does not need to be updated.
-            // The common extend with platformImplementation is skipped because its platform version already exists.
+            // The common extend with specificImplementation is skipped because its specific version already exists.
             continue;
         }
         auto extendTy = extendDecl->extendedType->ty;
@@ -403,7 +403,7 @@ void TypeChecker::TypeCheckerImpl::BuildExtendMap(ASTContext& ctx)
             PreCheckExtend(ctx, *ed);
         }
     }
-    // The matching of `common/platform extend` depends on the resolved symbol type.
+    // The matching of `common/specific extend` depends on the resolved symbol type.
     // Here is the first step after resolving the final symbol type, and also the first step in processing extendDecl.
     mpImpl->PrepareTypeCheck4CJMPExtension(*ci, scopeManager, ctx, allExtends);
     UpdateExtendMap(typeManager, allExtends);

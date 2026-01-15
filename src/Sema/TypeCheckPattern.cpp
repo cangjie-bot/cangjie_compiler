@@ -347,8 +347,8 @@ bool TypeChecker::TypeCheckerImpl::ChkVarPattern(const ASTContext& ctx, Ty& targ
                 continue;
             }
 
-            if (p.varDecl->TestAttr(Attribute::PLATFORM) && decl->TestAttr(Attribute::COMMON)) {
-                // common variable can be matched with VarWithDeclPattern on platform
+            if (p.varDecl->TestAttr(Attribute::SPECIFIC) && decl->TestAttr(Attribute::COMMON)) {
+                // common variable can be matched with VarWithDeclPattern on specific
                 continue;
             }
 
