@@ -812,7 +812,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
             return;
         }
         std::string ext = GetFileExtension(value);
-        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION) {
+        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == OBJC_EXTENSION) {
             ret = HandleArchiveExtension(diag, value);
         } else if (ext == CJ_EXTENSION && !compileCjd) {
             ret = HandleCJExtension(diag, value);
