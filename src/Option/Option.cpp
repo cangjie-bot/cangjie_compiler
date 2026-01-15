@@ -677,7 +677,12 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_archive_file, value, maybePath.value());
         return true;
     }
-    if (ext == OBJECT_EXTENSION && (GetFileExtension(maybePath.value()) != OBJECT_EXTENSION || GetFileExtension(maybePath.value()) != OBJC_EXTENSION)) {
+    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION ) {
+        RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
+        return true;
+    }
+
+    if (ext == OBJC_EXTENSION  && GetFileExtension(maybePath.value()) != OBJC_EXTENSION){
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
