@@ -19,3 +19,14 @@ target_link_libraries(
     TestCompilerInstanceObject)
 
 add_test(NAME PackageTest COMMAND PackageTest)
+
+add_executable(ImportIncrTest ImportIncrTest.cpp)
+target_link_libraries(
+    ImportIncrTest
+    cangjie-lsp
+    ${LINK_LIBS}
+    boundscheck-static
+    GTest::gtest
+    GTest::gtest_main
+    TestCompilerInstanceObject)
+add_test(NAME ImportIncrTest COMMAND ImportIncrTest)

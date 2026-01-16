@@ -207,35 +207,51 @@ public:
         return true;
     }
 
+    /**
+     * Add parsed files from future queue to an existing package.
+     * @param package The package to add files to
+     * @param futureQueue Queue of futures containing parsed files
+     * @return Total line count of added files
+     */
+    size_t AddFilesToPackage(Package& package,
+        std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>>& futureQueue) const
+    {
+        size_t lineNumInOnePackage = 0;
+        const size_t filePtrIdx = 0;
+        const size_t commentIdx = 1;
+        const size_t lineNumIdx = 2;
+        const size_t initialFileCount = package.files.size();
+        while (!futureQueue.empty()) {
+            auto curFuture = futureQueue.front().get();
+            std::get<filePtrIdx>(curFuture)->curPackage = &package;
+            std::get<filePtrIdx>(curFuture)->indexOfPackage = package.files.size();
+            package.files.push_back(std::move(std::get<filePtrIdx>(curFuture)));
+            s.ci->GetSourceManager().AddComments(std::get<commentIdx>(curFuture));
+            lineNumInOnePackage += std::get<lineNumIdx>(curFuture);
+            futureQueue.pop();
+        }
+        if (!package.files.empty()) {
+            size_t fileIndexToCheck = (initialFileCount == 0) ? 0 : initialFileCount;
+            if (fileIndexToCheck < package.files.size()) {
+                if (auto packageSpec = package.files[fileIndexToCheck]->package.get()) {
+                    package.fullPackageName = packageSpec->GetPackageName();
+                    package.accessible = !packageSpec->modifier                  ? AccessLevel::PUBLIC
+                        : packageSpec->modifier->modifier == TokenKind::PROTECTED ? AccessLevel::PROTECTED
+                        : packageSpec->modifier->modifier == TokenKind::INTERNAL  ? AccessLevel::INTERNAL
+                                                                                  : AccessLevel::PUBLIC;
+                }
+            }
+        }
+        return lineNumInOnePackage;
+    }
+
     OwnedPtr<AST::Package> GetMultiThreadParseOnePackage(
         std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>>& futureQueue,
         const std::string& defaultPackageName) const
     {
         auto package = MakeOwned<Package>(defaultPackageName);
-        size_t lineNumInOnePackage = 0;
-        const size_t filePtrIdx = 0;
-        const size_t commentIdx = 1;
-        const size_t lineNumIdx = 2;
-        while (!futureQueue.empty()) {
-            auto curFuture = futureQueue.front().get();
-            std::get<filePtrIdx>(curFuture)->curPackage = package.get();
-            std::get<filePtrIdx>(curFuture)->indexOfPackage = package->files.size();
-            package->files.push_back(std::move(std::get<filePtrIdx>(curFuture)));
-            s.ci->GetSourceManager().AddComments(std::get<commentIdx>(curFuture));
-            lineNumInOnePackage += std::get<lineNumIdx>(curFuture);
-            futureQueue.pop();
-        }
+        size_t lineNumInOnePackage = AddFilesToPackage(*package, futureQueue);
         Utils::ProfileRecorder::RecordCodeInfo("package line num", static_cast<int64_t>(lineNumInOnePackage));
-        if (!package->files.empty()) {
-            // Only update name of package node for first parsed file.
-            if (auto packageSpec = package->files[0]->package.get()) {
-                package->fullPackageName = packageSpec->GetPackageName();
-                package->accessible = !packageSpec->modifier                  ? AccessLevel::PUBLIC
-                    : packageSpec->modifier->modifier == TokenKind::PROTECTED ? AccessLevel::PROTECTED
-                    : packageSpec->modifier->modifier == TokenKind::INTERNAL  ? AccessLevel::INTERNAL
-                                                                              : AccessLevel::PUBLIC;
-            }
-        }
         // Checking package consistency: The macro definition package cannot contain the declaration of a common
         // package.
         CheckPackageConsistency(*package);
@@ -256,8 +272,13 @@ public:
         package.isMacroPackage = package.files[0]->package->hasMacro;
     }
 
-    OwnedPtr<Package> MultiThreadParseOnePackage(
-        std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue, const std::string& defaultPackageName) const
+    /**
+     * Create a queue of futures for parsing files asynchronously.
+     * @param fileInfoQueue Queue of file information (content, fileID) to parse
+     * @return Queue of futures containing parsed files
+     */
+    std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>> CreateParseFutureQueue(
+        std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue) const
     {
         std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>> futureQueue;
         while (!fileInfoQueue.empty()) {
@@ -288,15 +309,108 @@ public:
                 }));
             fileInfoQueue.pop();
         }
+        return futureQueue;
+    }
 
+    OwnedPtr<Package> MultiThreadParseOnePackage(
+        std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue, const std::string& defaultPackageName) const
+    {
+        auto futureQueue = CreateParseFutureQueue(fileInfoQueue);
         auto package = GetMultiThreadParseOnePackage(futureQueue, defaultPackageName);
         return package;
+    }
+
+    /**
+     * Multi-threaded parse files and add them to an existing package.
+     * @param package The existing package to add parsed files to
+     * @param fileInfoQueue Queue of file information (content, fileID) to parse
+     */
+    void MultiThreadParseOnePackage(Package& package,
+        std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue) const
+    {
+        auto futureQueue = CreateParseFutureQueue(fileInfoQueue);
+        size_t lineNumInOnePackage = AddFilesToPackage(package, futureQueue);
+        // Check curPackage for each file in the package, because pointer to package may be changed in lsp.
+        for (auto& file : package.files) {
+            CJC_ASSERT_WITH_MSG(file->curPackage == &package, "curPackage should be set to package");
+        }
+        Utils::ProfileRecorder::RecordCodeInfo("package line num", static_cast<int64_t>(lineNumInOnePackage));
+        // Checking package consistency: The macro definition package cannot contain the declaration of a common
+        // package.
+        CheckPackageConsistency(package);
     }
 
     OwnedPtr<Parser> CreateParser(const std::tuple<std::string, unsigned>& curFile) const
     {
         return MakeOwned<Parser>(std::get<1>(curFile), std::get<0>(curFile), s.ci->diag, s.ci->GetSourceManager(),
             s.ci->invocation.globalOptions.enableAddCommentToAst, s.ci->invocation.globalOptions.compileCjd);
+    }
+
+    void DeleteFileInPackage(Package& pkg, const std::string& filePath)
+    {
+        pkg.files.erase(
+            std::remove_if(pkg.files.begin(), pkg.files.end(),
+            [&filePath](const OwnedPtr<File>& file) { return file->filePath == filePath; }),
+            pkg.files.end());
+    }
+
+    /**
+     * Build fileInfoQueue from bufferCache for incremental parsing.
+     * @param package The package to delete files from for DELETED/CHANGED files
+     * @param fileInfoQueue Output queue to add file information
+     */
+    void BuildFileInfoQueueFromCache(Package& package, std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue)
+    {
+        std::list<std::string> deletedFiles;
+        for (auto& it : s.ci->bufferCache) {
+            const std::string& filePath = it.first;
+            const CompilerInstance::SrcCodeChangeState state = it.second.state;
+            
+            if (state == CompilerInstance::SrcCodeChangeState::UNCHANGED) {
+                continue;
+            }
+            
+            if (state == CompilerInstance::SrcCodeChangeState::DELETED) {
+                DeleteFileInPackage(package, filePath);
+                deletedFiles.push_back(filePath);
+                continue;
+            }
+            if (state != CompilerInstance::SrcCodeChangeState::ADDED) {
+                // CHANGED: delete old file first
+                DeleteFileInPackage(package, filePath);
+            }
+            CJC_ASSERT_WITH_MSG(state != CompilerInstance::SrcCodeChangeState::ADDED ||
+                    std::find_if(package.files.begin(), package.files.end(),
+                        [filePath](const OwnedPtr<File>& file) { return file->filePath == filePath; }) ==
+                        package.files.end(),
+                "File already exists");
+            unsigned int fileID = s.ci->GetSourceManager().AddSource(filePath, it.second.code);
+            s.fileIds.insert(fileID);
+            fileInfoQueue.emplace(it.second.code, fileID);
+        }
+        for (auto& filePath : deletedFiles) {
+            s.ci->bufferCache.erase(filePath);
+        }
+    }
+
+    /**
+     * Parse files and add them to an existing package (incremental parse).
+     * @param package The existing package to add parsed files to
+     */
+    void ParseOnePackage(Package& package)
+    {
+        std::queue<std::tuple<std::string, unsigned>> fileInfoQueue;
+        CJC_ASSERT_WITH_MSG(s.ci->loadSrcFilesFromCache, "loadSrcFilesFromCache must be true for incremental parse");
+        BuildFileInfoQueueFromCache(package, fileInfoQueue);
+
+        if (!fileInfoQueue.empty()) {
+            MultiThreadParseOnePackage(package, fileInfoQueue);
+            s.ci->diag.EmitCategoryGroup();
+            std::sort(package.files.begin(), package.files.end(),
+                [](const OwnedPtr<File>& fileOne, const OwnedPtr<File>& fileTwo) {
+                    return fileOne->fileName < fileTwo->fileName;
+                });
+        }
     }
 
     OwnedPtr<Package> ParseOnePackage(
@@ -307,13 +421,13 @@ public:
         // Parse source code files to File node list.
         if (s.ci->loadSrcFilesFromCache) {
             for (auto& it : s.ci->bufferCache) {
-                const unsigned int fileID = s.ci->GetSourceManager().AddSource(it.first, it.second);
+                unsigned int fileID = s.ci->GetSourceManager().AddSource(it.first, it.second.code);
                 if (s.fileIds.count(fileID) > 0) {
-                    (void)s.ci->diag.DiagnoseRefactor(
+                    s.ci->diag.DiagnoseRefactor(
                         DiagKindRefactor::module_read_file_conflicted, DEFAULT_POSITION, it.first);
                 }
-                (void)s.fileIds.insert(fileID);
-                fileInfoQueue.emplace(it.second, fileID);
+                s.fileIds.insert(fileID);
+                fileInfoQueue.emplace(it.second.code, fileID);
             }
         } else {
             // The readdir cannot guarantee stable order of inputted files, need sort before adding to sourceManager.
@@ -371,8 +485,15 @@ bool FullCompileStrategy::Parse()
     }
     bool ret = true;
     if (ci->loadSrcFilesFromCache || ci->compileOnePackageFromSrcFiles) {
-        auto package = impl->ParseOnePackage(ci->srcFilePaths, ret, DEFAULT_PACKAGE_NAME);
-        ci->srcPkgs.emplace_back(std::move(package));
+        // just incremental parse if srcPkgs is not empty and type checker is not enabled for lsp completion.
+        bool incrParse = ci->loadSrcFilesFromCache && !ci->srcPkgs.empty() && !ci->HasTypeChecker();
+        if (incrParse) {
+            // Use the new overload for incremental parse
+            impl->ParseOnePackage(*ci->srcPkgs[0]);
+        } else {
+            auto package = impl->ParseOnePackage(ci->srcFilePaths, ret, DEFAULT_PACKAGE_NAME);
+            ci->srcPkgs.emplace_back(std::move(package));
+        }
     } else {
         impl->ParseModule(ret);
     }
