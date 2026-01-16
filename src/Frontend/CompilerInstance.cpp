@@ -977,6 +977,9 @@ ASTContext* CompilerInstance::GetASTContextByPackage(Ptr<Package> pkg) const
 
 void CompilerInstance::AddSourceToMember()
 {
+    if (importManager.HasBuildIndex()) {
+        pkgs.clear(); // clear the pkgs to avoid the cache of the previous compilation in lsp.
+    }
     if (!pkgs.empty()) {
         return;
     }
@@ -1020,6 +1023,7 @@ bool CompilerInstance::ImportPackages()
 
 void CompilerInstance::MergePackages()
 {
+    pkgCtxMap.clear(); // clear the pkgCtxMap to avoid the cache of the previous compilation in lsp.
     for (auto& pkg : srcPkgs) {
         pkgCtxMap.insert_or_assign(pkg.get(), std::make_unique<ASTContext>(diag, *pkg));
     }
