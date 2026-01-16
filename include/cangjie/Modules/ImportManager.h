@@ -234,9 +234,10 @@ public:
 
     /**
      * For LSP, set cached cjo data @p cjoData and optional corresponding sha256 digest @p encrypt
-     * for @param fullPackageName .
+     * for @param fullPackageName and @p changeState.
      */
-    void SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData) const;
+    void SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData,
+        CjoManager::CjoChangeState changeState = CjoManager::CjoChangeState::ADDED) const;
 
     /**
      * For LSP, clear all cached cjo data.
@@ -397,6 +398,24 @@ private:
 
 private:
     /**
+    * @brief Parameters for handling already parsed packages
+    */
+    struct ParsedPackageContext {
+        const std::string& fullPackageName;
+        const std::string& cjoPath;
+        AST::Package& curPkg;
+        AST::Package& importPkg;
+        bool isMacroRelated;
+        bool isVisible;
+        bool isRecursive;
+    };
+
+    /**
+     * Handle already parsed package logic.
+     */
+    void HandleAlreadyParsedPackage(const ParsedPackageContext& context, bool& success);
+
+    /**
      * Used in `ResolveImportedPackageForFile` to handle package which has been parsed.
      * @return `false` if error occurred in recursive call of `ResolveImportedPackageForFile`,
      *          return `true` for normal case.
@@ -439,7 +458,10 @@ private:
     bool IsDeclAccessible(const AST::File& file, AST::Decl& decl) const;
     const Ptr<AST::Type> FindImplmentInterface(
         const AST::File& file, const AST::Decl& member, const Ptr<AST::Type>& id) const;
-
+    /**
+     * Check if BuildIndex has been called.
+     */
+    bool HasBuildIndex() const;
     friend class PackageManager;
 
     class DependencyGraph {
@@ -453,6 +475,7 @@ private:
         const std::set<std::string>& GetAllDependencyPackageNames(
             const std::string& fullPackageName, bool includeMacroPkg);
         void AddDependenciesForPackage(AST::Package& pkg);
+        void Clear();
 
     private:
         const std::map<std::string, std::set<Ptr<const AST::ImportSpec>, AST::CmpNodeByPos>>& GetEdges(
