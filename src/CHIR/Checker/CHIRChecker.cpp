@@ -40,52 +40,53 @@ bool IsStructOrCStruct(const Type& type, bool includeNormalStruct)
     return Cangjie::StaticCast<const StructType&>(type).GetStructDef()->IsCStruct();
 }
 
-bool IsOptionalCType(const Type& type, bool includeNormalStruct, bool includeCString)
+bool IsOptionalCType(const Type& type, bool includeNormalStruct)
 {
     if (auto varray = Cangjie::DynamicCast<const VArrayType*>(&type)) {
-        return IsOptionalCType(*varray->GetElementType(), includeNormalStruct, includeCString);
+        return IsOptionalCType(*varray->GetElementType(), includeNormalStruct);
     } else if (auto tuple = Cangjie::DynamicCast<const TupleType*>(&type)) {
         for (auto t : tuple->GetElementTypes()) {
-            if (!IsOptionalCType(*t, includeNormalStruct, includeCString)) {
+            if (!IsOptionalCType(*t, includeNormalStruct)) {
                 return false;
             }
         }
         return true;
     } else if (auto ref = Cangjie::DynamicCast<const RefType*>(&type)) {
-        return IsOptionalCType(*ref->GetBaseType(), includeNormalStruct, includeCString);
+        return IsOptionalCType(*ref->GetBaseType(), includeNormalStruct);
     } else if (auto cp = Cangjie::DynamicCast<const CPointerType*>(&type)) {
-        return IsOptionalCType(*cp->GetElementType(), includeNormalStruct, includeCString);
+        return IsOptionalCType(*cp->GetElementType(), includeNormalStruct);
     } else if (auto cf = Cangjie::DynamicCast<const FuncType*>(&type); cf && cf->IsCFunc()) {
-        if (!IsOptionalCType(*cf->GetReturnType(), includeNormalStruct, includeCString)) {
+        if (!IsOptionalCType(*cf->GetReturnType(), includeNormalStruct)) {
             return false;
         }
         for (auto t : cf->GetParamTypes()) {
-            if (!IsOptionalCType(*t, includeNormalStruct, includeCString)) {
+            if (!IsOptionalCType(*t, includeNormalStruct)) {
                 return false;
             }
         }
         return true;
-    } else if (includeCString && type.IsCString()) {
-        return true;
     }
     auto k = type.GetTypeKind();
     return (k >= Type::TypeKind::TYPE_INT8 && k <= Type::TypeKind::TYPE_VOID) ||
-        type.IsCPointer() || IsStructOrCStruct(type, includeNormalStruct);
+        type.IsCPointer() || type.IsCString() || IsStructOrCStruct(type, includeNormalStruct);
 }
 
 bool IsCType(const Type& type)
 {
-    return IsOptionalCType(type, false, true);
+    return IsOptionalCType(type, false);
 }
 
 bool IsCTypeInVArray(const Type& type)
 {
-    return IsOptionalCType(type, true, true);
+    return IsOptionalCType(type, true);
 }
 
 bool IsCTypeInInout(const Type& type)
 {
-    return IsOptionalCType(type, true, false);
+    if (type.IsCString()) {
+        return false;
+    }
+    return IsOptionalCType(type, true);
 }
 
 std::string GetExpressionString(const Expression& expr)
@@ -3667,6 +3668,11 @@ void CHIRChecker::CheckInstanceOf(const InstanceOf& expr, const Func& topLevelFu
     }
     // 2. target type must be valid
     CheckTypeIsValid(*expr.GetType(), "target", expr, topLevelFunc);
+
+    // 3. source must be an object
+    if (!expr.GetObject()->GetType()->StripAllRefs()->IsCustomType()) {
+        TypeCheckError(expr, *expr.GetObject(), "custom", topLevelFunc);
+    }
 }
 
 void CHIRChecker::CheckTypeCast([[maybe_unused]] const TypeCast& expr, [[maybe_unused]] const Func& topLevelFunc)
