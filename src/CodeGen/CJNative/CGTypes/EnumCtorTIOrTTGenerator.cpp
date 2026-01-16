@@ -85,7 +85,7 @@ EnumCtorLayout EnumCtorTIOrTTGenerator::GenLayoutForReferenceType(const std::str
     typeInfoOfFields->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
     typeInfoOfFields->addAttribute(CJTI_OFFSETS_ATTR);
     layout.fieldTypes.emplace_back(CGType::GetRefTypeOfCHIRInt8(cgMod.GetCGContext().GetCHIRBuilder()));
-    layout.offsets = typeInfoOfFields;
+    layout.offsets = llvm::ConstantExpr::getBitCast(typeInfoOfFields, i32Ty->getPointerTo());
     return layout;
 }
 
