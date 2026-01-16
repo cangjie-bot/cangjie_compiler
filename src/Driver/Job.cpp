@@ -121,14 +121,14 @@ bool Job::Execute() const
                     Cangjie::StringConvertor::StringToWString(cmd->GetCommandString());
                 std::optional<std::wstring> werrString = 
                     Cangjie::StringConvertor::StringToWString(future->spawnErrorMessage);
-                if(wcmdString.has_value() && werrString.has_value() && !werrString.value().empty()){
-                    WErrorf(L"%ls: command failed (%ls)\n",wcmdString.value().c_str(), werrString.value().c_str());
-                } else if(wcmdString.has_value()){
-                    WErrorf(L"%ls: command failed (use -V to see invocation)\n",wcmdString.value().c_str());
+                if(wcmdString.has_value() && werrString.has_value() && !werrString.value().empty()) {
+                    WErrorf(L"%ls: command failed (%ls)\n", wcmdString.value().c_str(), werrString.value().c_str());
+                } else if(wcmdString.has_value()) {
+                    WErrorf(L"%ls: command failed (use -V to see invocation)\n", wcmdString.value().c_str());
                 }
 #else
                 std::string commandString = cmd->GetCommandString();
-                if (!future->spawnErrorMessage.empty()){
+                if (!future->spawnErrorMessage.empty()) {
                     Errorf("%s: command failed (%s)\n", commandString.c_str(), future->spawnErrorMessage.c_str());
                 } else {
                     Errorf("%s: command failed (use -V to see invocation)\n", commandString.c_str());

@@ -27,7 +27,6 @@ ToolFuture::State ErrorFuture::GetState()
     return State::FAILED;
 }
 
-
 #ifdef _WIN32
 ToolFuture::State WindowsProcessFuture::GetState()
 {

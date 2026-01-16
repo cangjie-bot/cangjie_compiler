@@ -57,7 +57,7 @@ public:
 #endif
 };
 
-class ErrorFuture: public ToolFuture {
+class ErrorFuture : public ToolFuture {
     public:
         explicit ErrorFuture(const std::string& message)
         {
