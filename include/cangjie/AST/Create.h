@@ -96,11 +96,10 @@ OwnedPtr<VarDecl> CreateVarDecl(
 OwnedPtr<ThrowExpr> CreateThrowExpr(Decl& var);
 OwnedPtr<PerformExpr> CreatePerformExpr(Decl& var);
 OwnedPtr<ResumeExpr> CreateResumeExpr(Decl& var);
-OwnedPtr<TypePattern> CreateTypePattern(
-    OwnedPtr<Pattern>&& pattern, OwnedPtr<Type>&& type, Expr& selector
-);
-OwnedPtr<ImportSpec> CreateImportSpec(
-    const std::string& fullPackageName, const std::string& item = "*", const std::string& alias = "");
+OwnedPtr<TypePattern> CreateTypePattern(OwnedPtr<Pattern>&& pattern, OwnedPtr<Type>&& type, Expr& selector);
+using FullPackageNameToPrefixPaths = std::unordered_map<std::string, std::vector<std::string>>;
+OwnedPtr<ImportSpec> CreateImportSpec(const std::string& fullPackageName, const std::string& item = "*",
+    const std::string& alias = "", const FullPackageNameToPrefixPaths& cache = {});
 } // namespace Cangjie::AST
 
 #endif // CANGJIE_AST_CREATE_H
