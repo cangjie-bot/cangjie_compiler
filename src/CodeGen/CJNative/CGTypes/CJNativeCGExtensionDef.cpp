@@ -488,30 +488,15 @@ bool CGExtensionDef::CreateExtensionDefForType(CGModule& cgMod, const std::strin
 namespace {
 bool IsSameRootPackage(const std::string& packageName1, const std::string& packageName2)
 {
-    std::string pkgName1 = packageName1;
-    std::string pkgName2 = packageName2;
-    // Replace "::" between organization name and package name with a single character "/"
-    // e.g., com::pkga.b -> com/pkga.b
-    // This replacement makes the following judgement easier.
-    if (auto splitterIt = pkgName1.find("::"); splitterIt != std::string::npos) {
-        pkgName1.replace(splitterIt, 2U, "/");
-    }
-    if (auto splitterIt = pkgName2.find("::"); splitterIt != std::string::npos) {
-        pkgName2.replace(splitterIt, 2U, "/");
-    }
-    size_t pos = 0U;
-    char ch = pkgName1[pos];
-    while (ch == pkgName2[pos]) {
-        if (ch == '.' | ch == ':') {
-            return true;
-        }
-        ++pos;
-        ch = pkgName1[pos];
-        if ((ch == ':' && pkgName2[pos] == '.') || (ch == '.' && pkgName2[pos] == ':')) {
-            return true;
-        }
-    }
-    return false;
+    // 1) a::b and a::b.c have the same root package
+    // 2) a::b and a::b have the same root package
+    // 3) a::b and a::bb don't have the same root package
+    // Here we add a dot at the end:
+ 	// e.g., com::pkga.b -> com::pkga.b.
+ 	// This transformation will make the following judgement easier.
+    std::string pkgName1 = packageName1 + '.';
+    std::string pkgName2 = packageName2+ '.';
+    return pkgName1.substr(0, pkgName1.find('.')) == pkgName2.substr(0, pkgName2.find('.'));
 }
 }
 
