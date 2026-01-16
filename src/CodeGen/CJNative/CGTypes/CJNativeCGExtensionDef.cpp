@@ -489,8 +489,10 @@ bool CGExtensionDef::CreateExtensionDefForType(CGModule& cgMod, const std::strin
 namespace {
 bool IsSameRootPackage(const std::string& packageName1, const std::string& packageName2)
 {
-    std::string pkgName1 = packageName1;
-    std::string pkgName2 = packageName2;
+    size_t length1 = packageName1.length();
+    size_t length2 = packageName2.length();
+    std::string pkgName1 = length1 <= length2 ? packageName1 : packageName2;
+    std::string pkgName2 = length1 <= length2 ? packageName2 : packageName1;
     // Replace "::" between organization name and package name with a single character "/"
     // e.g., com::pkga.b -> com/pkga.b
     // This replacement makes the following judgement easier.
@@ -501,16 +503,19 @@ bool IsSameRootPackage(const std::string& packageName1, const std::string& packa
         pkgName2.replace(splitterIt, 2U, "/");
     }
     size_t pos = 0U;
-    char ch = pkgName1[pos];
-    while (ch == pkgName2[pos]) {
-        if (ch == '.' | ch == ':') {
+    while (pos < pkgName1.length()) {
+        if (packageName1[pos] != packageName2[pos]) {
+            return false;
+        }
+        if (packageName1[pos] == '.') {
             return true;
         }
-        ++pos;
-        ch = pkgName1[pos];
-        if ((ch == ':' && pkgName2[pos] == '.') || (ch == '.' && pkgName2[pos] == ':')) {
-            return true;
-        }
+        pos++;
+    }
+    // 1) org/pkg and org/pkg have the same root package
+    // 2) org/pkg and org/pkg.subpkg have the same root package
+    if (pos == pkgName2.length() || pkgName2[pos] == '.') {
+        return true;
     }
     return false;
 }
