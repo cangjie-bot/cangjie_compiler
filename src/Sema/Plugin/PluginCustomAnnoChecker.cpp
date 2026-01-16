@@ -512,7 +512,10 @@ bool PluginCustomAnnoChecker::CheckSyscap(
         return true;
     }
     // Create a lambda for diagnostic purposes that only creates a temporary collection when needed.
-    auto diagForSyscap = [this, &diagCfg, &targetLevel](const std::string& scopeSyscap, const SysCapSet& syscapSet, DiagKindRefactor kind) {
+    auto diagForSyscap = [this, &diagCfg, &targetLevel](
+        const std::string& scopeSyscap,
+        const SysCapSet& syscapSet,
+        DiagKindRefactor kind) {
         auto builder = diag.DiagnoseRefactor(kind, *diagCfg.node, targetLevel);
         std::stringstream scopeSyscapsStr;
         // 3 is maximum number of syscap limit.

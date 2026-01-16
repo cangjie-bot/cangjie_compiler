@@ -126,9 +126,10 @@ bool CjoManager::GetCanInline() const
     return impl->GetCanInline();
 }
 
-void CjoManager::SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData) const
+void CjoManager::SetPackageCjoCache(
+    const std::string& fullPackageName, const std::vector<uint8_t>& cjoData, CjoChangeState changeState) const
 {
-    impl->SetPackageCjoCache(fullPackageName, cjoData);
+    impl->SetPackageCjoCache(fullPackageName, cjoData, changeState);
 }
 
 void CjoManager::ClearCjoCache() const
@@ -139,6 +140,21 @@ void CjoManager::ClearCjoCache() const
 void CjoManager::ClearVisitedPkgs() const
 {
     impl->ClearVisitedPkgs();
+}
+
+void CjoManager::ClearForReBuildIndex() const
+{
+    impl->ClearForReBuildIndex();
+}
+
+bool CjoManager::HasBuildIndex() const
+{
+    return impl->HasBuildIndex();
+}
+
+void CjoManager::SetHasBuildIndex(bool value) const
+{
+    impl->SetHasBuildIndex(value);
 }
 
 DiagnosticEngine& CjoManager::GetDiag() const
@@ -272,7 +288,7 @@ bool CjoManagerImpl::IsReExportBy(const std::string& srcPackage, const std::stri
     return false;
 }
 
-bool CjoManager::NeedCollectDependency(std::string curName, bool isCurMacro, std::string depName) const
+bool CjoManager::NeedCollectDependency(const std::string& curName, bool isCurMacro, const std::string& depName) const
 {
     if (depName == curName || impl->AlreadyLoaded(depName)) {
         return false;
@@ -322,6 +338,7 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
     }
 
     std::vector<Ptr<ASTLoader>> loaders;
+    loaders.reserve(q.size());
     // Load common part cjo
     for (auto pkg : packages) {
         if (impl->GetGlobalOptions().IsCompilingCJMP()) {
@@ -341,15 +358,15 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
         if (cur == nullptr || cur->loader == nullptr) {
             continue; // If any error happens during loading 'cjo', the loader will be null.
         }
-        auto pkgName = cur->loader->GetImportedPackageName();
+        const auto& pkgName = cur->loader->GetImportedPackageName();
         if (auto [_, success] = impl->AddLoadedPackages(pkgName); !success) {
             continue;
         }
         loaders.emplace_back(cur->loader);
         cur->loader->LoadPackageDecls();
         bool isCurMacro = cur->pkg->isMacroPackage;
-        auto deps = cur->loader->GetDependentPackageNames();
-        for (auto pkg : deps) {
+        const auto& deps = cur->loader->GetDependentPackageNames();
+        for (const auto& pkg : deps) {
             if (NeedCollectDependency(pkgName, isCurMacro, pkg)) {
                 q.push(impl->GetPackageInfo(pkg));
             }
@@ -429,7 +446,7 @@ OwnedPtr<ASTLoader> CjoManagerImpl::ReadCjo(
 {
     std::vector<uint8_t> buffer;
     if (auto found = cjoFileCacheMap.find(fullPackageName); found != cjoFileCacheMap.end()) {
-        buffer = found->second;
+        buffer = found->second.data;
     } else {
         std::string failedReason;
         FileUtil::ReadBinaryFileToBuffer(cjoPath, buffer, failedReason);
@@ -627,5 +644,23 @@ void CjoManager::RemovePackage(const std::string& fullPkgName, const Ptr<Package
         found->second->loader = nullptr;
         impl->GetPackageNameMap().erase(fullPkgName);
     }
+}
+
+void CjoManagerImpl::ClearForReBuildIndex()
+{
+    // Delete all AST loaders first
+    for (auto& p : packageNameMap) {
+        delete p.second->loader.get();
+        p.second->loader = nullptr;
+    }
+    // Clear all package-related maps and caches
+    packageNameMap.clear();
+    importedPackageNameMap.clear();
+    visitedPkgs.clear();
+    loadedPackages.clear();
+    importedPackages.clear();
+    // Reset BuildIndex flag
+    hasBuildIndex = false;
+    // Don't clear cjoFileCacheMap and cjoPathCache, because they are used for rebuild index.
 }
 } // namespace Cangjie
