@@ -16,8 +16,8 @@
 #include <future>
 #include <optional>
 #ifdef _WIN32
-#include <windows.h>
 #include <iomanip>
+#include <windows.h>
 #undef CONST
 #undef interface
 #else
@@ -30,11 +30,7 @@ using namespace Cangjie;
 
 class ToolFuture {
 public:
-    enum class State {
-        SUCCESS,
-        RUNNING,
-        FAILED
-    };
+    enum class State { SUCCESS, RUNNING, FAILED };
 
     /**
      * @brief Get status of the asynchronous operation indicated by 'ToolFuture'.
@@ -46,24 +42,24 @@ public:
     /**
      * @brief The destructor of class ToolFuture.
      */
-    virtual ~ToolFuture() {};
+    virtual ~ToolFuture(){};
 
     std::string spawnErrorMessage;
 
 #ifdef _WIN32
     DWORD exitCode = 0;
-#else 
+#else
     int exitCode = 0;
 #endif
 };
 
-class ErrorFuture: public ToolFuture {
-    public:
-        explicit ErrorFuture(const std::string& message)
-        {
-            spawnErrorMessage = message;
-        };
-        State GetState() override;
+class ErrorFuture : public ToolFuture {
+public:
+    explicit ErrorFuture(const std::string& message)
+    {
+        spawnErrorMessage = message;
+    };
+    State GetState() override;
 };
 
 class ThreadFuture : public ToolFuture {
@@ -74,7 +70,9 @@ public:
      * @param input The result of asynchronous operation.
      * @return ThreadFuture The thread future.
      */
-    explicit ThreadFuture(std::future<bool>&& input) : future(std::move(input)) {}
+    explicit ThreadFuture(std::future<bool>&& input) : future(std::move(input))
+    {
+    }
 
     /**
      * @brief Get status of the asynchronous operation indicated by 'ThreadFuture'.
@@ -82,6 +80,7 @@ public:
      * @return State The thread state.
      */
     State GetState() override;
+
 private:
     std::optional<bool> result = std::nullopt;
     std::future<bool> future;
@@ -96,7 +95,9 @@ public:
      * @param pi The process information.
      * @return WindowsProcessFuture The windows process future.
      */
-    explicit WindowsProcessFuture(PROCESS_INFORMATION pi): pi(pi) {}
+    explicit WindowsProcessFuture(PROCESS_INFORMATION pi) : pi(pi)
+    {
+    }
 
     /**
      * @brief Get status of the asynchronous operation indicated by 'WindowsProcessFuture'.
@@ -104,6 +105,7 @@ public:
      * @return State The thread state.
      */
     State GetState() override;
+
 private:
     PROCESS_INFORMATION pi;
 };
@@ -116,7 +118,9 @@ public:
      * @param pi The process id.
      * @return LinuxProcessFuture The linux process future.
      */
-    explicit LinuxProcessFuture(pid_t pid) : pid(pid) {}
+    explicit LinuxProcessFuture(pid_t pid) : pid(pid)
+    {
+    }
 
     /**
      * @brief Get status of the asynchronous operation indicated by 'LinuxProcessFuture'.
@@ -124,6 +128,7 @@ public:
      * @return State The status of asynchronous operation.
      */
     State GetState() override;
+
 private:
     pid_t pid;
 };

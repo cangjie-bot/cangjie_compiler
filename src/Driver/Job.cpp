@@ -27,21 +27,19 @@
 #endif
 
 namespace {
-bool CheckExecuteResult(std::map<std::string, std::unique_ptr<ToolFuture>>& checklist,
-    bool returnIfAnyToolFinished = false)
+bool CheckExecuteResult(
+    std::map<std::string, std::unique_ptr<ToolFuture>>& checklist, bool returnIfAnyToolFinished = false)
 {
     auto printError = [](const std::string& cmd, const std::unique_ptr<ToolFuture>& future) {
 #ifdef _WIN32
         std::optional<std::wstring> werrCmd = Cangjie::StringConvertor::StringToWString(cmd);
         if (werrCmd.has_value()) {
-            WErrorf(L"%ls: command failed with exit code %lu (use -V to see invocation)\n",
-                werrCmd.value().c_str(),
+            WErrorf(L"%ls: command failed with exit code %lu (use -V to see invocation)\n", werrCmd.value().c_str(),
                 future.get()->exitCode);
         }
 #else
-        Errorf("%s: command failed with exit code %d (use -V to see invocation)\n",
-            cmd.c_str(),
-            future.get()->exitCode);
+        Errorf(
+            "%s: command failed with exit code %d (use -V to see invocation)\n", cmd.c_str(), future.get()->exitCode);
 #endif
     };
     bool success = true;
@@ -117,18 +115,18 @@ bool Job::Execute() const
             auto future = cmd->Execute(verbose);
             if (!future || !future->spawnErrorMessage.empty()) {
 #ifdef _WIN32
-                std::optional<std::wstring> wcmdString = 
+                std::optional<std::wstring> wcmdString =
                     Cangjie::StringConvertor::StringToWString(cmd->GetCommandString());
-                std::optional<std::wstring> werrString = 
+                std::optional<std::wstring> werrString =
                     Cangjie::StringConvertor::StringToWString(future->spawnErrorMessage);
-                if(wcmdString.has_value() && werrString.has_value() && !werrString.value().empty()){
-                    WErrorf(L"%ls: command failed (%ls)\n",wcmdString.value().c_str(), werrString.value().c_str());
-                } else if(wcmdString.has_value()){
-                    WErrorf(L"%ls: command failed (use -V to see invocation)\n",wcmdString.value().c_str());
+                if (wcmdString.has_value() && werrString.has_value() && !werrString.value().empty()) {
+                    WErrorf(L"%ls: command failed (%ls)\n", wcmdString.value().c_str(), werrString.value().c_str());
+                } else if (wcmdString.has_value()) {
+                    WErrorf(L"%ls: command failed (use -V to see invocation)\n", wcmdString.value().c_str());
                 }
 #else
                 std::string commandString = cmd->GetCommandString();
-                if (!future->spawnErrorMessage.empty()){
+                if (!future->spawnErrorMessage.empty()) {
                     Errorf("%s: command failed (%s)\n", commandString.c_str(), future->spawnErrorMessage.c_str());
                 } else {
                     Errorf("%s: command failed (use -V to see invocation)\n", commandString.c_str());
