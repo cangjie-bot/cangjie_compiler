@@ -41,7 +41,7 @@ public:
     void AddImportedPackageFromASTNode(OwnedPtr<AST::Package>&& pkg) const;
     bool LoadPackageHeader(const std::string& fullPackageName, const std::string& cjoPath) const;
     void LoadAllDeclsAndRefs() const;
-    bool NeedCollectDependency(std::string curName, bool isCurMacro, std::string depName) const;
+    bool NeedCollectDependency(const std::string& curName, bool isCurMacro, const std::string& depName) const;
     /**
      * Loads the declaration of each package in packages on demand.
      * If @p fromLsp is false, only the dependent packages of each package in @p packages are loaded.
@@ -93,16 +93,26 @@ public:
 
     bool GetCanInline() const;
 
+    enum class CjoChangeState : uint8_t {
+        UNCHANGED = 0,
+        CHANGED = 1,
+        ADDED = 2,
+        DELETED = 3,
+    };
     /**
      * For LSP, set cached cjo data @p cjoData and optional corresponding sha256 digest @p encrypt
-     * for @param fullPackageName .
+     * for @param fullPackageName and @p changeState.
      */
-    void SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData) const;
+    void SetPackageCjoCache(
+        const std::string& fullPackageName, const std::vector<uint8_t>& cjoData, CjoChangeState changeState = CjoChangeState::ADDED) const;
 
     void ClearCjoCache() const;
     void DeleteASTLoaders() const noexcept;
 
     void ClearVisitedPkgs() const;
+    void ClearForReBuildIndex() const;
+    bool HasBuildIndex() const;
+    void SetHasBuildIndex(bool value) const;
     DiagnosticEngine& GetDiag() const;
     Ptr<std::unordered_map<std::string, Ptr<AST::Decl>>> GetExportIdDeclMap(const std::string& fullPackageName) const;
 

@@ -2954,6 +2954,10 @@ public:
     {
         allDependentStdPkgs.emplace_back(pkgName);
     }
+    void ClearAllDependentStdPkgs()
+    {
+        allDependentStdPkgs.clear();
+    }
     const std::vector<std::string>& GetAllDependentStdPkgs() const
     {
         return allDependentStdPkgs;
