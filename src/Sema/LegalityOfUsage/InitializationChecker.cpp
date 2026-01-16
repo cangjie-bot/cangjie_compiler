@@ -270,7 +270,7 @@ void CollectDeclsFromPropDecl(const OwnedPtr<Decl>& decl, const PropDecl& pd, st
     }
 }
 
-void UpdateContextVaraiables(std::unordered_set<Ptr<const AST::VarDecl>>& contextVariables, const Decl& d)
+void UpdateContextVariables(std::unordered_set<Ptr<const AST::VarDecl>>& contextVariables, const Decl& d)
 {
     if (d.TestAnyAttr(Attribute::GLOBAL, Attribute::STATIC)) {
         return;
@@ -403,7 +403,7 @@ void InitializationChecker::CheckInitialization(Ptr<AST::Node> n)
         }
         n->EnableAttr(Attribute::INITIALIZATION_CHECKED);
         if (auto decl = DynamicCast<Decl>(n)) {
-            UpdateContextVaraiables(contextVariables[ScopeManagerApi::GetScopeGateName(decl->scopeName)], *decl);
+            UpdateContextVariables(contextVariables[ScopeManagerApi::GetScopeGateName(decl->scopeName)], *decl);
             if (FromCommonPart(*decl)) {
                 return VisitAction::SKIP_CHILDREN;
             }
