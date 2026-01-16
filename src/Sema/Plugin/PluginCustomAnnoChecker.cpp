@@ -51,6 +51,36 @@ LevelType Str2LevelType(std::string s)
     return static_cast<LevelType>(Stoull(s).value_or(0));
 }
 
+/**
+ * @brief Format syscap list string with maximum limit.
+ * @param scopeSyscap The scope syscap to include if not in syscapSet.
+ * @param syscapSet The set of syscaps to format.
+ * @return Formatted string with up to 3 syscaps and "..." if more.
+ */
+static std::string FormatSyscapList(const std::string& scopeSyscap, const SysCapSet& syscapSet)
+{
+    std::stringstream scopeSyscapsStr;
+    // 3 is maximum number of syscap limit.
+    size_t limit = 3;
+    size_t count = 0;
+    if (!scopeSyscap.empty() && syscapSet.find(scopeSyscap) == syscapSet.end()) {
+        scopeSyscapsStr << scopeSyscap;
+        ++count;
+    }
+    for (const auto& syscap : syscapSet) {
+        if (count >= limit) {
+            scopeSyscapsStr << "...";
+            break;
+        }
+        if (count > 0) {
+            scopeSyscapsStr << ", ";
+        }
+        scopeSyscapsStr << syscap;
+        ++count;
+    }
+    return scopeSyscapsStr.str();
+}
+
 void ParseLevel(const Expr& e, PluginCustomAnnoInfo& apilevel, DiagnosticEngine& diag)
 {
     Ptr<const LitConstExpr> lce = nullptr;
@@ -512,28 +542,13 @@ bool PluginCustomAnnoChecker::CheckSyscap(
         return true;
     }
     // Create a lambda for diagnostic purposes that only creates a temporary collection when needed.
-    auto diagForSyscap = [this, &diagCfg, &targetLevel](const std::string& scopeSyscap, const SysCapSet& syscapSet, DiagKindRefactor kind) {
+    auto diagForSyscap = [this, &diagCfg, &targetLevel](
+        const std::string& scopeSyscap,
+        const SysCapSet& syscapSet,
+        DiagKindRefactor kind) {
         auto builder = diag.DiagnoseRefactor(kind, *diagCfg.node, targetLevel);
-        std::stringstream scopeSyscapsStr;
-        // 3 is maximum number of syscap limit.
-        size_t limit = 3;
-        size_t count = 0;
-        if (!scopeSyscap.empty() && syscapSet.find(scopeSyscap) == syscapSet.end()) {
-            scopeSyscapsStr << scopeSyscap;
-            ++count;
-        }
-        for (const auto& syscap : syscapSet) {
-            if (count >= limit) {
-                scopeSyscapsStr << "...";
-                break;
-            }
-            if (count > 0) {
-                scopeSyscapsStr << ", ";
-            }
-            scopeSyscapsStr << syscap;
-            ++count;
-        }
-        builder.AddNote("the following syscaps are supported: " + scopeSyscapsStr.str());
+        std::string syscapList = FormatSyscapList(scopeSyscap, syscapSet);
+        builder.AddNote("the following syscaps are supported: " + syscapList);
     };
 
     // Check unionSet (all possible syscaps)
