@@ -20,9 +20,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "cangjie/Basic/Color.h"
 #include "cangjie/Basic/Position.h"
 #include "cangjie/Basic/Utils.h"
-#include "cangjie/Basic/Color.h"
 #include "cangjie/Utils/ICEUtil.h"
 #ifdef _WIN32
 #include "cangjie/Basic/StringConvertor.h"
@@ -48,7 +48,9 @@ enum class DiagColor : uint8_t {
 /// These functions are used in driver/backend tools error. They do not have code position info and therefore do
 /// not fit in DiagnosticEngine. These print functions can handle colored printing on Linux.
 /// Errors are printed red, warnings yellow, and info green.
-inline void Print() {}
+inline void Print()
+{
+}
 template <typename... Args> inline void Print(Args&&... args)
 {
     ((std::cout << args << ' '), ...);
@@ -71,7 +73,9 @@ template <typename Arg, typename... Args> inline void Println(Arg&& arg, Args&&.
     std::cout << std::endl;
 }
 
-inline void PrintNoSplit() {}
+inline void PrintNoSplit()
+{
+}
 template <typename... Args> inline void PrintNoSplit(Args&&... args)
 {
     (std::cout << ... << args);
@@ -147,13 +151,13 @@ template <typename... Args> inline void Error(Args&&... args)
     std::cerr << RED_ERROR_MARK;
     ((std::cerr << args), ...);
 }
-#ifdef _WIN32
 
-inline void WErrorf(const wchar_t *fmt, ...)
+#ifdef _WIN32
+inline void WErrorf(const wchar_t* fmt, ...)
 {
     std::optional<std::wstring> werrMark = Cangjie::StringConvertor::StringToWString(RED_ERROR_MARK);
-    if (!werrMark.has_value()){
-        return ;
+    if (!werrMark.has_value()) {
+        return;
     }
     std::wcerr << werrMark.value().c_str();
     va_list myargs;
@@ -162,9 +166,7 @@ inline void WErrorf(const wchar_t *fmt, ...)
     va_end(myargs);
     std::wcerr << std::flush;
 }
-#endif 
-
-
+#endif
 
 // format Error print with new line
 inline void Errorf(const char* fmt, ...)
@@ -236,7 +238,7 @@ template <typename... Args> inline void Debug([[maybe_unused]] Args&&... args)
     Print(args...);
 #endif
 }
- 
+
 template <typename... Args> inline void Debugln([[maybe_unused]] Args&&... args)
 {
 #ifndef NDEBUG
@@ -244,7 +246,7 @@ template <typename... Args> inline void Debugln([[maybe_unused]] Args&&... args)
     Println(args...);
 #endif
 }
- 
+
 inline void Debugf([[maybe_unused]] const char* fmt, ...)
 {
 #ifndef NDEBUG
