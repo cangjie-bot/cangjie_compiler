@@ -100,7 +100,10 @@ OwnedPtr<TypePattern> CreateTypePattern(
     OwnedPtr<Pattern>&& pattern, OwnedPtr<Type>&& type, Expr& selector
 );
 OwnedPtr<ImportSpec> CreateImportSpec(
-    const std::string& fullPackageName, const std::string& item = "*", const std::string& alias = "");
+    const std::string& fullPackageName,
+    const std::string& item = "*",
+    const std::string& alias = "",
+    const std::unordered_map<std::string, std::vector<std::string>>& fullPackageNameToPrefixPaths = {});
 } // namespace Cangjie::AST
 
 #endif // CANGJIE_AST_CREATE_H
