@@ -19,9 +19,11 @@
 #include "TypeCheckUtil.h"
 #include "TypeCheckerImpl.h"
 
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Utils.h"
+#include "cangjie/AST/Walker.h"
 #include "cangjie/Basic/Print.h"
 #include "cangjie/Frontend/CompilerInstance.h"
 #include "cangjie/Utils/Utils.h"
@@ -304,6 +306,12 @@ bool MayBeStructTy(const VarDecl& target)
     }
     return false;
 }
+
+bool FromCommonPart(const Decl& decl)
+{
+    return decl.TestAttr(Attribute::FROM_COMMON_PART) ||
+        (decl.curFile && decl.curFile->TestAttr(Attribute::FROM_COMMON_PART));
+}
 } // namespace
 
 // Only update scope is terminated for control flow expr.
@@ -397,6 +405,13 @@ void InitializationChecker::CheckInitialization(Ptr<AST::Node> n)
         n->EnableAttr(Attribute::INITIALIZATION_CHECKED);
         if (auto decl = DynamicCast<Decl>(n)) {
             UpdateContextVaraiables(contextVariables[ScopeManagerApi::GetScopeGateName(decl->scopeName)], *decl);
+            if (FromCommonPart(*decl)) {
+                // When a declaration is deserialized from CJO, it means that it has been 
+                // already analyzed during common compilation.
+                // The initialization checker cannot perform analysis for some deserialized AST nodes
+                // so we have to skip the analysis
+                return VisitAction::SKIP_CHILDREN;
+            }
         }
         switch (n->astKind) {
             case ASTKind::FUNC_PARAM:
