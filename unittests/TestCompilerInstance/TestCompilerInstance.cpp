@@ -40,18 +40,23 @@ bool TestCompilerInstance::Compile(CompileStage stage)
     if (!srcPkgs.empty() && stage == CompileStage::DESUGAR_AFTER_SEMA) {
         rawMangleName2DeclMap = RunASTCacheCalculation(*srcPkgs[0], invocation.globalOptions);
     }
-    auto modular = ModularizeCompilation();
+    bool cc = PerformConditionCompile();
+    bool modular = true;
+    if (!loadSrcFilesFromCache) {
+        modular = ModularizeCompilation();
+    }
+    
     auto importRes = PerformImportPackage();
     if (stage == CompileStage::IMPORT_PACKAGE) {
-        return modular && importRes;
+        return cc && modular && importRes;
     }
     auto macroRes = PerformMacroExpand();
     auto semaRes = PerformSema();
     if (stage == CompileStage::SEMA || stage == CompileStage::DESUGAR_AFTER_SEMA) {
-        return Utils::AllOf(importRes, macroRes, semaRes, modular);
+        return Utils::AllOf(cc, importRes, macroRes, semaRes, modular);
     }
     auto giRes = PerformGenericInstantiation();
-    return Utils::AllOf(importRes, macroRes, semaRes, giRes, modular);
+    return Utils::AllOf(cc, importRes, macroRes, semaRes, giRes, modular);
 }
 
 bool TestCompilerInstance::ParseCode()
@@ -76,7 +81,8 @@ bool TestCompilerInstance::ParseCode()
 
 bool TestCompilerInstance::PerformParse()
 {
-    if (!code.empty()) {
+    // If loadSrcFilesFromCache is true, do not parse code from source files.
+    if (!code.empty() && !loadSrcFilesFromCache) {
         return ParseCode();
     }
     return compileStrategy->Parse();

@@ -35,10 +35,33 @@ using namespace AST;
 using namespace Modules;
 
 namespace {
-void AddImport(
-    File& file, const std::string& fullPackageName, const std::string& item = "*", const std::string& alias = "")
+void AddImplicitImportAll(
+    File& file, const std::string& fullPackageName)
 {
-    file.imports.emplace_back(CreateImportSpec(fullPackageName, item, alias));
+    // Check if the prefix paths are already cached.
+    static std::unordered_map<std::string, std::vector<std::string>> fullPackageNameToPrefixPaths;
+    std::vector<std::string> curPrefixPaths{};
+    if (fullPackageNameToPrefixPaths.find(fullPackageName) != fullPackageNameToPrefixPaths.end()) {
+        curPrefixPaths = fullPackageNameToPrefixPaths.at(fullPackageName);
+    } else {
+        curPrefixPaths = Utils::SplitQualifiedName(fullPackageName);
+        fullPackageNameToPrefixPaths.insert({fullPackageName, curPrefixPaths});
+    }
+    // Check if the import is already added.
+    for (auto it = file.imports.rbegin(); it != file.imports.rend(); ++it) {
+        auto& import = *it;
+        if (!import->TestAttr(Attribute::IMPLICIT_ADD)) {
+            continue;
+        }
+        if (import->content.kind != ImportKind::IMPORT_ALL) {
+            continue;
+        }
+        if (import->content.prefixPaths == fullPackageNameToPrefixPaths.at(fullPackageName)) {
+            return; // The import is already added not add again.
+        }
+    }
+    // Add the import if not added.
+    file.imports.emplace_back(CreateImportSpec(fullPackageName, "*", "", fullPackageNameToPrefixPaths));
 }
 
 bool HasIfAvailable(Package& pkg)
@@ -60,19 +83,19 @@ void AddImplicitImports(Package& pkg, const GlobalOptions& opts)
     for (auto& file : pkg.files) {
         CJC_NULLPTR_CHECK(file);
         if (opts.implicitPrelude) {
-            AddImport(*file, CORE_PACKAGE_NAME);
+            AddImplicitImportAll(*file, CORE_PACKAGE_NAME);
         }
         if (opts.enableCompileTest) {
-            AddImport(*file, "std.unittest");
-            AddImport(*file, "std.unittest.testmacro");
+            AddImplicitImportAll(*file, "std.unittest");
+            AddImplicitImportAll(*file, "std.unittest.testmacro");
         }
         if (opts.compileTestsOnly && ImportManager::IsTestPackage(pkg.fullPackageName)) {
-            AddImport(*file, ImportManager::GetMainPartPkgNameForTestPkg(pkg.fullPackageName));
+            AddImplicitImportAll(*file, ImportManager::GetMainPartPkgNameForTestPkg(pkg.fullPackageName));
         }
         if (opts.target.env == Triple::Environment::OHOS && HasIfAvailable(pkg)) {
             // For @IfAvailable desugar, depend on 'ohos.device_info.DeviceInfo' and 'ohos.base.canIUse'.
-            AddImport(*file, "ohos.device_info");
-            AddImport(*file, "ohos.base");
+            AddImplicitImportAll(*file, "ohos.device_info");
+            AddImplicitImportAll(*file, "ohos.base");
         }
     }
 }
@@ -322,6 +345,22 @@ void ImportManager::SaveDepPkgCjoPath(const std::string& fullPackageName, const 
     cjdFilePaths.emplace(fullPackageName, cjdPath);
 }
 
+void ImportManager::HandleAlreadyParsedPackage(const ParsedPackageContext& context, bool& success)
+{
+    CJC_ASSERT(!context.importPkg.TestAttr(Attribute::IMPORTED) ||
+                context.importPkg.TestAttr(Attribute::TOOL_ADD) ||
+                !context.cjoPath.empty());
+    if (!context.importPkg.TestAttr(Attribute::IMPORTED) && context.curPkg.TestAttr(Attribute::IMPORTED)) {
+        // Source package have same name with indirect dependent package. Was reported during loading package.
+        success = false;
+        diag.DiagnoseRefactor(DiagKindRefactor::module_same_name_with_indirect_dependent_pkg, DEFAULT_POSITION,
+            context.fullPackageName, context.curPkg.fullPackageName);
+    } else {
+        success = HandleParsedPackage(context.importPkg, context.cjoPath,
+                                    !context.isMacroRelated || context.isVisible, context.isRecursive) && success;
+    }
+}
+
 bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
 {
     bool success{true};
@@ -337,18 +376,11 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
         auto [fullPackageName, cjoPath] = cjoManager->GetPackageCjo(*import);
         SaveDepPkgCjoPath(fullPackageName, cjoPath);
         // 1. Handle the package which has been parsed before.
-        auto package = cjoManager->GetPackage(fullPackageName);
-        if (package != nullptr) {
-            CJC_ASSERT(
-                !package->TestAttr(Attribute::IMPORTED) || package->TestAttr(Attribute::TOOL_ADD) || !cjoPath.empty());
-            if (!package->TestAttr(Attribute::IMPORTED) && curPkg->TestAttr(Attribute::IMPORTED)) {
-                // Source package have same name with indirect dependent package. Was reported during loading package.
-                success = false;
-                diag.DiagnoseRefactor(DiagKindRefactor::module_same_name_with_indirect_dependent_pkg, DEFAULT_POSITION,
-                    fullPackageName, curPkg->fullPackageName);
-            } else {
-                success = HandleParsedPackage(*package, cjoPath, !isMacroRelated || isVisible, isRecursive) && success;
-            }
+        auto importPkg = cjoManager->GetPackage(fullPackageName);
+        if (importPkg != nullptr) {
+            ParsedPackageContext context{fullPackageName, cjoPath, *curPkg, *importPkg,
+                                       isMacroRelated, isVisible, isRecursive};
+            HandleAlreadyParsedPackage(context, success);
             continue;
         }
         auto isMainPartPkgForTestPkg = opts.compileTestsOnly && IsTestPackage(curPkg->fullPackageName) &&
@@ -359,16 +391,16 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
             success = false;
             continue;
         }
-        package = cjoManager->GetPackage(fullPackageName);
-        CJC_NULLPTR_CHECK(package);
+        importPkg = cjoManager->GetPackage(fullPackageName);
+        CJC_NULLPTR_CHECK(importPkg);
         // 3. Store loaded package node.
         // Do not need to load indirectly dependent macro package which is not re-exported and is macro related.
         // NOTE: since allowing macro package to re-export normal package,
         //       we cannot ignore macro package imported by normal package.
-        if (package->isMacroPackage && isRecursive && !isVisible && isMacroRelated) {
+        if (importPkg->isMacroPackage && isRecursive && !isVisible && isMacroRelated) {
             // If it's the first time to load `fullPackageName` and current package is macro-related,
             // `fullPackageName` isn't being used now, we need to remove it and then re-import it when it's being used.
-            cjoManager->RemovePackage(fullPackageName, package);
+            cjoManager->RemovePackage(fullPackageName, importPkg);
             continue;
         }
         // Package are needed for CodeGen in the following scenarios:
@@ -376,12 +408,12 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
         // b. In the scenario of compiling a macro package.
         // c. If the package is not a macro package and non-internal reExported by a macro package. If the package is
         //    internal, it's only necessary if current package is its subpackage.
-        auto macroReExportCommonPackage = isVisible && isMacroRelated && !package->isMacroPackage;
-        if ((!IsMacroRelatedPackageName(file.curPackage->fullPackageName) && !package->isMacroPackage) ||
+        auto macroReExportCommonPackage = isVisible && isMacroRelated && !importPkg->isMacroPackage;
+        if ((!IsMacroRelatedPackageName(file.curPackage->fullPackageName) && !importPkg->isMacroPackage) ||
             curPackage->isMacroPackage || macroReExportCommonPackage) {
             // If package is needed for CodeGen, we also should collect the standard library dependencies.
             HandleSTDPackage(fullPackageName, cjoPath, isRecursive);
-            for (auto depStdPkg : package->GetAllDependentStdPkgs()) {
+            for (auto depStdPkg : importPkg->GetAllDependentStdPkgs()) {
                 auto [it, succ] = cjoFilePaths.emplace(depStdPkg, "");
                 if (succ) {
                     it->second = FileUtil::FindSerializationFile(depStdPkg, SERIALIZED_FILE_EXTENSION, GetSearchPath());
@@ -392,7 +424,7 @@ bool ImportManager::ResolveImportedPackageForFile(File& file, bool isRecursive)
             cjoManager->SetOnlyUsedByMacro(fullPackageName, true);
         }
         // 4. Resolve current package's dependent packages by DFS.
-        success = ResolveImportedPackageHeaders(*package, true) && success;
+        success = ResolveImportedPackageHeaders(*importPkg, true) && success;
     }
     return success;
 }
@@ -468,6 +500,7 @@ bool ImportManager::ResolveImportedPackages(const std::vector<Ptr<Package>>& pac
         // to be able to handle `import`s of common part.
         cjoManager->LoadFilesOfCommonPart(pkg);
         success = ResolveImportedPackageHeaders(*curPackage, false) && success;
+        curPackage->ClearAllDependentStdPkgs();
         for (auto [_, typeWithFullPkgName] : stdDepsMap) {
             curPackage->AddDependentStdPkg(typeWithFullPkgName.second);
         }
@@ -828,9 +861,13 @@ static void CheckPackageSpecsIdentical(DiagnosticEngine& diag, const Package& pk
 bool ImportManager::BuildIndex(
     const std::string& cangjieModules, const GlobalOptions& globalOptions, std::vector<Ptr<Package>>& packages)
 {
+    bool incrBuildIndex = HasBuildIndex();
     CJC_ASSERT(!packages.empty());
-    cjoManager->UpdateSearchPath(cangjieModules);
-
+    if (!incrBuildIndex) {
+        cjoManager->UpdateSearchPath(cangjieModules);
+    } else {
+        ClearCachesForRebuild();
+    }
     for (auto pkg : packages) {
         if (pkg->HasFtrDirective()) {
             CheckPackageFeatureSpec(diag, *pkg);
@@ -844,13 +881,15 @@ bool ImportManager::BuildIndex(
     }
     ResolveImportedPackages(packages);
     ClearPackageCjoCache();
-    // Create dependency info after load all packages.
+
     for (auto pkg : packages) {
         dependencyGraph->AddDependenciesForPackage(*pkg);
     }
+
     for (auto pkg : packages) {
         AddImportedDeclsForSourcePackage(*pkg);
     }
+
     for (auto pkg : packages) {
         ResolveImports(*pkg);
     }
@@ -860,6 +899,8 @@ bool ImportManager::BuildIndex(
         }
     }
     curPackage = packages.front();
+    // Set BuildIndex flag
+    cjoManager->SetHasBuildIndex(true);
     return true;
 }
 
@@ -1156,9 +1197,10 @@ Ptr<Decl> ImportManager::GetImportedDecl(const std::string& fullPackageName, con
     return *decls.begin();
 }
 
-void ImportManager::SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData) const
+void ImportManager::SetPackageCjoCache(const std::string& fullPackageName, const std::vector<uint8_t>& cjoData,
+    CjoManager::CjoChangeState changeState) const
 {
-    cjoManager->SetPackageCjoCache(fullPackageName, cjoData);
+    cjoManager->SetPackageCjoCache(fullPackageName, cjoData, changeState);
 }
 
 void ImportManager::ClearPackageCjoCache() const
@@ -1410,4 +1452,29 @@ ImportManager::~ImportManager()
     DeleteASTWriters();
     DeleteASTLoaders();
     curPackage = nullptr;
+}
+
+bool ImportManager::HasBuildIndex() const
+{
+    return cjoManager->HasBuildIndex();
+}
+
+void ImportManager::ClearCachesForRebuild()
+{
+    // clear the cache of the previous compilation in lsp.
+    cjoManager->ClearForReBuildIndex();
+    typeManager.Clear();
+    typeManager.ClearMapCache();
+    cjoFilePaths.clear();
+    cjdFilePaths.clear();
+    stdDepsMap.clear();
+    // Create dependency info after load all packages.
+    dependencyGraph->Clear();
+    // Clear for AddImportedDeclsForSourcePackage.
+    importedDeclsMap.clear();
+    fileImportedDeclsMap.clear();
+    declsImportedByNodeMap.clear();
+    declToTypeAlias.clear();
+    // clear for ResolveImports.
+    directMacroDeps.clear();
 }
