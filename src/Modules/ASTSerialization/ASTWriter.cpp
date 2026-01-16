@@ -1677,7 +1677,7 @@ std::vector<TAnnoArgOffset> ASTWriter::ASTWriterImpl::SaveAnnotationArgs(const A
 
     for (auto& arg : annotation.args) {
         // Only literal support yet.
-        if (arg->expr->astKind != ASTKind::LIT_CONST_EXPR) {
+        if (annotation.kind != AST::AnnotationKind::ANNOTATION && arg->expr->astKind != ASTKind::LIT_CONST_EXPR) {
             continue;
         }
         auto serialized =
