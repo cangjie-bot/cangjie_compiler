@@ -723,11 +723,16 @@ OwnedPtr<TypePattern> CreateTypePattern(
     return typePattern;
 }
 
-OwnedPtr<ImportSpec> CreateImportSpec(
-    const std::string& fullPackageName, const std::string& item, const std::string& alias)
+OwnedPtr<ImportSpec> CreateImportSpec(const std::string& fullPackageName, const std::string& item,
+    const std::string& alias, const FullPackageNameToPrefixPaths& cache)
 {
     auto import = MakeOwned<ImportSpec>();
-    auto names = Utils::SplitQualifiedName(fullPackageName);
+    std::vector<std::string> names;
+    if (cache.find(fullPackageName) != cache.end()) {
+        names = cache.at(fullPackageName);
+    } else {
+        names = Utils::SplitQualifiedName(fullPackageName);
+    }
     CJC_ASSERT(names.size() >= 1 && !item.empty());
     if (!alias.empty()) {
         import->content.kind = ImportKind::IMPORT_ALIAS;
