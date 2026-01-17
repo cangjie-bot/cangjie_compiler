@@ -1404,6 +1404,23 @@ std::string GlobalOptions::OutputModeToSerializedString() const
             return "S";
         case OutputMode::CHIR:
             return "CH";
+        case OutputMode::OBJ:
+            return CompileTargetToSerializedString();
+        default:
+            CJC_ABORT();
+            return "";
+    }
+}
+
+std::string GlobalOptions::CompileTargetToSerializedString() const
+{
+    switch (compileTarget) {
+        case COMPILETARGET::EXECUTABLE:
+            return "E";
+        case COMPILETARGET::STATIC_LIB:
+            return "C";
+        case COMPILETARGET::SHARED_LIB:
+            return "S";
         default:
             CJC_ABORT();
             return "";
