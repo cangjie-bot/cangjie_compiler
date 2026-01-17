@@ -55,7 +55,7 @@ flatbuffers::Offset<NodeFormat::FeaturesDirective> NodeWriter::SerializeFeatures
     auto items = builder.CreateVector(itemsVec);
     return NodeFormat::CreateFeaturesDirective(builder, ftrNodeBase, items, commas);
 }
- 
+
 flatbuffers::Offset<NodeFormat::FeatureId> NodeWriter::SerializeFeatureId(const AST::FeatureId& content)
 {
     auto nodeBase = SerializeNodeBase(&content);
