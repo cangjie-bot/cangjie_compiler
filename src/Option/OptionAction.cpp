@@ -68,9 +68,9 @@ const std::unordered_map<std::string, uint8_t> OUTPUT_MODE_MAP = {
 };
 
 const std::unordered_map<std::string, uint8_t> COMPILE_TARGET_MAP = {
-    {"exe", uint8_t(GlobalOptions::COMPILETARGET::EXECUTABLE)},
-    {"staticlib", uint8_t(GlobalOptions::COMPILETARGET::STATIC_LIB)},
-    {"dylib", uint8_t(GlobalOptions::COMPILETARGET::SHARED_LIB)},
+    {"exe", uint8_t(GlobalOptions::CompileTarget::EXECUTABLE)},
+    {"staticlib", uint8_t(GlobalOptions::CompileTarget::STATIC_LIB)},
+    {"dylib", uint8_t(GlobalOptions::CompileTarget::SHARED_LIB)},
 };
 
 #endif
@@ -666,8 +666,8 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
      }},
 #endif
     { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-        opts.commonPartCjo = GlobalOptions::ValidateInputFilePath(
-            arg.value, DiagKindRefactor::driver_invalid_binary_file);
+        opts.commonPartCjo =
+            GlobalOptions::ValidateInputFilePath(arg.value, DiagKindRefactor::driver_invalid_binary_file);
         return true;
     }},
     { Options::ID::INCRE_COMPILE, OPTION_TRUE_ACTION(opts.enIncrementalCompilation = true) },
@@ -842,15 +842,14 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             opts.enableHotReload = false;
         }
         opts.enableOutputType = true;
-        return true;
+            return true;
     }},
-        { Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+    { Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
         if (COMPILE_TARGET_MAP.count(arg.value) == 0) { return false; }
-        opts.compileTarget = GlobalOptions::COMPILETARGET(COMPILE_TARGET_MAP.at(arg.value));
+        opts.compileTarget = GlobalOptions::CompileTarget(COMPILE_TARGET_MAP.at(arg.value));
         return true;
     }},
-
      { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
         opts.compileMacroPackage = true;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND

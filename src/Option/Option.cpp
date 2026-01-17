@@ -42,7 +42,7 @@ const std::string CJ_EXTENSION = "cj";
 const std::string CHIR_EXTENSION = "chir";
 const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
-const std::string OBJC_EXTENSION= "obj";
+const std::string COFF_OBJECT_EXTENSION = "obj";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
 #elif defined(__APPLE__)
@@ -286,8 +286,8 @@ void GlobalOptions::SetupChirOptions()
 
 void GlobalOptions::SetupCompileTargetOptions()
 {
-     if(outputMode == OutputMode::OBJ  && compileTarget == COMPILETARGET::DEFAULT){
-        compileTarget = COMPILETARGET::EXECUTABLE;
+    if (outputMode == OutputMode::OBJ && compileTarget == CompileTarget::DEFAULT) {
+        compileTarget = CompileTarget::EXECUTABLE;
     }
 }
 
@@ -536,8 +536,8 @@ bool GlobalOptions::CheckLtoOptions() const
         Errorln("Windows does not support LTO optimization.");
         return false;
     }
-    if (outputMode == OutputMode::OBJ ) {
-        Errorln("--output-type=obj is not allowed in LTO model");
+    if (outputMode == OutputMode::OBJ) {
+        Errorln("--output-type=obj is not allowed in LTO mode");
         return false;
     }
     if (outputMode == OutputMode::STATIC_LIB && !bcInputFiles.empty()) {
@@ -551,17 +551,24 @@ bool GlobalOptions::CheckLtoOptions() const
     return true;
 }
 
-bool GlobalOptions::CheckOutputModeOptions() const {
-    if(outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT){
+bool GlobalOptions::CheckOutputModeOptions()
+{
+    if (outputMode != OutputMode::OBJ && compileTarget != CompileTarget::DEFAULT) {
+        compileTarget = CompileTarget::DEFAULT;
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
-        return false;
     }
-    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage){
+    if (srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
+    if (!compilePackage && srcFiles.empty() && !inputObjs.empty() && !experimentalMode) {
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_require_experimental, DEFAULT_POSITION);
+        return false;
+    }
+
     return true;
 }
 
@@ -570,13 +577,13 @@ bool GlobalOptions::CheckCompileAsExeOptions() const
     if (!IsCompileAsExeEnabled()) {
         return true;
     }
-    if (IsCompileAsExeEnabled() && !IsLTOEnabled()){
+    if (IsCompileAsExeEnabled() && !IsLTOEnabled()) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_as_exe, DEFAULT_POSITION);
         return false;
     }
     auto osType = target.GetOSFamily();
-    if(osType == OSType::WINDOWS || osType == OSType::DARWIN || osType == OSType::IOS) {
+    if (osType == OSType::WINDOWS || osType == OSType::DARWIN || osType == OSType::IOS) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_as_exe_platform, DEFAULT_POSITION);
         return false;
@@ -644,7 +651,7 @@ void GlobalOptions::RefactAggressiveParallelCompileOption()
     if (aggressiveParallelCompile.has_value()) {
         return;
     } else if (optimizationLevel == OptimizationLevel::O0 || aggressiveParallelCompileWithoutArg) {
-        // When the compile options contain `-O0`\'-g'\`--apc`, aggressiveParallelCompile will be enabled,
+        // When the compile options contain `-O0`\`--apc`, aggressiveParallelCompile will be enabled,
         // and the degree of parallelism is the same as that of `-j`.
         CJC_ASSERT(jobs.has_value());
         constexpr std::size_t allowance = 2;
@@ -677,12 +684,11 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_archive_file, value, maybePath.value());
         return true;
     }
-    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION ) {
+    if (ext == OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != OBJECT_EXTENSION) {
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
-
-    if (ext == OBJC_EXTENSION  && GetFileExtension(maybePath.value()) != OBJC_EXTENSION){
+    if (ext == COFF_OBJECT_EXTENSION && GetFileExtension(maybePath.value()) != COFF_OBJECT_EXTENSION) {
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
@@ -812,7 +818,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
             return;
         }
         std::string ext = GetFileExtension(value);
-        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == OBJC_EXTENSION) {
+        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == COFF_OBJECT_EXTENSION) {
             ret = HandleArchiveExtension(diag, value);
         } else if (ext == CJ_EXTENSION && !compileCjd) {
             ret = HandleCJExtension(diag, value);
@@ -1404,6 +1410,23 @@ std::string GlobalOptions::OutputModeToSerializedString() const
             return "S";
         case OutputMode::CHIR:
             return "CH";
+        case OutputMode::OBJ:
+            return CompileTargetToSerializedString();
+        default:
+            CJC_ABORT();
+            return "";
+    }
+}
+
+std::string GlobalOptions::CompileTargetToSerializedString() const
+{
+    switch (compileTarget) {
+        case CompileTarget::EXECUTABLE:
+            return "E";
+        case CompileTarget::STATIC_LIB:
+            return "C";
+        case CompileTarget::SHARED_LIB:
+            return "S";
         default:
             CJC_ABORT();
             return "";

@@ -90,10 +90,7 @@ std::pair<std::string, std::string> Gnu::GetGccCrtFilePair() const
 }
 
 void Gnu::GenericHandleSanitizerRuntime(
-    Tool& tool,
-    const std::string& name,
-    const std::string& cangjieLibPath,
-    std::function<void()> finalFallback)
+    Tool& tool, const std::string& name, const std::string& cangjieLibPath, std::function<void()> finalFallback)
 {
     if (driverOptions.outputMode != Cangjie::GlobalOptions::OutputMode::EXECUTABLE) {
         return;
@@ -105,19 +102,19 @@ void Gnu::GenericHandleSanitizerRuntime(
     // (libclang_rt-xxx.a)
     std::string staticName = "libclang_rt-" + name + ".a";
     auto rtLib = FileUtil::FindFileByName(staticName, {cangjieLibPath});
-    if (!rtLib) {
+    if (!rtLib.has_value()) {
         rtLib = SearchClangLibrary(name, ".a");
     }
 
-    if (rtLib) {
-        LinkStaticLibrary(tool, *rtLib);
+    if (rtLib.has_value()) {
+        LinkStaticLibrary(tool, rtLib.value());
         return;
     }
 
     // Preinit (xxx-preinit)
     auto preinitLib = SearchClangLibrary(name + "-preinit", ".a");
-    if (preinitLib) {
-        LinkStaticLibrary(tool, *preinitLib);
+    if (preinitLib.has_value()) {
+        LinkStaticLibrary(tool, preinitLib.value());
         tool.AppendArg("-lclang_rt." + name);
         return;
     }
@@ -161,7 +158,6 @@ void Gnu::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
 
     // When we reach here, we must be at the final phase of the compilation,
     // which means that is the final output.
-    //TempFileInfo fileInfo = TempFileManager::Instance().CreateNewFileInfo(optionalInfo, TempFileKind::O_STATICLIB);
     TempFileInfo fileInfo = CreateNewFileInfoWrapper(objFiles, TempFileKind::O_STATICLIB);
     std::string outputFile = fileInfo.filePath;
 
@@ -425,21 +421,19 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
         if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
             GenerateArchiveTool(objFiles);
             return true;
-        } else if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ){
+        } else if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
             GenerateObjTool(objFiles);
             return true;
-        }  else {
+        } else {
             return GenerateLinking(objFiles);
         }
     }
-
     return PerformPartialLinkAndContinue(objFiles);
-    
 }
 
-
-bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles) {
-   auto tool = std::make_unique<Tool>(ldPath, ToolType::BACKEND, driverOptions.environment.allVariables);
+bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles)
+{
+    auto tool = std::make_unique<Tool>(ldPath, ToolType::BACKEND, driverOptions.environment.allVariables);
     // Recover the 'outputFile' from 'path/0-xx.o' to 'path/xx.o'
     std::string outputFile = objFiles[0].filePath;
     std::string dirPath = FileUtil::GetDirPath(outputFile);
@@ -469,8 +463,8 @@ bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles) {
     file.close();
 
     if (!driverOptions.symbolsNeedLocalized.empty()) {
-        auto changeSymVis = std::make_unique<Tool>(
-            objcopyPath, ToolType::BACKEND, driverOptions.environment.allVariables);
+        auto changeSymVis =
+            std::make_unique<Tool>(objcopyPath, ToolType::BACKEND, driverOptions.environment.allVariables);
         changeSymVis->AppendArg(outputFile);
         changeSymVis->AppendArg("--localize-symbols=" + name);
         backendCmds.emplace_back(MakeSingleToolBatch({std::move(changeSymVis)}));
@@ -492,18 +486,18 @@ bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles) {
         backendCmds.emplace_back(MakeSingleToolBatch({std::move(toolOfCacheCopy)}));
     }
 
-    // The '--output-type=staticlib', one more step to go, create an archive file consisting of all generated object files
+    // The '--output-type=staticlib', one more step to go, create an archive file consisting of all generated object
+    // files
     if (driverOptions.outputMode == GlobalOptions::OutputMode::STATIC_LIB) {
         GenerateArchiveTool(objFiles);
         return true;
-    } else if(driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
+    } else if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
         GenerateObjTool(objFiles);
         return true;
     } else {
         return GenerateLinking(objFiles);
     }
 }
-
 
 bool Gnu::GenerateLinking(const std::vector<TempFileInfo>& objFiles)
 {
