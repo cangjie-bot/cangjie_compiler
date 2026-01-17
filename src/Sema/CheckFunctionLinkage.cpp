@@ -224,7 +224,7 @@ void AnalyzeLinkageBasedOnModifier(Package& pkg, const GlobalOptions& opt)
 
 class ExternalLinkageAnalyzer {
 public:
-    explicit ExternalLinkageAnalyzer(const Package& pkg) : pkg(pkg)
+    explicit ExternalLinkageAnalyzer(const Package& pkg, const GlobalOptions& opt) : pkg(pkg), opt(opt)
     {
     }
     void Run()
@@ -280,6 +280,7 @@ private:
     }
 
     const Package& pkg;
+    const GlobalOptions& opt;
     std::unordered_set<Ptr<Decl>> srcExportedDecls; // Include FuncDecl and VarDecl.
     std::unordered_set<Ptr<Ty>> exportedTys;
     std::unordered_set<Ptr<Expr>> srcExportedExprs;
@@ -322,11 +323,13 @@ void ExternalLinkageAnalyzer::PerformPublicType(const OwnedPtr<Decl>& decl)
         AddExportedTy(super->ty);
     }
 
-    if (auto classDecl = DynamicCast<ClassDecl>(decl.get())) {
-        for (const auto& anno : classDecl->annotations) {
-            if (anno->kind == AnnotationKind::ANNOTATION) {
-                for (const auto& arg : anno->args) {
-                        AddSrcExportedExpr(arg->expr);
+    if (opt.outputMode == GlobalOptions::OutputMode::OBJ) {
+        if (auto classDecl = DynamicCast<ClassDecl>(decl.get())) {
+            for (const auto& anno : classDecl->annotations) {
+                if (anno->kind == AnnotationKind::ANNOTATION) {
+                    for (const auto& arg : anno->args) {
+                            AddSrcExportedExpr(arg->expr);
+                    }
                 }
             }
         }
@@ -621,7 +624,7 @@ void ExternalLinkageAnalyzer::SetVarTargetLinkage(VarDecl& vd, bool byTy)
 void TypeChecker::TypeCheckerImpl::AnalyzeFunctionLinkage(Package& pkg) const
 {
     AnalyzeLinkageBasedOnModifier(pkg, ci->invocation.globalOptions);
-    ExternalLinkageAnalyzer(pkg).Run();
+    ExternalLinkageAnalyzer(pkg, ci->invocation.globalOptions).Run();
     IterateToplevelDecls(pkg, [](auto& decl) {
         if (auto id = DynamicCast<InheritableDecl>(decl.get()); id && id->linkage == Linkage::INTERNAL) {
             IterateAllFunctionInStruct(*id, MarkFunctionAsInternalLinkage);
