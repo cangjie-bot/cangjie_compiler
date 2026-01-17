@@ -1214,6 +1214,7 @@ private:
     std::string OptimizationLevelToSerializedString() const;
     std::string StackTraceFormatToSerializedString() const;
     std::string OutputModeToSerializedString() const;
+    std::string CompileTargetToSerializedString() const;
     std::string SelectedCHIROptsToSerializedString() const;
     std::string OverflowStrategyToSerializedString() const;
     std::string SanitizerTypeToSerializedString() const;
