@@ -467,7 +467,7 @@ llvm::Constant* CGEnumType::GenFieldsNumOfTypeTemplate()
     }
 }
 
-llvm::Constant* GenFieldsFnsOfTypeTemplateForOptionLikeT(CGModule& cgMod, const std::string& funcPrefixName)
+llvm::Constant* CGEnumType::GenFieldsFnsOfTypeTemplateForOptionLikeT(CGModule& cgMod, const std::string& funcPrefixName)
 {
     auto& llvmCtx = cgMod.GetLLVMContext();
     auto p0i8 = llvm::Type::getInt8PtrTy(llvmCtx);

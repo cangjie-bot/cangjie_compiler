@@ -119,6 +119,8 @@ public:
 
     std::string GetEnumTypeName() const;
 
+    llvm::Constant* GenFieldsFnsOfTypeTemplateForOptionLikeT(CGModule& cgMod, const std::string& funcPrefixName);
+
 protected:
     llvm::Type* GenLLVMType() override;
     void GenContainedCGTypes() override;

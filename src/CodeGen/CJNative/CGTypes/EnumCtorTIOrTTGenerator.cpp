@@ -76,8 +76,16 @@ EnumCtorLayout EnumCtorTIOrTTGenerator::GenLayoutForReferenceType(const std::str
     EnumCtorLayout layout;
     layout.size = 8u;
     layout.align = 8u;
+    auto cgEnumType = StaticCast<CGEnumType*>(CGType::GetOrCreate(cgMod, &chirEnumType));
     layout.fieldTypes.emplace_back(cgMod.GetCGContext().GetCHIRBuilder().GetBoolTy());
-    layout.fieldTypes.emplace_back(CGType::GetRefTypeOfCHIRInt8(cgMod.GetCGContext().GetCHIRBuilder()));
+    if (cgEnumType->IsOptionLikeT()) {
+        layout.fieldTypes.emplace_back(CGType::GetRefTypeOfCHIRInt8(cgMod.GetCGContext().GetCHIRBuilder()));
+    } else {
+        const auto& ctors = chirEnumType.GetConstructorInfos(cgMod.GetCGContext().GetCHIRBuilder());
+        CHIR::Type* associatedValueType = cgEnumType->IsAntiOptionLike() ? ctors[1].funcType->GetParamTypes()[0]
+                                                                         : ctors[0].funcType->GetParamTypes()[0];
+        layout.fieldTypes.emplace_back(associatedValueType);
+    }
     auto layoutType = GetLLVMStructType(cgMod, layout.fieldTypes, GetClassObjLayoutName(className));
     layout.offsets = CGCustomType::GenOffsetsArray(cgMod, tiName + ".offsets", layoutType);
     return layout;
@@ -308,8 +316,9 @@ void EnumCtorTIOrTTGenerator::GenerateGenericEnumCtorTypeTemplate(llvm::GlobalVa
         auto genericType = typeArg.GetGenericType();
         localGenericParamIndicesMap.emplace(genericType, genericTypeIdx++);
     }
-    typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_FIELDS_FNS)] =
-        CGTypeInfo::GenFieldsFnsOfTypeTemplate(cgMod, ttName, layout.fieldTypes, localGenericParamIndicesMap);
+    typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_FIELDS_FNS)] = cgEnumType->IsOptionLikeT()
+        ? cgEnumType->GenFieldsFnsOfTypeTemplateForOptionLikeT(cgMod, ttName)
+        : CGTypeInfo::GenFieldsFnsOfTypeTemplate(cgMod, ttName, layout.fieldTypes, localGenericParamIndicesMap);
     typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_SUPER_FN)] = GenSuperFnOfTypeTemplate(ttName + ".superTiFn");
     typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_FINALIZER)] = i8PtrNull;
     typeTemplateVec[static_cast<size_t>(TYPETEMPLATE_REFLECTION)] = llvm::ConstantPointerNull::get(i8PtrTy);
