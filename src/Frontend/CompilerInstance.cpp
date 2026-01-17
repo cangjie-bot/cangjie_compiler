@@ -417,6 +417,10 @@ bool CompilerInstance::ShouldWriteCacheFile() const
     if (srcPkgs.size() != 1) {
         InternalError("source packages should only have one element.");
     }
+    if (!invocation.globalOptions.compilePackage && invocation.globalOptions.srcFiles.empty() &&
+        !invocation.globalOptions.inputObjs.empty()) {
+        return false;
+    }
     // if current package is empty package, we don't write cache file
     if (srcPkgs[0]->IsEmpty() || kind == IncreKind::NO_CHANGE) {
         return false;
