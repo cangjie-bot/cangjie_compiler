@@ -176,7 +176,7 @@ protected:
     void SortInputlibraryFileAndAppend(Tool& tool, const std::vector<TempFileInfo>& objFiles);
     void GenerateObjTool(const std::vector<TempFileInfo>& objFiles);
     TempFileInfo GetOutputFileInfo(const std::vector<TempFileInfo>& objFiles) const;
-    TempFileInfo CreateNewFileInfoWrapper( const std::vector<TempFileInfo>& objFiles, TempFileKind kind) const;
+    TempFileInfo CreateNewFileInfoWrapper(const std::vector<TempFileInfo>& objFiles, TempFileKind kind) const;
     // Get the right cruntime lib folder name by giving arch.
     std::string GetArchFolderName(const Triple::ArchType& arch) const;
     // Only available for ELF or MachO targets.

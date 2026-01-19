@@ -624,10 +624,10 @@ public:
     };
     OutputMode outputMode = OutputMode::EXECUTABLE;
 
-    enum class COMPILETARGET :uint8_t {
-        EXECUTABLE, STATIC_LIB, SHARED_LIB,DEFAULT
+    enum class CompileTarget : uint8_t {
+        EXECUTABLE, STATIC_LIB, SHARED_LIB, DEFAULT
     };
-    COMPILETARGET compileTarget = COMPILETARGET::DEFAULT;
+    CompileTarget compileTarget = CompileTarget::DEFAULT;
 
     bool enableFuncSections = false;
     bool enableDataSections = false;
@@ -848,23 +848,24 @@ public:
     std::vector<std::string> bitcodeFilesName; /** < the name of packageMoudle.bc. */
     std::vector<std::string> symbolsNeedLocalized; /** < Symbols that need to be localized in the compiled binary. */
 
-    bool CompileObj() const 
+    bool CompileObj() const
     {
-        return (outputMode == GlobalOptions::OutputMode::OBJ && compileTarget == COMPILETARGET::EXECUTABLE);
+        return (outputMode == GlobalOptions::OutputMode::OBJ && compileTarget == CompileTarget::EXECUTABLE);
     }
     /**
      * @brief Determine if the output mode is executable.
      *
-     * @return bool Returns true if the output mode is executable or output mode is obj and compileTarget is executable, otherwise returns false.
+     * @return bool Returns true if the output mode is executable or obj and compileTarget is executable,
+     * otherwise returns false.
      */
     bool CompileExecutable() const
     {
         return (outputMode == GlobalOptions::OutputMode::EXECUTABLE || CompileObj());
     }
 
-    bool CompileObjSkip() const 
+    bool CompileObjSkip() const
     {
-         return ( outputMode == GlobalOptions::OutputMode::OBJ && compileTarget != COMPILETARGET::EXECUTABLE);
+        return (outputMode == GlobalOptions::OutputMode::OBJ && compileTarget != CompileTarget::EXECUTABLE);
     }
     /**
      * @brief Get options backend type.
@@ -1182,7 +1183,7 @@ private:
     bool CheckScanDependencyOptions() const;
     bool CheckSanitizerOptions() const;
     bool CheckLtoOptions() const;
-    bool CheckOutputModeOptions() const;
+    bool CheckOutputModeOptions();
     bool CheckCompileAsExeOptions() const;
     bool CheckPgoOptions() const;
     bool CheckCompileMacro() const;

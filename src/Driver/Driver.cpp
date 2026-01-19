@@ -196,9 +196,10 @@ bool Driver::ExecuteCompilation() const
     if (driverOptions->enableVerbose) {
         FrontendCmdPrint(*driverOptions.get(), cangjieHome, args);
     }
-    // cjc main.cj  or cjc main.o 
+    // cjc main.cj or cjc main.o
     bool noBackendInputs = driverOptions->frontendOutputFiles.empty() && driverOptions->inputObjs.empty();
-    if ( noBackendInputs || driverOptions->IsEmitCHIREnable() ||  driverOptions->outputMode == GlobalOptions::OutputMode::CHIR) {
+    if (noBackendInputs || driverOptions->IsEmitCHIREnable() ||
+        driverOptions->outputMode == GlobalOptions::OutputMode::CHIR) {
         DeleteInstance(instance);
         return true;
     }

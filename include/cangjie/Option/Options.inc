@@ -165,7 +165,6 @@ PREDEFVALUE(output_type_list, {
     VALUE("dylib", "emit dynamic library", { BACKEND(CJNATIVE) }, { GROUP(STABLE) COMMA GROUP(VISIBLE) }) COMMA
     VALUE("chir", "emit partially compiled package", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
     VALUE("obj", "emit obj", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) }) COMMA
-
 #if !defined(CANGJIE_VISIBLE_OPTIONS_ONLY)
     VALUE("hotreload", "emit dynamic library with hot reload supports", { BACKEND(CJNATIVE) }, { GROUP(VISIBLE) })
 #endif
