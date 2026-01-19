@@ -551,7 +551,7 @@ bool GlobalOptions::CheckLtoOptions() const
     return true;
 }
 
-bool GlobalOptions::CheckOutputModeOptions() const {
+bool GlobalOptions::CheckOutputModeOptions() {
     if (outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT) {
         compileTarget = COMPILETARGET::DEFAULT;
         DiagnosticEngine diag;
