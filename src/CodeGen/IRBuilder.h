@@ -88,7 +88,8 @@ public:
 
     llvm::AllocaInst* CreateEntryAlloca(
         llvm::Type* type, llvm::Value* arraySize = nullptr, const llvm::Twine& name = "");
-    llvm::Instruction* CreateEntryAlloca(const CGType& cgType, const llvm::Twine& name = "", bool isLocalRegion = false);
+    llvm::Instruction* CreateEntryAlloca(
+        const CGType& cgType, const llvm::Twine& name = "", bool isLocalRegion = false);
 
     llvm::Value* CreateLoad(llvm::Type* elementType, llvm::Value* addr, const llvm::Twine& name = "");
 
@@ -430,7 +431,8 @@ public:
     llvm::Instruction* CallIntrinsicIsSubtype(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallIntrinsicIsTupleTypeOf(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallIntrinsicIsTypeEqualTo(const std::vector<llvm::Value*>& parameters);
-    llvm::Instruction* CallIntrinsicAllocaGeneric(const std::vector<llvm::Value*>& parameters, bool isLocalRegion = false);
+    llvm::Instruction* CallIntrinsicAllocaGeneric(
+        const std::vector<llvm::Value*>& parameters, bool isLocalRegion = false);
     llvm::Instruction* CallIntrinsicGCWriteGeneric(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallGCWriteGenericPayload(const std::vector<llvm::Value*>& parameters);
     llvm::Instruction* CallGCReadGeneric(const std::vector<llvm::Value*>& parameters);
