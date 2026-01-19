@@ -552,16 +552,22 @@ bool GlobalOptions::CheckLtoOptions() const
 }
 
 bool GlobalOptions::CheckOutputModeOptions() const {
-    if(outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT){
+    if (outputMode != OutputMode::OBJ  && compileTarget != COMPILETARGET::DEFAULT) {
+        compileTarget = COMPILETARGET::DEFAULT;
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_target, DEFAULT_POSITION);
-        return false;
     }
-    if(srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage){
+    if (srcFiles.empty() && (outputMode == OutputMode::OBJ || outputMode == OutputMode::CHIR) && !compilePackage) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_source_file_empty, DEFAULT_POSITION);
         return false;
     }
+    if (!compilePackage && srcFiles.empty() && !inputObjs.empty() && !experimentalMode) {
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_require_experimental, DEFAULT_POSITION);
+        return false;
+    }
+
     return true;
 }
 
@@ -570,13 +576,13 @@ bool GlobalOptions::CheckCompileAsExeOptions() const
     if (!IsCompileAsExeEnabled()) {
         return true;
     }
-    if (IsCompileAsExeEnabled() && !IsLTOEnabled()){
+    if (IsCompileAsExeEnabled() && !IsLTOEnabled()) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_as_exe, DEFAULT_POSITION);
         return false;
     }
     auto osType = target.GetOSFamily();
-    if(osType == OSType::WINDOWS || osType == OSType::DARWIN || osType == OSType::IOS) {
+    if (osType == OSType::WINDOWS || osType == OSType::DARWIN || osType == OSType::IOS) {
         DiagnosticEngine diag;
         diag.DiagnoseRefactor(DiagKindRefactor::driver_invalid_compile_as_exe_platform, DEFAULT_POSITION);
         return false;
@@ -644,7 +650,7 @@ void GlobalOptions::RefactAggressiveParallelCompileOption()
     if (aggressiveParallelCompile.has_value()) {
         return;
     } else if (optimizationLevel == OptimizationLevel::O0 || aggressiveParallelCompileWithoutArg) {
-        // When the compile options contain `-O0`\'-g'\`--apc`, aggressiveParallelCompile will be enabled,
+        // When the compile options contain `-O0`\`--apc`, aggressiveParallelCompile will be enabled,
         // and the degree of parallelism is the same as that of `-j`.
         CJC_ASSERT(jobs.has_value());
         constexpr std::size_t allowance = 2;
