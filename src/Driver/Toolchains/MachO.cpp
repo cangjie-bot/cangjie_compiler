@@ -205,7 +205,7 @@ bool MachO::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
         return true;
     }
     
-    if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ ){
+    if (driverOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
         GenerateObjTool(objFiles);
         return true;
     }

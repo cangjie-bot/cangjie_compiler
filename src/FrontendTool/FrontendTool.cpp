@@ -83,8 +83,10 @@ static bool IsEmptyInputFile(const DefaultCompilerInstance& instance)
         // In scan dependency mode, .cjo file input is required or `-p` must be specified (with package path input).
         return !globalOptions.compilePackage && globalOptions.inputCjoFile.empty();
     } else {
-        // In code compilation mode, .cj file input or is required or `-p` must be specified (with package path input).
-        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() && globalOptions.inputChirFiles.empty() && globalOptions.inputObjs.empty();
+        // In code compilation mode, .cj file input or .o file is required or `-p` must be specified (with package path
+        // input).
+        return !globalOptions.compilePackage && globalOptions.srcFiles.empty() &&
+            globalOptions.inputChirFiles.empty() && globalOptions.inputObjs.empty();
     }
 }
 
@@ -116,8 +118,6 @@ static bool ExecuteCompile(DefaultCompilerInstance& instance)
     if (!globalOptions.compilePackage && globalOptions.srcFiles.empty() && !globalOptions.inputObjs.empty()) {
         using namespace std::literals;
         static constexpr std::string_view CJ_PREFIX = "cangjie-";
-        // const std::string staticLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "lib"), globalOptions.GetCangjieLibTargetPathName());
-        // const std::string dyLibDir = FileUtil::JoinPath(FileUtil::JoinPath(globalOptions.cangjieHome, "runtime/lib"), globalOptions.GetCangjieLibTargetPathName());
         auto it = std::remove_if(globalOptions.inputLibraryOrder.begin(), globalOptions.inputLibraryOrder.end(), [&](const auto& tuple){
             const std::string& rawName = std::get<0>(tuple);
             std::string_view nameView(rawName);
