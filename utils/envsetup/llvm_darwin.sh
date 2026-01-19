@@ -26,7 +26,7 @@ case "${shell_name}" in
         ;;
 esac
 
-if [ -L ${source_dir} ]; then
+if [ -L "${source_dir}" ]; then
     if command -v realpath 2>&1 >/dev/null; then
         source_dir=$(realpath "${source_dir}")
     else
@@ -48,7 +48,7 @@ export DYLD_LIBRARY_PATH=${CANGJIE_HOME}/runtime/lib/darwin_${hw_arch}_cjnative:
 unset hw_arch
 
 if [ -z ${SDKROOT+x} ]; then
-    export SDKROOT=`xcrun --sdk macosx --show-sdk-path`
+    export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 fi
 
 xattr -dr com.apple.quarantine ${script_dir}/* &> /dev/null || true

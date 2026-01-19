@@ -11,7 +11,7 @@ set -e;
 # 编译Cangjie编译器 for native
 cd ${WORKSPACE}/cangjie_compiler;
 python3 build.py clean;
-python3 build.py build -t ${build_type} ${AddOptsBuildpy};
+python3 build.py build -t ${build_type} ${add_opts_buildpy};
 
 # 编译Cangjie编译器 + cjdb for windows
 export CMAKE_PREFIX_PATH=${MINGW_PATH}/x86_64-w64-mingw32;

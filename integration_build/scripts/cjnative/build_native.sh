@@ -11,7 +11,7 @@ set -e;
 # 编译Cangjie编译器 + cjdb
 cd ${WORKSPACE}/cangjie_compiler;
 python3 build.py clean;
-python3 build.py build -t ${build_type} --build-cjdb ${AddOptsBuildpy};
+python3 build.py build -t ${build_type} --build-cjdb ${add_opts_buildpy};
 python3 build.py install;
 
 source output/envsetup.sh;
