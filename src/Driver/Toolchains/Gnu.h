@@ -41,7 +41,7 @@ protected:
 
     bool PrepareDependencyPath() override;
     bool ProcessGeneration(std::vector<TempFileInfo>& objFiles) override;
-    bool PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles);         
+    bool PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles);
     virtual std::string GenerateGCCLibPath(const std::pair<std::string, std::string>& gccCrtFilePair) const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);
@@ -74,7 +74,8 @@ protected:
 private:
     void HandleAsanDependencies(Tool& tool, const std::string& cangjieLibPath, const std::string& gccLibPath);
     void HandleHwasanDependencies(Tool& tool, const std::string& cangjieLibPath);
-    void GenericHandleSanitizerRuntime(Tool& tool, const std::string& name, const std::string& cangjieLibPath, std::function<void()> finalFallback);
+    void GenericHandleSanitizerRuntime(
+        Tool& tool, const std::string& name, const std::string& cangjieLibPath, std::function<void()> finalFallback);
 };
 } // namespace Cangjie
 #endif // CANGJIE_DRIVER_TOOLCHAIN_GNU_H
