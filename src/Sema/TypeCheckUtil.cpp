@@ -877,7 +877,9 @@ bool IsNeedRuntimeCheck(TypeManager& typeManager, Ty& srcTy, Ty& targetTy)
     if (isFinalType(srcTy) && isFinalType(targetTy)) {
         auto srcDecl = Ty::GetDeclPtrOfTy(&srcTy);
         auto targetDecl = Ty::GetDeclPtrOfTy(&targetTy);
-        return srcDecl == targetDecl;
+        if (srcDecl || targetDecl) {
+            return srcDecl == targetDecl;
+        }
     }
     return (srcTy.IsClassLike() && targetTy.IsClassLike()) || srcTy.IsGeneric() || targetTy.IsGeneric() ||
         srcTy.HasGeneric() || targetTy.HasGeneric() || typeManager.IsSubtype(&srcTy, &targetTy, true, false) ||
