@@ -619,9 +619,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     { Options::ID::INT_OVERFLOW_MODE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(ValidOverflowStrategy(arg.value));
-        if (!ValidOverflowStrategy(arg.value)) {
-            return false;
-        }
+        if (!ValidOverflowStrategy(arg.value)) { return false; }
         opts.overflowStrategy = StringToOverflowStrategy(arg.value);
         return true;
     }},
@@ -637,7 +635,8 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
         return true;
     }},
     { Options::ID::COMPILE_AS_EXE, OPTION_TRUE_ACTION(opts.enableCompileAsExe = true) },
-    { Options::ID::TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) { return ParseTargetTriple(opts, arg.value);
+    { Options::ID::TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) { 
+        return ParseTargetTriple(opts, arg.value);
     }},
 
     { Options::ID::PROFILE_COMPILE_TIME, OPTION_TRUE_ACTION(opts.enableTimer = true) },
@@ -647,7 +646,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
         if (maybePath.has_value()) {
             opts.importPaths.emplace_back(maybePath.value());
         }
-            return true;
+        return true;
     }},
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     { Options::ID::PLUGIN_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
@@ -702,9 +701,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), true));
         } else {
             CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-            if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (WARN_GROUP_MAP.count(arg.value) == 0) { return false; }
             auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
             WarningOptionMgr::UpdateFlag(groupIdx, true);
         }
@@ -715,9 +712,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), false));
         } else {
             CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-            if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (WARN_GROUP_MAP.count(arg.value) == 0) { return false; }
             auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
             WarningOptionMgr::UpdateFlag(groupIdx, false);
         }
@@ -728,7 +723,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::SANITIZE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         if (arg.value == "address") {
             opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::ADDRESS;
-        else if (arg.value == "thread") {
+        } else if (arg.value == "thread") {
             opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::THREAD;
         } else if (arg.value == "hwaddress") {
             opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::HWADDRESS;
@@ -741,9 +736,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::ERROR_COUNT_LIMIT, ParseErrorCountLimit },
     { Options::ID::DIAG_FORMAT, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(DIAG_FORMAT_MAP.count(arg.value) != 0);
-        if (DIAG_FORMAT_MAP.count(arg.value) == 0) {
-            return false;
-        }
+        if (DIAG_FORMAT_MAP.count(arg.value) == 0) { return false; }
         opts.diagFormat = DiagFormat(DIAG_FORMAT_MAP.at(arg.value));
         return true;
     }},
@@ -844,9 +837,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             opts.linkStaticStd = false; // waiting for hotreload's bugfix
         } else {
             CJC_ASSERT(OUTPUT_MODE_MAP.count(arg.value) != 0);
-            if (OUTPUT_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (OUTPUT_MODE_MAP.count(arg.value) == 0) { return false; }
             opts.outputMode = GlobalOptions::OutputMode(OUTPUT_MODE_MAP.at(arg.value));
             opts.enableHotReload = false;
         }
@@ -855,17 +846,14 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     {Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
-        if (COMPILE_TARGET_MAP.count(arg.value) == 0) {
-            return false;
-        }
+        if (COMPILE_TARGET_MAP.count(arg.value) == 0) { return false; }
         opts.compileTarget = GlobalOptions::CompileTarget(COMPILE_TARGET_MAP.at(arg.value));
         return true;
     }},
-
     { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
         opts.compileMacroPackage = true;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-        opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
+            opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
 #endif
         return true;
     }},
@@ -929,8 +917,8 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::CHIR_WFC, ParseCHIRWFC },
     { Options::ID::ENABLE_CHIR_REDUNDANT_GETORTHROW_ELIMINATION,
         [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-           opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REDUNDANT_LOAD);
-           opts.enableChirRGetOrThrowE = true;
+             opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REDUNDANT_LOAD);
+             opts.enableChirRGetOrThrowE = true;
 	    return true;
     }},
     { Options::ID::DISABLE_CHIR_USELESS_IMPORT_ELIMINATION, [](
@@ -955,9 +943,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             opts.emitCHIRPhase = GlobalOptions::CandidateEmitCHIRPhase::OPT;
             return true;
         }
-        if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) {
-            return false;
-        }
+        if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) { return false; }
         opts.emitCHIRPhase = EMIT_CHIR_PHASE_MAP.at(arg.value);
         return true;
     }},
@@ -969,9 +955,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 #endif
     { Options::ID::RENDER_CHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(DUMP_CHIR_MODE_MAP.count(arg.value) != 0);
-        if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) {
-            return false;
-        }
+        if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) { return false; }
         opts.chirRenderMode = GlobalOptions::CHIRMode(DUMP_CHIR_MODE_MAP.at(arg.value));
         return true;
     }},
@@ -1019,7 +1003,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
         opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::SWITCH_OPT);
 #endif
-        return true;
+         return true;
      }},
     { Options::ID::REF_FOLDING,
         OPTION_TRUE_ACTION(opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REF_FOLDING)) },
@@ -1032,9 +1016,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     // ---------- CHIR INTERPRETER ----------
     { Options::ID::PRINT_BCHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(PRINT_BCHIR_MODE_MAP.count(arg.value) != 0);
-        if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) {
-            return false;
-        }
+        if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) { return false; }
         opts.printBCHIR[static_cast<uint8_t>(PRINT_BCHIR_MODE_MAP.at(arg.value))] = true;
         return true;
     }},
