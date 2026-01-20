@@ -278,12 +278,12 @@ TempFileInfo ToolChain::GetOutputFileInfo(const std::vector<TempFileInfo>& objFi
 TempFileInfo ToolChain::CreateNewFileInfoWrapper(const std::vector<TempFileInfo>& objFiles,TempFileKind kind) const
 {
     TempFileInfo optionalInfo;
-        if (!objFiles.empty()) {
-            optionalInfo = objFiles[0];
-        } else if (!driverOptions.inputObjs.empty()) {
-            optionalInfo.fileName = FileUtil::GetFileNameWithoutExtension(driverOptions.inputObjs[0]);
-        }
-        return TempFileManager::Instance().CreateNewFileInfo(optionalInfo, kind);
+    if (!objFiles.empty()) {
+        optionalInfo = objFiles[0];
+    } else if (!driverOptions.inputObjs.empty()) {
+        optionalInfo.fileName = FileUtil::GetFileNameWithoutExtension(driverOptions.inputObjs[0]);
+    }
+    return TempFileManager::Instance().CreateNewFileInfo(optionalInfo, kind);
 }
 
 void ToolChain::GenerateObjTool(const std::vector<TempFileInfo>& objFiles)
@@ -298,8 +298,8 @@ void ToolChain::GenerateObjTool(const std::vector<TempFileInfo>& objFiles)
         return;
     }
 
-    auto copyTool = std::make_unique<Tool>(
-        "CacheCopy", ToolType::INTERNAL_IMPLEMENTED, driverOptions.environment.allVariables);
+    auto copyTool =
+        std::make_unique<Tool>("CacheCopy", ToolType::INTERNAL_IMPLEMENTED, driverOptions.environment.allVariables);
     copyTool->AppendArg(srcFile);
     copyTool->AppendArg(destFile);
 

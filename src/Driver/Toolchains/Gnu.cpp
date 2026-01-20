@@ -161,7 +161,6 @@ void Gnu::GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles)
 
     // When we reach here, we must be at the final phase of the compilation,
     // which means that is the final output.
-    //TempFileInfo fileInfo = TempFileManager::Instance().CreateNewFileInfo(optionalInfo, TempFileKind::O_STATICLIB);
     TempFileInfo fileInfo = CreateNewFileInfoWrapper(objFiles, TempFileKind::O_STATICLIB);
     std::string outputFile = fileInfo.filePath;
 
@@ -432,7 +431,6 @@ bool Gnu::ProcessGeneration(std::vector<TempFileInfo>& objFiles)
             return GenerateLinking(objFiles);
         }
     }
-
     return PerformPartialLinkAndContinue(objFiles);
     
 }
