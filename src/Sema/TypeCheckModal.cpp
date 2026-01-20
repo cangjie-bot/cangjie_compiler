@@ -10,6 +10,7 @@
 #include "TypeCheckerImpl.h"
 #include "cangjie/AST/ASTContext.h"
 #include "cangjie/AST/Node.h"
+#include "cangjie/AST/Utils.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/Sema/TypeManager.h"
@@ -35,6 +36,12 @@ static FuncBody* GetFuncBody(const Node& funcLike)
     return StaticCast<MainDecl>(&funcLike)->funcBody.get();
 }
 
+/// Track function context with default param value state
+struct FuncContext {
+    Node* func = nullptr;
+    bool inDefaultParamValue = false;
+};
+
 /// All checks:
 /// 1. Check return expression of a function body cannot have internal @local! type
 /// 2. Check global var cannot have local type
@@ -43,14 +50,10 @@ static FuncBody* GetFuncBody(const Node& funcLike)
 /// 5. Check local of captured variables
 /// 6. Check manually implements Copy
 /// 7. Check assignment/member-assignment
-/// 8. Check exclave expr is inside a function (not counting default param values as inside that function)
+/// 8. Check exclave expr is inside a function, or global or static var initializer (not counting default param values
+/// as inside that function)
 /// 9. Check exclave expr is not in constructor, finalizer, main, or spawn expr
-/// Track function context with default param value state
-struct FuncContext {
-    Node* func = nullptr;
-    bool inDefaultParamValue = false;
-};
-
+/// 10. Check member var local type validity
 struct ModalTypeChecker {
     ModalTypeChecker(DiagnosticEngine& diag, TypeManager& m) : d(diag), type{m}
     {
@@ -61,6 +64,7 @@ struct ModalTypeChecker {
         // Clear state before walking
         funcStack.clear();
         currentSpawnExpr = nullptr;
+        currentGlobalStaticVar = nullptr;
 
         Walker walker(&pkg, [this, &ctx](Node* node) -> VisitAction {
             if (node->astKind == ASTKind::PACKAGE || node->astKind == ASTKind::FILE) {
@@ -76,12 +80,16 @@ struct ModalTypeChecker {
                 if (decl->IsCopyType()) {
                     CheckCopyType(*decl);
                 }
+                CheckMemberVarModality(*decl);
+            }
+            if (auto classDecl = DynamicCast<ClassDecl>(node)) {
+                CheckMemberVarModality(*classDecl);
             }
             if (auto var = DynamicCast<VarDecl>(node)) {
                 if (!Ty::IsTyCorrect(var->ty)) {
                     return VisitAction::SKIP_CHILDREN;
                 }
-                CheckVarModalType(*var);
+                CheckGlobalVarModalType(*var);
             }
             if (auto call = DynamicCast<CallExpr>(node)) {
                 if (!Ty::IsTyCorrect(call->ty)) {
@@ -111,6 +119,11 @@ struct ModalTypeChecker {
             if (Is<SpawnExpr>(node) && currentSpawnExpr == nullptr) {
                 currentSpawnExpr = node;
             }
+            // Track entering global/static var initializer (only if not already inside one)
+            if (auto var = DynamicCast<VarDecl>(node);
+                var && var->initializer && IsGlobalOrMember(*var) && currentGlobalStaticVar == nullptr) {
+                currentGlobalStaticVar = node;
+            }
             // Check exclave expr
             if (auto exclave = DynamicCast<ExclaveExpr>(node)) {
                 CheckExclaveInsideFunction(*exclave);
@@ -136,6 +149,10 @@ struct ModalTypeChecker {
             // Track exiting spawn block
             if (node == currentSpawnExpr) {
                 currentSpawnExpr = nullptr;
+            }
+            // Track exiting global/static var initializer
+            if (node == currentGlobalStaticVar) {
+                currentGlobalStaticVar = nullptr;
             }
             return VisitAction::WALK_CHILDREN;
         });
@@ -196,9 +213,14 @@ private:
         }
     }
 
-    /// Check that exclave is inside a function body (not counting default param values as inside that function)
+    /// Check that exclave is inside a function body (not counting default param values as inside that function), global
+    /// or static var initializer
     void CheckExclaveInsideFunction(const ExclaveExpr& expr)
     {
+        // Exclave is allowed inside global/static var initializer
+        if (currentGlobalStaticVar != nullptr) {
+            return;
+        }
         // Find the first function where we're not in its default param value
         Node* enclosingFunc = nullptr;
         for (auto it = funcStack.rbegin(); it != funcStack.rend(); ++it) {
@@ -258,11 +280,12 @@ private:
     {
         ConstWalker w{&body, [this, &needsRegion](Ptr<const Node> node) {
             if (auto call = DynamicCast<CallExpr>(node)) {
-                if (!call->baseFunc) {
+                if (!call->baseFunc || !Ty::IsTyCorrect(call->ty)) {
                     // invalid call node, skip
                     return VisitAction::SKIP_CHILDREN;
                 }
                 auto tar = call->baseFunc->GetTarget();
+                CJC_NULLPTR_CHECK(tar);
                 if (auto funcTy = DynamicCast<FuncTy>(tar->ty)) {
                     auto retTy = funcTy->retTy;
                     // non copy non @~local type, needs a region
@@ -408,9 +431,89 @@ private:
         d.Diagnose(position, DiagKind::sema_interface_is_not_implementable, std::string{COPY_NAME});
     }
 
+    /// @~local var is always allowed
+    /// @local? is allowed only if the class/struct has no constructor with this@~local type
+    /// @local! is not allowed
+    void CheckMemberVarModality(const InheritableDecl& decl)
+    {
+        // Check if this type has any constructor with @~local this type
+        bool hasNotLocalThisCtor = HasNotLocalThisCtor(decl);
+
+        for (auto& member : decl.GetMemberDeclPtrs()) {
+            if (auto var = DynamicCast<VarDecl>(member)) {
+                CheckMemberVarModalType(*var, hasNotLocalThisCtor);
+            }
+        }
+    }
+
+    /// Check if a constructor has @~local this type (no explicit this param or explicit @~local)
+    bool CtorHasNotLocalThis(const FuncDecl& ctor)
+    {
+        if (!ctor.funcBody || ctor.funcBody->paramLists.empty()) {
+            return true; // No param list means default @~local this
+        }
+        auto& paramList = ctor.funcBody->paramLists[0];
+        if (!paramList->thisParam) {
+            return true; // No explicit this param means @~local this
+        }
+        if (!Ty::IsTyCorrect(paramList->thisParam->ty)) {
+            return true; // Invalid this param, assume @~local
+        }
+        auto local = paramList->thisParam->ty->modal.local;
+        return local == LocalModal::NOT;
+    }
+
+    /// Check if the type has any constructor with @~local this type
+    /// If no constructors exist, there's an implicit default ctor with @~local this
+    bool HasNotLocalThisCtor(const InheritableDecl& decl)
+    {
+        bool hasAnyCtor = false;
+        for (auto& member : decl.GetMemberDecls()) {
+            if (auto func = DynamicCast<FuncDecl>(member.get())) {
+                if (!Ty::IsTyCorrect(func->ty)) {
+                    hasAnyCtor = true;
+                    continue;
+                }
+                if (func->TestAnyAttr(Attribute::CONSTRUCTOR, Attribute::PRIMARY_CONSTRUCTOR)) {
+                    hasAnyCtor = true;
+                    if (CtorHasNotLocalThis(*func)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // If no constructors, there's an implicit default ctor with @~local this
+        return !hasAnyCtor;
+    }
+
+    void CheckMemberVarModalType(const VarDecl& var, bool hasNotLocalThisCtor)
+    {
+        if (!Ty::IsTyCorrect(var.ty) || var.TestAttr(Attribute::STATIC)) {
+            return;
+        }
+        // @~local var is always allowed
+        if (var.ty->modal.local == LocalModal::NOT) {
+            return;
+        }
+        // @local! var is never allowed
+        if (var.ty->modal.local == LocalModal::FULL) {
+            DiagMemberVarLocalModalType(var);
+            return;
+        }
+        // @local? var is only allowed if there's no constructor with @~local this
+        if (var.ty->modal.local == LocalModal::HALF && hasNotLocalThisCtor) {
+            DiagMemberVarLocalModalType(var);
+        }
+    }
+
+    void DiagMemberVarLocalModalType(const VarDecl& var)
+    {
+        d.DiagnoseRefactor(DiagKindRefactor::sema_member_var_local_type, var, var.identifier, var.ty->String(),
+            var.ty->modal.local == LocalModal::HALF ? " when type has @~local constructor" : "");
+    }
+
     /// Check global var cannot have local type
-    /// TODO: check member var local type validity
-    void CheckVarModalType(const VarDecl& var)
+    void CheckGlobalVarModalType(const VarDecl& var)
     {
         if (var.TestAnyAttr(Attribute::GLOBAL, Attribute::STATIC)) {
             if (Ty::IsTyCorrect(var.ty) && var.ty->modal.local != LocalModal::NOT) {
@@ -713,7 +816,8 @@ private:
     DiagnosticEngine& d;
     TypeManager& type;
     std::vector<FuncContext> funcStack;
-    Node* currentSpawnExpr = nullptr;  // Cache for tracking if we're inside a spawn block
+    Node* currentSpawnExpr = nullptr;       // Cache for tracking if we're inside a spawn block
+    Node* currentGlobalStaticVar = nullptr; // Cache for tracking if we're inside a global/static var initializer
 };
 
 ModalTypeChecker* TypeChecker::TypeCheckerImpl::NewModalTypeChecker()
@@ -771,6 +875,11 @@ void TypeChecker::TypeCheckerImpl::DiagNestedExclave(const ExclaveExpr& expr, co
 {
     auto db = diag.DiagnoseRefactor(DiagKindRefactor::sema_nested_exclave, expr);
     db.AddHint(MakeRange(outerNode.begin, outerNode.end));
+}
+
+void TypeChecker::TypeCheckerImpl::DiagExpectedDataType(const AST::Node& node)
+{
+    diag.DiagnoseRefactor(DiagKindRefactor::sema_expected_data_type, node, node.ty->String());
 }
 
 Ptr<Ty> TypeChecker::TypeCheckerImpl::SynExclaveExpr(ASTContext& ctx, ExclaveExpr& expr)

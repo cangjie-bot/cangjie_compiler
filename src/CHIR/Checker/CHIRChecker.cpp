@@ -1257,6 +1257,9 @@ void CHIRChecker::CheckFunc(const Func& func)
     if (func.TestAttr(Attribute::ABSTRACT)) {
         Errorln("func " + func.GetIdentifier() + " shouldn't have attribute: ABSTRACT.");
     }
+
+    // 9. check region balance (StartRegion/EndRegion must match like stack push/pop)
+    CheckRegionBalance(func);
 }
 
 void CHIRChecker::CheckFuncParams(
@@ -1823,6 +1826,82 @@ void CHIRChecker::CheckStartRegion(const StartRegion& expr, const Func& topLevel
 void CHIRChecker::CheckEndRegion(const EndRegion& expr, const Func& topLevelFunc)
 {
     OperandNumIsEqual(0, expr, topLevelFunc);
+}
+
+void CHIRChecker::CheckRegionBalance(const Func& func)
+{
+    auto* body = func.GetBody();
+    if (body == nullptr) {
+        return;
+    }
+
+    // Compute region depth at exit of each block using forward dataflow analysis
+    std::unordered_map<const Block*, int> blockExitDepth;
+    std::queue<const Block*> worklist;
+
+    auto* entryBlock = body->GetEntryBlock();
+    if (entryBlock == nullptr) {
+        return;
+    }
+
+    blockExitDepth[entryBlock] = 0;
+    worklist.push(entryBlock);
+
+    while (!worklist.empty()) {
+        const Block* block = worklist.front();
+        worklist.pop();
+
+        int depth = 0;
+        bool hasIncoming = false;
+        for (auto* pred : block->GetPredecessors()) {
+            auto it = blockExitDepth.find(pred);
+            if (it != blockExitDepth.end()) {
+                if (hasIncoming && depth != it->second) {
+                    ErrorInFunc(func, "region depth mismatch at block " + block->GetIdentifier() +
+                        ": different predecessors have different region depths.");
+                }
+                depth = it->second;
+                hasIncoming = true;
+            }
+        }
+        if (!hasIncoming && block != entryBlock) {
+            continue;
+        }
+        for (auto* expr : block->GetExpressions()) {
+            if (expr->GetExprKind() == ExprKind::START_REGION) {
+                depth++;
+            } else if (expr->GetExprKind() == ExprKind::END_REGION) {
+                depth--;
+                if (depth < 0) {
+                    ErrorInExpr(func, *expr, "EndRegion without matching StartRegion (region underflow).");
+                    return;
+                }
+            }
+        }
+
+        auto* terminator = block->GetTerminator();
+        if (terminator != nullptr) {
+            auto kind = terminator->GetExprKind();
+            // At normal Exit, region depth should be 0
+            if (kind == ExprKind::EXIT) {
+                if (depth != 0) {
+                    ErrorInExpr(func, *terminator,
+                        "region depth is " + std::to_string(depth) + " at Exit, expected 0 (unbalanced StartRegion/EndRegion).");
+                }
+            }
+            // Don't check at RaiseException or exception terminators - those are abnormal exits
+        }
+
+        auto it = blockExitDepth.find(block);
+        if (it == blockExitDepth.end() || it->second != depth) {
+            blockExitDepth[block] = depth;
+            if (terminator != nullptr) {
+                for (auto* succ : terminator->GetSuccessors()) {
+                    worklist.push(succ);
+                }
+            }
+        }
+    }
 }
 
 void CHIRChecker::CheckGoTo(const GoTo& expr, const Func& topLevelFunc)

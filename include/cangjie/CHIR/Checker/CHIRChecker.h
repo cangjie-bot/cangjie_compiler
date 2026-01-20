@@ -160,6 +160,7 @@ private:
     void CheckIntOpWithException(const IntOpWithException& expr, const Func& topLevelFunc);
     void CheckStartRegion(const StartRegion& expr, const Func& topLevelFunc);
     void CheckEndRegion(const EndRegion& expr, const Func& topLevelFunc);
+    void CheckRegionBalance(const Func& func);
     void CheckUnaryExprBase(const UnaryExprBase& expr, const Func& topLevelFunc);
     void CheckBinaryExprBase(const BinaryExprBase& expr, const Func& topLevelFunc);
     void CheckSpawnWithException(const SpawnWithException& expr, const Func& topLevelFunc);

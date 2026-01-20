@@ -63,6 +63,11 @@ size_t Ty::Hash() const
     return hash_combine<Ptr<const Ty>>(ret, this);
 }
 
+bool Ty::IsDataType() const
+{
+    return modal.local == LocalModal::NOT;
+}
+
 size_t ArrayTy::Hash() const
 {
     size_t ret = 0;

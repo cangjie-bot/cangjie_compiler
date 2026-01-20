@@ -436,6 +436,8 @@ struct Ty {
         return this == &other;
     }
 
+    bool IsDataType() const;
+
 protected:
     /** Constructor.
      * U: Sema.

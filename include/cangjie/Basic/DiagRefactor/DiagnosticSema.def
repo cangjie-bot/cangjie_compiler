@@ -425,6 +425,8 @@ ERROR(sema_capture_bad_local, "cannot capture %s variable '%s' in %s %s")
 ERROR(sema_local_modal_not_satisfied, "expected expression of '%s' here, got '%s'")
 ERROR(sema_bad_local_assignment, "cannot assign%s to expression of '%s' type")
 ERROR(sema_exclave_in_ctor, "cannot use exclave expression in %s")
+ERROR(sema_expected_data_type, "expected data type here, got modal type '%s'")
+ERROR(sema_member_var_local_type, "member variable '%s' cannot have '%s' type%s")
 
 WARNING(sema_unused_import, UNUSED, "unused import '%s'", "unused import")
 

@@ -1741,6 +1741,7 @@ private:
     void DeleteModalTypeChecker();
     void CheckHasLocalMod(const AST::Expr& node, AST::LocalModal local);
     void DiagLocalModNotSatisfied(const AST::Expr& node, AST::LocalModal local);
+    void DiagExpectedDataType(const AST::Node& node);
 
     /** Members */
     Promotion promotion;
