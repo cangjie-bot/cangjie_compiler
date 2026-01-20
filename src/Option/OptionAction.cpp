@@ -664,7 +664,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
          }
          Errorf("'%s' only accepts an existing dynamic library path.\n", arg.name.c_str());
          return false;
-     }},
+    }},
 #endif
     { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
             opts.commonPartCjo =
@@ -702,9 +702,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
                 WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), true));
             } else {
                 CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-                if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                    return false;
-                }
+                if (WARN_GROUP_MAP.count(arg.value) == 0) { return false; }
                 auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
                 WarningOptionMgr::UpdateFlag(groupIdx, true);
             }
@@ -715,9 +713,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
                 WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), false));
             } else {
                 CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-                if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                    return false;
-                }
+                if (WARN_GROUP_MAP.count(arg.value) == 0) { return false; }
                 auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
                 WarningOptionMgr::UpdateFlag(groupIdx, false);
             }
@@ -741,9 +737,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::ERROR_COUNT_LIMIT, ParseErrorCountLimit },
     { Options::ID::DIAG_FORMAT, [](GlobalOptions& opts, const OptionArgInstance& arg) {
             CJC_ASSERT(DIAG_FORMAT_MAP.count(arg.value) != 0);
-            if (DIAG_FORMAT_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (DIAG_FORMAT_MAP.count(arg.value) == 0) { return false; }
             opts.diagFormat = DiagFormat(DIAG_FORMAT_MAP.at(arg.value));
             return true;
     }},
@@ -844,9 +838,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
                 opts.linkStaticStd = false; // waiting for hotreload's bugfix
             } else {
                 CJC_ASSERT(OUTPUT_MODE_MAP.count(arg.value) != 0);
-                if (OUTPUT_MODE_MAP.count(arg.value) == 0) {
-                    return false;
-                }
+                if (OUTPUT_MODE_MAP.count(arg.value) == 0) { return false; }
                 opts.outputMode = GlobalOptions::OutputMode(OUTPUT_MODE_MAP.at(arg.value));
                 opts.enableHotReload = false;
             }
@@ -865,7 +857,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
             opts.compileMacroPackage = true;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-            opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
+           opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
 #endif
             return true;
     }},
@@ -955,9 +947,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
                 opts.emitCHIRPhase = GlobalOptions::CandidateEmitCHIRPhase::OPT;
                 return true;
             }
-            if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) { return false; }
             opts.emitCHIRPhase = EMIT_CHIR_PHASE_MAP.at(arg.value);
             return true;
     }},
@@ -969,9 +959,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 #endif
     { Options::ID::RENDER_CHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
             CJC_ASSERT(DUMP_CHIR_MODE_MAP.count(arg.value) != 0);
-            if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) { return false; }
             opts.chirRenderMode = GlobalOptions::CHIRMode(DUMP_CHIR_MODE_MAP.at(arg.value));
             return true;
     }},
@@ -1032,9 +1020,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     // ---------- CHIR INTERPRETER ----------
     { Options::ID::PRINT_BCHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
             CJC_ASSERT(PRINT_BCHIR_MODE_MAP.count(arg.value) != 0);
-            if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
+            if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) { return false; }
             opts.printBCHIR[static_cast<uint8_t>(PRINT_BCHIR_MODE_MAP.at(arg.value))] = true;
             return true;
     }},
