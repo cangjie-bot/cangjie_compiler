@@ -194,7 +194,7 @@ bool DefaultCIImpl::SaveCjo(const AST::Package& pkg)
     Utils::ProfileRecorder::Stop("Save cjo", "Save ast");
     if (!res) {
         Errorln("fail to generate file: " + astFileName);
-    } else if (ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
+    } else if (ci.invocation.globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
         TempFileInfo astFlagFileInfo =
             TempFileManager::Instance().CreateNewFileInfo(TempFileInfo{pkgName, ""}, TempFileKind::O_CJO_FLAG);
         std::ofstream file(astFlagFileInfo.filePath);
@@ -316,7 +316,7 @@ bool DefaultCIImpl::PerformCjoSaving()
 
 bool DefaultCIImpl::PerformCjoAndBchirSaving()
 {
-    if (ci.invocation.globalOptions.outputMode != GlobalOptions::OutputMode::OBJ) {
+    if (ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
         return PerformCjoSaving();
     }
     return true;
