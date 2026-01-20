@@ -65,7 +65,7 @@ void ToolChain::GenerateLinkOptionsOfBuiltinLibsForStaticLink(Tool& tool) const
     const std::function<void(const std::unordered_set<std::string>&)> getDyDependencies =
         [this, &dyDependencies](const std::unordered_set<std::string>& dependencies) {
             for (auto& cjoFileName : dependencies) {
-                auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);               
+                auto staticLib = FileUtil::ConvertFilenameToLibCangjieFormat(cjoFileName, STATIC_LIB_EXTEBSION);
                 if (ALWAYS_DYNAMIC_LINK_STD_LIBRARIES.find(staticLib) !=
                     ALWAYS_DYNAMIC_LINK_STD_LIBRARIES.end()) {
                     dyDependencies.emplace(staticLib);
