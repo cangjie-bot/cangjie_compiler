@@ -214,7 +214,7 @@ void Gnu::HandleAsanDependencies(Tool& tool, const std::string& cangjieLibPath, 
 
 void Gnu::HandleHwasanDependencies(Tool& tool, const std::string& cangjieLibPath)
 {
-   GenericHandleSanitizerRuntime(tool, "hwasan", cangjieLibPath, [&]() {
+    GenericHandleSanitizerRuntime(tool, "hwasan", cangjieLibPath, [&]() {
         LinkStaticLibrary(tool, "libclang_rt.hwasan-preinit.a");
         tool.AppendArg("-lclang_rt.hwasan");
     });
