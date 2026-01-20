@@ -232,7 +232,6 @@ bool Cangjie::ExecuteFrontendByDriver(DefaultCompilerInstance& instance, const D
         driver.driverOptions->compilationCachedPath = instance.invocation.globalOptions.compilationCachedPath;
         driver.driverOptions->compilationCachedDir = instance.invocation.globalOptions.compilationCachedDir;
         driver.driverOptions->compilationCachedFileName = instance.invocation.globalOptions.compilationCachedFileName;
-
         driver.driverOptions->incrementalCompileNoChange =
             (instance.invocation.globalOptions.enIncrementalCompilation && instance.kind == IncreKind::NO_CHANGE);
         driver.driverOptions->symbolsNeedLocalized = instance.invocation.globalOptions.symbolsNeedLocalized;
