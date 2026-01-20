@@ -502,7 +502,7 @@ bool IncrementalCompilerInstance::PerformCjoAndBchirSaving()
     }
     bool ret = true;
     for (auto& srcPkg : GetSourcePackages()) {
-        if (invocation.globalOptions.outputMode != GlobalOptions::OutputMode::OBJ) {
+        if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
             ret = ret && PerformCjoSaving();
         }
         if (ret && !srcPkg->IsEmpty()) {

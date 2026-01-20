@@ -52,7 +52,7 @@ public:
     }
     bool PerformCjoAndBchirSaving() override
     {
-        if (invocation.globalOptions.outputMode != GlobalOptions::OutputMode::OBJ) {
+        if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
             return PerformCjoSaving();
         }
         return true;
