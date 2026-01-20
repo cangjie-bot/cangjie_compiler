@@ -19,10 +19,10 @@
 #include "cangjie/Utils/Utils.h"
 #include "cangjie/Utils/Unicode.h"
 
-#define OPTION_TRUE_ACTION(EXPR)                                                                                       \
-    [](GlobalOptions& opts, OptionArgInstance&) {                                                                      \
-        (EXPR);                                                                                                        \
-        return true;                                                                                                   \
+#define OPTION_TRUE_ACTION(EXPR)                                                           \
+    [](GlobalOptions& opts, OptionArgInstance&) {                                                  \
+        (EXPR);                                                                        \
+        return true;                                                                   \
     }
 
 using namespace Cangjie;
@@ -133,12 +133,12 @@ bool SeeingTomlComment(const std::string& inputLine)
     }
     for (auto c : inputLine) {
         if (c == ' ' || c == '\t') {
-            continue;
+        continue;
         }
         if (c != '#') {
-            return false;
+        return false;
         } else {
-            return true;
+        return true;
         }
     }
     return true;
@@ -189,15 +189,15 @@ bool ParseAppleTargetTriple(GlobalOptions& opts, const std::vector<std::string>&
         opts.target.os = OSType::IOS;
         opts.target.apiLevel = parts[2].substr(3); // 2 is the index of os, 3 is the length of "ios".
         if (opts.target.apiLevel.empty()) {
-            opts.target.apiLevel = "11";
+        opts.target.apiLevel = "11";
         }
         // In case of parts contain 4 elements, 3 represents environment type (supports simulator only).
         if (parts.size() == 4 && parts[3] == "simulator") {
-            opts.target.env = Environment::SIMULATOR;
-            return true;
+        opts.target.env = Environment::SIMULATOR;
+        return true;
         } else if (parts.size() == 3) { // When parts has 3 elements only. The target represents the real device.
-            opts.target.env = Environment::NOT_AVAILABLE;
-            return true;
+        opts.target.env = Environment::NOT_AVAILABLE;
+        return true;
         }
     }
     return false;
@@ -214,9 +214,9 @@ bool ParseTargetTriple(GlobalOptions& opts, const std::string& triple)
     if (auto arch = STRING_ARCH_MAP.find(archStr); arch != STRING_ARCH_MAP.end()) {
         opts.target.vendor = Triple::Vendor::UNKNOWN;
         if (arch->second == ArchType::ARM64) {
-            opts.target.arch = ArchType::AARCH64;
+        opts.target.arch = ArchType::AARCH64;
         } else {
-            opts.target.arch = arch->second;
+        opts.target.arch = arch->second;
         }
     } else {
         Errorln("The architecture \"" + archStr + "\" is not found or supported!");
@@ -236,34 +236,34 @@ bool ParseTargetTriple(GlobalOptions& opts, const std::string& triple)
     if (auto env = STRING_ENVIRONMENT_MAP.find(envStr); env != STRING_ENVIRONMENT_MAP.end()) {
         opts.target.env = env->second;
         if (opts.target.env == Environment::ANDROID) {
-            opts.target.apiLevel = Triple::MIN_ANDROID_API;
-            Infoln("ANDROID API level is not suggested in the target. Use API level " +
-                opts.target.apiLevel + " by default.");
+        opts.target.apiLevel = Triple::MIN_ANDROID_API;
+        Infoln("ANDROID API level is not suggested in the target. Use API level " +
+            opts.target.apiLevel + " by default.");
         }
     // If targeting Android, the env field may contains the API level like "android31"
     } else if (envStr.rfind(ENVIRONMENT_STRING_MAP.at(Environment::ANDROID), 0) == 0) {
         opts.target.env = Environment::ANDROID;
         for (size_t i = 0; i < envStr.size(); ++i) {
-            if (envStr[i] >= '0' && envStr[i] <= '9') {
-                opts.target.apiLevel = envStr.substr(i);
-                break;
-            }
+        if (envStr[i] >= '0' && envStr[i] <= '9') {
+            opts.target.apiLevel = envStr.substr(i);
+            break;
+        }
         }
         if (!opts.target.apiLevel.empty()) {
 #ifndef CANGJIE_ENABLE_GCOV
-            try {
+        try {
 #endif
-                const int num{std::stoi(opts.target.apiLevel)};
-                // The default Android magic version number is 10000.
-                // The minimum Android API level that cangjie supports.
-                if (num < 26 || num > 10000) {
-                    Errorln("The Android API level is not supported in the target."
-                        " Please use a valid API level which is larger than 26.");
-                }
-#ifndef CANGJIE_ENABLE_GCOV
-            } catch (std::exception const&) {
-                Errorln("The Android API level is illegal. Please use a valid API level which is greater than or equal to 26.");
+            const int num{std::stoi(opts.target.apiLevel)};
+            // The default Android magic version number is 10000.
+            // The minimum Android API level that cangjie supports.
+            if (num < 26 || num > 10000) {
+                Errorln("The Android API level is not supported in the target."
+                " Please use a valid API level which is larger than 26.");
             }
+#ifndef CANGJIE_ENABLE_GCOV
+        } catch (std::exception const&) {
+            Errorln("The Android API level is illegal. Please use a valid API level which is greater than or equal to 26.");
+        }
 #endif
         }
     } else {
@@ -310,12 +310,12 @@ ConditionalCompileConfigMode ParseConditionalCompileConfigMode(const std::string
 {
     auto countNum = [](const std::string str, const std::string sub) -> size_t {
         if (sub.length() == 0) {
-            return 0;
+        return 0;
         }
         size_t count = 0;
         for (size_t offset = str.find(sub); offset != std::string::npos;
-             offset = str.find(sub, offset + sub.length())) {
-            ++count;
+         offset = str.find(sub, offset + sub.length())) {
+        ++count;
         }
         return count;
     };
@@ -372,8 +372,8 @@ bool ParsePassedWhen(
         std::string cfgDir = input;
         RemoveEscapedSymbol(cfgDir, "\\=", "=");
         if (!IsDir(cfgDir)) {
-            diag.DiagnoseRefactor(DiagKindRefactor::dirver_cfg_not_a_dir, DEFAULT_POSITION, cfgDir);
-            return false;
+        diag.DiagnoseRefactor(DiagKindRefactor::dirver_cfg_not_a_dir, DEFAULT_POSITION, cfgDir);
+        return false;
         }
         paths.emplace_back(cfgDir);
         return true;
@@ -382,20 +382,20 @@ bool ParsePassedWhen(
     for (const auto& it : keyValuePairs) {
         auto kv = Utils::SplitString(it, "=");
         if (kv.size() != ELEMENT_NUM_OF_KV_PAIR) {
-            diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
-            return false;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
+        return false;
         }
         Utils::TrimStringVector(kv);
         std::string id = kv[0];
         if (id.empty() || kv[1].empty()) {
-            diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
-            return false;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
+        return false;
         }
         if (!CheckPassWhenKey(id, diag)) {
-            return false;
+        return false;
         }
         if (!ParseAndCheckConditionVar(id, res, diag)) {
-            return false;
+        return false;
         }
         res.emplace(id, kv[1]);
     }
@@ -410,7 +410,7 @@ bool ParseCHIREA(GlobalOptions& opts, const OptionArgInstance& arg)
     } else {
         CJC_ASSERT(arg.value == "off");
         if (arg.value != "off") {
-            return false;
+        return false;
         }
         opts.chirEA = false;
     }
@@ -425,7 +425,7 @@ bool ParseCHIRWFC(GlobalOptions& opts, const OptionArgInstance& arg)
     } else {
         CJC_ASSERT(arg.value == "off");
         if (arg.value != "off") {
-            return false;
+        return false;
         }
         opts.chirWFC = false;
     }
@@ -515,9 +515,9 @@ size_t FindTomlComment(const std::string& inputLine)
     bool insideString = false;
     for (size_t i = 0; i < inputLine.length(); i++) {
         if (!insideString && inputLine[i] == '#') {
-            return i;
+        return i;
         } else if (inputLine[i] == '"' && (i == 0 || !IsEscaped(inputLine, i - 1))) {
-            insideString = !insideString;
+        insideString = !insideString;
         }
     }
     return std::string::npos;
@@ -562,37 +562,37 @@ bool ParseConditionKeyValueLine(
 std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInstance&, bool&)>> g_preactions = {
     {Options::ID::VERBOSE,
         [](GlobalOptions& opts, OptionArgInstance&, bool& skipParsing) {
-            opts.enableVerbose = true;
-            skipParsing = false;
-            return true;
+        opts.enableVerbose = true;
+        skipParsing = false;
+        return true;
         }},
     {Options::ID::VERSION,
         [](GlobalOptions& opts, OptionArgInstance&, bool& skipParsing) {
-            opts.printVersionOnly = true;
-            skipParsing = true;
-            return true;
+        opts.printVersionOnly = true;
+        skipParsing = true;
+        return true;
         }},
     {Options::ID::HELP,
         [](GlobalOptions& opts, OptionArgInstance&, bool& skipParsing) {
-            opts.showUsage = true;
-            skipParsing = true;
-            return true;
+        opts.showUsage = true;
+        skipParsing = true;
+        return true;
         }},
     {Options::ID::EXPERIMENTAL,
         [](GlobalOptions& opts, OptionArgInstance&, bool& skipParsing) {
-            opts.experimentalMode = true;
-            skipParsing = false;
-            return true;
+        opts.experimentalMode = true;
+        skipParsing = false;
+        return true;
         }},
     {Options::ID::BACKEND_MODE,
         [](GlobalOptions& opts, const OptionArgInstance& arg, bool& skipParsing) {
-            CJC_ASSERT(BACKEND_STR_MAP.count(arg.value) != 0);
-            if (BACKEND_STR_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.backend = BackendType(BACKEND_STR_MAP.at(arg.value));
-            skipParsing = false;
-            return true;
+        CJC_ASSERT(BACKEND_STR_MAP.count(arg.value) != 0);
+        if (BACKEND_STR_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.backend = BackendType(BACKEND_STR_MAP.at(arg.value));
+        skipParsing = false;
+        return true;
         }},
 };
 
@@ -602,39 +602,39 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInstance&)>> g_actions = {
     // ---------- GENERAL COMPILE OPTIONS ----------
     { Options::ID::MODULE_NAME, []([[maybe_unused]] GlobalOptions& opts, const OptionArgInstance& arg) {
-            DiagnosticEngine diag;
-            diag.DiagnoseRefactor(DiagKindRefactor::driver_useless_option, DEFAULT_POSITION, arg.name);
-            return true;
+        DiagnosticEngine diag;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_useless_option, DEFAULT_POSITION, arg.name);
+        return true;
     }},
     { Options::ID::PACKAGE_COMPILE, OPTION_TRUE_ACTION(opts.compilePackage = true) },
     { Options::ID::NO_PRELUDE, OPTION_TRUE_ACTION(opts.implicitPrelude = false) },
     { Options::ID::USE_INTEROP_CJ_PACKAGE_CONFIG_RPATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            // Not allowed to be empty.
-            if (arg.value.empty()) {
-                Errorf("'%s' requires a non-empty value.\n", arg.name.c_str());
-                return false;
-            }
-            opts.interopCJPackageConfigPath = arg.value;
-            return true;
+        // Not allowed to be empty.
+        if (arg.value.empty()) {
+            Errorf("'%s' requires a non-empty value.\n", arg.name.c_str());
+            return false;
+        }
+        opts.interopCJPackageConfigPath = arg.value;
+        return true;
     }},
     { Options::ID::INT_OVERFLOW_MODE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            CJC_ASSERT(ValidOverflowStrategy(arg.value));
-            if (!ValidOverflowStrategy(arg.value)) {
-                return false;
-            }
-            opts.overflowStrategy = StringToOverflowStrategy(arg.value);
-            return true;
+        CJC_ASSERT(ValidOverflowStrategy(arg.value));
+        if (!ValidOverflowStrategy(arg.value)) {
+            return false;
+        }
+        opts.overflowStrategy = StringToOverflowStrategy(arg.value);
+        return true;
     }},
     { Options::ID::STATIC_STD, OPTION_TRUE_ACTION(opts.linkStaticStd = true) },
     { Options::ID::DY_STD, OPTION_TRUE_ACTION(opts.linkStaticStd = false) },
     { Options::ID::STATIC_LIBS, OPTION_TRUE_ACTION((void)opts) },
     { Options::ID::DY_LIBS, OPTION_TRUE_ACTION((void)opts) },
     { Options::ID::LTO,  [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (LTO_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.ltoMod = GlobalOptions::LTOMode(LTO_MODE_MAP.at(arg.value));
-            return true;
+        if (LTO_MODE_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.ltoMod = GlobalOptions::LTOMode(LTO_MODE_MAP.at(arg.value));
+        return true;
     }},
     { Options::ID::COMPILE_AS_EXE, OPTION_TRUE_ACTION(opts.enableCompileAsExe = true) },
     { Options::ID::TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) { return ParseTargetTriple(opts, arg.value);
@@ -643,33 +643,33 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::PROFILE_COMPILE_TIME, OPTION_TRUE_ACTION(opts.enableTimer = true) },
     { Options::ID::PROFILE_COMPILE_MEMORY, OPTION_TRUE_ACTION(opts.enableMemoryCollect = true) },
     { Options::ID::IMPORT_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            auto maybePath = opts.CheckDirectoryPath(arg.value);
-            if (maybePath.has_value()) {
-                opts.importPaths.emplace_back(maybePath.value());
-            }
-            return true;
+        auto maybePath = opts.CheckDirectoryPath(arg.value);
+        if (maybePath.has_value()) {
+            opts.importPaths.emplace_back(maybePath.value());
+        }
+        return true;
     }},
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     { Options::ID::PLUGIN_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
          auto maybePath = opts.CheckInputFilePath(arg.value);
          auto suffix = GlobalOptions::GetSharedLibraryExtension(opts.host.os);
          if (maybePath.has_value()) {
-             auto path = maybePath.value();
-             if ('.' + FileUtil::GetFileExtension(path) == suffix) {
-                 opts.pluginPaths.emplace_back(maybePath.value());
-                 return true;
-             }
-             Errorf("'%s' requires a dynamic library path with '%s' suffix.\n", arg.name.c_str(), suffix.c_str());
-             return false;
+         auto path = maybePath.value();
+         if ('.' + FileUtil::GetFileExtension(path) == suffix) {
+             opts.pluginPaths.emplace_back(maybePath.value());
+             return true;
+         }
+         Errorf("'%s' requires a dynamic library path with '%s' suffix.\n", arg.name.c_str(), suffix.c_str());
+         return false;
          }
          Errorf("'%s' only accepts an existing dynamic library path.\n", arg.name.c_str());
          return false;
      }},
 #endif
     { Options::ID::COMMON_PART_PATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            opts.commonPartCjo =
-                GlobalOptions::ValidateInputFilePath(arg.value, DiagKindRefactor::driver_invalid_binary_file);
-            return true;
+        opts.commonPartCjo =
+            GlobalOptions::ValidateInputFilePath(arg.value, DiagKindRefactor::driver_invalid_binary_file);
+        return true;
     }},
     { Options::ID::INCRE_COMPILE, OPTION_TRUE_ACTION(opts.enIncrementalCompilation = true) },
     { Options::ID::INCRE_DEBUG, OPTION_TRUE_ACTION(opts.printIncrementalInfo = true) },
@@ -680,17 +680,17 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::NO_STACKTRACE_INFO, OPTION_TRUE_ACTION(opts.displayLineInfo = false) },
     { Options::ID::COMPILE_DEBUG, OPTION_TRUE_ACTION(opts.enableCompileDebug = true) },
     { Options::ID::TRIMPATH, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            auto tmpPath = arg.value;
-            if (!tmpPath.empty()) {
-                tmpPath = FileUtil::Normalize(tmpPath);
+        auto tmpPath = arg.value;
+        if (!tmpPath.empty()) {
+            tmpPath = FileUtil::Normalize(tmpPath);
 #ifdef _WIN32
-            tmpPath = tmpPath[tmpPath.size() - 1] == '\\' ? tmpPath : tmpPath + "\\";
+        tmpPath = tmpPath[tmpPath.size() - 1] == '\\' ? tmpPath : tmpPath + "\\";
 #else
-                tmpPath = tmpPath[tmpPath.size() - 1] == '/' ? tmpPath : tmpPath + "/";
+            tmpPath = tmpPath[tmpPath.size() - 1] == '/' ? tmpPath : tmpPath + "/";
 #endif
-                opts.removedPathPrefix.emplace_back(tmpPath);
-            }
-            return true;
+            opts.removedPathPrefix.emplace_back(tmpPath);
+        }
+        return true;
     }},
 
     // ---------- COVERAGE OPTIONS ----------
@@ -698,82 +698,82 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 
     // ---------- WARNING & ERROR CONTROL OPTIONS ----------'
     { Options::ID::WARN_OFF, [](GlobalOptions& /* opts */, const OptionArgInstance& arg) {
-            if (arg.value == "all") {
-                WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), true));
-            } else {
-                CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-                if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                    return false;
-                }
-                auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
-                WarningOptionMgr::UpdateFlag(groupIdx, true);
+        if (arg.value == "all") {
+            WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), true));
+        } else {
+            CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
+            if (WARN_GROUP_MAP.count(arg.value) == 0) {
+                return false;
             }
-            return true;
+            auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
+            WarningOptionMgr::UpdateFlag(groupIdx, true);
+        }
+        return true;
     }},
     { Options::ID::WARN_ON, [](GlobalOptions& /* opts */, const OptionArgInstance& arg) {
-            if (arg.value == "all") {
-                WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), false));
-            } else {
-                CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
-                if (WARN_GROUP_MAP.count(arg.value) == 0) {
-                    return false;
-                }
-                auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
-                WarningOptionMgr::UpdateFlag(groupIdx, false);
+        if (arg.value == "all") {
+            WarningOptionMgr::UpdateFlags(std::vector<bool>(static_cast<size_t>(WarnGroup::NONE), false));
+        } else {
+            CJC_ASSERT(WARN_GROUP_MAP.count(arg.value) != 0);
+            if (WARN_GROUP_MAP.count(arg.value) == 0) {
+                return false;
             }
-            return true;
+            auto groupIdx = static_cast<size_t>(WarnGroup(WARN_GROUP_MAP.at(arg.value)));
+            WarningOptionMgr::UpdateFlag(groupIdx, false);
+        }
+        return true;
     }},
 
     // ---------- SANITIZER OPTIONS ----------
     { Options::ID::SANITIZE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (arg.value == "address") {
-                opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::ADDRESS;
-            } else if (arg.value == "thread") {
-                opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::THREAD;
-            } else if (arg.value == "hwaddress") {
-                opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::HWADDRESS;
-            } else {
-                return false;
-            }
-            return true;
+        if (arg.value == "address") {
+            opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::ADDRESS;
+        } else if (arg.value == "thread") {
+            opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::THREAD;
+        } else if (arg.value == "hwaddress") {
+            opts.sanitizerType = Cangjie::GlobalOptions::SanitizerType::HWADDRESS;
+        } else {
+            return false;
+        }
+        return true;
     }},
     // ---------- ERROR CONTROL OPTIONS ----------
     { Options::ID::ERROR_COUNT_LIMIT, ParseErrorCountLimit },
     { Options::ID::DIAG_FORMAT, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            CJC_ASSERT(DIAG_FORMAT_MAP.count(arg.value) != 0);
-            if (DIAG_FORMAT_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.diagFormat = DiagFormat(DIAG_FORMAT_MAP.at(arg.value));
-            return true;
+        CJC_ASSERT(DIAG_FORMAT_MAP.count(arg.value) != 0);
+        if (DIAG_FORMAT_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.diagFormat = DiagFormat(DIAG_FORMAT_MAP.at(arg.value));
+        return true;
     }},
 
     // ---------- TEST OPTIONS ----------
     { Options::ID::COMPILE_TEST, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.parseTest = true;
-            opts.enableCompileTest = true;
-            return true;
+        opts.parseTest = true;
+        opts.enableCompileTest = true;
+        return true;
     }},
     { Options::ID::COMPILE_TESTS_ONLY, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.parseTest = true;
-            opts.enableCompileTest = true;
-            opts.compileTestsOnly = true;
-            return true;
+        opts.parseTest = true;
+        opts.enableCompileTest = true;
+        opts.compileTestsOnly = true;
+        return true;
     }},
     { Options::ID::EXPORT_FOR_TESTS, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.exportForTest = true;
-            return true;
+        opts.exportForTest = true;
+        return true;
     }},
     // ---------- MOCKING OPTIONS ----------
     { Options::ID::MOCK, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (arg.value == "on") {
-                opts.mock = MockMode::ON;
-            } else if (arg.value == "runtime-error") {
-                opts.mock = MockMode::RUNTIME_ERROR;
-            } else if (arg.value == "off") {
-                opts.mock = MockMode::OFF;
-            }
-            return true;
+        if (arg.value == "on") {
+            opts.mock = MockMode::ON;
+        } else if (arg.value == "runtime-error") {
+            opts.mock = MockMode::RUNTIME_ERROR;
+        } else if (arg.value == "off") {
+            opts.mock = MockMode::OFF;
+        }
+        return true;
     }},
     // ---------- MACRO OPTIONS ----------
     { Options::ID::COMPILE_DEBUG_MACRO, OPTION_TRUE_ACTION(opts.enableMacroDebug = true) },
@@ -781,147 +781,147 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 
     // ---------- GENERAL OPTIMIZATION OPTIONS ----------
     { Options::ID::OPTIMIZATION_0, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O0);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O0);
     }},
     { Options::ID::OPTIMIZATION_1, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O1);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O1);
     }},
     { Options::ID::OPTIMIZATION_2, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O2);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O2);
     }},
     { Options::ID::OPTIMIZATION_3, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O3);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::O3);
     }},
     { Options::ID::OPTIMIZATION_S, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::Os);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::Os);
     }},
     { Options::ID::OPTIMIZATION_Z, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::Oz);
+        return opts.SetOptimizationLevel(GlobalOptions::OptimizationLevel::Oz);
     }},
     { Options::ID::OPTIMIZATION_CUSTOM, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            auto maybeOptimizationLevel = ParseOptimizationValue(arg.value);
-            if (maybeOptimizationLevel.has_value()) {
-                return opts.SetOptimizationLevel(maybeOptimizationLevel.value());
-            }
-            return false;
+        auto maybeOptimizationLevel = ParseOptimizationValue(arg.value);
+        if (maybeOptimizationLevel.has_value()) {
+            return opts.SetOptimizationLevel(maybeOptimizationLevel.value());
+        }
+        return false;
     }},
     { Options::ID::OPT_PASS_OPTIONS, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            opts.optPassOptions = arg.value;
-            return true;
+        opts.optPassOptions = arg.value;
+        return true;
     }},
     { Options::ID::DISABLE_BACKEND_OPT, OPTION_TRUE_ACTION(opts.disableBackendOpt = true) },
     { Options::ID::FAST_MATH_MODE, OPTION_TRUE_ACTION(opts.fastMathMode = true) },
     // ---------- GENERAL SANCOV OPTIONS ----------
     { Options::ID::SANCOV_LEVEL_0, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_NONE);
-            return true;
+        opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_NONE);
+        return true;
     }},
     { Options::ID::SANCOV_LEVEL_1, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_FUNCTION);
-            return true;
+        opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_FUNCTION);
+        return true;
     }},
     { Options::ID::SANCOV_LEVEL_2, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_BB);
-            return true;
+        opts.sancovOption.SetSancovLevel(GlobalOptions::SanitizerCoverageOptions::Type::SCK_BB);
+        return true;
     }},
     { Options::ID::SANCOV_LEVEL_CUSTOM, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            auto maybeSancovLevel = ParseSancovValue(arg.value);
-            if (maybeSancovLevel.has_value()) {
-                opts.sancovOption.SetSancovLevel(maybeSancovLevel.value());
-                return true;
-            }
-            return false;
+        auto maybeSancovLevel = ParseSancovValue(arg.value);
+        if (maybeSancovLevel.has_value()) {
+            opts.sancovOption.SetSancovLevel(maybeSancovLevel.value());
+            return true;
+        }
+        return false;
     }},
 
     // ---------- COMPILE CONTROL OPTIONS ----------*/
     { Options::ID::OUTPUT_TYPE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            // `--output-type=hotreload` generates DSO as well, except that we need to do more (or less) work on it.
-            // To prevent adding checking everywhere `SharedLib` is checked for newly added hotreload output type,
-            // we use another variable, `enableHotReload`, to indicate whether hot reload feature is enabled.
-            if (arg.value == "hotreload") {
-                opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
-                opts.enableHotReload = true;
-                opts.linkStaticStd = false; // waiting for hotreload's bugfix
-            } else {
-                CJC_ASSERT(OUTPUT_MODE_MAP.count(arg.value) != 0);
-                if (OUTPUT_MODE_MAP.count(arg.value) == 0) {
-                    return false;
-                }
-                opts.outputMode = GlobalOptions::OutputMode(OUTPUT_MODE_MAP.at(arg.value));
-                opts.enableHotReload = false;
-            }
-            opts.enableOutputType = true;
-            return true;
-    }},
-    {Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
-            if (COMPILE_TARGET_MAP.count(arg.value) == 0) {
+        // `--output-type=hotreload` generates DSO as well, except that we need to do more (or less) work on it.
+        // To prevent adding checking everywhere `SharedLib` is checked for newly added hotreload output type,
+        // we use another variable, `enableHotReload`, to indicate whether hot reload feature is enabled.
+        if (arg.value == "hotreload") {
+            opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
+            opts.enableHotReload = true;
+            opts.linkStaticStd = false; // waiting for hotreload's bugfix
+        } else {
+            CJC_ASSERT(OUTPUT_MODE_MAP.count(arg.value) != 0);
+            if (OUTPUT_MODE_MAP.count(arg.value) == 0) {
                 return false;
             }
-            opts.compileTarget = GlobalOptions::CompileTarget(COMPILE_TARGET_MAP.at(arg.value));
-            return true;
+            opts.outputMode = GlobalOptions::OutputMode(OUTPUT_MODE_MAP.at(arg.value));
+            opts.enableHotReload = false;
+        }
+        opts.enableOutputType = true;
+        return true;
+    }},
+    {Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+        CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
+        if (COMPILE_TARGET_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.compileTarget = GlobalOptions::CompileTarget(COMPILE_TARGET_MAP.at(arg.value));
+        return true;
     }},
 
     { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-            opts.compileMacroPackage = true;
+        opts.compileMacroPackage = true;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
-            opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
+        opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;
 #endif
-            return true;
+        return true;
     }},
     { Options::ID::ENABLE_INTEROP_CJMAPPING, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (arg.value.empty()) {
-                return false;
-            }
-            if (INTEROP_LANGUAGE_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.targetInteropLanguage = INTEROP_LANGUAGE_MAP.at(arg.value);
-            opts.enableInteropCJMapping = true;
-            return true;
+        if (arg.value.empty()) {
+            return false;
+        }
+        if (INTEROP_LANGUAGE_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.targetInteropLanguage = INTEROP_LANGUAGE_MAP.at(arg.value);
+        opts.enableInteropCJMapping = true;
+        return true;
     }},
     // ---------- OUTPUT CONTROL OPTIONS ----------
     { Options::ID::OUTPUT_FILE, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            // Not allowed to be empty.
-            if (arg.value.empty()) {
-                Errorf("'%s' requires a non-empty value.\n", arg.name.c_str());
-                return false;
-            }
-            opts.output = arg.value;
-            return true;
+        // Not allowed to be empty.
+        if (arg.value.empty()) {
+            Errorf("'%s' requires a non-empty value.\n", arg.name.c_str());
+            return false;
+        }
+        opts.output = arg.value;
+        return true;
     }},
     { Options::ID::OUTPUT_DIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            DiagnosticEngine diag;
-            if (!IsDir(arg.value)) {
-                (void)diag.DiagnoseRefactor(DiagKindRefactor::no_such_directory, DEFAULT_POSITION, arg.value);
-                return false;
-            }
-            opts.outputDir = {arg.value};
-            return true;
+        DiagnosticEngine diag;
+        if (!IsDir(arg.value)) {
+            (void)diag.DiagnoseRefactor(DiagKindRefactor::no_such_directory, DEFAULT_POSITION, arg.value);
+            return false;
+        }
+        opts.outputDir = {arg.value};
+        return true;
     }},
     { Options::ID::OUTPUT_JAVA_GEN_DIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            opts.outputJavaGenDir = {arg.value};
-            return true;
+        opts.outputJavaGenDir = {arg.value};
+        return true;
     }},
     { Options::ID::SAVE_TEMPS, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (!IsDir(arg.value)) {
-                DiagnosticEngine diag;
-                (void)diag.DiagnoseRefactor(DiagKindRefactor::no_such_directory, DEFAULT_POSITION, arg.value);
-                return false;
-            }
-            opts.saveTemps = true;
-            opts.tempFolderPath = arg.value;
-            return true;
+        if (!IsDir(arg.value)) {
+            DiagnosticEngine diag;
+            (void)diag.DiagnoseRefactor(DiagKindRefactor::no_such_directory, DEFAULT_POSITION, arg.value);
+            return false;
+        }
+        opts.saveTemps = true;
+        opts.tempFolderPath = arg.value;
+        return true;
     }},
 
     // ---------- CONDITIONAL COMPILE OPTIONS ----------
     { Options::ID::CONDITIONAL_COMPILATION_CONFIG, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            if (arg.value.empty()) {
-                DiagnosticEngine diag;
-                (void)diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
-                return false;
-            }
-            return ParsePassedWhen(arg.value, opts.passedWhenKeyValue, opts.passedWhenCfgPaths);
+        if (arg.value.empty()) {
+            DiagnosticEngine diag;
+            (void)diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_value_err, DEFAULT_POSITION);
+            return false;
+        }
+        return ParsePassedWhen(arg.value, opts.passedWhenKeyValue, opts.passedWhenCfgPaths);
     }},
 
     // ---------- CHIR GENERAL OPTIONS ----------
@@ -929,19 +929,19 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::CHIR_WFC, ParseCHIRWFC },
     { Options::ID::ENABLE_CHIR_REDUNDANT_GETORTHROW_ELIMINATION,
         [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-            opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REDUNDANT_LOAD);
-            opts.enableChirRGetOrThrowE = true;
+        opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REDUNDANT_LOAD);
+        opts.enableChirRGetOrThrowE = true;
 	    return true;
     }},
     { Options::ID::DISABLE_CHIR_USELESS_IMPORT_ELIMINATION, [](
         GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-            opts.disableChirUselessImportElimination = true;
-            return true;
+        opts.disableChirUselessImportElimination = true;
+        return true;
     }},
     { Options::ID::DISABLE_SEMA_VIC, OPTION_TRUE_ACTION(opts.disableSemaVic = true)},
     { Options::ID::DISABLE_INSTANTIATION, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.disableInstantiation = true;
-            return true;
+        opts.disableInstantiation = true;
+        return true;
     }},
     { Options::ID::DEBUG_CODEGEN, OPTION_TRUE_ACTION(opts.codegenDebugMode = true) },
     { Options::ID::CHIR_OPT_DEBUG, OPTION_TRUE_ACTION(opts.chirDebugOptimizer = true) },
@@ -951,15 +951,15 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::DUMP_ALL, OPTION_TRUE_ACTION(opts.dumpAll = true)},
     { Options::ID::DUMP_TO_SCREEN, OPTION_TRUE_ACTION(opts.dumpToScreen = true)},
     { Options::ID::EMIT_CHIR, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
-            if (arg.value.empty()) {
-                opts.emitCHIRPhase = GlobalOptions::CandidateEmitCHIRPhase::OPT;
-                return true;
-            }
-            if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.emitCHIRPhase = EMIT_CHIR_PHASE_MAP.at(arg.value);
+        if (arg.value.empty()) {
+            opts.emitCHIRPhase = GlobalOptions::CandidateEmitCHIRPhase::OPT;
             return true;
+        }
+        if (EMIT_CHIR_PHASE_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.emitCHIRPhase = EMIT_CHIR_PHASE_MAP.at(arg.value);
+        return true;
     }},
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     { Options::ID::DUMP_ANNOTATIONS_DEBUG, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
@@ -968,12 +968,12 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
 #endif
     { Options::ID::RENDER_CHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            CJC_ASSERT(DUMP_CHIR_MODE_MAP.count(arg.value) != 0);
-            if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.chirRenderMode = GlobalOptions::CHIRMode(DUMP_CHIR_MODE_MAP.at(arg.value));
-            return true;
+        CJC_ASSERT(DUMP_CHIR_MODE_MAP.count(arg.value) != 0);
+        if (DUMP_CHIR_MODE_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.chirRenderMode = GlobalOptions::CHIRMode(DUMP_CHIR_MODE_MAP.at(arg.value));
+        return true;
     }},
     // ------------CHIR SANCOV OPTIONS----------------
     { Options::ID::SANCOV_INLINE_8BIT, OPTION_TRUE_ACTION(opts.sancovOption.inline8bitCounters = true) },
@@ -1019,7 +1019,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
         opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::SWITCH_OPT);
 #endif
-            return true;
+        return true;
      }},
     { Options::ID::REF_FOLDING,
         OPTION_TRUE_ACTION(opts.selectedCHIROpts.insert(GlobalOptions::OptimizationFlag::REF_FOLDING)) },
@@ -1031,17 +1031,17 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
         OPTION_TRUE_ACTION(opts.chirLICM = false) },
     // ---------- CHIR INTERPRETER ----------
     { Options::ID::PRINT_BCHIR, [](GlobalOptions& opts, const OptionArgInstance& arg) {
-            CJC_ASSERT(PRINT_BCHIR_MODE_MAP.count(arg.value) != 0);
-            if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) {
-                return false;
-            }
-            opts.printBCHIR[static_cast<uint8_t>(PRINT_BCHIR_MODE_MAP.at(arg.value))] = true;
-            return true;
+        CJC_ASSERT(PRINT_BCHIR_MODE_MAP.count(arg.value) != 0);
+        if (PRINT_BCHIR_MODE_MAP.count(arg.value) == 0) {
+            return false;
+        }
+        opts.printBCHIR[static_cast<uint8_t>(PRINT_BCHIR_MODE_MAP.at(arg.value))] = true;
+        return true;
     }},
     { Options::ID::INTERP_CONST_EVAL_DEBUG, OPTION_TRUE_ACTION(opts.constEvalDebug = true) },
     { Options::ID::DISABLE_CODEGEN, [](GlobalOptions& opts, [[maybe_unused]] OptionArgInstance& arg) {
-            opts.disableCodeGen = true;
-            return true;
+        opts.disableCodeGen = true;
+        return true;
     }},
     { Options::ID::DISABLE_REFLECTION, OPTION_TRUE_ACTION(opts.disableReflection = true) },
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
@@ -1054,7 +1054,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     { Options::ID::PGO_INSTR_GEN, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         opts.enablePgoInstrGen = true;
         if (arg.value != "") {
-            opts.pgoProfileFile = arg.value;
+        opts.pgoProfileFile = arg.value;
         }
         return true;
     }},
@@ -1065,13 +1065,13 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
     }},
     { Options::ID::STACK_TRACE_FORMAT, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         if (arg.value == "default") {
-            opts.stackTraceFmt = GlobalOptions::StackTraceFormat::DEFAULT;
+        opts.stackTraceFmt = GlobalOptions::StackTraceFormat::DEFAULT;
         } else if (arg.value == "simple") {
-            opts.stackTraceFmt = GlobalOptions::StackTraceFormat::SIMPLE;
+        opts.stackTraceFmt = GlobalOptions::StackTraceFormat::SIMPLE;
         } else if (arg.value == "all") {
-            opts.stackTraceFmt = GlobalOptions::StackTraceFormat::ALL;
+        opts.stackTraceFmt = GlobalOptions::StackTraceFormat::ALL;
         } else {
-            return false;
+        return false;
         }
         return true;
     }},
@@ -1090,7 +1090,7 @@ std::string Triple::Info::EnvironmentToString() const
 {
     if (auto search = ENVIRONMENT_STRING_MAP.find(env); search != ENVIRONMENT_STRING_MAP.end()) {
         if (env == Environment::ANDROID) {
-            return search->second + apiLevel;
+        return search->second + apiLevel;
         }
         return search->second;
     } else {
@@ -1116,12 +1116,12 @@ bool SetupConditionalCompilationCfgFromFile(const std::string& filePath,
     if (content.has_value()) {
         auto cfgLines = SplitLines(content.value());
         for (auto kv : cfgLines) {
-            if (kv.empty() || SeeingTomlComment(kv)) {
-                continue;
-            }
-            if (!ParseConditionKeyValueLine(kv, passedWhenKeyValue, diag)) {
-                return false;
-            }
+        if (kv.empty() || SeeingTomlComment(kv)) {
+            continue;
+        }
+        if (!ParseConditionKeyValueLine(kv, passedWhenKeyValue, diag)) {
+            return false;
+        }
         }
         return true;
     }
@@ -1155,7 +1155,7 @@ bool GlobalOptions::SetupConditionalCompilationCfg()
     DiagnosticEngine diag;
     if (!passedWhenKeyValue.empty()) {
         if (!passedWhenCfgPaths.empty()) {
-            diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_path_ignored, DEFAULT_POSITION);
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_cfg_path_ignored, DEFAULT_POSITION);
         }
         return true;
     }
@@ -1163,8 +1163,8 @@ bool GlobalOptions::SetupConditionalCompilationCfg()
     for (auto& path : passedWhenCfgPaths) {
         std::string filePath = JoinPath(path, cfgFileName);
         if (!FileExist(filePath)) {
-            diag.DiagnoseRefactor(DiagKindRefactor::driver_warning_no_such_file, DEFAULT_POSITION, filePath);
-            continue;
+        diag.DiagnoseRefactor(DiagKindRefactor::driver_warning_no_such_file, DEFAULT_POSITION, filePath);
+        continue;
         }
         return SetupConditionalCompilationCfgFromFile(filePath, passedWhenKeyValue, diag);
     }
