@@ -844,14 +844,14 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
         opts.enableOutputType = true;
         return true;
     }},
-        { Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
+    {Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
         if (COMPILE_TARGET_MAP.count(arg.value) == 0) { return false; }
         opts.compileTarget = GlobalOptions::COMPILETARGET(COMPILE_TARGET_MAP.at(arg.value));
         return true;
     }},
 
-     { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
+    { Options::ID::COMPILE_MACRO, [](GlobalOptions& opts, [[maybe_unused]] const OptionArgInstance& arg) {
         opts.compileMacroPackage = true;
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
             opts.outputMode = GlobalOptions::OutputMode::SHARED_LIB;

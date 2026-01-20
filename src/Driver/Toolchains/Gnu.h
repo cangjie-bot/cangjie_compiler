@@ -41,7 +41,7 @@ protected:
 
     bool PrepareDependencyPath() override;
     bool ProcessGeneration(std::vector<TempFileInfo>& objFiles) override;
-    bool PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles);         
+    bool PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles);
     virtual std::string GenerateGCCLibPath(const std::pair<std::string, std::string>& gccCrtFilePair) const;
 
     virtual void GenerateArchiveTool(const std::vector<TempFileInfo>& objFiles);

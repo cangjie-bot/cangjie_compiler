@@ -42,7 +42,7 @@ const std::string CJ_EXTENSION = "cj";
 const std::string CHIR_EXTENSION = "chir";
 const std::string ARCHIVE_EXTENSION = "a";
 const std::string OBJECT_EXTENSION = "o";
-const std::string OBJC_EXTENSION= "obj";
+const std::string COFF_OBJECT_EXTENSION= "obj";
 #ifdef _WIN32
 const std::string DL_EXTENSION = "dll";
 #elif defined(__APPLE__)
@@ -537,7 +537,7 @@ bool GlobalOptions::CheckLtoOptions() const
         return false;
     }
     if (outputMode == OutputMode::OBJ ) {
-        Errorln("--output-type=obj is not allowed in LTO model");
+        Errorln("--output-type=obj is not allowed in LTO mode");
         return false;
     }
     if (outputMode == OutputMode::STATIC_LIB && !bcInputFiles.empty()) {
@@ -688,7 +688,7 @@ bool GlobalOptions::HandleArchiveExtension(DiagnosticEngine& diag, const std::st
         return true;
     }
 
-    if (ext == OBJC_EXTENSION  && GetFileExtension(maybePath.value()) != OBJC_EXTENSION){
+    if (ext == COFF_OBJECT_EXTENSION  && GetFileExtension(maybePath.value()) != COFF_OBJECT_EXTENSION) {
         RaiseArgumentUnusedMessage(diag, DiagKindRefactor::driver_warning_not_object_file, value, maybePath.value());
         return true;
     }
@@ -818,7 +818,7 @@ bool GlobalOptions::ProcessInputs(const std::vector<std::string>& inputs)
             return;
         }
         std::string ext = GetFileExtension(value);
-        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == OBJC_EXTENSION) {
+        if (ext == OBJECT_EXTENSION || ext == ARCHIVE_EXTENSION || ext == COFF_OBJECT_EXTENSION) {
             ret = HandleArchiveExtension(diag, value);
         } else if (ext == CJ_EXTENSION && !compileCjd) {
             ret = HandleCJExtension(diag, value);
