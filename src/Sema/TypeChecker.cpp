@@ -473,6 +473,9 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
         fpl.ty = typeManager.GetTupleTy(paramTys, {}, {});
         return;
     }
+    if (fpl.thisParam) {
+        Synthesize({ctx, SynPos::NONE}, fpl.thisParam.get());
+    }
     for (auto& param : fpl.params) {
         CJC_NULLPTR_CHECK(param);
         if (!Ty::IsTyCorrect(Synthesize({ctx, SynPos::NONE}, param.get()))) {
@@ -923,6 +926,10 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::Synthesize(const CheckerContext& ctx, Ptr<
             node->ty = SynFuncParam(*curCtx, *StaticAs<ASTKind::FUNC_PARAM>(node));
             break;
         }
+        case ASTKind::THIS_PARAM: {
+            node->ty = SynThisParam(*curCtx, *StaticAs<ASTKind::THIS_PARAM>(node));
+            break;
+        }
         case ASTKind::FUNC_ARG: {
             node->ty = SynFuncArg(*curCtx, *StaticAs<ASTKind::FUNC_ARG>(node));
             break;
@@ -1357,6 +1364,10 @@ bool TypeChecker::TypeCheckerImpl::Check(ASTContext& ctx, Ptr<Ty> target, Ptr<No
             }
             case ASTKind::FUNC_PARAM: {
                 chkRet = ChkFuncParam(*curCtx, *realTarget, *StaticAs<ASTKind::FUNC_PARAM>(node));
+                break;
+            }
+            case ASTKind::THIS_PARAM: {
+                chkRet = SynThisParam(*curCtx, *StaticAs<ASTKind::THIS_PARAM>(node));
                 break;
             }
             case ASTKind::FUNC_ARG: {

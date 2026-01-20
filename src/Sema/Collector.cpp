@@ -780,6 +780,7 @@ void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie
         }
         case ASTKind::FUNC_PARAM_LIST: {
             auto fpl = StaticAs<ASTKind::FUNC_PARAM_LIST>(node);
+            BuildSymbolTable(ctx, fpl->thisParam.get(), buildTrie);
             for (auto& param : fpl->params) {
                 BuildSymbolTable(ctx, param.get(), buildTrie);
             }
@@ -800,6 +801,7 @@ void Collector::BuildSymbolTable(ASTContext& ctx, Ptr<Node> node, bool buildTrie
         }
         case ASTKind::THIS_PARAM: {
             auto tp = StaticAs<ASTKind::THIS_PARAM>(node);
+            AddSymbol(ctx, {*tp, "", ctx.currentScopeLevel, ctx.currentScopeName}, buildTrie);
             CollectAnnotations(ctx, tp->annotations, buildTrie);
             break;
         }

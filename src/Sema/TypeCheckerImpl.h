@@ -806,6 +806,7 @@ private:
     bool ChkInoutRefExpr(AST::RefExpr& re, bool isBase = false);
     bool ChkInoutMemberAccess(const AST::MemberAccess& ma);
     Ptr<AST::Ty> SynFuncParam(ASTContext& ctx, AST::FuncParam& fp);
+    Ptr<AST::Ty> SynThisParam(ASTContext& ctx, AST::ThisParam& tp);
     bool ChkFuncParam(ASTContext& ctx, AST::Ty& target, AST::FuncParam& fp);
     Ptr<AST::Ty> SynIsExpr(ASTContext& ctx, AST::IsExpr& ie);
     bool ChkIsExpr(ASTContext& ctx, AST::Ty& target, AST::IsExpr& ie);

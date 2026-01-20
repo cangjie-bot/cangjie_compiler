@@ -287,9 +287,15 @@ private:
                     // invalid call node, skip
                     return VisitAction::SKIP_CHILDREN;
                 }
-                auto tar = call->baseFunc->GetTarget();
-                CJC_NULLPTR_CHECK(tar);
-                if (auto funcTy = DynamicCast<FuncTy>(tar->ty)) {
+                Ptr<Ty> targetTy = nullptr;
+                if (call->callKind == CallKind::CALL_FUNCTION_PTR) {
+                    // fp call, no target
+                    targetTy = StaticCast<FuncTy>(call->baseFunc->ty);
+                } else {
+                    targetTy = call->baseFunc->GetTarget()->ty;
+                }
+                CJC_NULLPTR_CHECK(targetTy);
+                if (auto funcTy = DynamicCast<FuncTy>(targetTy)) {
                     auto retTy = funcTy->retTy;
                     // non copy non @~local type, needs a region
                     if (retTy->modal.local != LocalModal::NOT && type.NeverImplementsCopyInterface(retTy)) {
@@ -297,7 +303,7 @@ private:
                         return VisitAction::STOP_NOW;
                     }
                 }
-                if (!type.ImplementsCopyInterface(tar->ty) && tar->ty->modal.local != LocalModal::NOT) { // enum constructor, primitive types
+                if (!type.ImplementsCopyInterface(targetTy) && targetTy->modal.local != LocalModal::NOT) { // enum constructor, primitive types
                     needsRegion = true;
                     return VisitAction::STOP_NOW;
                 }
@@ -444,7 +450,7 @@ private:
         // Check if this type has any constructor with @~local this type
         bool hasNotLocalThisCtor = HasNotLocalThisCtor(decl);
 
-        for (auto& member : decl.GetMemberDeclPtrs()) {
+        for (auto member : decl.GetMemberDeclPtrs()) {
             if (auto var = DynamicCast<VarDecl>(member)) {
                 CheckMemberVarModalType(*var, hasNotLocalThisCtor);
             }
@@ -454,6 +460,9 @@ private:
     /// Check if a constructor has @~local this type (no explicit this param or explicit @~local)
     bool CtorHasNotLocalThis(const FuncDecl& ctor)
     {
+        if (!Ty::IsTyCorrect(ctor.ty)) {
+            return false; // Invalid constructor, skip
+        }
         if (!ctor.funcBody || ctor.funcBody->paramLists.empty()) {
             return true; // No param list means default @~local this
         }
@@ -461,9 +470,7 @@ private:
         if (!paramList->thisParam) {
             return true; // No explicit this param means @~local this
         }
-        if (!Ty::IsTyCorrect(paramList->thisParam->ty)) {
-            return true; // Invalid this param, assume @~local
-        }
+        // Check the parsed modal info, not the type (which may not be set yet)
         auto local = paramList->thisParam->ty->modal.local;
         return local == LocalModal::NOT;
     }
@@ -473,8 +480,8 @@ private:
     bool HasNotLocalThisCtor(const InheritableDecl& decl)
     {
         bool hasAnyCtor = false;
-        for (auto& member : decl.GetMemberDecls()) {
-            if (auto func = DynamicCast<FuncDecl>(member.get())) {
+        for (auto member : decl.GetMemberDeclPtrs()) {
+            if (auto func = DynamicCast<FuncDecl>(member)) {
                 if (!Ty::IsTyCorrect(func->ty)) {
                     hasAnyCtor = true;
                     continue;
@@ -802,8 +809,8 @@ private:
     /// Check validity of @MakeCopy
     void CheckCopyType(StructDecl& decl)
     {
-        for (auto& member : decl.GetMemberDecls()) {
-            if (auto var = DynamicCast<VarDecl>(member.get())) {
+        for (auto member : decl.GetMemberDeclPtrs()) {
+            if (auto var = DynamicCast<VarDecl>(member)) {
                 if (type.ImplementsCopyInterface(var->ty)) {
                     continue;
                 }

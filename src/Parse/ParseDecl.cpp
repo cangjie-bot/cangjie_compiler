@@ -280,13 +280,6 @@ void ParserImpl::CheckVarDeclModifiers(
     }
 }
 
-static bool IsMemberScope(ScopeKind scopeKind)
-{
-    return scopeKind == ScopeKind::CLASS_BODY || scopeKind == ScopeKind::STRUCT_BODY ||
-        scopeKind == ScopeKind::INTERFACE_BODY || scopeKind == ScopeKind::EXTEND_BODY ||
-        scopeKind == ScopeKind::ENUM_BODY;
-}
-
 OwnedPtr<Decl> ParserImpl::ParseVarDecl(
     const ScopeKind& scopeKind, const std::set<Modifier>& modifiers, const Token& keyToken)
 {
@@ -308,9 +301,6 @@ OwnedPtr<Decl> ParserImpl::ParseVarDecl(
     CheckVarDeclModifiers(modifiers, ret.get(), scopeKind, keyToken);
 
     CheckMakeCopy(*ret);
-    if (ret->type && ret->type->modal.HasLocal() && IsMemberScope(scopeKind)) {
-        DiagUnexpectedModal(MakeRange(ret->type->modal.LocalBegin(), ret->type->modal.LocalEnd()));
-    }
     return ret;
 }
 

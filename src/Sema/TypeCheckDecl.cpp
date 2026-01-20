@@ -743,6 +743,18 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynFuncParam(ASTContext& ctx, FuncParam& f
     return fp.ty;
 }
 
+Ptr<Ty> TypeChecker::TypeCheckerImpl::SynThisParam(ASTContext& ctx, ThisParam& tp)
+{
+    auto cl = ScopeManager::GetCurSymbolByKind(SymbolKind::STRUCT, ctx, tp.scopeName);
+    if (!cl) {
+        return tp.ty = TypeManager::GetInvalidTy();
+    }
+    if (auto classTy = DynamicCast<ClassTy>(cl->node->ty)) {
+        return tp.ty = typeManager.GetClassThisTy(*classTy->decl, classTy->typeArgs, tp.modal.ToModalInfo());
+    }
+    return tp.ty = TypeManager::GetInvalidTy();
+}
+
 bool TypeChecker::TypeCheckerImpl::ChkFuncParam(ASTContext& ctx, Ty& target, FuncParam& fp)
 {
     if (fp.ty && fp.ty == &target) {
