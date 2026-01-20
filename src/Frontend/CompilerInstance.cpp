@@ -318,7 +318,7 @@ bool CompilerInstance::PerformParse()
         srcPkgs.front()->noSubPkg = globalOpts.noSubPkg;
         Utils::ProfileRecorder::SetPackageName(srcPkgs[0]->fullPackageName);
         Utils::ProfileRecorder::SetOutputDir(globalOpts.output);
-        if (globalOpts.outputMode == GlobalOptions::OutputMode::OBJ) {
+        if (globalOpts.outputMode != GlobalOptions::OutputMode::CHIR) {
             TempFileInfo astFlagFileInfo = TempFileManager::Instance().CreateNewFileInfo(
                 TempFileInfo{srcPkgs[0]->fullPackageName, ""}, TempFileKind::O_CJO_FLAG);
             if (FileUtil::FileExist(astFlagFileInfo.filePath) && !FileUtil::Remove(astFlagFileInfo.filePath)) {
@@ -850,7 +850,7 @@ bool CompilerInstance::PerformMangling()
     if (!srcPkgs.empty() && invocation.globalOptions.NeedDumpAST()) {
         DumpAST(GetSourcePackages(), invocation.globalOptions.output, "mangle", invocation.globalOptions.dumpToScreen);
     }
-    if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::OBJ) {
+    if (invocation.globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
         return PerformCjoSaving();
     }
     return true;

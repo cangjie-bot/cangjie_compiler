@@ -371,7 +371,7 @@ const std::string_view ANNOTATION_TARGET_2_STRING[]{
 
 class AnnotationChecker {
 public:
-    explicit AnnotationChecker(const DiagAdapter& d, const GlobalOptions& opts) : diag{d}, opts{opts}
+    explicit AnnotationChecker(const DiagAdapter& d) : diag{d}
     {
     }
 
@@ -385,25 +385,14 @@ public:
 
 private:
     const DiagAdapter& diag;
-    const GlobalOptions& opts;
 
     // write @Annotation info from the result of consteval back to the AST nodes
     void WriteBackAnnotations()
     {
         std::unordered_map<const ClassDef*, AnnotationTarget> cmap;
         for (auto it = g_annoInfo.begin(); it != g_annoInfo.end();) {
-            if (!it->first->TestAttr(Attribute::IMPORTED) && opts.outputMode != GlobalOptions::OutputMode::OBJ) {
-                // write back to AST if not imported and not output mode is OBJ
-                // Note: In OBJ output mode, annotations are preserved in CJO files instead of
-                // being written back to AST, which may cause incremental compilation cache CJO
-                // files to differ from the original CJO files.
-                WriteBackAnnotation(it->second);
-                cmap.emplace(it->first, AnnotationTarget{it->second.anno->target});
-                it = g_annoInfo.erase(it);
-            } else {
-                cmap.emplace(it->first, AnnotationTarget{it->second.anno->target});
-                ++it;
-            }
+            cmap.emplace(it->first, AnnotationTarget{it->second.anno->target});
+            ++it;
         }
         checkMap = std::move(cmap);
     }
@@ -457,6 +446,7 @@ private:
             return;
         }
         checkMap[def] = AnnotationTarget{.val = GetAnnotationTargetFromInfo(annoInfo->second)};
+        g_annoInfo.erase(annoInfo);
     }
 
     // check map, from Annotation class to AnnotationTarget
@@ -595,7 +585,7 @@ private:
 bool ToCHIR::RunAnnotationChecks()
 {
     Utils::ProfileRecorder r{"CHIR", "AnnotationCheck"};
-    if (!AnnotationChecker{diag, opts}.CheckAnnotations()) {
+    if (!AnnotationChecker{diag}.CheckAnnotations()) {
         return false;
     }
     return true;
