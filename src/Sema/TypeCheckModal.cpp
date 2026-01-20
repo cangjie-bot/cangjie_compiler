@@ -130,10 +130,10 @@ struct ModalTypeChecker {
                 CheckExclaveInCtor(ctx, *exclave);
             }
             if (auto lambda = DynamicCast<LambdaExpr>(node)) {
-                MarkNeedsRegion(*lambda);
+                CheckNeedsRegion(*lambda);
             }
             if (auto func = DynamicCast<FuncDecl>(node)) {
-                MarkNeedsRegion(*func);
+                CheckNeedsRegion(*func);
             }
             return VisitAction::WALK_CHILDREN;
         },
@@ -276,8 +276,11 @@ private:
     /// The following functions need mark needsRegion:
     /// The function has in its body a func call that returns a non copy non @~local type (including constructor call
     /// and enum constructor call)
-    void MarkNeedsRegion(const Node& body, bool& needsRegion)
+    void CheckNeedsRegion(const Node& body, bool& needsRegion)
     {
+        if (!Ty::IsTyCorrect(body.ty)) {
+            return;
+        }
         ConstWalker w{&body, [this, &needsRegion](Ptr<const Node> node) {
             if (auto call = DynamicCast<CallExpr>(node)) {
                 if (!call->baseFunc || !Ty::IsTyCorrect(call->ty)) {
@@ -294,7 +297,7 @@ private:
                         return VisitAction::STOP_NOW;
                     }
                 }
-                if (!type.ImplementsCopyInterface(tar->ty)) { // enum constructor, primitive types
+                if (!type.ImplementsCopyInterface(tar->ty) && tar->ty->modal.local != LocalModal::NOT) { // enum constructor, primitive types
                     needsRegion = true;
                     return VisitAction::STOP_NOW;
                 }
@@ -308,19 +311,21 @@ private:
         w.Walk();
     }
 
-    void MarkNeedsRegion(LambdaExpr& lambda)
+    void CheckNeedsRegion(LambdaExpr& lambda)
     {
-        MarkNeedsRegion(*lambda.funcBody->body, lambda.needsRegion);
+        CheckNeedsRegion(*lambda.funcBody->body, lambda.needsRegion);
     }
 
-    void MarkNeedsRegion(FuncDecl& func)
+    void CheckNeedsRegion(FuncDecl& func)
     {
         // constructor uses its caller's region implicitly
         if (func.TestAnyAttr(Attribute::CONSTRUCTOR, Attribute::PRIMARY_CONSTRUCTOR)) {
-            func.needsRegion = false;
             return;
         }
-        MarkNeedsRegion(*func.funcBody->body, func.needsRegion);
+        if (!func.funcBody->body) {
+            return;
+        }
+        CheckNeedsRegion(*func.funcBody->body, func.needsRegion);
     }
 
     void CheckAssignExpr(const ASTContext& ctx, const AssignExpr& assign)

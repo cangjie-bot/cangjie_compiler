@@ -848,13 +848,14 @@ private:
     }
 
     struct BindingConfig {
-        bool hasInitial{false};
-        bool createDebug{true};
-        bool setSymbol{true};
+        bool hasInitial{false};  // Function has HAS_INITIAL attribute (for init() calls)
+        bool createDebug{true};  // Create debug info for parameters
+        bool setSymbol{true};    // Set symbol table entries for parameters
+        bool needsRegion{false}; // Function needs StartRegion/EndRegion for region-based memory management
     };
     // Translate function.
     void BindingFuncParam(const AST::FuncParamList& paramList, const BlockGroup& funcBody,
-        const BindingConfig& cfg = {false, true, true});
+        const BindingConfig& cfg = {false, true, true, false});
     Ptr<Block> TranslateFuncBody(const AST::FuncBody& funcBody);
     Ptr<Value> TranslateInstanceMemberFunc(const AST::Decl& parent, const AST::FuncBody& funcBody);
     Ptr<Value> TranslateConstructorFunc(const AST::Decl& parent, const AST::FuncBody& funcBody);

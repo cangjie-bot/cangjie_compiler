@@ -31,10 +31,6 @@ Ptr<Value> Translator::Visit(const AST::LambdaExpr& lambdaExpr)
     auto lambda = CreateAndAppendExpression<Lambda>(loc, funcTy, funcTy, currentBlock, true, mangledName, "$lambda");
     lambda->InitBody(*body);
     funcContext.PushFunc(lambdaExpr, *lambda);
-    if (lambdaExpr.needsRegion) {
-        CreateAndAppendExpression<StartRegion>(
-            TranslateLocation(lambdaExpr), builder.GetUnitTy(), lambda->GetEntryBlock());
-    }
 
     std::vector<DebugLocation> paramLoc;
     for (auto& astParam : lambdaExpr.funcBody->paramLists[0]->params) {
@@ -51,11 +47,7 @@ Ptr<Value> Translator::Visit(const AST::LambdaExpr& lambdaExpr)
     }
 
     // lambda never has default parameter value
-    auto ret = lambdaTrans.TranslateLambdaBody(lambda, *lambdaExpr.funcBody, {});
-    if (lambdaExpr.needsRegion) {
-        CreateAndAppendExpression<EndRegion>(
-            TranslateLocation(lambdaExpr), builder.GetUnitTy(), lambda->GetEntryBlock());
-    }
+    auto ret = lambdaTrans.TranslateLambdaBody(lambda, *lambdaExpr.funcBody, {.needsRegion = lambdaExpr.needsRegion});
     return ret;
 }
 
@@ -118,6 +110,10 @@ Ptr<Value> Translator::TranslateLambdaBody(
     blockGroupStack.emplace_back(blockGroup);
     auto entry = builder.CreateBlock(blockGroup);
     blockGroup->SetEntryBlock(entry);
+
+    if (config.needsRegion) {
+        CreateAndAppendExpression<StartRegion>(TranslateLocation(*funcBody.body), builder.GetUnitTy(), entry);
+    }
     BindingFuncParam(*funcBody.paramLists[0], *lambda->GetBody(), config);
     // Set return value.
     auto retType = lambda->GetReturnType();
@@ -127,6 +123,10 @@ Ptr<Value> Translator::TranslateLambdaBody(
     lambda->SetReturnValue(*retVal);
     // Translate body.
     auto block = Visit(funcBody);
+    if (config.needsRegion) {
+        CreateAndAppendExpression<EndRegion>(
+            TranslateLocation(*funcBody.body->body.back()), builder.GetUnitTy(), lambda->GetEntryBlock());
+    }
     CreateAndAppendTerminator<GoTo>(StaticCast<Block*>(block.get()), entry);
     blockGroupStack.pop_back();
     return lambda->GetResult();

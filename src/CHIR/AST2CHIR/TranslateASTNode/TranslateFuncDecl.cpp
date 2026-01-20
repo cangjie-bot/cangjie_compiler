@@ -206,7 +206,7 @@ Ptr<Value> Translator::Visit(const AST::FuncDecl& func)
     blockGroupStack.emplace_back(body);
     auto entry = builder.CreateBlock(body);
     if (func.needsRegion) {
-        CreateAndAppendExpression<StartRegion>(TranslateLocation(func), builder.GetUnitTy(), entry);
+        CreateAndAppendExpression<StartRegion>(TranslateLocation(*func.funcBody->body), builder.GetUnitTy(), entry);
     }
     body->SetEntryBlock(entry);
     if (NeedCreateDebugForFirstParam(*curFunc)) {
@@ -489,7 +489,8 @@ Ptr<Value> Translator::TranslateNestedFunc(const AST::FuncDecl& func)
     CJC_ASSERT(lambda);
     funcContext.PushFunc(func, *lambda);
     if (func.needsRegion) {
-        CreateAndAppendExpression<StartRegion>(TranslateLocation(func), builder.GetUnitTy(), lambda->GetEntryBlock());
+        CreateAndAppendExpression<StartRegion>(
+            TranslateLocation(*func.funcBody->body), builder.GetUnitTy(), lambda->GetEntryBlock());
     }
     lambda->InitBody(*body);
     if (func.isConst) {
@@ -520,7 +521,7 @@ Ptr<Value> Translator::TranslateNestedFunc(const AST::FuncDecl& func)
     }
     // Local function allows to call itself inside funcBody.
     lambdaTrans.SetSymbolTable(func, *lambda->GetResult());
-    return lambdaTrans.TranslateLambdaBody(
-        lambda, *func.funcBody, {.hasInitial = func.TestAttr(AST::Attribute::HAS_INITIAL)});
+    return lambdaTrans.TranslateLambdaBody(lambda, *func.funcBody,
+        {.hasInitial = func.TestAttr(AST::Attribute::HAS_INITIAL), .needsRegion = func.needsRegion});
 }
 } // namespace Cangjie::CHIR

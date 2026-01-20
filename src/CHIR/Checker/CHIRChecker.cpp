@@ -1830,76 +1830,72 @@ void CHIRChecker::CheckEndRegion(const EndRegion& expr, const Func& topLevelFunc
 
 void CHIRChecker::CheckRegionBalance(const Func& func)
 {
-    auto* body = func.GetBody();
+    auto body = func.GetBody();
     if (body == nullptr) {
         return;
     }
+    CheckRegionBalanceInBlockGroup(*body, func);
+}
 
-    // Compute region depth at exit of each block using forward dataflow analysis
-    std::unordered_map<const Block*, int> blockExitDepth;
-    std::queue<const Block*> worklist;
-
-    auto* entryBlock = body->GetEntryBlock();
+void CHIRChecker::CheckRegionBalanceInBlockGroup(const BlockGroup& bg, const Func& func)
+{
+    auto entryBlock = bg.GetEntryBlock();
     if (entryBlock == nullptr) {
         return;
     }
+    auto beginExprs = entryBlock->GetExpressions();
+    if (!beginExprs.empty() && beginExprs[0]->GetExprKind() != ExprKind::START_REGION) {
+        return;
+    }
 
-    blockExitDepth[entryBlock] = 0;
-    worklist.push(entryBlock);
+    std::unordered_map<const Block*, int> blockEntryDepth;
+    std::queue<std::pair<const Block*, int>> worklist;
+    worklist.push({entryBlock, 0});
 
     while (!worklist.empty()) {
-        const Block* block = worklist.front();
+        auto [block, depth] = worklist.front();
         worklist.pop();
 
-        int depth = 0;
-        bool hasIncoming = false;
-        for (auto* pred : block->GetPredecessors()) {
-            auto it = blockExitDepth.find(pred);
-            if (it != blockExitDepth.end()) {
-                if (hasIncoming && depth != it->second) {
-                    ErrorInFunc(func, "region depth mismatch at block " + block->GetIdentifier() +
-                        ": different predecessors have different region depths.");
-                }
-                depth = it->second;
-                hasIncoming = true;
+        auto it = blockEntryDepth.find(block);
+        if (it != blockEntryDepth.end()) {
+            if (it->second != depth) {
+                ErrorInFunc(func,
+                    "region depth mismatch at block " + block->GetIdentifier() + ": entered with depth " +
+                        std::to_string(depth) + " but previously entered with depth " + std::to_string(it->second) +
+                        ".");
             }
-        }
-        if (!hasIncoming && block != entryBlock) {
             continue;
         }
-        for (auto* expr : block->GetExpressions()) {
+        blockEntryDepth[block] = depth;
+
+        for (auto expr : block->GetExpressions()) {
             if (expr->GetExprKind() == ExprKind::START_REGION) {
                 depth++;
             } else if (expr->GetExprKind() == ExprKind::END_REGION) {
-                depth--;
-                if (depth < 0) {
+                if (--depth < 0) {
                     ErrorInExpr(func, *expr, "EndRegion without matching StartRegion (region underflow).");
                     return;
                 }
             }
+            for (auto nestedBg : expr->GetBlockGroups()) {
+                CheckRegionBalanceInBlockGroup(*nestedBg, func);
+            }
         }
 
-        auto* terminator = block->GetTerminator();
-        if (terminator != nullptr) {
-            auto kind = terminator->GetExprKind();
-            // At normal Exit, region depth should be 0
-            if (kind == ExprKind::EXIT) {
-                if (depth != 0) {
-                    ErrorInExpr(func, *terminator,
-                        "region depth is " + std::to_string(depth) + " at Exit, expected 0 (unbalanced StartRegion/EndRegion).");
-                }
-            }
-            // Don't check at RaiseException or exception terminators - those are abnormal exits
+        auto terminator = block->GetTerminator();
+        if (!terminator) {
+            continue;
         }
-
-        auto it = blockExitDepth.find(block);
-        if (it == blockExitDepth.end() || it->second != depth) {
-            blockExitDepth[block] = depth;
-            if (terminator != nullptr) {
-                for (auto* succ : terminator->GetSuccessors()) {
-                    worklist.push(succ);
-                }
+        if (terminator->GetExprKind() == ExprKind::EXIT && depth != 0) {
+            if (terminator->Get<SkipCheck>() == SkipKind::SKIP_FORIN_EXIT) {
+                continue;
             }
+            ErrorInExpr(func, *terminator,
+                "region depth is " + std::to_string(depth) +
+                    " at Exit, expected 0 (unbalanced StartRegion/EndRegion).");
+        }
+        for (auto succ : terminator->GetSuccessors()) {
+            worklist.push({succ, depth});
         }
     }
 }

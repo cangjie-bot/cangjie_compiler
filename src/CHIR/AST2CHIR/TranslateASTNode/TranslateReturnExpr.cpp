@@ -81,6 +81,9 @@ Ptr<Value> Translator::Visit(const AST::ReturnExpr& expr)
     }
     Ptr<Terminator> terminator = nullptr;
     if (finallyContext.empty()) {
+        if (funcContext.NeedsRegion()) {
+            CreateAndAppendExpression<EndRegion>(loc, builder.GetUnitTy(), currentBlock);
+        }
         terminator = CreateAndAppendTerminator<Exit>(loc, currentBlock);
         /* compile add return expr should not print warning.
             public open func foo(): Int64 {
@@ -99,6 +102,9 @@ Ptr<Value> Translator::Visit(const AST::ReturnExpr& expr)
         auto prevBlock = currentBlock;
         // Create return in separate block, and control flow will be redirected to this block at the end of finally.
         currentBlock = CreateBlock();
+        if (funcContext.NeedsRegion()) {
+            CreateAndAppendExpression<EndRegion>(loc, builder.GetUnitTy(), currentBlock);
+        }
         terminator = CreateAndAppendTerminator<Exit>(loc, currentBlock);
         // the pair of blocks is {the block before control flow, control flow's target block}.
         controlBlocks[index].emplace_back(prevBlock, currentBlock);
@@ -112,9 +118,9 @@ Ptr<Value> Translator::Visit(const AST::ReturnExpr& expr)
 Ptr<Value> Translator::Visit(const AST::ExclaveExpr& exclaveExpr)
 {
     CJC_ASSERT(!blockGroupStack.empty());
-    const auto& loc = TranslateLocation(exclaveExpr);
+    auto loc = TranslateLocation(exclaveExpr);
+    // end region and so we can use caller region
     CreateAndAppendExpression<EndRegion>(loc, builder.GetUnitTy(), currentBlock);
-
     // Translate body and get the last expression as return value
     auto& b = *exclaveExpr.body;
     auto nodes = CollectBlockBodyNodes(b);
@@ -134,7 +140,6 @@ Ptr<Value> Translator::Visit(const AST::ExclaveExpr& exclaveExpr)
         UpdateDelayExitSignal(level);
     }
 
-    // Handle finally context and create Exit terminator (same as ReturnExpr)
     Ptr<Terminator> terminator = nullptr;
     if (finallyContext.empty()) {
         terminator = CreateAndAppendTerminator<Exit>(loc, currentBlock);
