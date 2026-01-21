@@ -17,11 +17,13 @@
 #include "TypeCheckUtil.h"
 
 #include "cangjie/AST/ASTContext.h"
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Node.h"
 #include "cangjie/AST/Symbol.h"
 #include "cangjie/AST/Types.h"
 #include "cangjie/AST/Utils.h"
+#include "cangjie/AST/Walker.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
 #include "cangjie/Basic/Position.h"
 #include "cangjie/Frontend/CompilerInstance.h"
@@ -1306,6 +1308,14 @@ void TypeChecker::TypeCheckerImpl::CheckUsageOfDeprecated(
         }
         if (usage->IsDecl()) {
             auto decl = StaticCast<Decl>(usage);
+            if (decl->TestAttr(AST::Attribute::FROM_COMMON_PART)) {
+                // This was already analyzed during the common compilation and reported.
+                // Additional platform-specific deprecations aren't allowed,
+                // so there's no need to re-run this check.
+                // It is important to skip it because deserialized nodes can lack positions
+                // so reporting deprecations on such nodes is impossible
+                return VisitAction::SKIP_CHILDREN;
+            }
             if (decl && decl->HasAnno(AnnotationKind::DEPRECATED)) {
                 if (IsDeprecatedStrict(decl) && !strictDeprecatedContext) {
                     strictDeprecatedContext = usage;

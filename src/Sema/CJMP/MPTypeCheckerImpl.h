@@ -30,7 +30,12 @@ public:
     void PreCheck4CJMP(const AST::Package& pkg);
     // TypeCheck for CJMP
     void RemoveCommonCandidatesIfHasPlatform(std::vector<Ptr<AST::FuncDecl>>& candidates);
+    void CheckReturnAndVariableTypes(AST::Package& pkg);
+    void ValidateMatchedAnnotationsAndModifiers(AST::Package& pkg);
+    void CheckMatchedFunctionReturnTypes(AST::FuncDecl& platformFunc, AST::FuncDecl& commonFunc);
+    void CheckMatchedVariableTypes(AST::VarDecl& platformVar, AST::VarDecl& commonVar);
     void MatchPlatformWithCommon(AST::Package& pkg);
+    void CheckNotAllowedAnnotations(AST::Package& pkg);
 
     static void FilterOutCommonCandidatesIfPlatformExist(std::map<Names, std::vector<Ptr<AST::FuncDecl>>>& candidates);
     void MapCJMPGenericTypeArgs(TypeSubst& genericTyMap, const AST::Decl& commonDecl, const AST::Decl& platformDecl);
@@ -60,11 +65,11 @@ private:
     bool TryMatchVarWithPatternWithVarDecls(
         AST::VarWithPatternDecl& platformDecl, const std::vector<Ptr<AST::Decl>>& commonDecls);
 
-    bool IsCJMPDeclMatchable(const AST::Decl& lhsDecl, const AST::Decl& rhsDecl) const;
+    bool IsCJMPDeclMatchable(AST::Decl& lhsDecl, AST::Decl& rhsDecl) const;
     bool MatchCJMPDeclAttrs(
         const std::vector<AST::Attribute>& attrs, const AST::Decl& common, const AST::Decl& platform) const;
-    bool MatchCJMPDeclAnnotations(
-        const std::vector<AST::AnnotationKind>& annotations, const AST::Decl& common, const AST::Decl& platform) const;
+    bool MatchCJMPDeclAnnotations(const AST::Decl& common, AST::Decl& platform) const;
+    void PropagateCJMPDeclAnnotations(const AST::Decl& common, AST::Decl& platform) const;
 
     bool TrySetPlatformImpl(AST::Decl& platformDecl, AST::Decl& commonDecl, const std::string& kind);
     bool MatchCommonNominalDeclWithPlatform(const AST::InheritableDecl& commonDecl);

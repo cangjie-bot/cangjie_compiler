@@ -161,6 +161,15 @@ bool IsBuiltinAnnotation(const std::string& moduleName, const std::string& ident
     }
     return NAME_TO_ANNO_KIND.find(identifier) != NAME_TO_ANNO_KIND.end();
 }
+
+std::string AnnotationKindToString(AnnotationKind kind)
+{
+    auto nameIter = ANNO_KIND_TO_NAME.find(kind);
+    CJC_ASSERT_WITH_MSG(
+        nameIter != ANNO_KIND_TO_NAME.end(), "Annotation kind doesn't have an entry in NAME_TO_ANNO_KIND");
+    auto name = nameIter->second;
+    return name;
+}
 } // namespace Cangjie
 
 bool ParserImpl::SeeingBuiltinAnnotation()

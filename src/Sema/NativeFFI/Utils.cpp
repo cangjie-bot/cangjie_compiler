@@ -197,4 +197,9 @@ std::string GetMangledMethodName(const BaseMangler& mangler,
     return name;
 }
 
+Ptr<Annotation> GetForeignNameAnnotation(const Decl& decl)
+{
+    return FindFirstAnnotation(decl, AnnotationKind::FOREIGN_NAME);
+}
+
 }
