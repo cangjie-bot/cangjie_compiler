@@ -102,19 +102,19 @@ void Gnu::GenericHandleSanitizerRuntime(
     // (libclang_rt-xxx.a)
     std::string staticName = "libclang_rt-" + name + ".a";
     auto rtLib = FileUtil::FindFileByName(staticName, {cangjieLibPath});
-    if (!rtLib) {
+    if (!rtLib.has_value()) {
         rtLib = SearchClangLibrary(name, ".a");
     }
 
-    if (rtLib) {
-        LinkStaticLibrary(tool, *rtLib);
+    if (rtLib.has_value()) {
+        LinkStaticLibrary(tool, rtLib.value());
         return;
     }
 
     // Preinit (xxx-preinit)
     auto preinitLib = SearchClangLibrary(name + "-preinit", ".a");
-    if (preinitLib) {
-        LinkStaticLibrary(tool, *preinitLib);
+    if (preinitLib.has_value()) {
+        LinkStaticLibrary(tool, preinitLib.value());
         tool.AppendArg("-lclang_rt." + name);
         return;
     }
