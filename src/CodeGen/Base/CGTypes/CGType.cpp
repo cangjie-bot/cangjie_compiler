@@ -676,7 +676,11 @@ void CGType::GenTypeInfo()
 
     typeInfo->setInitializer(llvm::ConstantStruct::get(CGType::GetOrCreateTypeInfoType(llvmCtx), typeInfoVec));
     if (IsStaticGI()) {
-        typeInfo->setLinkage(llvm::GlobalValue::InternalLinkage);
+        if (cgMod.GetCGContext().GetCompileOptions().target.os == Triple::OSType::WINDOWS) {
+            typeInfo->setLinkage(llvm::GlobalValue::InternalLinkage);
+        } else {
+            typeInfo->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+        }
     } else { // For Concrete type:
         // Note: The chirType that enters this branch is expected to be of CustomType.
         auto customType = dynamic_cast<const CHIR::CustomType*>(&chirType);

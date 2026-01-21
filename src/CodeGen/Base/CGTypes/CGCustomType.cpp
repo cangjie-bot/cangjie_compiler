@@ -58,6 +58,8 @@ llvm::Constant* CGCustomType::GenTypeInfoArray(
     typeInfoOfFields->setInitializer(llvm::ConstantArray::get(typeOfFieldsGV, constants));
     typeInfoOfFields->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
     typeInfoOfFields->addAttribute(attr);
+    typeInfoOfFields->setConstant(true);
+    typeInfoOfFields->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     return llvm::ConstantExpr::getBitCast(typeInfoOfFields, p0i8);
 }
 
@@ -95,6 +97,8 @@ llvm::Constant* CGCustomType::GenOffsetsArray(CGModule& cgMod, std::string name,
     typeInfoOfFields->setInitializer(llvm::ConstantArray::get(i32ArrType, elements));
     typeInfoOfFields->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
     typeInfoOfFields->addAttribute(CJTI_OFFSETS_ATTR);
+    typeInfoOfFields->setConstant(true);
+    typeInfoOfFields->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     return llvm::ConstantExpr::getBitCast(typeInfoOfFields, i32Ty->getPointerTo());
 }
 
@@ -154,6 +158,8 @@ llvm::Constant* CGCustomType::GenTypeArgsOfTypeInfo()
     typeInfoOfGenericArgs->setInitializer(llvm::ConstantArray::get(typeOfGenericArgsGV, constants));
     typeInfoOfGenericArgs->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
     typeInfoOfGenericArgs->addAttribute(CJTI_TYPE_ARGS_ATTR);
+    typeInfoOfGenericArgs->setConstant(true);
+    typeInfoOfGenericArgs->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     return llvm::ConstantExpr::getBitCast(typeInfoOfGenericArgs, p0i8);
 }
 

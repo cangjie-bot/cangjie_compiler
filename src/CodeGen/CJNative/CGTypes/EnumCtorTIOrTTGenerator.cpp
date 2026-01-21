@@ -40,6 +40,8 @@ llvm::Constant* EnumCtorTIOrTTGenerator::GenTypeArgsOfTypeInfo()
     auto typeInfoOfGenericArgs = llvm::cast<llvm::GlobalVariable>(cgMod.GetLLVMModule()->getOrInsertGlobal(
         CGType::GetNameOfTypeInfoGV(chirEnumType) + ".typeArgs", typeOfGenericArgsGV));
     typeInfoOfGenericArgs->addAttribute(CJTI_TYPE_ARGS_ATTR);
+    typeInfoOfGenericArgs->setConstant(true);
+    typeInfoOfGenericArgs->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
     AddLinkageTypeMetadata(*typeInfoOfGenericArgs, llvm::GlobalVariable::PrivateLinkage, cgCtx.IsCGParallelEnabled());
     return llvm::ConstantExpr::getBitCast(typeInfoOfGenericArgs, llvm::Type::getInt8PtrTy(llvmCtx));
 }
@@ -107,6 +109,9 @@ void EnumCtorTIOrTTGenerator::GenerateNonGenericEnumCtorTypeInfo(llvm::GlobalVar
 
     ti.setInitializer(llvm::ConstantStruct::get(CGType::GetOrCreateTypeInfoType(llvmCtx), typeInfoVec));
     ti.addAttribute(GC_KLASS_ATTR);
+    if (cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS) {
+        ti.setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+    }
     auto meta = llvm::MDTuple::get(llvmCtx, {llvm::MDString::get(llvmCtx, layoutType->getStructName().str())});
     ti.setMetadata(GC_TYPE_META_NAME, meta);
     // This line seems only for Parallel-Compilation:
@@ -214,7 +219,8 @@ void EnumCtorTIOrTTGenerator::EmitForStaticGI()
     }
 
     GenerateNonGenericEnumCtorTypeInfo(*ti);
-    AddLinkageTypeMetadata(*ti, llvm::GlobalValue::PrivateLinkage, false);
+    auto linkageType = cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS ? llvm::GlobalValue::LinkOnceODRLinkage : llvm::GlobalValue::PrivateLinkage;
+    AddLinkageTypeMetadata(*ti, linkageType, false);
 }
 
 void EnumCtorTIOrTTGenerator::EmitForConcrete()
@@ -235,6 +241,9 @@ void EnumCtorTIOrTTGenerator::EmitForConcrete()
     auto linkageType = CHIRLinkage2LLVMLinkage(enumDef->Get<CHIR::LinkTypeInfo>());
     if (linkageType == llvm::GlobalValue::InternalLinkage) {
         linkageType = llvm::GlobalValue::PrivateLinkage;
+    }
+    if (cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS) {
+        linkageType = llvm::GlobalValue::LinkOnceODRLinkage;
     }
     AddLinkageTypeMetadata(*ti, linkageType, cgCtx.IsCGParallelEnabled());
 }

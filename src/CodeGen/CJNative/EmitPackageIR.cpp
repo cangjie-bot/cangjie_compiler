@@ -694,6 +694,9 @@ llvm::Constant* GetReadOnlyArrayKlassInfo(const CGModule& cgMod)
     std::vector<llvm::Constant*> klassConstants = cgMod.InitRawArrayUInt8Constants();
     gv->setInitializer(llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(classInfoType), klassConstants));
     gv->addAttribute(GC_KLASS_ATTR);
+    if (cgCtx.GetCompileOptions().target.os != Triple::OSType::WINDOWS) {
+        gv->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+    }
     AddLinkageTypeMetadata(*gv, llvm::GlobalValue::InternalLinkage, false);
 
     // Generate ArrayLayout.UInt8 here to ensure it is created.

@@ -137,7 +137,7 @@ void GenerateStaticGIs(CGModule& cgMod)
 {
     std::vector<llvm::Constant*> content;
     for (auto staticGI : cgMod.GetAliveStaticGIs()) {
-        if (staticGI->getNumUses() > 0 || !staticGI->isLocalLinkage(staticGI->getLinkage())) {
+        if (staticGI->getNumUses() > 0 || (!staticGI->hasLocalLinkage() && !staticGI->hasLinkOnceODRLinkage())) {
             CJC_ASSERT(staticGI->hasInitializer());
             (void)content.emplace_back(staticGI);
         }
