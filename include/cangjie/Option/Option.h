@@ -824,6 +824,8 @@ public:
     /// Whether to compile .cj.d files. Note that when true, .cj files are not processed.
     bool compileCjd{false};
 
+    bool cjdbMode = false; /** whether the option used in cjdb */
+
     std::string interopCJPackageConfigPath = "./"; /**< cjinterop .toml package config file paths */
 
     enum class SanitizerType : uint8_t {
