@@ -83,13 +83,13 @@ public:
     // FrontendTool/SourceManager/Parse/Macro/stdlib/unittests.
     Token Next(); // read and return next token
 
-    void ReserveToken(size_t num, bool skipNewline);
+    void ReserveToken(size_t num, bool skipNewline, bool skipComments);
 
     // Parse/unittests.
     const std::list<Token>& LookAhead(size_t num);
     bool Seeing(const std::vector<TokenKind>::const_iterator& begin, const std::vector<TokenKind>::const_iterator& end,
-        bool skipNewline = false);
-    bool Seeing(const std::vector<TokenKind>& kinds, bool skipNewline = false);
+        bool skipNewline = false, bool skipComments = true);
+    bool Seeing(const std::vector<TokenKind>& kinds, bool skipNewline = false, bool skipComments = true);
 
     // Parse.
     std::list<Token> LookAheadSkipNL(size_t num);

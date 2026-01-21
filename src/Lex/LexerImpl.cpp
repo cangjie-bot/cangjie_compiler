@@ -23,13 +23,13 @@ const std::list<Token>& Lexer::LookAhead(size_t num)
     return impl->LookAhead(num);
 }
 bool Lexer::Seeing(const std::vector<TokenKind>::const_iterator& begin,
-    const std::vector<TokenKind>::const_iterator& end, bool skipNewline)
+    const std::vector<TokenKind>::const_iterator& end, bool skipNewline, bool skipComments)
 {
-    return impl->Seeing(begin, end, skipNewline);
+    return impl->Seeing(begin, end, skipNewline, skipComments);
 }
-bool Lexer::Seeing(const std::vector<TokenKind>& kinds, bool skipNewline)
+bool Lexer::Seeing(const std::vector<TokenKind>& kinds, bool skipNewline, bool skipComments)
 {
-    return impl->Seeing(kinds, skipNewline);
+    return impl->Seeing(kinds, skipNewline, skipComments);
 }
 
 std::list<Token> Lexer::LookAheadSkipNL(size_t num)

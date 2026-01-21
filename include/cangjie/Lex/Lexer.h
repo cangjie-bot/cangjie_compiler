@@ -98,10 +98,10 @@ public:
     /// Returns true if the next token is any of the TokenKind's described by range \ref begin and \ref end.
     /// \param skipNewline whether to ignore NL
     bool Seeing(const std::vector<TokenKind>::const_iterator& begin, const std::vector<TokenKind>::const_iterator& end,
-        bool skipNewline = false);
+        bool skipNewline = false, bool skipComments = true);
     /// Returns true if the next token is any of \ref kinds.
     /// \param skipNewline whether to ignore NL
-    bool Seeing(const std::vector<TokenKind>& kinds, bool skipNewline = false);
+    bool Seeing(const std::vector<TokenKind>& kinds, bool skipNewline = false, bool skipComments = true);
 
     // Parse.
     // Parse/unittests.
