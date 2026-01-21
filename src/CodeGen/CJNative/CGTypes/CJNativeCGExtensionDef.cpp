@@ -493,10 +493,10 @@ bool IsSameRootPackage(const std::string& packageName1, const std::string& packa
     // 2) a::b and a::b have the same root package
     // 3) a::b and a::bb don't have the same root package
     // Here we add a dot at the end:
- 	// e.g., com::pkga.b -> com::pkga.b.
- 	// This transformation will make the following judgement easier.
+    // e.g., com::pkga.b -> com::pkga.b.
+    // This transformation will make the following judgement easier.
     std::string pkgName1 = packageName1 + '.';
-    std::string pkgName2 = packageName2+ '.';
+    std::string pkgName2 = packageName2 + '.';
     return pkgName1.substr(0, pkgName1.find('.')) == pkgName2.substr(0, pkgName2.find('.'));
 }
 }
