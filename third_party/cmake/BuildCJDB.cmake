@@ -22,7 +22,6 @@ set(LLDB_CMAKE_ARGS
     -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP}
     -DLLVM_ENABLE_PROJECTS=lldb
     -DLLVM_TARGETS_TO_BUILD=AArch64|X86
-    -DPython3_EXECUTABLE=${Python3_EXECUTABLE}
     -DLLVM_DIR=${LLVM_GC_BINARY_DIR}/lib/cmake/llvm
     -DLLVM_EXTERNAL_LIT=${LLVM_GC_BINARY_DIR}/bin/llvm-lit${CMAKE_EXECUTABLE_SUFFIX}
     -DLLVM_ENABLE_RTTI=ON)
@@ -37,6 +36,11 @@ if(WIN32)
     set(LLDB_CMAKE_SHARED_LINKER_FLAGS "${LLDB_CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-insert-timestamp")
 else()
     if(DARWIN)
+        set(TARGET_PYTHON_PATH $ENV{TARGET_PYTHON_PATH})
+        if (TARGET_PYTHON_PATH)
+            list(APPEND LLDB_CMAKE_ARGS -DPython3_EXECUTABLE=${TARGET_PYTHON_PATH}/bin/python3)
+            list(APPEND LLDB_CMAKE_ARGS -DLLDB_PYTHON_EXE_RELATIVE_PATH=bin/python3)
+        endif()
         list(APPEND LLDB_CMAKE_ARGS -DLLDB_INCLUDE_TESTS=OFF)
         set(LLDB_CMAKE_INSTALL_RPATH "@loader_path/../lib")
     else()
@@ -51,10 +55,24 @@ else()
             set(LLDB_CMAKE_SHARED_LINKER_FLAGS "${LLDB_CMAKE_SHARED_LINKER_FLAGS} -s")
         endif()
     endif()
-    list(APPEND LLDB_CMAKE_ARGS ${LLVM_BUILD_ARG}
-        -DLLDB_ENABLE_LIBEDIT=1
-        -DLLVM_ENABLE_TERMINFO=1
-        -DCURSES_NEED_NCURSES=1)
+    if (OHOS)
+        list(APPEND LLDB_CMAKE_ARGS ${LLVM_BUILD_ARG}
+            -DLLDB_ENABLE_PYTHON=OFF
+            -DLLDB_INCLUDE_TESTS=OFF
+            -DLLDB_ENABLE_LIBEDIT=OFF
+            -DLLVM_ENABLE_TERMINFO=OFF
+            -DNATIVE_Clang_DIR=${LLVM_GC_BINARY_DIR}/NATIVE/tools/bin
+            -DNATIVE_LLVM_DIR=${LLVM_GC_BINARY_DIR}/NATIVE/tools/bin
+            -DCANGJIE_TARGET_TOOLCHAIN=${CANGJIE_TARGET_TOOLCHAIN}
+            -DCANGJIE_TARGET_SYSROOT=${CANGJIE_TARGET_SYSROOT}
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/aarch64-linux-ohos_toolchain.cmake
+        )
+    else()
+        list(APPEND LLDB_CMAKE_ARGS ${LLVM_BUILD_ARG}
+            -DLLDB_ENABLE_LIBEDIT=1
+            -DLLVM_ENABLE_TERMINFO=1
+            -DCURSES_NEED_NCURSES=1)
+    endif()
 endif()
 
 if(NOT "${LLDB_CMAKE_C_FLAGS}" STREQUAL "")
@@ -78,9 +96,15 @@ endif()
 set(CANGJIE_FRONTEND_IMPLIB ${CMAKE_BINARY_DIR}/lib/libcangjie-frontend.dll.a)
 set(CANGJIE_LSP_IMPLIB ${CMAKE_BINARY_DIR}/lib/libcangjie-lsp.dll.a)
 
+if (NOT OHOS)
+    list(APPEND LLDB_CMAKE_ARGS ${LLDB_CMAKE_ARGS}
+        -DLLDB_ENABLE_PYTHON=ON
+        -DLLDB_RELOCATABLE_PYTHON=ON
+        -DLLDB_EMBED_PYTHON_HOME=OFF
+    )
+endif()
+
 list(APPEND LLDB_CMAKE_ARGS ${LLDB_CMAKE_ARGS}
-    -DLLDB_ENABLE_PYTHON=false
-    -DLLDB_RELOCATABLE_PYTHON=false
     -DLLDB_ENABLE_LZMA=false
     -DLLDB_ENABLE_LIBXML2=true
     -DCANGJIE_ROOT=${CMAKE_SOURCE_DIR}
@@ -89,8 +113,31 @@ list(APPEND LLDB_CMAKE_ARGS ${LLDB_CMAKE_ARGS}
     -DCANGJIE_LSP_LIB=${CANGJIE_LSP_LIB}
     -DCANGJIE_LSP_IMPLIB=${CANGJIE_LSP_IMPLIB})
 
+if (DARWIN)
+    execute_process(
+        COMMAND ${TARGET_PYTHON_PATH}/bin/python3 -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"
+        OUTPUT_VARIABLE TARGET_PATHON_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+    if(Python3_VERSION MATCHES "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+        set(MAJOR_VERSION "${CMAKE_MATCH_1}")
+        set(MINOR_VERSION "${CMAKE_MATCH_2}")
+        set(TARGET_PATHON_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}")
+    endif()
+endif()
+
 if(CMAKE_CROSSCOMPILING AND WIN32)
     set(MINGW_STRIP "x86_64-w64-mingw32-strip -D")
+    set(TARGET_PYTHON_PATH $ENV{TARGET_PYTHON_PATH})
+    list(APPEND LLDB_CMAKE_ARGS ${LLDB_CMAKE_ARGS}
+        -DPython3_EXECUTABLE=${Python3_EXECUTABLE}
+        -DLLDB_PYTHON_RELATIVE_PATH=./lib/python${TARGET_PATHON_VERSION}/site-packages
+        -DLLDB_PYTHON_EXE_RELATIVE_PATH=python.exe
+        -DLLDB_PYTHON_EXT_SUFFIX=.pyd
+        -DPython3_INCLUDE_DIRS=${TARGET_PYTHON_PATH}/include/python${MAJOR_VERSION}.${MINOR_VERSION}
+        -DPython3_LIBRARIES=${TARGET_PYTHON_PATH}/python${MAJOR_VERSION}${MINOR_VERSION}.dll
+    )
     list(APPEND LLDB_CMAKE_ARGS -DCMAKE_STRIP=${MINGW_STRIP})
     list(APPEND LLDB_CMAKE_ARGS -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR})
     list(APPEND LLDB_CMAKE_ARGS -DCMAKE_SYSTEM_NAME=Windows)
@@ -123,6 +170,23 @@ install(
     DIRECTORY ${LLVM_GC_LLDB_INSTALL_PREFIX}/bin
     USE_SOURCE_PERMISSIONS
     DESTINATION third_party/llvm)
+
+#Install lldb python modules
+if(CMAKE_CROSSCOMPILING AND WIN32)
+    install(
+        DIRECTORY ${LLVM_GC_LLDB_INSTALL_PREFIX}/lib/python${TARGET_PATHON_VERSION}
+        DESTINATION tools/lib
+        USE_SOURCE_PERMISSIONS
+        PATTERN ${LLVM_GC_LLDB_INSTALL_PREFIX}/lib/python${TARGET_PATHON_VERSION}/site-packages/lldb/lldb-argdumper.exe EXCLUDE
+    )
+elseif(NOT OHOS)
+    install(
+        DIRECTORY ${LLVM_GC_LLDB_INSTALL_PREFIX}/lib/python${TARGET_PATHON_VERSION}
+        DESTINATION third_party/llvm/lib
+        USE_SOURCE_PERMISSIONS
+    )
+endif()
+
 # For Windows, dlls are installed in bin directory. Import libraries are not required.
 if(DARWIN)
     install(FILES
@@ -195,7 +259,10 @@ else()
         -P ${CMAKE_SOURCE_DIR}/cmake/modules/make-symlink.cmake)")
     # Create symbolic link for boundscheck
     set(CJNATIVE_BACKEND "cjnative")
-    string(TOLOWER ${CMAKE_SYSTEM_NAME}_${CMAKE_SYSTEM_PROCESSOR}_${CJNATIVE_BACKEND} output_lib_dir)
+    if (OHOS)
+        set(SYS_NAME "_ohos")
+    endif()
+    string(TOLOWER ${CMAKE_SYSTEM_NAME}${SYS_NAME}_${CMAKE_SYSTEM_PROCESSOR}_${CJNATIVE_BACKEND} output_lib_dir)
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/third_party/lldb/lib/libboundscheck${CMAKE_SHARED_LIBRARY_SUFFIX}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/runtime/lib/${output_lib_dir}
