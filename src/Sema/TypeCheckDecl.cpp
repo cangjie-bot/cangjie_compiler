@@ -749,8 +749,14 @@ Ptr<Ty> TypeChecker::TypeCheckerImpl::SynThisParam(ASTContext& ctx, ThisParam& t
     if (!cl) {
         return tp.ty = TypeManager::GetInvalidTy();
     }
+    auto modalInfo = tp.modal.ToModalInfo();
     if (auto classTy = DynamicCast<ClassTy>(cl->node->ty)) {
-        return tp.ty = typeManager.GetClassThisTy(*classTy->decl, classTy->typeArgs, tp.modal.ToModalInfo());
+        tp.ty = typeManager.GetClassThisTy(*classTy->decl, classTy->typeArgs, modalInfo);
+        return tp.ty;
+    }
+    if (auto structTy = DynamicCast<StructTy>(cl->node->ty)) {
+        tp.ty = typeManager.GetStructTy(*structTy->declPtr, structTy->typeArgs, modalInfo);
+        return tp.ty;
     }
     return tp.ty = TypeManager::GetInvalidTy();
 }

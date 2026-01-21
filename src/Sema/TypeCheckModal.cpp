@@ -237,12 +237,12 @@ private:
     /// Check exclave expr is not in constructor, finalizer, main, or spawn expr
     void CheckExclaveInCtor(const ASTContext& ctx, const ExclaveExpr& expr)
     {
-        // Check if in spawn block
+        // check whether in spawn
         if (currentSpawnExpr != nullptr) {
             DiagExclaveInCtor(expr, *currentSpawnExpr);
             return;
         }
-        // Check if in constructor, main, or finalizer
+        // check whether in constructor, main, or finalizer
         if (auto ctorSym = ScopeManager::GetCurSatisfiedSymbolUntilTopLevel(ctx, expr.scopeName, [](Symbol& sym) {
             if (auto func = DynamicCast<FuncDecl>(sym.node)) {
                 return func->TestAnyAttr(Attribute::MAIN_ENTRY, Attribute::CONSTRUCTOR, Attribute::PRIMARY_CONSTRUCTOR) || func->IsFinalizer();
@@ -447,9 +447,8 @@ private:
     /// @local! is not allowed
     void CheckMemberVarModality(const InheritableDecl& decl)
     {
-        // Check if this type has any constructor with @~local this type
+        // check whether this type has any constructor with @~local this type
         bool hasNotLocalThisCtor = HasNotLocalThisCtor(decl);
-
         for (auto member : decl.GetMemberDeclPtrs()) {
             if (auto var = DynamicCast<VarDecl>(member)) {
                 CheckMemberVarModalType(*var, hasNotLocalThisCtor);
@@ -457,25 +456,21 @@ private:
         }
     }
 
-    /// Check if a constructor has @~local this type (no explicit this param or explicit @~local)
+    /// check whether a constructor has @~local this type (no explicit this param or explicit @~local)
     bool CtorHasNotLocalThis(const FuncDecl& ctor)
     {
-        if (!Ty::IsTyCorrect(ctor.ty)) {
+        if (!Ty::IsTyCorrect(ctor.ty) || !ctor.funcBody) {
             return false; // Invalid constructor, skip
-        }
-        if (!ctor.funcBody || ctor.funcBody->paramLists.empty()) {
-            return true; // No param list means default @~local this
         }
         auto& paramList = ctor.funcBody->paramLists[0];
         if (!paramList->thisParam) {
-            return true; // No explicit this param means @~local this
+            return true; // No this param means @~local this
         }
-        // Check the parsed modal info, not the type (which may not be set yet)
         auto local = paramList->thisParam->ty->modal.local;
         return local == LocalModal::NOT;
     }
 
-    /// Check if the type has any constructor with @~local this type
+    /// Check whether the type has any constructor with @~local this type
     /// If no constructors exist, there's an implicit default ctor with @~local this
     bool HasNotLocalThisCtor(const InheritableDecl& decl)
     {

@@ -469,12 +469,13 @@ void TypeChecker::TypeCheckerImpl::CheckFuncParamList(ASTContext& ctx, FuncParam
 {
     // We use the tupleType to handle the type of FuncParamList.
     std::vector<Ptr<Ty>> paramTys;
+    // Synthesize thisParam first (before early return for empty params)
+    if (fpl.thisParam) {
+        Synthesize({ctx, SynPos::NONE}, fpl.thisParam.get());
+    }
     if (fpl.params.empty()) {
         fpl.ty = typeManager.GetTupleTy(paramTys, {}, {});
         return;
-    }
-    if (fpl.thisParam) {
-        Synthesize({ctx, SynPos::NONE}, fpl.thisParam.get());
     }
     for (auto& param : fpl.params) {
         CJC_NULLPTR_CHECK(param);
