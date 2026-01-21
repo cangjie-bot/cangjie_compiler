@@ -2041,7 +2041,7 @@ const std::list<Token>& LexerImpl::LookAhead(size_t num)
  * if Scan reaching the end of file, lookAheadCache will pad TokenKind::END(s) and eventually num ==
  * lookAheadCache.size()
  */
-void LexerImpl::ReserveToken(size_t num, bool skipNewline)
+void LexerImpl::ReserveToken(size_t num, bool skipNewline, bool skipComments)
 {
     size_t index = 0;
     if (skipNewline) {
@@ -2054,7 +2054,7 @@ void LexerImpl::ReserveToken(size_t num, bool skipNewline)
 
     while (index < num) {
         Token token = Scan();
-        if (token.kind == TokenKind::COMMENT) { // Skip comments.
+        if (token.kind == TokenKind::COMMENT && skipComments) {
             continue;
         }
         lookAheadCache.push_back(token);
@@ -2063,11 +2063,11 @@ void LexerImpl::ReserveToken(size_t num, bool skipNewline)
 }
 
 bool LexerImpl::Seeing(const std::vector<TokenKind>::const_iterator& begin,
-    const std::vector<TokenKind>::const_iterator& end, bool skipNewline)
+    const std::vector<TokenKind>::const_iterator& end, bool skipNewline, bool skipComments)
 {
     CJC_ASSERT(begin <= end);
     size_t kindSize = static_cast<size_t>(std::distance(begin, end));
-    ReserveToken(kindSize + 1, skipNewline);
+    ReserveToken(kindSize + 1, skipNewline, skipComments);
     if (!skipNewline) {
         return std::equal(begin, end, lookAheadCache.begin(),
             [](const TokenKind kind, const Token& token) { return kind == token.kind; });
@@ -2090,9 +2090,9 @@ bool LexerImpl::Seeing(const std::vector<TokenKind>::const_iterator& begin,
     return true;
 }
 
-bool LexerImpl::Seeing(const std::vector<TokenKind>& kinds, bool skipNewline)
+bool LexerImpl::Seeing(const std::vector<TokenKind>& kinds, bool skipNewline, bool skipComments)
 {
-    return Seeing(kinds.begin(), kinds.end(), skipNewline);
+    return Seeing(kinds.begin(), kinds.end(), skipNewline, skipComments);
 }
 
 std::list<Token> LexerImpl::LookAheadSkipNL(size_t num)
