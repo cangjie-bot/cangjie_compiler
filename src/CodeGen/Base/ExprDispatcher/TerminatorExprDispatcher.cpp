@@ -94,13 +94,6 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
             auto succ = goTo.GetSuccessors()[0];
             return irBuilder.CreateBr(cgMod.GetMappedBB(succ));
         }
-        case CHIR::ExprKind::START_REGION: {
-            return irBuilder.CallIntrinsicFunction(llvm::Type::getInt1Ty(irBuilder.GetLLVMContext()), "MCC_StartLocalRegion", {});
-        }
-        case CHIR::ExprKind::END_REGION: {
-            irBuilder.CallIntrinsicFunction(llvm::Type::getVoidTy(irBuilder.GetLLVMContext()), "MCC_EndLocalRegion", {});
-            return nullptr;
-        }
         case CHIR::ExprKind::EXIT: {
             auto& exitExpr = StaticCast<const CHIR::Exit&>(chirExpr);
             return HandleExitExpression(irBuilder, exitExpr);
