@@ -217,31 +217,9 @@ void ParserImpl::DiagExpectedIdentifierImportSpec(Ptr<Node> node)
         "after keyword 'import'");
 }
 
-void ParserImpl::DiagExpectedIdentifierFeatureDirective(Ptr<Node> node)
+void ParserImpl::DiagRawIdentifierNotAllowed(std::string& str)
 {
-    auto fs = StaticAs<ASTKind::FEATURES_DIRECTIVE>(node);
-    if (fs->content.empty()) {
-        if (lastToken.kind == TokenKind::DOT) { std::swap(lastToken, lookahead); }
-        DiagExpectedIdentifier(MakeRange(fs->begin, fs->begin + std::string("features").size()),
-            "a feature name", "after keyword 'features'", false);
-    } else if (IsRawIdentifier(lastToken.Value())) {
-        auto prevRange = fs->content.size() == 1 ? MakeRange(fs->begin, fs->begin + std::string("features").size()) :
-            MakeRange(fs->content[fs->content.size() - 2].begin, fs->content[fs->content.size() - 2].end);
-        std::swap(lastToken, lookahead);
-        DiagExpectedIdentifier(prevRange, "an identifier", "after this", false);
-        std::swap(lastToken, lookahead);
-    } else if (lastToken.kind == TokenKind::COMMA) {
-        std::stringstream ss;
-        ss << "after '"  << fs->content[fs->content.size() - 1].ToString() << lastToken.Value() << "'";
-        DiagExpectedIdentifier(MakeRange(fs->content[fs->content.size() - 1].begin, lastToken.End()), "an identifier",
-            ss.str(), false);
-    } else if (lastToken.kind == TokenKind::DOT) {
-        DiagExpectedIdentifier(MakeRange(lastToken.Begin(), lastToken.End()), "an identifier",
-            "after '.' in qualified name", false);
-    } else  {
-        DiagExpectedIdentifier(MakeRange(fs->content[fs->content.size() - 1].begin, lastToken.End()), "';' or '<NL>'",
-            "after this", false);
-    }
+    auto builder = ParseDiagnoseRefactor(DiagKindRefactor::parse_not_allowed_raw_identifier, lastToken, str);
 }
 
 void ParserImpl::DiagExpectedIdentifierGenericConstraint(Ptr<Node> node)
@@ -1099,6 +1077,25 @@ void ParserImpl::DiagExpectedDeclaration(ScopeKind scopeKind)
 void ParserImpl::DiagExpectedDeclaration(const Position& pos, const std::string& str)
 {
     auto builder = ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_decl, pos, str);
+}
+
+void ParserImpl::DiagAndSuggestKeywordForExpectedDeclaration(
+    const std::vector<std::string>& keywords, size_t minLevDis, ScopeKind scopeKind)
+{
+    auto builder = ParseDiagnoseRefactor(DiagKindRefactor::parse_expected_decl, lookahead, ConvertToken(lookahead));
+    if (scopeKind == ScopeKind::TOPLEVEL) {
+        auto note = SubDiagnostic("only declarations or macro expressions can be used in the top-level");
+        builder.AddNote(note);
+    }
+    if (Seeing(TokenKind::IDENTIFIER)) {
+        const std::string& ident = lookahead.Value();
+        for (const auto& keyword : keywords) {
+            if (LevenshteinDistance(ident, keyword) <= minLevDis) {
+                builder.AddHelp("did you mean '" + keyword + "'?");
+                break;
+            }
+        }
+    }
 }
 
 void ParserImpl::DiagUnExpectedModifierOnDeclaration(const Decl& vd)
