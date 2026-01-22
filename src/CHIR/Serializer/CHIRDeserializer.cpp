@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <type_traits>
 
+#include "cangjie/CHIR/IR/AttributeInfo.h"
 #include "cangjie/CHIR/Utils/CHIRCasting.h"
 #include "cangjie/CHIR/IR/Expression/Terminator.h"
 #include "cangjie/CHIR/IR/Annotation.h"
@@ -35,7 +36,7 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
 // =========================== Generic Deserializer ==============================
 
 bool CHIRDeserializer::Deserialize(const std::string& fileName, Cangjie::CHIR::CHIRBuilder& chirBuilder,
-    Cangjie::CHIR::ToCHIR::Phase& phase, bool compileSpecific)
+    Cangjie::CHIR::ToCHIR::Phase& phase, bool compilePlatform)
 {
     if (FileUtil::IsDir(fileName)) {
         Errorln(fileName, " is a directory.");
@@ -45,7 +46,7 @@ bool CHIRDeserializer::Deserialize(const std::string& fileName, Cangjie::CHIR::C
         Errorln(fileName, " not exist.");
         return false;
     }
-    CHIRDeserializerImpl deserializer(chirBuilder, compileSpecific);
+    CHIRDeserializerImpl deserializer(chirBuilder, compilePlatform);
     std::vector<uint8_t> serializationInfo;
     std::string failedReason;
     if (!FileUtil::ReadBinaryFileToBuffer(fileName, serializationInfo, failedReason)) {
@@ -194,7 +195,7 @@ template <> MemberVarInfo CHIRDeserializer::CHIRDeserializerImpl::Create(const P
     auto rawMangledName = obj->rawMangledName()->str();
     auto type = GetType<Type>(obj->type());
     auto attributeInfo = CreateAttr(obj->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attributeInfo.SetAttr(Attribute::DESERIALIZED, true);
     }
     auto loc = Create<DebugLocation>(obj->loc());
@@ -274,7 +275,7 @@ template <> EnumDef* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const P
     auto identifier = obj->base()->identifier()->str();
     auto packageName = obj->base()->packageName()->str();
     auto attrs = CreateAttr(obj->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(CHIR::Attribute::DESERIALIZED, true);
     }
     auto imported = attrs.TestAttr(CHIR::Attribute::IMPORTED);
@@ -291,7 +292,7 @@ template <> StructDef* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
     auto identifier = obj->base()->identifier()->str();
     auto packageName = obj->base()->packageName()->str();
     auto attrs = CreateAttr(obj->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(CHIR::Attribute::DESERIALIZED, true);
     }
     auto imported = attrs.TestAttr(CHIR::Attribute::IMPORTED);
@@ -309,7 +310,7 @@ template <> ClassDef* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const 
     auto packageName = obj->base()->packageName()->str();
     auto isClass = obj->kind() == PackageFormat::ClassDefKind::ClassDefKind_CLASS;
     auto attrs = CreateAttr(obj->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(CHIR::Attribute::DESERIALIZED, true);
     }
     auto imported = attrs.TestAttr(CHIR::Attribute::IMPORTED);
@@ -327,7 +328,7 @@ template <> ExtendDef* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
     auto packageName = obj->base()->packageName()->str();
     auto attrs = CreateAttr(obj->base()->attributes());
     auto imported = attrs.TestAttr(CHIR::Attribute::IMPORTED);
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(CHIR::Attribute::DESERIALIZED, true);
     }
     auto genericParams = GetType<GenericType>(obj->genericParams());
@@ -552,8 +553,12 @@ template <> Func* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const Pack
     auto rawMangledName = obj->rawMangledName()->str();
     auto packageName = obj->packageName()->str();
     auto genericTypeParams = GetType<GenericType>(obj->genericTypeParams());
+    std::set<std::string> features = {};
+    for (unsigned int i = 0; i < obj->base()->features()->size(); ++i) {
+        features.insert(obj->base()->features()->Get(i)->str());
+    }
     auto result = builder.CreateFunc(DebugLocation(), funcTy, GetMangleNameFromIdentifier(identifier),
-        srcCodeIdentifier, rawMangledName, packageName, genericTypeParams);
+        srcCodeIdentifier, rawMangledName, packageName, genericTypeParams, features);
     // Indexes below are needed to modify correctly function body when merging CJMP initializers
     result->SetLocalId(obj->localId());
     result->SetBlockId(obj->localId());
@@ -649,7 +654,7 @@ template <> GlobalVar* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(const
     auto packageName = obj->packageName()->str();
     auto rawMangledName = obj->rawMangledName()->str();
     auto attrs = CreateAttr(obj->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(Attribute::DESERIALIZED, true);
     }
     auto result = builder.CreateGlobalVar(
@@ -667,7 +672,7 @@ template <> ImportedFunc* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(co
     auto packageName = obj->packageName()->str();
     auto genericTypeParams = GetType<GenericType>(obj->genericTypeParams());
     auto attrs = CreateAttr(obj->base()->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(Attribute::DESERIALIZED, true);
     }
     auto importedFunc = builder.CreateImportedVarOrFunc<ImportedFunc>(type, GetMangleNameFromIdentifier(identifier),
@@ -691,7 +696,7 @@ template <> ImportedVar* CHIRDeserializer::CHIRDeserializerImpl::Deserialize(con
     auto rawMangledName = obj->rawMangledName()->str();
     auto packageName = obj->packageName()->str();
     auto attrs = CreateAttr(obj->base()->base()->attributes());
-    if (compileSpecific) {
+    if (compilePlatform) {
         attrs.SetAttr(Attribute::DESERIALIZED, true);
     }
     auto importedVar = builder.CreateImportedVarOrFunc<ImportedVar>(
@@ -1568,7 +1573,7 @@ void CHIRDeserializer::CHIRDeserializerImpl::ConfigCustomTypeDef(
         obj.AddStaticMemberVar(var);
     }
     obj.AppendAttributeInfo(CreateAttr(buffer->attributes()));
-    if (compileSpecific) {
+    if (compilePlatform) {
         obj.EnableAttr(Attribute::DESERIALIZED);
     }
     obj.SetAnnoInfo(Create<AnnoInfo>(buffer->annoInfo()));
@@ -1661,6 +1666,9 @@ void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::Importe
 
 template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::Func* buffer, Func& obj)
 {
+    if (obj.TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
+        return;
+    }
     ConfigBase(buffer->base()->base(), obj);
     // the parameter will be inserted into Func when Parameter is created.
     auto params = GetValue<Parameter>(buffer->params());
@@ -1683,7 +1691,7 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
     obj.SetRawMangledName(buffer->rawMangledName()->str());
     obj.SetAnnoInfo(Create<AnnoInfo>(buffer->base()->annoInfo()));
     obj.AppendAttributeInfo(CreateAttr(buffer->base()->attributes()));
-    if (compileSpecific) {
+    if (compilePlatform) {
         obj.EnableAttr(Attribute::DESERIALIZED);
     }
     obj.SetPropLocation(Create<DebugLocation>(buffer->propLoc()));
@@ -1747,6 +1755,9 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
 
 template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::GlobalVar* buffer, GlobalVar& obj)
 {
+    if (obj.TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
+        return;
+    }
     ConfigBase(buffer->base()->base(), obj);
     obj.SetAnnoInfo(Create<AnnoInfo>(buffer->base()->annoInfo()));
     if (auto initializer = DynamicCast<LiteralValue*>(GetValue<Value>(buffer->defaultInitVal()))) {
@@ -1793,6 +1804,9 @@ template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFor
 
 template <> void CHIRDeserializer::CHIRDeserializerImpl::Config(const PackageFormat::ExtendDef* buffer, ExtendDef& obj)
 {
+    if (obj.TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
+        return;
+    }
     ConfigCustomTypeDef(buffer->base(), obj);
     auto info = GetType<Type>(buffer->extendedType());
     if (info) {
@@ -2486,8 +2500,10 @@ void CHIRDeserializer::CHIRDeserializerImpl::ResetImportedDefsUnderPackage()
 void CHIRDeserializer::CHIRDeserializerImpl::Run(const PackageFormat::CHIRPackage* package)
 {
     pool = package;
-    builder.CreatePackage(pool->name()->str());
-    builder.GetCurPackage()->SetPackageAccessLevel(Package::AccessLevel(pool->pkgAccessLevel()));
+    if (!builder.GetCurPackage()) {
+        builder.CreatePackage(pool->name()->str());
+        builder.GetCurPackage()->SetPackageAccessLevel(Package::AccessLevel(pool->pkgAccessLevel()));
+    }
     // To keep order, get CustomTypeDef first
     for (unsigned id = 1; id <= pool->defs()->size(); ++id) {
         GetCustomTypeDef<CustomTypeDef>(id);

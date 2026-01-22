@@ -21,8 +21,8 @@
 using namespace Cangjie::CHIR;
 
 /// Value
-Value::Value(Type* ty, std::string identifier, ValueKind kind)
-    : ty(ty), identifier(std::move(identifier)), kind(kind)
+Value::Value(Type* ty, std::string identifier, ValueKind kind, std::set<std::string> features)
+    : ty(ty), identifier(std::move(identifier)), kind(kind), features(features)
 {
 }
 
@@ -225,7 +225,7 @@ void Value::ClearUsersOnly()
 Parameter::Parameter(Type* ty, const std::string& indexStr, Func* ownerFunc)
     : Value(ty, indexStr, ValueKind::KIND_PARAMETER), ownerFunc(ownerFunc)
 {
-    if (ownerFunc) {
+    if (ownerFunc && !ownerFunc->TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
         ownerFunc->AddParam(*this);
     }
 }
@@ -1265,8 +1265,8 @@ std::vector<GenericType*> FuncBase::GetOriginalGenericTypeParams() const
 
 Func::Func(Type* ty, const std::string& identifier, const std::string& srcCodeIdentifier,
     const std::string& rawMangledName, const std::string& packageName,
-    const std::vector<GenericType*>& genericTypeParams)
-    : Value(ty, identifier, ValueKind::KIND_FUNC),
+    const std::vector<GenericType*>& genericTypeParams, std::set<std::string> features)
+    : Value(ty, identifier, ValueKind::KIND_FUNC, features),
       FuncBase{srcCodeIdentifier, rawMangledName, packageName, genericTypeParams}
 {
 }
@@ -1356,7 +1356,7 @@ void Func::RemoveParams()
 
 void Func::InitBody(BlockGroup& newBody)
 {
-    CJC_ASSERT(body.body == nullptr);
+    // CJC_ASSERT(body.body == nullptr); // TODO: chir node second deserialization into existing
     body.body = &newBody;
     if (newBody.GetOwnerFunc() != this) {
         newBody.SetOwnerFunc(this);

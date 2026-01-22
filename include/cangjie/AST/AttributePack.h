@@ -674,6 +674,15 @@ enum class Attribute {
      */
     CJ_MIRROR_OBJC_INTERFACE_FWD,
 
+    /**
+     * Mark declaration that was loaded second time becuse it came from 
+     * other parent source set .cjo. It need to be added only once, so
+     * only first occurency will be added, other will be ignore because they are already loaded.
+     * W: ASTLoader
+     * R: ASTLoader
+     */
+    ALREADY_LOADED,
+
     AST_ATTR_END,
 };
 
