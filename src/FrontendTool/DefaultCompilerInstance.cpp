@@ -41,7 +41,7 @@ public:
 
     bool PerformCodeGen();
     bool PerformCjoSaving();
-    bool PerformCjoAndBchirSaving();
+    bool PerformResultsSaving();
     void DumpDepPackage();
     bool SaveCjo(const AST::Package& pkg);
     void RearrangeImportedPackageDependence();
@@ -195,13 +195,15 @@ bool DefaultCIImpl::SaveCjo(const AST::Package& pkg)
     if (!res) {
         Errorln("fail to generate file: " + astFileName);
     } else if (ci.invocation.globalOptions.outputMode != GlobalOptions::OutputMode::CHIR) {
+        // Update cjo.flag file to indicate the cjo file is generated.
+        // if update failed, cjpm will wait for cjo ready until cjc exits.
         TempFileInfo astFlagFileInfo =
             TempFileManager::Instance().CreateNewFileInfo(TempFileInfo{pkgName, ""}, TempFileKind::O_CJO_FLAG);
+        if (FileUtil::FileExist(astFlagFileInfo.filePath)) {
+            FileUtil::Remove(astFlagFileInfo.filePath);
+        }
         std::ofstream file(astFlagFileInfo.filePath);
-        if (!file.is_open()) {
-            Errorln("Failed to generate ast flag file: " + astFlagFileInfo.filePath);
-            res = false;
-        } else {
+        if (file.is_open()) {
             file.close();
         }
     }
@@ -314,7 +316,7 @@ bool DefaultCIImpl::PerformCjoSaving()
     return ret;
 }
 
-bool DefaultCIImpl::PerformCjoAndBchirSaving()
+bool DefaultCIImpl::PerformResultsSaving()
 {
     if (ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
         return PerformCjoSaving();
@@ -348,9 +350,9 @@ bool DefaultCompilerInstance::PerformCjoSaving()
 {
     return impl->PerformCjoSaving();
 }
-bool DefaultCompilerInstance::PerformCjoAndBchirSaving()
+bool DefaultCompilerInstance::PerformResultsSaving()
 {
-    return impl->PerformCjoAndBchirSaving();
+    return impl->PerformResultsSaving();
 }
 void DefaultCompilerInstance::RearrangeImportedPackageDependence() const
 {

@@ -230,7 +230,7 @@ bool TempFileManager::Init(const GlobalOptions& options, bool isFrontend)
         {TempFileKind::T_OBJ, []() { return ".o"; }},
         {TempFileKind::T_EXE_MAC, []() { return  "_temp"; }},
         {TempFileKind::T_DYLIB_MAC, []() { return "_temp.dylib"; }},
-        {TempFileKind::O_CJO_FLAG, []() { return SERIALIZED_FILE_FLAG_EXTENSION; }},
+        {TempFileKind::O_CJO_FLAG, []() { return std::string(SERIALIZED_FILE_FLAG_EXTENSION); }},
     };
     return InitTempDir();
 }

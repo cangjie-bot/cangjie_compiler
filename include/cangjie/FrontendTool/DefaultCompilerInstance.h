@@ -34,7 +34,7 @@ public:
     bool PerformCHIRCompilation() override;
     bool PerformCodeGen() override;
     bool PerformCjoSaving() override;
-    bool PerformCjoAndBchirSaving() override;
+    bool PerformResultsSaving() override;
 
     bool PerformMangling() override;
     void DumpDepPackage();
