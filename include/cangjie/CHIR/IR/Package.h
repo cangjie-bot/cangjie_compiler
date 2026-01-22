@@ -41,14 +41,14 @@ public:
     // ===--------------------------------------------------------------------===//
     // Global Var API
     // ===--------------------------------------------------------------------===//
-    void AddGlobalVar(GlobalVar* item);
+    GlobalVar* AddGlobalVar(GlobalVar* item);
     std::vector<GlobalVar*> GetGlobalVars() const;
     void SetGlobalVars(std::vector<GlobalVar*>&& vars);
 
     // ===--------------------------------------------------------------------===//
     // Global Function API
     // ===--------------------------------------------------------------------===//
-    void AddGlobalFunc(Func* item);
+    Func* AddGlobalFunc(Func* item);
     std::vector<Func*> GetGlobalFuncs() const;
     void SetGlobalFuncs(const std::vector<Func*>& funcs);
 
@@ -106,7 +106,7 @@ public:
     // ===--------------------------------------------------------------------===//
     // ExtendDef API
     // ===--------------------------------------------------------------------===//
-    void AddExtend(ExtendDef* item);
+    ExtendDef* AddExtend(ExtendDef* item);
     std::vector<ExtendDef*> GetExtends() const;
     void SetExtends(std::vector<ExtendDef*>&& items);
 

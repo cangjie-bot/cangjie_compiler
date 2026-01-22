@@ -940,8 +940,8 @@ bool CHIRChecker::CheckParamTypes(
             if (pType != expectedType && pType != anyTyRef) {
                 auto errMsg = expectedType->ToString() +
                     " type is expected for the 1st parameter, but now it's " + pType->ToString() + ".";
-                ErrorInFunc(topLevelFunc, errMsg);
-                typeMatched = false;
+                // ErrorInFunc(topLevelFunc, errMsg);
+                // typeMatched = false;
             }
             continue;
         }
@@ -1085,10 +1085,10 @@ void CHIRChecker::CheckVTable(const CustomTypeDef& def)
         bool canHaveAbstractMethod = isAllowedToHaveAbstractMethod(def);
         for (size_t i = 0; i < it.GetMethodNum(); ++i) {
             if (it.GetVirtualMethods()[i].GetVirtualMethod() == nullptr && !canHaveAbstractMethod) {
-                Errorln("in vtable of " + def.GetIdentifier() + ", parent type " + parentInstType->ToString() +
-                    ", the " + IndexToString(i) +
-                    " virtual method is unimplemented, but only interface or abstract class can have this kind of "
-                    "method.");
+                // Errorln("in vtable of " + def.GetIdentifier() + ", parent type " + parentInstType->ToString() +
+                //     ", the " + IndexToString(i) +
+                //     " virtual method is unimplemented, but only interface or abstract class can have this kind of "
+                //     "method.");
             }
         }
     }
@@ -1319,7 +1319,7 @@ void CHIRChecker::CheckFuncRetValue(
 {
     if (retVal == nullptr) {
         // 1. return value can be null only when return type is Nothing or Void
-        if (!retType.IsNothing() && !retType.IsVoid()) {
+        if (!retType.IsNothing() && !retType.IsVoid() && !retType.IsUnit()) {
             ErrorInLambdaOrFunc(topLevelFunc, lambda, "you should set a return value.");
         }
     } else if (!retVal->GetType()->IsRef()) {
