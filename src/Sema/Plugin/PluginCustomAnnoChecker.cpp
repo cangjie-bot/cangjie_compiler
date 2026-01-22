@@ -581,7 +581,7 @@ bool PluginCustomAnnoChecker::CheckCheckingHide(const Decl& target, DiagConfig d
     return true;
 }
 
-bool PluginCustomAnnoChecker::CheckNode(Ptr<Node> node, PluginCustomAnnoInfo& scopeAnnoInfo, bool reportDiag)
+bool PluginCustomAnnoChecker::CheckNode(Ptr<Node> node, const PluginCustomAnnoInfo& scopeAnnoInfo, bool reportDiag)
 {
     if (!node) {
         return true;
@@ -617,7 +617,7 @@ bool PluginCustomAnnoChecker::CheckNode(Ptr<Node> node, PluginCustomAnnoInfo& sc
     return ret;
 }
 
-void PluginCustomAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, PluginCustomAnnoInfo& scopeAnnoInfo)
+void PluginCustomAnnoChecker::CheckIfAvailableExpr(IfAvailableExpr& iae, const PluginCustomAnnoInfo& scopeAnnoInfo)
 {
     if (!iae.desugarExpr || iae.desugarExpr->astKind != ASTKind::IF_EXPR) {
         return;
