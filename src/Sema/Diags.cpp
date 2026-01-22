@@ -19,6 +19,7 @@
 
 #include "TypeCheckUtil.h"
 
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
@@ -139,6 +140,53 @@ Range MakeRangeForDeclIdentifier(const Decl& decl)
     }
 }
 
+inline bool IsSamePosition(const Position& pos1, const Position& pos2)
+{
+    return pos1 == pos2 && pos1.fileID == pos2.fileID;
+}
+
+/// When compiling CJMP package, there can be several parent CJO each having the same function.
+/// Both function are deserialized, so it's not duplicate, it's actulayy the same function.
+inline bool IsSameDeserializedFunction(const Decl& left, const Decl& right)
+{
+    return IsSamePosition(left.begin, right.begin) &&
+        (left.TestAttr(Attribute::ALREADY_LOADED) || right.TestAttr(Attribute::ALREADY_LOADED));
+}
+
+bool IsFeatureSupersetRelation(const Decl& left, const Decl& right)
+{
+  std::set<std::string> leftFeatures = left.curFile->GetFeatures();
+  std::set<std::string> rightFeatures = right.curFile->GetFeatures();
+
+  return std::includes(leftFeatures.begin(), leftFeatures.end(), rightFeatures.begin(), rightFeatures.end()) ||
+      std::includes(rightFeatures.begin(), rightFeatures.end(), leftFeatures.begin(), leftFeatures.end());
+}
+
+bool IgnoreCJMPFalsePositiveRedefinition(const Decl& left, const Decl& right)
+{
+    // if (current.TestAttr(Attribute::ALREADY_LOADED) || previous.TestAttr(Attribute::ALREADY_LOADED)) {
+    //     return;
+    // }
+    if (!left.TestAttr(Attribute::FROM_COMMON_PART) || !right.TestAttr(Attribute::FROM_COMMON_PART)) {
+        return false;
+    }
+  
+    // 1) In case of several parents CJO, deserialized declaration can be duplicated
+    if (IsSameDeserializedFunction(left, right)) {
+        return true;
+    }
+  
+    // 2) If feature set of one declaration is superset of feature set of another,
+    // then we have scenario with 2 different declaration came from 2 different parent CJO,
+    // and these two declarations are in common-specific relation, and because
+    // of superset relation between their feature sets we know that they are mathed!
+    if (IsFeatureSupersetRelation(left, right)) {
+        return true;
+    }
+    
+    return false;
+}
+
 void DiagRedefinitionWithFoundNode(DiagnosticEngine& diag, const Decl& current, const Decl& previous)
 {
     if (current.TestAttr(Attribute::IS_BROKEN)) {
@@ -158,6 +206,9 @@ void DiagRedefinitionWithFoundNode(DiagnosticEngine& diag, const Decl& current, 
         auto tmpRange = rangeUp;
         rangeUp = rangeDown;
         rangeDown = tmpRange;
+    }
+    if (IgnoreCJMPFalsePositiveRedefinition(current, previous)) {
+        return;
     }
     auto builder = diag.DiagnoseRefactor(
         DiagKindRefactor::sema_redefinition, *declDown, rangeDown, declDown->identifier);

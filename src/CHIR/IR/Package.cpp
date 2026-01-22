@@ -24,14 +24,28 @@ std::string Package::GetName() const
     return name;
 }
 
-void Package::AddGlobalVar(GlobalVar* item)
+GlobalVar* Package::AddGlobalVar(GlobalVar* item)
 {
+    for (auto v : globalVars) {
+        if (v->GetIdentifier() == item->GetIdentifier()) {
+            return v;
+        }
+    }
     globalVars.emplace_back(item);
+
+    return item;
 }
 
-void Package::AddGlobalFunc(Func* item)
+Func* Package::AddGlobalFunc(Func* item)
 {
+    for (auto f : globalFuncs) {
+        if (f->GetIdentifier()== item->GetIdentifier()) {
+            return f;
+        }
+    }
     globalFuncs.emplace_back(item);
+
+    return item;
 }
 
 void Package::AddClass(ClassDef* item)
@@ -174,9 +188,16 @@ std::vector<ExtendDef*> Package::GetExtends() const
     return extends;
 }
 
-void Package::AddExtend(ExtendDef* item)
+ExtendDef* Package::AddExtend(ExtendDef* item)
 {
+    for (auto f : extends) {
+        if (f->GetIdentifier()== item->GetIdentifier()) {
+            return f;
+        }
+    }
     extends.emplace_back(item);
+  
+    return item;
 }
 
 void Package::AddEnum(EnumDef* item)
