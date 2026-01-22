@@ -50,3 +50,14 @@ target_link_libraries(
     GTest::gtest
     GTest::gtest_main)
 add_test(NAME CheckCjdTest COMMAND CheckCjdTest)
+
+add_executable(ParseIncrTest ParseIncrTest.cpp)
+target_link_libraries(
+    ParseIncrTest
+    cangjie-lsp
+    ${CMAKE_DL_LIBS}
+    boundscheck-static
+    GTest::gtest
+    GTest::gtest_main
+    TestCompilerInstanceObject)
+add_test(NAME ParseIncrTest COMMAND ParseIncrTest)
