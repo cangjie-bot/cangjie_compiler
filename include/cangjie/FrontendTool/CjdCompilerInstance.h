@@ -50,7 +50,7 @@ public:
     {
         return true;
     }
-    bool PerformCjoAndBchirSaving() override
+    bool PerformResultsSaving() override
     {
         if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
             return PerformCjoSaving();

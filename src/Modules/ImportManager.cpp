@@ -219,6 +219,51 @@ std::string Jsonfy(const std::map<std::string, std::set<std::string>>& dependenc
     return out.str();
 }
 
+void CollectStdDependency(std::map<std::string, std::set<std::string>>& stdDependencies, const std::string& stdpkg,
+    const ImportManager& importMgr, CjoManager& cjoManager)
+{
+    if (stdDependencies.find(stdpkg) != stdDependencies.end()) {
+        return;
+    }
+    std::string cjoPath = FileUtil::FindSerializationFile(
+        FileUtil::ToPackageName(stdpkg), SERIALIZED_FILE_EXTENSION, importMgr.GetSearchPath());
+    if (!cjoManager.LoadPackageHeader(stdpkg, cjoPath)) {
+        return;
+    }
+    std::set<std::string> importInfo;
+    Ptr<Package> stdPkgInfo = cjoManager.GetPackage(stdpkg);
+    CJC_NULLPTR_CHECK(stdPkgInfo);
+    for (auto& file : stdPkgInfo->files) {
+        for (auto& import : file->imports) {
+            importInfo.emplace(import->content.GetImportedPackageNameWithIsDecl());
+        }
+    }
+    for (auto& importRes : importInfo) {
+        CollectStdDependency(stdDependencies, importRes, importMgr, cjoManager);
+    }
+    stdDependencies.emplace(stdpkg, std::move(importInfo));
+    return;
+}
+
+std::map<std::string, std::set<std::string>> GetStdDependency(
+    const std::map<std::string, DependencyInfoItem>& dependencies, const Package& pkg, bool exportCJO,
+    const ImportManager& importMgr, CjoManager& cjoManager)
+{
+    std::map<std::string, std::set<std::string>> stdDependencies{{"std.core", {}}};
+    if (exportCJO) {
+        for (const auto& stdpkg : pkg.GetAllDependentStdPkgs()) {
+            CollectStdDependency(stdDependencies, stdpkg, importMgr, cjoManager);
+        }
+    } else {
+        for (const auto& [_, dependInfo] : dependencies) {
+            if (dependInfo.isStd) {
+                CollectStdDependency(stdDependencies, dependInfo.package, importMgr, cjoManager);
+            }
+        }
+    }
+    return stdDependencies;
+}
+
 Range GetPackageNameRange(const CjoManager& cjoManager, const ImportSpec& import)
 {
     auto& im = import.content;
@@ -614,53 +659,6 @@ void ImportManager::CheckRedefinition(const AST::Package& pkg)
             }
         }
     }
-}
-
-void CollectStdDependency(
-    std::map<std::string, std::set<std::string>>& stdDependencies, const std::string& stdpkg, const ImportManager& importMgr, CjoManager& cjoManager)
-{
-    if (stdDependencies.find(stdpkg) != stdDependencies.end()) {
-        return;
-    }
-    std::string cjoPath = FileUtil::FindSerializationFile(
-        FileUtil::ToPackageName(stdpkg), SERIALIZED_FILE_EXTENSION, importMgr.GetSearchPath());
-    if (!cjoManager.LoadPackageHeader(stdpkg, cjoPath)) {
-        return;
-    }
-    std::set<std::string> importInfo;
-    Ptr<Package> stdPkgInfo = cjoManager.GetPackage(stdpkg);
-    CJC_NULLPTR_CHECK(stdPkgInfo);
-    for (auto& file : stdPkgInfo->files) {
-        for (auto& import : file->imports) {
-            importInfo.emplace(import->content.GetImportedPackageName());
-        }
-    }
-    for (auto& importRes : importInfo) {
-        CollectStdDependency(stdDependencies, importRes, importMgr, cjoManager);
-    }
-    stdDependencies.emplace(stdpkg, std::move(importInfo));
-    return;
-}
-
-std::map<std::string, std::set<std::string>> GetStdDependency(
-    const std::map<std::string, DependencyInfoItem>& dependencies, const Package& pkg, bool exportCJO,
-    const ImportManager& importMgr, CjoManager& cjoManager)
-{
-    std::map<std::string, std::set<std::string>> stdDependencies{{"std.core", {}}};
-    if (exportCJO) {
-        for (const auto& stdpkg : pkg.GetAllDependentStdPkgs()) {
-            CollectStdDependency(stdDependencies, stdpkg, importMgr, cjoManager);
-        }
-    } else {
-        for (const auto& [_, dependInfo] : dependencies) {
-            if (dependInfo.isStd) {
-                auto import = *dependInfo.imports.begin();
-                auto fullPackageName = import->content.GetImportedPackageName();
-                CollectStdDependency(stdDependencies, fullPackageName, importMgr, cjoManager);
-            }
-        }
-    }
-    return stdDependencies;
 }
 
 std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO) const

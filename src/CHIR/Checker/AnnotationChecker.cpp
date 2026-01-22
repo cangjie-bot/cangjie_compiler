@@ -378,7 +378,7 @@ public:
     bool CheckAnnotations() &&
     {
         Utils::ProfileRecorder p{"CHIR", "AnnotationTargetCheck"};
-        WriteBackAnnotations();
+        BuildCheckMap();
         auto res = CheckAnnotationsImpl();
         return res;
     }
@@ -387,7 +387,7 @@ private:
     const DiagAdapter& diag;
 
     // write @Annotation info from the result of consteval back to the AST nodes
-    void WriteBackAnnotations()
+    void BuildCheckMap()
     {
         std::unordered_map<const ClassDef*, AnnotationTarget> cmap;
         for (auto it = g_annoInfo.begin(); it != g_annoInfo.end();) {
@@ -397,29 +397,11 @@ private:
         checkMap = std::move(cmap);
     }
 
-    void WriteBackAnnotation(const AnnotationInfo& info) const
-    {
-        auto& vars = info.vars;
-        if (vars.empty()) {
-            info.anno->EnableAllTargets();
-            return;
-        }
-        for (size_t i{0}; i < vars.size(); ++i) {
-            if (!vars[i]->GetInitializer() || vars[i]->GetInitializer()->IsNullLiteral()) {
-                // if const eval fails to replace the initializer with a constant value, find the store
-                // statement from its init func
-                info.anno->EnableTarget(static_cast<AST::AnnotationTarget>(GetUnsignedValFromInit(*info.funcs[i])));
-            } else {
-                info.anno->EnableTarget(static_cast<AST::AnnotationTarget>(
-                    StaticCast<IntLiteral*>(vars[i]->GetInitializer())->GetUnsignedVal()));
-            }
-        }
-    }
-
     AnnotationTargetT GetAnnotationTargetFromInfo(const AnnotationInfo& info) const
     {
         auto& vars = info.vars;
         if (vars.empty()) {
+            // @Annotation without argument, enable all targets
             return static_cast<AnnotationTargetT>(~0u);
         }
         AnnotationTargetT target = 0;

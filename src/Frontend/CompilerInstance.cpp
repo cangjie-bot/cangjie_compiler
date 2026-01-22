@@ -118,7 +118,7 @@ bool CompilerInstance::InitCompilerInstance()
     performMap.insert_or_assign(CompileStage::MANGLING, &CompilerInstance::PerformMangling);
     performMap.insert_or_assign(CompileStage::CHIR, &CompilerInstance::PerformCHIRCompilation);
     performMap.insert_or_assign(CompileStage::CODEGEN, &CompilerInstance::PerformCodeGen);
-    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformCjoAndBchirSaving);
+    performMap.insert_or_assign(CompileStage::SAVE_RESULTS, &CompilerInstance::PerformResultsSaving);
     return true;
 }
 
@@ -318,15 +318,6 @@ bool CompilerInstance::PerformParse()
         srcPkgs.front()->noSubPkg = globalOpts.noSubPkg;
         Utils::ProfileRecorder::SetPackageName(srcPkgs[0]->fullPackageName);
         Utils::ProfileRecorder::SetOutputDir(globalOpts.output);
-        if (globalOpts.outputMode != GlobalOptions::OutputMode::CHIR) {
-            TempFileInfo astFlagFileInfo = TempFileManager::Instance().CreateNewFileInfo(
-                TempFileInfo{srcPkgs[0]->fullPackageName, ""}, TempFileKind::O_CJO_FLAG);
-            if (FileUtil::FileExist(astFlagFileInfo.filePath) && !FileUtil::Remove(astFlagFileInfo.filePath)) {
-                diag.DiagnoseRefactor(
-                    DiagKindRefactor::failed_to_remove_file, DEFAULT_POSITION, astFlagFileInfo.filePath);
-                ret = false;
-            }
-        }
         if (IsNeedSaveIncrCompilationLogFile(globalOpts, invocation.frontendOptions)) {
             std::string incrLogPath =
                 invocation.globalOptions.GenerateCachedPathName(srcPkgs[0]->fullPackageName, CACHED_LOG_EXTENSION);
