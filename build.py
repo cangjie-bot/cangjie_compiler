@@ -156,6 +156,7 @@ def generate_cmake_defs(args):
         "-DCANGJIE_BUILD_CJC=" + bool_to_opt(args.product in ['all', 'cjc']),
         "-DCANGJIE_BUILD_STD_SUPPORT=" + bool_to_opt(args.product in ['all', 'libs']),
         "-DCANGJIE_BUILD_CJDB=" + bool_to_opt(args.build_cjdb),
+        "-DCANGJIE_BUILD_CJDB_DISABLE_PYTHON =" + bool_to_opt(args.cjdb_disable_python),
         "-DCANGJIE_ENABLE_HWASAN=" + bool_to_opt(args.hwasan),
         "-DCANGJIE_VERSION=" + generate_version_tail(args.target),
         "-DBUILD_GCC_TOOLCHAIN=" + (args.gcc_toolchain if args.gcc_toolchain and args.target is None else ""),
@@ -569,6 +570,10 @@ def main():
     parser_build.add_argument(
         "--build-cjdb", action="store_true",
         help="build cjc with cjdb"
+    )
+    parser_build.add_argument(
+        "--cjdb-disable-python", action="store_true",
+        help="build cjdb without python extension"
     )
     parser_build.add_argument(
         "--use-oh-llvm-repo", action="store_true",
