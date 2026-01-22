@@ -126,7 +126,7 @@ llvm::Value* CGExtensionDef::CreateCompareArgs(
 {
     auto typeInfoPtrType = CGType::GetOrCreateTypeInfoPtrType(cgMod.GetLLVMContext());
     auto argSize = typeArgs.size();
-    llvm::Value* retVal;
+    llvm::Value* retVal = nullptr;
     for (size_t i = 0; i < argSize; ++i) {
         auto backupBB = irBuilder.GetInsertBlock();
         auto backupIt = irBuilder.GetInsertPoint();

@@ -178,19 +178,19 @@ void CGFunctionType::GenContainedCGTypes()
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     auto cgType = CGType::GetOrCreate(cgMod, &chirType);
     if (chirType.IsRef() && chirType.GetTypeArgs()[0]->IsStruct()) {
-        return CGType::GetOrCreate(cgMod, &chirType, 1U);
+        return CGType::GetOrCreate(cgMod, &chirType, CGType::TypeExtraInfo(1U));
     } else if (chirType.IsStruct() || chirType.IsTuple() || (!cgType->GetSize() && !chirType.IsGeneric())) {
         auto refType =  CGType::GetRefTypeOf(cgCtx.GetCHIRBuilder(), chirType);
         // If current parameter is the first parameter in a struct method, aka `this`
         if (!forWrapper && containedCGTypeIndex == 1U && this->chirFunc && IsStructOrExtendMethod(*chirFunc)) {
             return CGType::GetOrCreate(cgMod, refType);
         } else {
-            return CGType::GetOrCreate(cgMod, refType, cgType->GetSize() ? 0U : 1U);
+            return CGType::GetOrCreate(cgMod, refType, CGType::TypeExtraInfo(cgType->GetSize() ? 0U : 1U));
         }
     } else if (cgType->IsStructType() || cgType->IsVArrayType()) {
-        return CGType::GetOrCreate(cgMod, CGType::GetRefTypeOf(cgCtx.GetCHIRBuilder(), chirType), 0U);
+        return CGType::GetOrCreate(cgMod, CGType::GetRefTypeOf(cgCtx.GetCHIRBuilder(), chirType), CGType::TypeExtraInfo(0U));
     } else if (cgType->IsStructPtrType() || cgType->IsVArrayPtrType()) {
-        return CGType::GetOrCreate(cgMod, &chirType, 1U);
+        return CGType::GetOrCreate(cgMod, &chirType, CGType::TypeExtraInfo(1U));
     } else {
         return CGType::GetOrCreate(cgMod, &chirType);
     }

@@ -482,7 +482,8 @@ CGType* FixedCGTypeOfFuncArg(CGModule& cgMod, const CHIR::Value& chirFuncArg, ll
         (chirFuncArgType->IsEnum() && (StaticCast<CGEnumType*>(cgType)->PassByReference()));
     if (byRef) {
         auto refType = CGType::GetRefTypeOf(cgMod.GetCGContext().GetCHIRBuilder(), *chirFuncArgType);
-        cgType = CGType::GetOrCreate(cgMod, refType, {llvmValue.getType()->getPointerAddressSpace()});
+        cgType =
+            CGType::GetOrCreate(cgMod, refType, CGType::TypeExtraInfo(llvmValue.getType()->getPointerAddressSpace()));
     }
     cgMod.SetOrUpdateMappedCGValue(&chirFuncArg, std::make_unique<CGValue>(&llvmValue, cgType));
     return cgType;

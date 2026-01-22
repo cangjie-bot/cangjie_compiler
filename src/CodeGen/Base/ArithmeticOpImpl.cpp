@@ -326,8 +326,8 @@ llvm::Value* GenerateArithmeticOperation(IRBuilder2& irBuilder, CHIR::ExprKind e
             }
         }
         default:
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(exprKind));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(exprKind));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
     }
 }
@@ -354,8 +354,8 @@ llvm::Value* GenerateBitwiseOperation(IRBuilder2& irBuilder, const CHIRBinaryExp
         case CHIR::ExprKind::RSHIFT:
             return GenerateOverShiftCheck(irBuilder, binExpr, valLeft, valRight);
         default:
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(binExpr.GetBinaryExprKind()));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(binExpr.GetBinaryExprKind()));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRBinaryExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
     }
 }

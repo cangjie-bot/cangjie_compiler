@@ -188,7 +188,7 @@ llvm::Value* HandleTransformToGenericExpr(IRBuilder2& irBuilder, const CHIR::Exp
     auto cgVal = *(cgMod | castToGenericExpr.GetSourceValue());
     auto srcCGType = CGType::GetOrCreate(cgMod, castToGenericExpr.GetSourceTy());
     auto targetCGType = CGType::GetOrCreate(cgMod, castToGenericExpr.GetTargetTy());
-    CJC_ASSERT(srcCGType->GetSize() && "Source type must have size.");
+    CJC_ASSERT_WITH_MSG(srcCGType->GetSize(), "Source type must have size.");
     if (srcCGType->IsReference() && castToGenericExpr.GetTargetTy()->IsGeneric()) {
         return cgVal.GetRawValue();
     }
@@ -206,7 +206,7 @@ llvm::Value* HandleTransformToGenericExpr(IRBuilder2& irBuilder, const CHIR::Exp
                              : srcCGType->GetLLVMType()->getPointerTo(1));
     auto addrType = CGType::GetOrCreate(cgMod,
         srcCHIRType->IsRef() ? srcCHIRType : CGType::GetRefTypeOf(cgMod.GetCGContext().GetCHIRBuilder(), *srcCHIRType),
-        1U);
+        CGType::TypeExtraInfo(1U));
     (void)irBuilder.CreateStore(cgVal, CGValue(addr, addrType));
     return temp;
 }
@@ -240,7 +240,7 @@ llvm::Value* HandleBoxExpr(IRBuilder2& irBuilder, const CHIR::Expression& chirEx
         auto addrType = CGType::GetOrCreate(cgMod,
             srcCHIRType->IsRef() ? srcCHIRType
                                  : CGType::GetRefTypeOf(cgMod.GetCGContext().GetCHIRBuilder(), *srcCHIRType),
-            1U);
+            CGType::TypeExtraInfo(1U));
         (void)irBuilder.CreateStore(cgVal, CGValue(addr, addrType));
         return temp;
     } else if (IsThisArgOfStructMethod(*srcObject)) {
@@ -308,7 +308,7 @@ llvm::Value* HandleTransformToConcreteExpr(IRBuilder2& irBuilder, const CHIR::Ex
     auto cgVal = *(cgMod | sourceValue);
     auto targetCHIRType = castToConcreteExpr.GetTargetTy();
     auto targetCGType = CGType::GetOrCreate(cgMod, targetCHIRType);
-    CJC_ASSERT(targetCGType->GetSize() && "target type must have size");
+    CJC_ASSERT_WITH_MSG(targetCGType->GetSize(), "target type must have size");
     auto srcCHIRType = castToConcreteExpr.GetSourceTy();
     const CGType* srcCGType = CGType::GetOrCreate(cgMod, srcCHIRType);
 
@@ -424,8 +424,8 @@ llvm::Value* HandleOthersExpression(IRBuilder2& irBuilder, const CHIR::Expressio
         irBuilder.EmitLocation(CHIRExprWrapper(chirExpr));
         return found->second(irBuilder, chirExpr);
     }
-    printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(chirExpr.GetExprKind()));
-    CJC_ASSERT(false);
+    auto exprKindStr = std::to_string(static_cast<uint64_t>(chirExpr.GetExprKind()));
+    CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRExprKind: " + exprKindStr + "\n").c_str());
     return nullptr;
 }
 } // namespace Cangjie::CodeGen

@@ -29,7 +29,7 @@ llvm::Value* GenerateConstantVArray(
     const IRBuilder2& irBuilder, const CHIR::VArray& varray, const std::string& serialized)
 {
     auto chirType = varray.GetResult()->GetType();
-    CJC_ASSERT(chirType->IsVArray() && "Should not reach here.");
+    CJC_ASSERT_WITH_MSG(chirType->IsVArray(), "Should not reach here.");
     auto varrayChirType = StaticCast<const CHIR::VArrayType*>(chirType);
 
     auto varrayCGType = CGType::GetOrCreate(irBuilder.GetCGModule(), varrayChirType);
@@ -55,7 +55,7 @@ llvm::Value* CodeGen::GenerateVArray(IRBuilder2& irBuilder, const CHIR::VArray& 
         return GenerateConstantVArray(irBuilder, varray, serialized);
     }
     auto chirType = varray.GetResult()->GetType();
-    CJC_ASSERT(chirType->IsVArray() && "Should not reach here.");
+    CJC_ASSERT_WITH_MSG(chirType->IsVArray(), "Should not reach here.");
     auto varrayChirType = StaticCast<const CHIR::VArrayType*>(chirType);
 
     auto varrayCGType = CGType::GetOrCreate(irBuilder.GetCGModule(), varrayChirType);
