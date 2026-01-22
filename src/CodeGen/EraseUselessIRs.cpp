@@ -229,7 +229,7 @@ void CGModule::EraseUselessInstsAndDeclarations()
 
 void CGModule::EraseUselessGVAndFunctions()
 {
-    if (GetCGContext().GetCompileOptions().optimizationLevel >= GlobalOptions::OptimizationLevel::O2 || 
+    if (GetCGContext().GetCompileOptions().optimizationLevel < GlobalOptions::OptimizationLevel::O2 ||
         GetCGContext().GetCompileOptions().enableCoverage) {
         return;
     }

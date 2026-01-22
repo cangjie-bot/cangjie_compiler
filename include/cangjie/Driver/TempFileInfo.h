@@ -41,6 +41,7 @@ enum class TempFileKind {
     O_OPT_BC, // output .opt.bc(optimized bitcode) file
     T_ASM,    // temp .s(assembled) file
 #endif
+    O_OBJ,         // output .o(binary object) file
     T_OBJ,         // temp .o(binary object) file
     T_EXE_MAC,     // temp executable file for macro strip
     T_DYLIB_MAC,   // temp dynamic library file for macro strip
