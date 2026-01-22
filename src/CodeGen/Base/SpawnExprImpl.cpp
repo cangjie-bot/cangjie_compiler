@@ -58,9 +58,9 @@ llvm::Value* GenerateSpawnWithExecuteFuture(IRBuilder2& irBuilder, const CHIRSpa
         StaticCast<CHIR::ClassType*>(spawn.GetFuture()->GetType()->GetTypeArgs()[0])->GetClassDef()->GetMethods();
     auto it = std::find_if(
         methods.begin(), methods.end(), [](auto method) { return method->GetSrcCodeIdentifier() == "execute"; });
-    CJC_ASSERT(it != methods.end() && "The execute function is not found in Future.");
+    CJC_ASSERT_WITH_MSG(it != methods.end(), "The execute function is not found in Future.");
     auto cgFunc = cgMod.GetOrInsertCGFunction(*it);
-    CJC_ASSERT(cgFunc);
+    CJC_NULLPTR_CHECK(cgFunc);
     auto cjThreadHandle = irBuilder.CallSpawnIntrinsic(*futureObj, *cgFunc, threadCtx, true);
     CJC_NULLPTR_CHECK(cjThreadHandle);
 

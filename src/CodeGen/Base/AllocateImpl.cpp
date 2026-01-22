@@ -40,7 +40,7 @@ llvm::Value* CodeGen::GenerateAllocate(IRBuilder2& irBuilder, const CHIRAllocate
         }
         return ret;
     } else {
-        CJC_ASSERT(!allocaType->IsThis() && "CHIR should not try to allocate memory for `ThisType`.");
+        CJC_ASSERT_WITH_MSG(!allocaType->IsThis(), "CHIR should not try to allocate memory for `ThisType`.");
         auto cgType = CGType::GetOrCreate(irBuilder.GetCGModule(), allocaType);
         return irBuilder.CreateEntryAlloca(*cgType);
     }

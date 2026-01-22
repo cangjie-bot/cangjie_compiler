@@ -114,7 +114,7 @@ struct IntrinsicFuncInfo {
 
 struct GenericTypeAndPath {
 public:
-    GenericTypeAndPath(const CHIR::GenericType& gt, std::vector<size_t> path) : genericType(gt), path(path)
+    GenericTypeAndPath(const CHIR::GenericType& gt, const std::vector<size_t>& path) : genericType(gt), path(path)
     {
     }
     const std::vector<size_t>& GetPath() const

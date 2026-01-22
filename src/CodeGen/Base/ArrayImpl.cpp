@@ -39,7 +39,7 @@ llvm::Value* CodeGen::GenerateRawArrayInitByValue(
 llvm::Value* CodeGen::GenerateRawArrayAllocate(IRBuilder2& irBuilder, const CHIRRawArrayAllocateWrapper& rawArray)
 {
     // Sized array must have 2 arguments
-    CJC_ASSERT(rawArray.GetOperands().size() == 1 && "RawArrayAllocate's argument size is not equal to 1.");
+    CJC_ASSERT_WITH_MSG(rawArray.GetOperands().size() == 1, "RawArrayAllocate's argument size is not equal to 1.");
     auto& cgMod = irBuilder.GetCGModule();
     auto arrTy = StaticCast<CHIR::RawArrayType*>(rawArray.GetResult()->GetType()->GetTypeArgs()[0]);
     auto length = **(cgMod | rawArray.GetOperand(0));

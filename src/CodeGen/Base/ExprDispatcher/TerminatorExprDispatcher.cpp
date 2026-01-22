@@ -58,7 +58,7 @@ llvm::Value* HandleExitExpression(IRBuilder2& irBuilder, const CHIR::Exit& exitE
         CJC_ASSERT(ret && ret->GetExpr()->GetExprKind() == CHIR::ExprKind::RAW_ARRAY_ALLOCATE);
         return irBuilder.CreateRet(**(cgMod | ret));
     }
-    CJC_ASSERT(ret && "An unexpected nullptr is passed by CHIR.");
+    CJC_ASSERT_WITH_MSG(ret, "An unexpected nullptr is passed by CHIR.");
     CJC_ASSERT(ret->GetExpr()->GetExprKind() == CHIR::ExprKind::ALLOCATE);
     auto retVal = **(cgMod | ret);
     auto retType = CGType::GetOrCreate(cgMod, ret->GetType()->GetTypeArgs()[0])->GetLLVMType();
@@ -119,7 +119,7 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
             auto& raiseException = StaticCast<const CHIR::RaiseException&>(chirExpr);
             auto exceptionValue = raiseException.GetExceptionValue();
             auto exceptionType = exceptionValue->GetType();
-            CJC_ASSERT((exceptionType->IsRef() || exceptionType->IsGeneric()) &&
+            CJC_ASSERT_WITH_MSG((exceptionType->IsRef() || exceptionType->IsGeneric()),
                 "The target of the throw must be a generic or a reference to an object.");
             auto exceptionBlock = raiseException.GetExceptionBlock();
             if (exceptionBlock) {
@@ -218,8 +218,8 @@ llvm::Value* HandleTerminatorExpression(IRBuilder2& irBuilder, const CHIR::Expre
             return resultVal;
         }
         default: {
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(chirExpr.GetExprKind()));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(chirExpr.GetExprKind()));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
         }
     }
