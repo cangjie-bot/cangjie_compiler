@@ -1311,12 +1311,12 @@ OwnedPtr<CallExpr> InteropLibBridge::CreateJavaObjectControllerCall(OwnedPtr<Exp
     std::vector<OwnedPtr<FuncArg>> callArgs;
     callArgs.push_back(CreateFuncArg(std::move(javaEntity)));
     callArgs.push_back(CreateFuncArg(std::move(className)));
-    
+
     auto fdRefexpr = CreateRefExpr(*funcDecl);
     fdRefexpr->ref.identifier = javaObjectCtroDecl->identifier;
     fdRefexpr->typeArguments.emplace_back(std::move(instantiationRefType));
     auto fdRef = WithinFile(std::move(fdRefexpr), curFile);
-    
+
     auto callTy = typeManager.GetClassTy(*javaObjectCtroDecl, {std::move(instantiationTy)});
     return CreateCallExpr(std::move(fdRef), std::move(callArgs), funcDecl, callTy, CallKind::CALL_OBJECT_CREATION);
 }
@@ -1503,9 +1503,25 @@ OwnedPtr<Expr> InteropLibBridge::UnwrapJavaEntity(OwnedPtr<Expr> entity, Ptr<Ty>
     }
 }
 
+bool InteropLibBridge::IsInteropLibAccessible(ImportManager& importManager)
+{
+    return importManager.GetPackageDecl(INTEROPLIB_PACKAGE_NAME);
+}
+
+bool InteropLibBridge::IsInteropLibAccessible() const
+{
+    return IsInteropLibAccessible(importManager);
+}
+
 void InteropLibBridge::CheckInteropLibVersion()
 {
     auto versionDecl = GetInteropLibVersionVarDecl();
+
+    if (!versionDecl && !IsInteropLibAccessible()) {
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_java_mirror_interoplib_must_be_imported, DEFAULT_POSITION);
+        return;
+    }
+
     if (!versionDecl || !versionDecl->initializer || versionDecl->initializer->astKind != ASTKind::LIT_CONST_EXPR ||
         versionDecl->initializer->ty->kind != TypeKind::TYPE_INT64) {
         diag.DiagnoseRefactor(DiagKindRefactor::sema_java_interoplib_version_too_old, DEFAULT_POSITION,

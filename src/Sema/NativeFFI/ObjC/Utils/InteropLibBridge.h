@@ -178,14 +178,18 @@ public:
     Ptr<AST::FuncDecl> GetObjCGetLambdaFromBlockDecl();
 
     Ptr<AST::FuncDecl> GetObjectGetClassDecl();
+    bool IsInteropLibAccessible() const;
+    static bool IsInteropLibAccessible(ImportManager& importManager);
 
 private:
+    static constexpr auto INTEROPLIB_PACKAGE_NAME = "interoplib.objc";
+
     template <AST::ASTKind K = AST::ASTKind::DECL> auto GetInteropLibDecl(const std::string& ident)
     {
-        auto decl = importManager.GetImportedDecl(INTEROPLIB_OBJ_C_PACKAGE_IDENT, ident);
+        auto decl = importManager.GetImportedDecl(INTEROPLIB_PACKAGE_NAME, ident);
         if (!decl) {
             diag.DiagnoseRefactor(DiagKindRefactor::sema_member_not_imported, DEFAULT_POSITION,
-                INTEROPLIB_OBJ_C_PACKAGE_IDENT + std::string(".") + ident);
+                INTEROPLIB_PACKAGE_NAME + std::string(".") + ident);
             return Ptr(AST::As<K>(nullptr));
         }
 

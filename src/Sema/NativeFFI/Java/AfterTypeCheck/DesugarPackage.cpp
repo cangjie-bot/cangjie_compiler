@@ -6,6 +6,7 @@
 
 #include "JavaDesugarManager.h"
 #include "JavaInteropManager.h"
+#include "NativeFFI/Java/AfterTypeCheck/InteropLibBridge.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Walker.h"
 #include "cangjie/Utils/ConstantsUtils.h"
@@ -75,6 +76,10 @@ void JavaInteropManager::DesugarPackage(
     }
     JavaDesugarManager desugarer{
         importManager, typeManager, diag, mangler, javagenOutputPath, outputPath, memberMap, pkg};
+
+    if (!InteropLibBridge::IsInteropLibAccessible(importManager)) {
+        return;
+    }
 
     if (hasMirrorOrImpl) {
         auto nbegin = static_cast<uint8_t>(DesugarJavaMirrorImplStage::BEGIN);
