@@ -65,7 +65,7 @@ llvm::Constant* CGCustomType::GenTypeInfoArray(
 
 llvm::Constant* CGCustomType::GenFieldsOfTypeInfo()
 {
-    CJC_ASSERT(!chirType.IsEnum() && "CGEnumType should override this method.");
+    CJC_ASSERT_WITH_MSG(!chirType.IsEnum(), "CGEnumType should override this method.");
     auto& customType = StaticCast<const CHIR::CustomType&>(chirType);
     auto& nonConstCustomType = const_cast<CHIR::CustomType&>(customType);
     auto instanceMemberTypes = nonConstCustomType.GetInstantiatedMemberTys(cgMod.GetCGContext().GetCHIRBuilder());
@@ -181,7 +181,7 @@ llvm::Constant* CGCustomType::GenNameOfTypeTemplate()
 
 llvm::Constant* CGCustomType::GenFieldsNumOfTypeTemplate()
 {
-    CJC_ASSERT(!chirType.IsEnum() && "CGEnumType should override this method.");
+    CJC_ASSERT_WITH_MSG(!chirType.IsEnum(), "CGEnumType should override this method.");
     auto& customType = static_cast<const CHIR::CustomType&>(chirType);
     auto& nonConstCustomType = const_cast<CHIR::CustomType&>(customType);
     auto fieldsNum = nonConstCustomType.GetInstantiatedMemberTys(cgMod.GetCGContext().GetCHIRBuilder()).size();
@@ -272,8 +272,8 @@ void CGCustomType::GenTypeTemplate()
     auto& customType = StaticCast<const CHIR::CustomType&>(chirType);
     auto customTypeDef = customType.GetCustomTypeDef();
 
-    CJC_ASSERT(customTypeDef->IsGenericDef() && "Should be a generic type here.");
-    CJC_ASSERT(typeTemplate);
+    CJC_ASSERT_WITH_MSG(customTypeDef->IsGenericDef(), "Should be a generic type here.");
+    CJC_NULLPTR_CHECK(typeTemplate);
 
     PreActionOfGenTypeTemplate();
 

@@ -200,8 +200,6 @@ void CHIRSplitter::SplitCHIRFuncs(std::vector<SubCHIRPackage>& subCHIRPackages)
     auto& chirPkg = cgPkgCtx.GetCHIRPackage();
     // 1. Sorts chirFuncs based on the number of expressions in a chirFunc.
     auto globalInitFunc = chirPkg.GetPackageInitFunc();
-    std::string targetSuffix =
-        SPECIAL_NAME_FOR_INIT_LITERAL_FUNCTION + MANGLE_FUNC_PARAM_TYPE_PREFIX + MANGLE_VOID_TY_SUFFIX;
     std::string globalInitFuncName = globalInitFunc->GetIdentifierWithoutPrefix();
     // init func must have suffix iiHv, index 4 is the start of ii. 2 is the length of il.
     auto globalInitLiteralFunc = VirtualCast<CHIR::Func*>(const_cast<CGPkgContext&>(cgPkgCtx).FindCHIRGlobalValue(

@@ -23,8 +23,6 @@ llvm::Value* GenerateMainRetVal(IRBuilder2& irBuilder, llvm::Value* userMainRetV
 namespace {
 void CreatePrintStackTraceCall(IRBuilder2& irBuilder, llvm::Value* exceptionValue)
 {
-    const std::string errorClassName = "_CNat5ErrorE";
-    const std::string printStackTraceIdent = "printStackTrace";
     const std::string printStackTraceFuncName = "_CNat5Error15printStackTraceHv";
 
     auto& cgMod = irBuilder.GetCGModule();

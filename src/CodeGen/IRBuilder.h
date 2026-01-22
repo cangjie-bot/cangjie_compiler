@@ -274,7 +274,7 @@ public:
         CGType* fieldType{nullptr};
         llvm::Value* instance{nullptr};
         const CHIR::Type& baseTy;
-        CodeGenFieldInfo(const std::string className, const std::string& qualifiedName, const std::string fieldName,
+        CodeGenFieldInfo(const std::string& className, const std::string& qualifiedName, const std::string fieldName,
             const CHIR::Type* fieldChirType, CGType* fieldType, llvm::Value* instance, const CHIR::Type& baseTy)
             : className(className),
               qualifiedName(qualifiedName),
@@ -475,13 +475,13 @@ private:
      * Return a vector of converted arguments.
      */
     std::vector<llvm::Value*> FixFuncArgs(const CGFunctionType& calleeType,
-        const std::vector<CGValue*> args, const CHIRCallExpr* applyWrapper);
+        const std::vector<CGValue*>& args, const CHIRCallExpr* applyWrapper);
     /**
      * Push SRet, do necessary conversions to args, and push type arguments into new args.
      * Return a vector of new arguments.
      */
     std::vector<llvm::Value*> TransformFuncArgs(const CGFunctionType& calleeType,
-        const std::vector<CGValue*> args, const CHIRCallExpr* applyWrapper, llvm::Value* thisTypeInfo);
+        const std::vector<CGValue*>& args, const CHIRCallExpr* applyWrapper, llvm::Value* thisTypeInfo);
     /**
      * Create SRet for unknown size return value.
      * Return the created SRet.

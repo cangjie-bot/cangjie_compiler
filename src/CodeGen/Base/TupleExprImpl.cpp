@@ -28,7 +28,7 @@ using namespace CodeGen;
 llvm::Value* CodeGen::GenerateStruct(IRBuilder2& irBuilder, const CHIR::Tuple& tuple)
 {
     auto chirType = tuple.GetResult()->GetType();
-    CJC_ASSERT(chirType->IsStruct() && "Should not reach here.");
+    CJC_ASSERT_WITH_MSG(chirType->IsStruct(), "Should not reach here.");
 
     auto structType = StaticCast<CHIR::StructType*>(chirType);
     auto cgStructType = CGType::GetOrCreate(irBuilder.GetCGModule(), chirType)->GetLLVMType();

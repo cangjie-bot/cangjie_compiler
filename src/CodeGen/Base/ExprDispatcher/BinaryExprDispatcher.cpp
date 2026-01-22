@@ -51,8 +51,8 @@ llvm::Value* HandleNonOverflowBinaryExpression(IRBuilder2& irBuilder, const CHIR
         case CHIR::ExprKind::AND:
         case CHIR::ExprKind::OR:
         default: {
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(chirExpr.GetBinaryExprKind()));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(chirExpr.GetBinaryExprKind()));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRBinaryExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
         }
     }

@@ -46,7 +46,7 @@ llvm::Type* CGPrimitiveType::GenLLVMType()
                 llvmType = llvm::Type::getInt32Ty(llvmCtx);
                 break;
             }
-            CJC_ASSERT(false && "Unsupported ArchType.");
+            CJC_ASSERT_WITH_MSG(false, "Unsupported ArchType.");
             return nullptr;
         }
         case CHIR::Type::TypeKind::TYPE_FLOAT16:
@@ -73,7 +73,7 @@ llvm::Type* CGPrimitiveType::GenLLVMType()
             }
             return llvmType;
         default:
-            CJC_ASSERT(false && "Should not reach here: unsupported chir type");
+            CJC_ASSERT_WITH_MSG(false, "Should not reach here: unsupported chir type");
             return nullptr;
     }
 
@@ -101,7 +101,7 @@ void CGPrimitiveType::CalculateSizeAndAlign()
     } else if (chirType.IsUnit() || chirType.IsNothing() || chirType.IsVoid()) {
         size = 0U;
     } else {
-        CJC_ASSERT(false && "Unsupported type");
+        CJC_ASSERT_WITH_MSG(false, "Unsupported type");
     }
     align = size == 0 ? 1 : size;
 }
