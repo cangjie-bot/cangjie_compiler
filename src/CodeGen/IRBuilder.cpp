@@ -367,8 +367,9 @@ void IRBuilder2::CreateBoxedValueForValueType(const CHIR::Debug& debugNode, cons
     if (debugNode.GetValue()->IsParameter()) {
         auto payload = GetPayloadFromObject(thisDebug);
         auto castedPtr = CreateBitCast(payload, argType->getPointerTo(1));
-        auto addrType = CGType::GetOrCreate(
-            cgMod, CGType::GetRefTypeOf(cgMod.GetCGContext().GetCHIRBuilder(), *debugNode.GetValue()->GetType()), 1U);
+        auto addrType = CGType::GetOrCreate(cgMod,
+            CGType::GetRefTypeOf(cgMod.GetCGContext().GetCHIRBuilder(), *debugNode.GetValue()->GetType()),
+            CGType::TypeExtraInfo(1U));
         CreateStore(cgValue, CGValue(castedPtr, addrType));
         if (ty->IsStruct()) {
             auto curCHIRFunc = DynamicCast<const CHIR::Func*>(&GetInsertCGFunction()->GetOriginal());

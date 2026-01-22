@@ -52,7 +52,7 @@ llvm::Value* HandleLiteralValue(IRBuilder2& irBuilder, const CHIR::LiteralValue&
         literalValue = irBuilder.CreateStringLiteral(StaticCast<CHIR::StringLiteral&>(chirLiteral).GetVal());
 #endif
     } else {
-        CJC_ASSERT(false);
+        CJC_ABORT();
         return nullptr;
     }
     return literalValue;

@@ -37,8 +37,8 @@ llvm::Value* HandleNonOverflowUnaryExpression(IRBuilder2& irBuilder, const CHIRU
             return irBuilder.CreateNot(value, "bitNot");
         }
         default: {
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(chirExpr.GetUnaryExprKind()));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(chirExpr.GetUnaryExprKind()));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRUnaryExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
         }
     }

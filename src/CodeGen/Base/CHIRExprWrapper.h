@@ -149,7 +149,7 @@ public:
 #ifndef NDEBUG
             Errorln(chirExpr.ToString() + "\n");
 #endif
-            CJC_ASSERT(false && "Incorrect ApplyExpr from CHIR, type arguments are missing.");
+            CJC_ASSERT_WITH_MSG(false, "Incorrect ApplyExpr from CHIR, type arguments are missing.");
         }
     }
 
@@ -157,9 +157,9 @@ public:
     {
         if (GetInstantiatedTypeArgs().size() != GetCalleeTypeArgsNum()) {
 #ifndef NDEBUG
-            Errorln(chirExpr.ToString() + "\n");
+            Errorln(chirExpr.ToString());
 #endif
-            CJC_ASSERT(false && "Incorrect ApplyExpr from CHIR, type arguments are missing.");
+            CJC_ASSERT_WITH_MSG(false, "Incorrect ApplyExpr from CHIR, type arguments are missing.");
         }
     }
 
