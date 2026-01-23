@@ -711,6 +711,10 @@ bool ToCHIR::RunIRChecker(const Phase& phase)
         rules.emplace(CHIRChecker::Rule::GET_INSTANTIATE_VALUE_SHOULD_GONE);
         rules.emplace(CHIRChecker::Rule::RETURN_TYPE_NEED_BE_VOID);
     }
+    if (phase != Phase::OPT) {
+        rules.emplace(CHIRChecker::Rule::START_REGION_AT_BEGIN);
+    }
+    rules.emplace(CHIRChecker::Rule::START_REGION_BALANCE);
     // there may be something wrong, we will check this rule after CJMP's scheme done
     if (!opts.commonPartCjo.has_value()) {
         rules.emplace(CHIRChecker::Rule::CHECK_FUNC_BODY);

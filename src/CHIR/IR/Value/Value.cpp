@@ -665,8 +665,12 @@ void Block::InsertExprIntoHead(Expression& expr)
         expr.GetParentBlock()->RemoveExprOnly(expr);
     }
 
-    // 2. insert expr to head of current block
-    exprs.insert(exprs.begin(), &expr);
+    // 2. insert expr to head of current block, but after StartRegion if that's the first expr
+    if (!exprs.empty() && exprs.front()->GetExprKind() == ExprKind::START_REGION) {
+        exprs.insert(exprs.begin() + 1, &expr);
+    } else {
+        exprs.insert(exprs.begin(), &expr);
+    }
 
     // 3. change expr's parent to current block
     expr.SetParent(this);

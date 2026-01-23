@@ -1844,10 +1844,19 @@ void CHIRChecker::CheckRegionBalanceInBlockGroup(const BlockGroup& bg, const Fun
         return;
     }
     auto beginExprs = entryBlock->GetExpressions();
-    if (!beginExprs.empty() && beginExprs[0]->GetExprKind() != ExprKind::START_REGION) {
-        return;
+    if (optionalRules.count(Rule::START_REGION_AT_BEGIN) == 0 && !beginExprs.empty() &&
+        beginExprs[0]->GetExprKind() != ExprKind::START_REGION) {
+        for (size_t i{1}; i < beginExprs.size(); ++i) {
+            if (beginExprs[i]->GetExprKind() == ExprKind::START_REGION) {
+                ErrorInFunc(func, "StartRegion found in the middle of block group " + bg.GetIdentifier() + ".");
+                return;
+            }
+        }
     }
 
+    if (optionalRules.count(Rule::START_REGION_BALANCE) == 0) {
+        return;
+    }
     std::unordered_map<const Block*, int> blockEntryDepth;
     std::queue<std::pair<const Block*, int>> worklist;
     worklist.push({entryBlock, 0});

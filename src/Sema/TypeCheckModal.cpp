@@ -291,6 +291,10 @@ private:
                 if (call->callKind == CallKind::CALL_FUNCTION_PTR) {
                     // fp call, no target
                     targetTy = StaticCast<FuncTy>(call->baseFunc->ty);
+                } else if (call->callKind == CallKind::CALL_OBJECT_CREATION ||
+                    call->callKind == CallKind::CALL_STRUCT_CREATION) {
+                    targetTy = call->ty; // do not use retTy because only targetTy has the correct modal type, retTy is
+                                         // of data type
                 } else {
                     targetTy = call->baseFunc->GetTarget()->ty;
                 }
