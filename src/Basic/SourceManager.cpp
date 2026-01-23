@@ -95,9 +95,11 @@ unsigned int SourceManager::AddSource(
     uint64_t fileHash = Utils::GetHash(normalizePath);
     auto existed = filePathToFileIDMap.find(normalizePath);
     if (existed != filePathToFileIDMap.end()) {
-        sources[static_cast<size_t>(existed->second)] =
-            Source{static_cast<unsigned>(existed->second), normalizePath, buffer, fileHash, packageName};
-        return static_cast<unsigned>(existed->second);
+        int fileID = existed->second;
+        CJC_ASSERT(static_cast<size_t>(fileID) < sources.size());
+        sources[static_cast<size_t>(fileID)] =
+            Source{static_cast<unsigned>(fileID), normalizePath, buffer, fileHash, packageName};
+        return static_cast<unsigned>(fileID);
     } else {
         auto fileID = static_cast<unsigned int>(sources.size());
         SaveSourceFile(fileID, normalizePath, buffer, fileHash, packageName);
@@ -112,6 +114,8 @@ unsigned int SourceManager::AppendSource(const std::string& path, const std::str
     uint64_t fileHash = Utils::GetHash(normalizePath);
     auto existed = filePathToFileIDMap.find(normalizePath);
     if (existed != filePathToFileIDMap.end()) {
+        int fileID = existed->second;
+        CJC_ASSERT(static_cast<size_t>(fileID) < sources.size());
         auto newBuffer = sources[static_cast<size_t>(existed->second)].buffer + buffer;
         sources[static_cast<size_t>(existed->second)] =
             Source{static_cast<unsigned>(existed->second), normalizePath, newBuffer, fileHash};
@@ -167,7 +171,8 @@ std::string SourceManager::GetContentBetween(
     }
 
     CJC_ASSERT(INVALID_POSITION < begin && begin <= end);
-
+    CJC_ASSERT(!sources.empty());
+    CJC_ASSERT(static_cast<size_t>(fileID) < sources.size());
     auto& sourceWithFileID = fileID >= sources.size() ? sources[0] : sources[fileID];
 
     // Use OwnedPtr for temporary Source to avoid mixed return types in ternary operator (? tempObj : ref).

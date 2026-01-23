@@ -71,7 +71,7 @@ struct Source {
 class SourceManager {
 private:
     std::unordered_map<std::string, int> filePathToFileIDMap;
-    std::vector<Source> sources{{0, "", ""}};
+    std::vector<Sourrce> sources{{0, "", ""}};
     
 public:
     SourceManager() = default;
