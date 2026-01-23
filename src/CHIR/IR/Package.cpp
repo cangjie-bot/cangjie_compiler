@@ -12,6 +12,8 @@
 #include "cangjie/CHIR/IR/Type/ExtendDef.h"
 #include "cangjie/CHIR/IR/Type/StructDef.h"
 #include "cangjie/CHIR/IR/Value/Value.h"
+#include <optional>
+#include <string>
 
 using namespace Cangjie::CHIR;
 
@@ -24,9 +26,31 @@ std::string Package::GetName() const
     return name;
 }
 
+std::optional<GlobalVar*> Package::TryGetGlobalVar(const std::string identifier)
+{
+    for (auto var : globalVars) {
+        if (var->GetIdentifier() == identifier) {
+            return var;
+        }
+    }
+
+    return std::nullopt;
+}
+
 void Package::AddGlobalVar(GlobalVar* item)
 {
     globalVars.emplace_back(item);
+}
+
+std::optional<Func*> Package::TryGetGlobalFunc(const std::string identifier)
+{
+    for (auto func : globalFuncs) {
+        if (func->GetIdentifier() == identifier) {
+            return func;
+        }
+    }
+
+    return std::nullopt;
 }
 
 void Package::AddGlobalFunc(Func* item)
@@ -174,9 +198,16 @@ std::vector<ExtendDef*> Package::GetExtends() const
     return extends;
 }
 
-void Package::AddExtend(ExtendDef* item)
+ExtendDef* Package::AddExtend(ExtendDef* item)
 {
+    for (auto f : extends) {
+        if (f->GetIdentifier()== item->GetIdentifier()) {
+            return f;
+        }
+    }
     extends.emplace_back(item);
+  
+    return item;
 }
 
 void Package::AddEnum(EnumDef* item)

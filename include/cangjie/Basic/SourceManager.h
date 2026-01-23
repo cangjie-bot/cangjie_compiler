@@ -13,12 +13,12 @@
 #ifndef CANGJIE_BASIC_SOURCEMANAGER_H
 #define CANGJIE_BASIC_SOURCEMANAGER_H
 
+#include <map>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <cstdint>
 
 #include "cangjie/Basic/Position.h"
 #include "cangjie/Basic/Utils.h"
@@ -71,8 +71,8 @@ struct Source {
 class SourceManager {
 private:
     std::unordered_map<std::string, int> filePathToFileIDMap;
-    std::vector<Source> sources{{0, "", ""}};
-    
+    std::map<unsigned int, Source> sources{{0, {0, "", ""}}};
+
 public:
     SourceManager() = default;
     SourceManager(const SourceManager&) = delete;
@@ -83,14 +83,15 @@ public:
      */
     Source& GetSource(const unsigned int id)
     {
-        if (id >= sources.size()) {
-            return sources[0];
+        auto it = sources.find(id);
+        if (it != sources.end()) {
+            return it->second;
         } else {
-            return sources[id];
+            return sources.at(0);
         }
     }
 
-    const std::vector<Source>& GetSources() const
+    const std::map<unsigned int, Source>& GetSources() const
     {
         return sources;
     }
@@ -116,7 +117,7 @@ public:
     {
         return static_cast<unsigned int>(sources.size());
     }
-    
+
     bool HasSource()
     {
         // The source manager will create 1 source by default.
@@ -126,14 +127,13 @@ public:
     bool IsSourceFileExist(const unsigned int id);
     int GetLineEnd(const Position& pos);
 
-    void SaveSourceFile(unsigned int fileID, std::string normalizedPath,
-        std::string buffer, uint64_t fileHash, std::optional<std::string> packageName = std::nullopt);
-
-    /**
-    * This add fake files info to `filePathToFileIDMap`,
-    * to keep the file id stable and consistent with previous compilations phase.
-    */
-    void ReserveCommonPartSources(std::vector<std::string> files);
+    unsigned int GetFileId(
+        std::string normalizedPath,
+        std::string buffer,
+        uint64_t fileHash,
+        std::optional<std::string> packageName,
+        bool isCjmpFile,
+        bool updateBuffer);
 
     /**
      * Add a source to SourceManager.
@@ -141,11 +141,11 @@ public:
      * @param buffer Source code.
      */
     unsigned int AddSource(const std::string& path, const std::string& buffer,
-        std::optional<std::string> packageName = std::nullopt);
+        std::optional<std::string> packageName = std::nullopt, bool isCjmpFile = false);
     /**
      * Add source to SourceManager. Package name default to null.
      */
-    unsigned int AppendSource(const std::string& path, const std::string& buffer);
+    unsigned int AppendSource(const std::string& path, const std::string& buffer, bool isCjmpFile = false);
 
     /// Overwrite commentsMap with \ref commentsMap
     void AddComments(const TokenVecMap& commentsMap);
@@ -154,7 +154,7 @@ public:
     {
         sources.clear();
         filePathToFileIDMap.clear();
-        sources.emplace_back(Source{0, "", ""});
+        sources.insert({0, Source{0, "", ""}});
     }
 
     /**
