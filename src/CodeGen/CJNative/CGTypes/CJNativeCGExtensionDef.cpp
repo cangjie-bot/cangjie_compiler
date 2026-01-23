@@ -622,7 +622,9 @@ std::pair<uint32_t, std::vector<std::pair<const CHIR::Type*, const CHIR::Type*>>
     if (!isForExternalType && extensionDefsNum != 0) {
         auto totalExtensionDefsNum = cgMod.GetNonExternalExtensionDefsNum();
         CJC_ASSERT(totalExtensionDefsNum >= extensionDefsNum);
-        startIdxOfNonExternalExtensionDef = totalExtensionDefsNum - extensionDefsNum;
+        size_t diff = totalExtensionDefsNum - extensionDefsNum;
+        CJC_ASSERT_WITH_MSG(diff <= std::numeric_limits<uint32_t>::max(), "Index exceeds uint32_t range");
+        startIdxOfNonExternalExtensionDef = static_cast<uint32_t>(diff);
         auto targetDefType = targetType->IsNominal()
             ? static_cast<const CHIR::CustomType*>(targetType)->GetCustomTypeDef()->GetType()
             : targetType;

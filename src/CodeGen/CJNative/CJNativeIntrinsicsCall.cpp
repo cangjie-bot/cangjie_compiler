@@ -1074,6 +1074,7 @@ llvm::Value* IRBuilder2::VArrayInitedByLambda(
     // Get InitFunc.
     auto autoEnvCGType = autoEnv.GetCGType();
     auto autoEnvClsDef = StaticCast<const CHIR::ClassType*>(DeRef(autoEnvCGType->GetOriginal()))->GetClassDef();
+    CJC_NULLPTR_CHECK(autoEnvClsDef);
     auto abstractMethods = autoEnvClsDef->GetAbstractMethods();
     CJC_ASSERT(abstractMethods.size() == 1);
     auto abstractMethod = abstractMethods.back();
