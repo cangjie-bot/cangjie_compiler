@@ -42,10 +42,11 @@ private:
     // Diag report
     void DiagOuterDeclMissMatch(const AST::Node& node,
         const std::string& p0, const std::string& p1, const std::string& p2, const std::string& p3) const;
+    bool CompileCommon() const;
+    bool CompilePlatform() const;
 private:
     const ParserImpl* ref;
-    bool compileCommon{false}; // true if compiling common part
-    bool compileSpecific{false}; // true if compiling specific part
+    const GlobalOptions* opts;
 };
 
 } // namespace Cangjie
