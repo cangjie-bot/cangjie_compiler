@@ -333,6 +333,7 @@ kind: ValueKind;
 valueID: uint32; // current id in values
 attributes: uint64;
 annoInfo: AnnoInfo;
+features: [string]; // features set to which declaration belongs
 }
 
 enum ConstantValueKind: uint8 {

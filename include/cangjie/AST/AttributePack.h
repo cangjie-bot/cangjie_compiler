@@ -674,6 +674,14 @@ enum class Attribute {
      */
     CJ_MIRROR_OBJC_INTERFACE_FWD,
 
+    /**
+     * Mark declaration that was already loaded from another CJO,
+     * this solution need to be improved by modernization of ASTLoader.
+     * W: ASTLoader
+     * R: ASTLoader
+     */
+    ALREADY_LOADED,
+
     AST_ATTR_END,
 };
 
