@@ -92,8 +92,11 @@ void JavaDesugarManager::InsertArrayJavaEntitySet(ClassDecl& decl)
     auto unitTy = TypeManager::GetPrimitiveTy(TypeKind::TYPE_UNIT);
     javaEntitySetDecl->identifier = JAVA_ARRAY_SET_FOR_REF_TYPES;
     javaEntitySetDecl->funcBody->paramLists[0]->params[1]->ty = javaEntity;
-    javaEntitySetDecl->ty = typeManager.GetFunctionTy({TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32), javaEntity},
-        unitTy);
+    if (javaEntitySetDecl->funcBody->paramLists[0]->params[1]->type) {
+        javaEntitySetDecl->funcBody->paramLists[0]->params[1]->type->ty = javaEntity;
+    }
+    javaEntitySetDecl->ty =
+        typeManager.GetFunctionTy({TypeManager::GetPrimitiveTy(TypeKind::TYPE_INT32), javaEntity}, unitTy);
 
     javaEntitySetDecl->funcBody->retType->ty = unitTy;
     decl.body->decls.push_back(std::move(javaEntitySetDecl));

@@ -63,7 +63,7 @@ public:
     bool isChirNow = false;
 
 private:
-friend ASTLoader;
+    friend ASTLoader;
     std::vector<uint8_t> data;
     TypeManager& typeManager;
     DiagnosticEngine& diag;

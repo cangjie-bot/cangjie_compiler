@@ -376,6 +376,12 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
     for (auto loader : loaders) {
         loader->LoadRefs();
     }
+
+    // Node's ty may reference TypeAliasTy from imported package, need to substitute them to real type.
+    // It must be done after all type references are loaded.
+    for (auto pkg : packages) {
+        impl->SubstituteImportedTypeAliasTy(pkg->fullPackageName);
+    }
 }
 
 void CjoManager::LoadAllDeclsAndRefs() const
@@ -391,6 +397,33 @@ void CjoManager::LoadAllDeclsAndRefs() const
     for (auto& p : impl->GetPackageNameMap()) {
         if (p.second->loader) {
             p.second->loader->LoadRefs();
+        }
+    }
+}
+
+void CjoManagerImpl::SubstituteImportedTypeAliasTy(const std::string& srcPackageName)
+{
+    auto replaceAliasUseTy = [this](Ptr<Node> node) {
+        if (node->astKind == ASTKind::TYPE_ALIAS_DECL) {
+            return VisitAction::WALK_CHILDREN;
+        }
+        if (node->IsDecl() || Is<FuncBody>(node)) {
+            node->ty = typeManager.SubstituteTypeAliasInTy(*node->ty);
+        } else if (auto type = DynamicCast<Type>(node); type && !Ty::IsInitialTy(type->aliasTy)) {
+            type->ty = typeManager.SubstituteTypeAliasInTy(*type->ty);
+        }
+        return VisitAction::WALK_CHILDREN;
+    };
+    for (auto& [pkgName, pkgInfo] : GetPackageNameMap()) {
+        if (pkgName == srcPackageName && !globalOptions.commonPartCjo.has_value()) {
+            continue;
+        }
+        for (auto& file : pkgInfo->pkg->files) {
+            // For compile platform part, need only substitute type alias in common part files.
+            if (pkgName == srcPackageName && !file->TestAttr(Attribute::FROM_COMMON_PART)) {
+                continue;
+            }
+            Walker(file.get(), replaceAliasUseTy).Walk();
         }
     }
 }
