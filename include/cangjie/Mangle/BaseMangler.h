@@ -386,9 +386,9 @@ public:
      *
      * @param vwpDecl Indicates The AST::VarWithPatternDecl.
      * @param prefix Path of the AST::VarWithPatternDecl.
-     * @return std::optional<size_t> The index.
+     * @return size_t The index.
      */
-    std::optional<size_t> GetIndexOfWildcard(
+    size_t GetIndexOfWildcard(
         const AST::VarWithPatternDecl& vwpDecl, const std::vector<Ptr<AST::Node>>& prefix) const;
 
     /**

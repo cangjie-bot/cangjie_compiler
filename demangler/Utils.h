@@ -10,6 +10,7 @@
 
 #include <unordered_map>
 #include <cstring>
+#include <string>
 
 namespace Cangjie {
 const char MANGLE_CANGJIE_PREFIX[] = "_C";
@@ -43,7 +44,7 @@ struct StdPkgHash {
         size_t id = 0;
         const size_t n = cPkg.size();
         while (id < n) {
-            hash = ((hash << offset) + hash) + cPkg[id++];
+            hash = ((hash << offset) + hash) + static_cast<uint8_t>(cPkg[id++]);
         }
         return hash & (0x7FFFFFFF);
     }

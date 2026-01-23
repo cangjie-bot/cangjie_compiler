@@ -371,7 +371,7 @@ std::string BaseMangler::MangleVarDecl(const AST::Decl& decl, const std::vector<
     return mangleStr;
 }
 
-std::optional<size_t> BaseMangler::GetIndexOfWildcard(
+size_t BaseMangler::GetIndexOfWildcard(
     const AST::VarWithPatternDecl& vwpDecl, const std::vector<Ptr<AST::Node>>& prefix) const
 {
     CJC_ASSERT(ManglerContext::CheckAllElementsWildcard(vwpDecl.irrefutablePattern.get()));
@@ -398,7 +398,7 @@ std::optional<size_t> BaseMangler::GetIndexOfWildcard(
         }
     }
     CJC_ASSERT(index.has_value() && "index of varWithPatternDecl has no value.");
-    return index;
+    return index.value();
 }
 
 std::string BaseMangler::MangleVarWithPatternDecl(
@@ -442,7 +442,7 @@ std::string BaseMangler::MangleVarWithPatternDecl(
         }
     }
 
-    std::optional<size_t> index = GetIndexOfWildcard(vwpDecl, prefix);
+    size_t index = GetIndexOfWildcard(vwpDecl, prefix);
     mangleStr += MANGLE_CANGJIE_PREFIX + MANGLE_NESTED_PREFIX;
     std::vector<std::string> genericsTypeStack;
     mangleStr += ManglePrefix(vwpDecl, prefix, genericsTypeStack, true);
@@ -453,7 +453,7 @@ std::string BaseMangler::MangleVarWithPatternDecl(
                                   : (FileNameWithoutExtension(fileName) + MANGLE_DOLLAR_PREFIX));
     }
     mangleStr += MANGLE_ANONYMOUS_VARIABLE_PREFIX;
-    mangleStr += MangleUtils::DecimalToManglingNumber(std::to_string(index.value()));
+    mangleStr += MangleUtils::DecimalToManglingNumber(std::to_string(index));
     mangleStr += MANGLE_SUFFIX;
     return mangleStr;
 }
@@ -812,9 +812,9 @@ std::string BaseMangler::ManglePrefix(const Node& node, const std::vector<Ptr<No
                     break;
                 }
 
-                std::optional<size_t> index = GetIndexOfWildcard(vwpDecl, prefix);
+                size_t index = GetIndexOfWildcard(vwpDecl, prefix);
                 mangleStr += MANGLE_ANONYMOUS_VARIABLE_PREFIX;
-                mangleStr += MangleUtils::DecimalToManglingNumber(std::to_string(index.value()));
+                mangleStr += MangleUtils::DecimalToManglingNumber(std::to_string(index));
                 mangled += mangleStr;
                 break;
             }
