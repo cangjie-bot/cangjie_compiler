@@ -127,6 +127,9 @@ private:
     // Save file names and add to savedFileMap.
     void SaveFileInfo(const AST::File& file);
     flatbuffers::Offset<PackageFormat::Imports> SaveFileImports(const AST::File& file);
+
+    TFeatureIdOffset CreateFeatureId(const AST::FeatureId& featureId);
+    TFeaturesDirectiveOffset SaveFeaturesDirective(Ptr<AST::FeaturesDirective> fd);
     /**
      * Save decls, return FormattedIndex and construct savedDeclMap, isTopLevel
      * Indicates saving toplevel decl.

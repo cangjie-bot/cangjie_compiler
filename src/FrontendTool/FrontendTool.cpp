@@ -257,10 +257,10 @@ bool Cangjie::NeedCreateIncrementalCompilerInstance(const GlobalOptions& opts)
             logger.LogLn("enable coverage, roll back to full compilation");
         } else if (opts.outputMode == GlobalOptions::OutputMode::CHIR) {
             logger.LogLn("enable compile common part mode, roll back to full compilation");
-        } else if (opts.commonPartCjo) {
+        } else if (opts.commonPartCjos.size() > 0) {
             logger.LogLn("enable compile platform part mode, roll back to full compilation");
         }
     }
     return opts.enIncrementalCompilation && opts.mock != MockMode::ON && !opts.enableCoverage &&
-        !(opts.outputMode == GlobalOptions::OutputMode::CHIR) && !opts.commonPartCjo;
+        !(opts.outputMode == GlobalOptions::OutputMode::CHIR) && opts.commonPartCjos.size() < 0;
 }

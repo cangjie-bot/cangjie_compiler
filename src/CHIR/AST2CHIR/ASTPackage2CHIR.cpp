@@ -645,6 +645,7 @@ void AST2CHIR::CreateFuncSignatureAndSetGlobalCache(const AST::FuncDecl& funcDec
         CreatePseudoImportedFuncSignatureAndSetGlobalCache(funcDecl);
         return;
     }
+    auto features = funcDecl.curFile->GetFeatures();
 
     // when the callee of callExpr is abstract func, will create a `Invoke` node, so we don't need to put abstract
     // func into the `globalCache`,
@@ -667,6 +668,7 @@ void AST2CHIR::CreateFuncSignatureAndSetGlobalCache(const AST::FuncDecl& funcDec
         if (IsSrcCodeImportedGlobalDecl(funcDecl, opts)) {
             srcCodeImportedFuncs.emplace(fn);
         }
+        fn->SetFeatures(features);
         return;
     }
     auto fnTy = chirType.TranslateType(*funcDecl.ty);
@@ -689,7 +691,7 @@ void AST2CHIR::CreateFuncSignatureAndSetGlobalCache(const AST::FuncDecl& funcDec
     }
     auto srcCodeName = funcDecl.identifier;
     auto rawMangledName = funcDecl.rawMangleName;
-    fn = builder.CreateFunc(loc, funcTy, mangledName, srcCodeName, rawMangledName, pkgName, genericParamTy);
+    fn = builder.CreateFunc(loc, funcTy, mangledName, srcCodeName, rawMangledName, pkgName, genericParamTy, features);
     // This is the logic that applied when compiling common part of package
     // Ideally such logic should be be visually discernible
     if (funcDecl.TestAttr(AST::Attribute::COMMON)) {
@@ -1365,7 +1367,7 @@ void AST2CHIR::TranslateVecDecl(const std::vector<Ptr<const AST::Decl>>& decls, 
 bool AST2CHIR::MaybeDeserialized(const AST::Decl& decl) const
 {
     // When the specific is compiled and decl is from common part or generic instantiated or imported or specific decl.
-    if (mergingSpecific &&
+    if (mergingPlatform &&
         decl.TestAnyAttr(AST::Attribute::SPECIFIC, AST::Attribute::FROM_COMMON_PART,
             AST::Attribute::GENERIC_INSTANTIATED, AST::Attribute::IMPORTED)) {
         return true;
@@ -1623,8 +1625,8 @@ void AST2CHIR::ResetSpecificFunc(const AST::FuncDecl& funcDecl, Func& func)
 
 void AST2CHIR::ProcessCommonAndSpecificExtends()
 {
-    bool compileSpecific = opts.IsCompilingCJMP();
-    if (!compileSpecific) {
+    bool compilePlatform = opts.IsCompilingCJMPPlatform();
+    if (!compilePlatform) {
         return;
     }
 
