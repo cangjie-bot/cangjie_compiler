@@ -48,7 +48,7 @@ public:
           opts(opts),
           gim(gim),
           increKind(kind),
-          mergingSpecific(opts.IsCompilingCJMP()),
+          mergingPlatform(opts.IsCompilingCJMPPlatform()),
           deserializedVals(deserializedVals),
           annoFactoryFuncs(annoFactories),
           maybeUnreachable(maybeUnreachable),
@@ -601,7 +601,7 @@ private:
     // Record nesting scope info, it is used for 1. debug info; 2. compare scope of try-finally and control flow expr.
     std::vector<int> scopeInfo{0};
     const IncreKind& increKind;
-    const bool mergingSpecific; // add by cjmp
+    const bool mergingPlatform; // add by cjmp
     const std::unordered_map<std::string, Value*>& deserializedVals; // add by cjmp
     std::vector<std::pair<const AST::Decl*, Func*>>& annoFactoryFuncs;
     std::unordered_map<Block*, Terminator*>& maybeUnreachable;

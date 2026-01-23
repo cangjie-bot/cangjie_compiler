@@ -14,13 +14,13 @@
 #include "cangjie/CHIR/IR/CHIRContext.h"
 
 #include "cangjie/Basic/Print.h"
-#include "cangjie/CHIR/Utils/CHIRCasting.h"
 #include "cangjie/CHIR/IR/Package.h"
 #include "cangjie/CHIR/IR/Type/ClassDef.h"
 #include "cangjie/CHIR/IR/Type/EnumDef.h"
 #include "cangjie/CHIR/IR/Type/StructDef.h"
-#include "cangjie/CHIR/Utils/Utils.h"
 #include "cangjie/CHIR/IR/Value/Value.h"
+#include "cangjie/CHIR/Utils/CHIRCasting.h"
+#include "cangjie/CHIR/Utils/Utils.h"
 #include "cangjie/Mangle/CHIRMangler.h"
 
 using namespace Cangjie::CHIR;
@@ -115,7 +115,11 @@ GlobalVar* CHIRBuilder::CreateGlobalVar(const DebugLocation& loc, RefType* ty, c
     globalVar->SetDebugLocation(loc);
     this->allocatedValues.push_back(globalVar);
     if (context.GetCurPackage() != nullptr) {
-        context.GetCurPackage()->AddGlobalVar(globalVar);
+        auto newV = context.GetCurPackage()->AddGlobalVar(globalVar);
+        if (newV != globalVar) {
+            newV->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+            globalVar = newV;
+        }
     }
     return globalVar;
 }
@@ -126,12 +130,29 @@ GlobalVar* CHIRBuilder::CreateGlobalVar(const DebugLocation& loc, RefType* ty, c
 
 Func* CHIRBuilder::CreateFunc(const DebugLocation& loc, FuncType* funcTy, const std::string& mangledName,
     const std::string& srcCodeIdentifier, const std::string& rawMangledName, const std::string& packageName,
-    const std::vector<GenericType*>& genericTypeParams)
+    const std::vector<GenericType*>& genericTypeParams, std::set<std::string> features)
 {
-    Func* func = new Func(funcTy, "@" + mangledName, srcCodeIdentifier, rawMangledName, packageName, genericTypeParams);
+    Func* func = new Func(
+        funcTy, "@" + mangledName, srcCodeIdentifier, rawMangledName, packageName, genericTypeParams, features);
     this->allocatedValues.push_back(func);
     if (context.GetCurPackage() != nullptr) {
-        context.GetCurPackage()->AddGlobalFunc(func);
+        auto newFunc = context.GetCurPackage()->AddGlobalFunc(func);
+        if (newFunc != func) {
+            auto newFuncFeatures = func->GetFeatures();
+            auto oldFuncFeatures = newFunc->GetFeatures();
+
+            bool newIsSuperSet = std::includes(newFuncFeatures.begin(), newFuncFeatures.end(), oldFuncFeatures.begin(),
+                                     oldFuncFeatures.end()) &&
+                newFuncFeatures.size() > oldFuncFeatures.size();
+            if (newIsSuperSet) {
+                // new `func` need to be removed, old still be used, however it's body(and all other function info)
+                func = newFunc;
+            } else {
+                // TODO: remove `func` because it will not be used
+                newFunc->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+                func = newFunc;
+            }
+        }
     }
     func->SetDebugLocation(loc);
     return func;
@@ -159,9 +180,8 @@ StructDef* CHIRBuilder::CreateStruct(const DebugLocation& loc, const std::string
 // ===--------------------------------------------------------------------===//
 // ClassDef API
 // ===--------------------------------------------------------------------===//
-ClassDef* CHIRBuilder::CreateClass(const DebugLocation& loc,
-    const std::string& srcCodeIdentifier, const std::string& mangledName, const std::string& pkgName, bool isClass,
-    bool isImported)
+ClassDef* CHIRBuilder::CreateClass(const DebugLocation& loc, const std::string& srcCodeIdentifier,
+    const std::string& mangledName, const std::string& pkgName, bool isClass, bool isImported)
 {
     ClassDef* ret = new ClassDef(srcCodeIdentifier, "@" + mangledName, pkgName, isClass);
     this->allocatedClasses.push_back(ret);
@@ -208,7 +228,11 @@ ExtendDef* CHIRBuilder::CreateExtend(const DebugLocation& loc, const std::string
             context.GetCurPackage()->AddImportedExtend(ret);
             ret->EnableAttr(Attribute::IMPORTED);
         } else {
-            context.GetCurPackage()->AddExtend(ret);
+            auto newE = context.GetCurPackage()->AddExtend(ret);
+            if (newE != ret) {
+                ret = newE;
+                ret->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+            }
         }
     }
     ret->SetDebugLocation(loc);
