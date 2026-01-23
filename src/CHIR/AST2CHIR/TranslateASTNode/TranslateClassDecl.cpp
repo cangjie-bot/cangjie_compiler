@@ -60,8 +60,9 @@ void Translator::TranslateClassLikeDecl(ClassDef& classDef, const AST::ClassLike
 
     // common and specific upper bounds are same, do not set again
     // specific instantiations require inheritance setup because common side uses templates without instantiation
-    if (!mergingSpecific || !decl.TestAttr(AST::Attribute::SPECIFIC) || decl.TestAttr(AST::Attribute::IMPORTED) ||
-        decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED)) {
+    bool needInitialSuperClassSetup = !decl.TestAttr(AST::Attribute::SPECIFIC) ||
+        decl.TestAttr(AST::Attribute::IMPORTED) || decl.TestAttr(AST::Attribute::GENERIC_INSTANTIATED);
+    if (needInitialSuperClassSetup) {
         // set super class
         SetClassSuperClass(classDef, decl);
         // set implemented interface
@@ -263,9 +264,14 @@ Func* Translator::TranslateVarsInit(const AST::Decl& decl)
     return funcDef;
 }
 
+inline bool DeclaredInDifferentFiles(const AST::Decl& d1, const AST::Decl& d2)
+{
+    return d1.curFile && d2.curFile && d1.curFile->fileHash != d2.curFile->fileHash;
+}
+
 bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& member) const
 {
-    if (!mergingSpecific) {
+    if (!mergingPlatform) {
         return true;
     }
 
@@ -282,8 +288,9 @@ bool Translator::ShouldTranslateMember(const AST::Decl& decl, const AST::Decl& m
         return true;
     }
 
-    if (member.TestAttr(AST::Attribute::FROM_COMMON_PART)) {
-        // Skip decls from common part when compiling specific
+    bool justIntroducedSpecific = !decl.TestAttr(AST::Attribute::IMPORTED) && decl.TestAttr(AST::Attribute::SPECIFIC);
+    if (mergingPlatform && justIntroducedSpecific && DeclaredInDifferentFiles(decl, member)) {
+        // Skip decls from common part when compiling platform
         return false;
     }
 
@@ -384,7 +391,7 @@ void Translator::TranslateClassLikeMemberFuncDecl(ClassDef& classDef, const AST:
 bool Translator::SkipMemberFuncInSpecificMerging(ClassDef& classDef, const AST::FuncDecl& decl)
 {
     // Check if we're in specific merging mode with deserialized class
-    if (!mergingSpecific || !classDef.TestAttr(CHIR::Attribute::DESERIALIZED)) {
+    if (!mergingPlatform || !classDef.TestAttr(CHIR::Attribute::DESERIALIZED)) {
         return false;
     }
 

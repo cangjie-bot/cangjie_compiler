@@ -22,6 +22,7 @@
 #include "cangjie/CHIR/Utils/Utils.h"
 #include "cangjie/CHIR/IR/Value/Value.h"
 #include "cangjie/Mangle/CHIRMangler.h"
+#include "cangjie/Utils/CheckUtils.h"
 
 using namespace Cangjie::CHIR;
 
@@ -109,14 +110,36 @@ Parameter* CHIRBuilder::CreateParameter(Type* ty, const DebugLocation& loc, Lamb
 }
 
 GlobalVar* CHIRBuilder::CreateGlobalVar(const DebugLocation& loc, RefType* ty, const std::string& mangledName,
-    const std::string& srcCodeIdentifier, const std::string& rawMangledName, const std::string& packageName)
+    const std::string& srcCodeIdentifier, const std::string& rawMangledName, const std::string& packageName,
+    std::set<std::string> features)
 {
-    GlobalVar* globalVar = new GlobalVar(ty, "@" + mangledName, srcCodeIdentifier, rawMangledName, packageName);
-    globalVar->SetDebugLocation(loc);
-    this->allocatedValues.push_back(globalVar);
+    auto identifier = "@" + mangledName;
+    GlobalVar* globalVar = nullptr;
     if (context.GetCurPackage() != nullptr) {
-        context.GetCurPackage()->AddGlobalVar(globalVar);
+        if (auto exist = context.GetCurPackage()->TryGetGlobalVar(identifier)) {
+            globalVar = *exist;
+            // Update features set
+            auto newFuncFeatures = features;
+            auto oldFuncFeatures = globalVar->GetFeatures();
+
+            bool newIsSuperSet = std::includes(newFuncFeatures.begin(), newFuncFeatures.end(), oldFuncFeatures.begin(),
+                oldFuncFeatures.end()) && newFuncFeatures.size() > oldFuncFeatures.size();
+            if (!newIsSuperSet) {
+                // already existed variable more specific, so no need to update
+                globalVar->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+            } else {
+                // will be updated as it is loaded first time
+                globalVar->DisableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+                globalVar->SetFeatures(features);
+            }
+        } else {
+            globalVar = new GlobalVar(ty, identifier, srcCodeIdentifier, rawMangledName, packageName);
+            globalVar->SetFeatures(features);
+            context.GetCurPackage()->AddGlobalVar(globalVar);
+            this->allocatedValues.push_back(globalVar);
+        }
     }
+    globalVar->SetDebugLocation(loc);
     return globalVar;
 }
 
@@ -126,12 +149,34 @@ GlobalVar* CHIRBuilder::CreateGlobalVar(const DebugLocation& loc, RefType* ty, c
 
 Func* CHIRBuilder::CreateFunc(const DebugLocation& loc, FuncType* funcTy, const std::string& mangledName,
     const std::string& srcCodeIdentifier, const std::string& rawMangledName, const std::string& packageName,
-    const std::vector<GenericType*>& genericTypeParams)
+    const std::vector<GenericType*>& genericTypeParams, std::set<std::string> features)
 {
-    Func* func = new Func(funcTy, "@" + mangledName, srcCodeIdentifier, rawMangledName, packageName, genericTypeParams);
-    this->allocatedValues.push_back(func);
+    auto identifier = "@" + mangledName;
+    Func* func = nullptr;
     if (context.GetCurPackage() != nullptr) {
-        context.GetCurPackage()->AddGlobalFunc(func);
+        if (auto exist = context.GetCurPackage()->TryGetGlobalFunc(identifier)) {
+            func = *exist;
+            // Update features set
+            auto newFuncFeatures = features;
+            auto oldFuncFeatures = func->GetFeatures();
+
+            bool newIsSuperSet = std::includes(newFuncFeatures.begin(), newFuncFeatures.end(), oldFuncFeatures.begin(),
+                oldFuncFeatures.end()) && newFuncFeatures.size() > oldFuncFeatures.size();
+            if (!newIsSuperSet) {
+                // already existed function more specific, so no need to update
+                func->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+            } else {
+                // will be updated as it is loaded first time
+                func->DisableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
+                func->SetFeatures(features);
+            }
+        } else {
+            func = new Func(
+                funcTy, identifier, srcCodeIdentifier, rawMangledName, packageName, genericTypeParams);
+            func->SetFeatures(features);
+            context.GetCurPackage()->AddGlobalFunc(func);
+            this->allocatedValues.push_back(func);
+        }
     }
     func->SetDebugLocation(loc);
     return func;
@@ -159,9 +204,8 @@ StructDef* CHIRBuilder::CreateStruct(const DebugLocation& loc, const std::string
 // ===--------------------------------------------------------------------===//
 // ClassDef API
 // ===--------------------------------------------------------------------===//
-ClassDef* CHIRBuilder::CreateClass(const DebugLocation& loc,
-    const std::string& srcCodeIdentifier, const std::string& mangledName, const std::string& pkgName, bool isClass,
-    bool isImported)
+ClassDef* CHIRBuilder::CreateClass(const DebugLocation& loc, const std::string& srcCodeIdentifier,
+    const std::string& mangledName, const std::string& pkgName, bool isClass, bool isImported)
 {
     ClassDef* ret = new ClassDef(srcCodeIdentifier, "@" + mangledName, pkgName, isClass);
     this->allocatedClasses.push_back(ret);
@@ -201,14 +245,22 @@ EnumDef* CHIRBuilder::CreateEnum(const DebugLocation& loc, const std::string& sr
 ExtendDef* CHIRBuilder::CreateExtend(const DebugLocation& loc, const std::string& mangledName,
     const std::string& pkgName, bool isImported, const std::vector<GenericType*> genericParams)
 {
-    ExtendDef* ret = new ExtendDef("@" + mangledName, pkgName, genericParams);
-    this->allocatedExtends.emplace_back(ret);
+    auto identifier = "@" + mangledName;
+    ExtendDef* ret = nullptr;
     if (context.GetCurPackage() != nullptr) {
-        if (isImported) {
-            context.GetCurPackage()->AddImportedExtend(ret);
-            ret->EnableAttr(Attribute::IMPORTED);
+        if (auto exist = context.GetCurPackage()->TryGetExtend(identifier)) {
+            ret = *exist;
+            // already existed function more specific, so no need to update
+            ret->EnableAttr(Attribute::PREVIOUSLY_DESERIALIZED);
         } else {
-            context.GetCurPackage()->AddExtend(ret);
+            ret = new ExtendDef(identifier, pkgName, genericParams);
+            if (isImported) {
+                context.GetCurPackage()->AddImportedExtend(ret);
+                ret->EnableAttr(Attribute::IMPORTED);
+            } else {
+                context.GetCurPackage()->AddExtend(ret);
+                this->allocatedExtends.emplace_back(ret);
+            }
         }
     }
     ret->SetDebugLocation(loc);
