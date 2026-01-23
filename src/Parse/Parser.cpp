@@ -74,6 +74,42 @@ bool ParserImpl::ParsePackageHeaderEnd()
     return seeingFileEnd;
 }
 
+void ParserImpl::CheckAndHandleUnexpectedTopLevelDeclAfterFeatures()
+{
+    if (!IsExpectedTokenAfterFeaturesOrPackage(true)) {
+        DiagAndSuggestKeywordForExpectedDeclaration({"features", "macro", "package", "import", "func", "let", "var",
+            "const", "enum", "type", "struct", "class", "interface", "extend", "main"});
+        auto consumeTarget = [this]() {
+            return IsExpectedTokenAfterFeaturesOrPackage(true);
+        };
+        ConsumeUntilAny(consumeTarget, false);
+    }
+}
+
+void ParserImpl::CheckExpectedTopLevelDeclWhenNoPackage(
+    const PtrVector<Annotation>& annos, const std::set<Modifier>& modifiers)
+{
+    if (!annos.empty() || !modifiers.empty()) {
+        return;
+    }
+    if (!IsExpectedTokenAfterFeaturesOrPackage(false)) {
+        DiagAndSuggestKeywordForExpectedDeclaration({"macro", "package", "import", "func", "let", "var", "const",
+            "enum", "type", "struct", "class", "interface", "extend", "main"});
+    }
+}
+
+bool ParserImpl::IsExpectedTokenAfterFeaturesOrPackage(bool allowPackageKeyword)
+{
+    if (Seeing(TokenKind::SEMI) || SeeingImport() || SeeingDecl() || SeeingMacroCallDecl() || SeeingInitializer() ||
+        SeeingFinalizer() || SeeingBuiltinAnnotation() || Seeing(TokenKind::END)) {
+        return true;
+    }
+    if (allowPackageKeyword && (SeeingPackage() || SeeingMacroPackage())) {
+        return true;
+    }
+    return false;
+}
+
 size_t ParserImpl::GetLineNum() const
 {
     std::unordered_set<int64_t> lines;
@@ -99,14 +135,19 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
     SkipBlank(TokenKind::NL);
      /**
      * preamble
-     *  : featureSpec? packageHeader? importSpec*
+     *  : featureDirective? packageHeader? importSpec*
      *  ;
     */
     // Parse features in TopLevel
-    if (SeeingFeature()) {
-        ParseFeatureDirective(ret->feature);
-    }
     PtrVector<Annotation> annos;
+    if (SeeingBuiltinAnnotation()) {
+        ParseAnnotations(annos);
+    }
+    if (SeeingFeatures()) {
+        ParseTopLvlFeatures(ret->feature, annos);
+    } else {
+        CheckAndHandleUnexpectedTopLevelDeclAfterFeatures();
+    }
     if (SeeingBuiltinAnnotation()) {
         ParseAnnotations(annos);
     }
@@ -133,6 +174,7 @@ OwnedPtr<File> ParserImpl::ParseTopLevel()
             annos.clear();
         }
     } else {
+        CheckExpectedTopLevelDeclWhenNoPackage(annos, modifiers);
         scope.ResetParserScope();
     }
     // Parse importSpec in TopLevel.

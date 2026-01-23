@@ -168,7 +168,7 @@ private:
 
     bool SkipCombinedDoubleArrow();
 
-    inline bool SeeingImport2()
+    inline bool SeeingImport()
     {
         return Seeing(TokenKind::IMPORT) || Seeing({TokenKind::PUBLIC, TokenKind::IMPORT}) ||
             Seeing({TokenKind::PROTECTED, TokenKind::IMPORT}) || Seeing({TokenKind::INTERNAL, TokenKind::IMPORT}) ||
@@ -178,7 +178,7 @@ private:
     {
         return Seeing(TokenKind::PACKAGE);
     }
-    inline bool SeeingFeature()
+    inline bool SeeingFeatures()
     {
         return Seeing(TokenKind::FEATURES);
     }
@@ -448,8 +448,8 @@ private:
             return false;
         }
         return (SeeingModifier() && !Seeing({TokenKind::UNSAFE, TokenKind::LCURL})) ||
-            SeeingAny({TokenKind::FUNC, TokenKind::LET, TokenKind::VAR, TokenKind::ENUM, TokenKind::TYPE,
-                TokenKind::STRUCT, TokenKind::CLASS, TokenKind::INTERFACE, TokenKind::MAIN}) ||
+            SeeingAny({TokenKind::FUNC, TokenKind::MACRO, TokenKind::LET, TokenKind::VAR, TokenKind::ENUM, TokenKind::TYPE,
+                TokenKind::STRUCT, TokenKind::CLASS, TokenKind::INTERFACE, TokenKind::MAIN, TokenKind::EXTEND}) ||
             (SeeingBuiltinAnnotation() && !SeeingAnnotationLambdaExpr());
     }
     bool SeeingPrimaryIdentifer();
@@ -474,6 +474,11 @@ private:
         return Seeing(TokenKind::IDENTIFIER) && (lookahead == "get" || lookahead == "set");
     }
 
+    bool SeeingInitializer()
+    {
+        return Seeing(TokenKind::INIT);
+    }
+
     bool SeeingEnumConstructor(const ScopeKind& scopeKind)
     {
         return (Seeing(TokenKind::IDENTIFIER) || SeeingContextualKeyword()) &&
@@ -492,7 +497,7 @@ private:
         // Other Decls that illegal in FuncBody.
         return SeeingAny({TokenKind::CLASS, TokenKind::INIT, TokenKind::INTERFACE, TokenKind::EXTEND, TokenKind::STRUCT,
                    TokenKind::PROP}) ||
-            SeeingImport2();
+            SeeingImport();
     }
     // When a children ast is broken, the father ast will be broken. Only used on diagnostic.
     void SpreadAttrAndConsume(Ptr<const AST::Node> source, Ptr<AST::Node> target, std::vector<TokenKind>&& kind);
@@ -547,6 +552,10 @@ private:
     OwnedPtr<AST::PackageSpec> ParsePackageHeader(std::set<AST::Modifier>&& modifiers);
     // return: seeing end of file.
     bool ParsePackageHeaderEnd();
+    void CheckAndHandleUnexpectedTopLevelDeclAfterFeatures();
+    void CheckExpectedTopLevelDeclWhenNoPackage(
+        const PtrVector<AST::Annotation>& annos, const std::set<AST::Modifier>& modifiers);
+    bool IsExpectedTokenAfterFeaturesOrPackage(bool allowPackageKeyword);
     void ParseTopLevelDecls(AST::File& file, std::vector<OwnedPtr<AST::Annotation>>& annos);
     void ParseTopLevelDecl(AST::File& file, std::vector<OwnedPtr<AST::Annotation>>& annos);
     void ParseAnnotations(PtrVector<AST::Annotation>& annos);
@@ -805,8 +814,11 @@ private:
         const std::set<AST::Attribute>& attributes = {}, bool isVar = false, bool inDecl = false);
     OwnedPtr<AST::SpawnExpr> ParseSpawnExpr();
     OwnedPtr<AST::SynchronizedExpr> ParseSynchronizedExpr();
+    void ParseTopLvlFeatures(OwnedPtr<FeaturesDirective>& ftrDirective,
+        PtrVector<Annotation>& annos);
     void ParseFeatureDirective(OwnedPtr<FeaturesDirective>& features);
-    bool ParseFeatureId(OwnedPtr<FeaturesDirective>& features);
+    void ParseFeaturesSet(OwnedPtr<FeaturesSet>& features);
+    void ParseFeatureId(OwnedPtr<FeaturesSet>& features);
     void ParseCommonImportSpec(PtrVector<AST::ImportSpec>& imports, PtrVector<AST::Annotation>& annos);
     void CheckImportSpec(PtrVector<AST::ImportSpec>& imports);
     void CheckTypeArgumentsInEnumPattern(Ptr<const AST::EnumPattern> enumPattern);
@@ -899,6 +911,9 @@ private:
      * @param del left symbol
      * @param pos position of left symbol
      */
+    void DiagAndSuggestKeywordForExpectedDeclaration(
+        const std::vector<std::string>& keywords, size_t minLevDis = 1, ScopeKind scopeKind = ScopeKind::TOPLEVEL);
+    void DiagRawIdentifierNotAllowed(std::string& str);
     void DiagExpectedRightDelimiter(const std::string& del, const Position& pos);
     void DiagInvalidIncreExpr(const AST::Expr& expr);
     void DiagInvalidMacroExpandExpr(const Token& tok, const AST::MacroExpandExpr& expr);
@@ -1038,7 +1053,6 @@ private:
         {AST::ASTKind::GENERIC_CONSTRAINT, &ParserImpl::DiagExpectedIdentifierGenericConstraint},
         {AST::ASTKind::IMPORT_CONTENT, &ParserImpl::DiagExpectedIdentifierImportContent},
         {AST::ASTKind::IMPORT_SPEC, &ParserImpl::DiagExpectedIdentifierImportSpec},
-        {AST::ASTKind::FEATURES_DIRECTIVE, &ParserImpl::DiagExpectedIdentifierFeatureDirective},
         {AST::ASTKind::PACKAGE_SPEC, &ParserImpl::DiagExpectedIdentifierPackageSpec},
         {AST::ASTKind::PROP_DECL, &ParserImpl::DiagExpectedIdentifierPropDecl},
         {AST::ASTKind::REF_TYPE, &ParserImpl::DiagExpectedIdentifierRefType},
@@ -1060,7 +1074,6 @@ private:
     void DiagExpectedIdentifierGenericConstraint(Ptr<AST::Node> node);
     void DiagExpectedIdentifierImportContent(Ptr<AST::Node> node);
     void DiagExpectedIdentifierImportSpec(Ptr<AST::Node> node);
-    void DiagExpectedIdentifierFeatureDirective(Ptr<Node> node);
     void DiagExpectedIdentifierPackageSpec(Ptr<AST::Node> node);
     void DiagExpectedIdentifierPropDecl(Ptr<AST::Node> node);
     void DiagExpectedIdentifierRefType(Ptr<AST::Node>);
@@ -1245,5 +1258,8 @@ const std::unordered_map<TokenKind, AST::TypeKind> TOKENKIND_TO_PRIMITIVE_TYPEKI
     {TokenKind::NOTHING, AST::TypeKind::TYPE_NOTHING},
     {TokenKind::UNIT, AST::TypeKind::TYPE_UNIT},
 };
+
+// Levenshtein distance calculation for suggesting similar names in diagnostics.
+unsigned LevenshteinDistance(const std::string& source, const std::string& target);
 } // namespace Cangjie
 #endif
