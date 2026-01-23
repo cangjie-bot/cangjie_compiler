@@ -260,7 +260,7 @@ public:
 
     Func* CreateFunc(const DebugLocation& loc, FuncType* funcTy, const std::string& mangledName,
         const std::string& srcCodeIdentifier, const std::string& rawMangledName, const std::string& packageName,
-        const std::vector<GenericType*>& genericTypeParams = {});
+        const std::vector<GenericType*>& genericTypeParams = {}, std::set<std::string> features = {});
     // ===--------------------------------------------------------------------===//
     // StructDef API
     // ===--------------------------------------------------------------------===//

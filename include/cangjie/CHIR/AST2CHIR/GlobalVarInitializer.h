@@ -73,8 +73,8 @@ private:
     template<typename T>
     T* TryGetDeserialized(const std::string& mangledName)
     {
-        // merging specific
-        if (opts.IsCompilingCJMP()) {
+        // merging platform
+        if (opts.IsCompilingCJMPPlatform()) {
             return TryGetFromCache<Value, T>(GLOBAL_VALUE_PREFIX + mangledName, trans.deserializedVals);
         }
         return nullptr;

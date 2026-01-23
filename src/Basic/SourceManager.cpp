@@ -14,6 +14,7 @@
 #include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/Utils/FileUtil.h"
 #include "cangjie/Utils/SafePointer.h"
+#include <optional>
 
 using namespace Cangjie;
 
@@ -65,70 +66,65 @@ Source::Source(unsigned int fileID, std::string path, std::string buffer, uint64
     }
 }
 
-void SourceManager::SaveSourceFile(
-    unsigned int fileID,
+unsigned int SourceManager::GetFileId(
     std::string normalizedPath,
     std::string buffer,
     uint64_t fileHash,
-    std::optional<std::string> packageName)
+    std::optional<std::string> packageName,
+    bool isCjmpFile,
+    bool updateBuffer)
 {
-    sources.emplace_back(fileID, normalizedPath, buffer, fileHash, packageName);
-    filePathToFileIDMap.emplace(normalizedPath, fileID);
-}
+    auto existed = filePathToFileIDMap.find(normalizedPath);
+    if (existed != filePathToFileIDMap.end()) {
+        auto newBuffer = buffer;
+        auto fileID = static_cast<unsigned int>(existed->second);
+        if (updateBuffer) {
+            newBuffer = sources.at(fileID).buffer + buffer;
+        }
+        sources.at(fileID) = 
+            Source{fileID, normalizedPath, newBuffer, fileHash, packageName};
+        return static_cast<unsigned>(existed->second);
+    } else {
+        auto fileID = static_cast<unsigned int>(sources.size());
+        if (isCjmpFile) {
+            // CJMP files can not have incremental file IDs,
+            // because 1) Some IDs may already be used for parent source set files
+            // 2) Or in neighbour source set.
+            // So IDs need to be evaluated based path.
+            std::hash<std::string> hasher;
+            size_t hashValue = hasher(normalizedPath);
+            fileID = static_cast<unsigned int>(hashValue);
+        }
 
-void SourceManager::ReserveCommonPartSources(std::vector<std::string> files)
-{
-    for (size_t i = 0; i < files.size(); i++) {
-        auto file = files.at(i);
-        uint64_t fileHash = 0;
-        SaveSourceFile(static_cast<unsigned int>(i + 1), files.at(i), "", fileHash);
-        filePathToFileIDMap.emplace(file, i + 1);
+        sources.emplace(fileID, Source(fileID, normalizedPath, buffer, fileHash, packageName));
+        filePathToFileIDMap.emplace(normalizedPath, fileID);
+        return fileID;
     }
 }
 
 unsigned int SourceManager::AddSource(
-    const std::string& path, const std::string& buffer, std::optional<std::string> packageName)
+    const std::string& path, const std::string& buffer, std::optional<std::string> packageName, bool isCjmpFile)
 {
     // path canonicalize
     std::string normalizePath = FileUtil::Normalize(path);
     // Change fileHash from content hash to path hash.
     uint64_t fileHash = Utils::GetHash(normalizePath);
-    auto existed = filePathToFileIDMap.find(normalizePath);
-    if (existed != filePathToFileIDMap.end()) {
-        sources[static_cast<size_t>(existed->second)] =
-            Source{static_cast<unsigned>(existed->second), normalizePath, buffer, fileHash, packageName};
-        return static_cast<unsigned>(existed->second);
-    } else {
-        auto fileID = static_cast<unsigned int>(sources.size());
-        SaveSourceFile(fileID, normalizePath, buffer, fileHash, packageName);
-        return fileID;
-    }
+    return GetFileId(normalizePath, buffer, fileHash, packageName, isCjmpFile, false);
 }
 
-unsigned int SourceManager::AppendSource(const std::string& path, const std::string& buffer)
+unsigned int SourceManager::AppendSource(const std::string& path, const std::string& buffer, bool isCjmpFile)
 {
     // path canonicalize
     std::string normalizePath = FileUtil::Normalize(path);
     uint64_t fileHash = Utils::GetHash(normalizePath);
-    auto existed = filePathToFileIDMap.find(normalizePath);
-    if (existed != filePathToFileIDMap.end()) {
-        auto newBuffer = sources[static_cast<size_t>(existed->second)].buffer + buffer;
-        sources[static_cast<size_t>(existed->second)] =
-            Source{static_cast<unsigned>(existed->second), normalizePath, newBuffer, fileHash};
-        return static_cast<unsigned>(existed->second);
-    } else {
-        auto fileID = static_cast<unsigned int>(sources.size());
-        sources.emplace_back(fileID, normalizePath, buffer, fileHash);
-        filePathToFileIDMap.emplace(normalizePath, fileID);
-        return fileID;
-    }
+    return GetFileId(normalizePath, buffer, fileHash, std::nullopt, isCjmpFile, true);
 }
 
 bool SourceManager::IsSourceFileExist(const unsigned int id)
 {
     // Check whether the *.macrocall exists or not.
     if (id < sources.size()) {
-        auto path = sources[id].path;
+        auto path = sources.at(id).path;
         if (!path.empty() && FileUtil::GetFileExtension(path) != "cj") {
             return FileUtil::FileExist(path);
         }
@@ -141,7 +137,7 @@ int SourceManager::GetLineEnd(const Position& pos)
     if (pos.fileID >= sources.size()) {
         return 0;
     }
-    auto buffer = sources[pos.fileID].buffer;
+    auto buffer = sources.at(pos.fileID).buffer;
     auto sourceSplited = Utils::SplitLines(buffer);
     if (pos.line > static_cast<int>(sourceSplited.size())) {
         return 0;
@@ -168,21 +164,21 @@ std::string SourceManager::GetContentBetween(
 
     CJC_ASSERT(INVALID_POSITION < begin && begin <= end);
 
-    auto& sourceWithFileID = fileID >= sources.size() ? sources[0] : sources[fileID];
+     auto& sourceWithFileID = fileID >= sources.size() ? sources.at(0) : sources.at(fileID);
 
-    // Use OwnedPtr for temporary Source to avoid mixed return types in ternary operator (? tempObj : ref).
-    // This helps compiler optimization by having consistent pointer types
-    OwnedPtr<Source> tempSource;
-    Ptr<const Source> sourcePtr;
+     // Use OwnedPtr for temporary Source to avoid mixed return types in ternary operator (? tempObj : ref).
+     // This helps compiler optimization by having consistent pointer types
+     OwnedPtr<Source> tempSource;
+     Ptr<const Source> sourcePtr;
 
-    if (sourceWithFileID.buffer.empty() && !importGenericContent.empty()) {
-        tempSource = MakeOwned<Source>(sourceWithFileID.fileID, sourceWithFileID.path, importGenericContent);
-        sourcePtr = tempSource.get();
-    } else {
-        sourcePtr = &sourceWithFileID;
-    }
+     if (sourceWithFileID.buffer.empty() && !importGenericContent.empty()) {
+         tempSource = MakeOwned<Source>(sourceWithFileID.fileID, sourceWithFileID.path, importGenericContent);
+         sourcePtr = tempSource.get();
+     } else {
+         sourcePtr = &sourceWithFileID;
+     }
 
-    const auto& buffer = sourcePtr->buffer;
+     const auto& buffer = sourcePtr->buffer;
 
     if (buffer.empty()) {
         return "";
@@ -196,8 +192,7 @@ std::string SourceManager::GetContentBetween(
 void SourceManager::AddComments(const TokenVecMap& commentsMap)
 {
     for (const auto& it : commentsMap) {
-        CJC_ASSERT(it.first < sources.size());
-        auto& source = sources[it.first];
+        auto& source = sources.at(it.first);
         for (auto tok : it.second) {
             (void)source.offsetCommentsMap.insert_or_assign(source.PosToOffset(tok.Begin()), tok);
         }
