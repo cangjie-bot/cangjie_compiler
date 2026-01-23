@@ -394,12 +394,12 @@ void GlobalDeclAnalysis::AnalysisDependency(const ElementList<Ptr<const AST::Dec
         std::vector<Ptr<const AST::Decl>> dependencies;
         std::vector<Ptr<const AST::Decl>> localConstVarDeps;
         AnalysisDepOf(*node, dependencies, localConstVarDeps);
-        if (outputChir) {
-            SaveCJMPDependencies(node, dependencies);
-        }
-        if (mergingSpecific) {
+        if (mergingPlatform) {
             ReplaceCommonDependenciesWithSpecific(dependencies);
             RestoreCJMPDependencies(node, dependencies);
+        }
+        if (outputChir) {
+            SaveCJMPDependencies(node, dependencies);
         }
         (void)std::remove_if(dependencies.begin(), dependencies.end(),
             [&node](const Ptr<const AST::Decl>& element) { return element == node; });
