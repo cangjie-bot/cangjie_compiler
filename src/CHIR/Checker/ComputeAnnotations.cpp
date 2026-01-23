@@ -708,7 +708,7 @@ OwnedPtr<ConstEvalResult> ComputeAnnotations(AST::Package& pkg, CompilerInstance
         doCompute = false;
     }
     // CJMP does not fully support Annotation
-    if (ci.invocation.globalOptions.commonPartCjo != std::nullopt ||
+    if (ci.invocation.globalOptions.commonPartCjos.size() > 0 ||
         ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
         doCompute = false;
     }

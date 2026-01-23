@@ -38,7 +38,8 @@ using namespace TypeCheckUtil;
 MPTypeCheckerImpl::MPTypeCheckerImpl(const CompilerInstance& ci)
     : typeManager(*ci.typeManager), diag(ci.diag),
       compileCommon(ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR),
-      compileSpecific(ci.invocation.globalOptions.commonPartCjo != std::nullopt)
+      compilePlatform(ci.invocation.globalOptions.commonPartCjos.size() > 0),
+      severalParents(ci.invocation.globalOptions.commonPartCjos.size() > 1)
 {
 }
 
@@ -276,7 +277,7 @@ void MergeCommonIntoSpecific(DiagnosticEngine& diag, Decl& commonDecl, Decl& spe
 // PrepareTypeCheck for CJMP
 void MPTypeCheckerImpl::PrepareTypeCheck4CJMP(Package& pkg)
 {
-    if (!compileSpecific) {
+    if (!compilePlatform) {
         return;
     }
     // specific package part
@@ -315,7 +316,7 @@ void MPTypeCheckerImpl::MergeCJMPNominalsExceptExtension(Package& pkg)
 void MPTypeCheckerImpl::PrepareTypeCheck4CJMPExtension(CompilerInstance& ci, ScopeManager& scopeManager,
     ASTContext& ctx, const std::unordered_set<Ptr<AST::ExtendDecl>>& extends)
 {
-    if (!compileSpecific) {
+    if (!compilePlatform) {
         return;
     }
     MergeCJMPExtensions(ci, scopeManager, ctx, extends);
@@ -489,7 +490,9 @@ void MPTypeCheckerImpl::FilterOutCommonCandidatesIfSpecificExist(
         if (hasSpecificCandidates) {
             funcs.erase(
                 std::remove_if(funcs.begin(), funcs.end(),
-                    [](const Ptr<FuncDecl> decl) { return decl->TestAttr(Attribute::COMMON); }),
+                    [](const Ptr<FuncDecl> decl) {
+                        return decl->TestAttr(Attribute::COMMON) && decl->TestAttr(Attribute::FROM_COMMON_PART);
+                    }),
                 funcs.end());
         }
     }
@@ -669,9 +672,14 @@ void CollectCJMPDecls(Package& pkg, std::vector<Ptr<Decl>>& commonDecls, std::ve
 }
 
 // Check whether the common decl must be matched with paltform decl.
-bool MustMatchWithSpecific(const Decl& decl)
+bool MustMatchWithPlatform(const Decl& decl, const bool compilingCommon)
 {
     CJC_ASSERT(decl.TestAttr(Attribute::COMMON));
+    
+    if (compilingCommon) {
+        // not compiling to binary, only produce CHIR, so it can be matched later.
+        return false;
+    }
     if (decl.specificImplementation) {
         return false;
     }
@@ -776,16 +784,14 @@ void MPTypeCheckerImpl::CheckCommonSpecificGenericMatch(const AST::Decl& specifi
     CheckGenericTypeBoundsMapped(commonDecl, specificDecl, parentBounds, childBounds, diag, typeManager);
 }
 
-// Match common nominal decl with specific for details.
 bool MPTypeCheckerImpl::MatchCommonNominalDeclWithSpecific(const InheritableDecl& commonDecl)
 {
     auto specificDecl = commonDecl.specificImplementation;
-    if (specificDecl == nullptr) {
-        if (commonDecl.TestAttr(Attribute::COMMON_WITH_DEFAULT)) {
-            return false;
-        }
-        DiagNotMatchedSpecificDecl(diag, commonDecl);
-        return false;
+    if (!specificDecl) {
+        // It's okay if common nominative declaration have no platform,
+        // either all member are implemented in common one
+        // or it's not yet compiling into binary, so it can be matched at later phases.
+        return true;
     }
     // Match attributes (modifiers).
     std::vector<Attribute> matchedAttr = {
@@ -1097,7 +1103,8 @@ bool MPTypeCheckerImpl::MatchSpecificDeclWithCommonDecls(
     bool isEnumConstructor = specificDecl.TestAttr(Attribute::ENUM_CONSTRUCTOR);
     auto kind = specificDecl.astKind;
     for (auto& commonDecl : commonDecls) {
-        if (matched) {
+        // In case of several parent source sets there can be more then one matched common decl
+        if (matched && !severalParents) {
             break;
         }
         if (commonDecl->astKind != kind) {
@@ -1181,9 +1188,11 @@ void MPTypeCheckerImpl::MatchCJMPDecls(std::vector<Ptr<Decl>>& commonDecls, std:
     // Report error for common decl having no matched specific decl.
     for (auto& decl : commonDecls) {
         if (decl->IsNominalDecl() && MatchCommonNominalDeclWithSpecific(*StaticCast<InheritableDecl>(decl))) {
-            matchedIds.insert(decl->specificImplementation.get());
+            if (decl->specificImplementation) {
+                matchedIds.insert(decl->specificImplementation.get());
+            }
         }
-        if (!MustMatchWithSpecific(*decl)) {
+        if (!MustMatchWithPlatform(*decl, compileCommon)) {
             continue;
         }
         if (decl->astKind == ASTKind::VAR_DECL && !decl->TestAttr(Attribute::ENUM_CONSTRUCTOR)) {
@@ -1250,7 +1259,10 @@ void MPTypeCheckerImpl::MatchSpecificWithCommon(Package& pkg)
     CollectCJMPDecls(pkg, commonDecls, specificDecls);
     if (compileCommon) { // check common extensions
         CheckCommonExtensions(commonDecls);
-    } else if (compileSpecific) { // match common decls and specific decls
+    }
+    // This does not contradict to previous check.
+    // A source code can be relatively platform and common at the same time.
+    if (compilePlatform) { // match common decls and platform decls
         MatchCJMPDecls(commonDecls, specificDecls);
     }
 
@@ -1341,9 +1353,9 @@ void MPTypeCheckerImpl::UpdateSpecificMemberGenericTy(
 
 
 void MPTypeCheckerImpl::GetInheritedTypesWithSpecificImpl(
-    std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasSpecificImpl, bool compileSpecific)
+    std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasSpecificImpl, bool compilePlatform)
 {
-    if (!compileSpecific || hasSpecificImpl) {
+    if (!compilePlatform || hasSpecificImpl) {
         return;
     }
 

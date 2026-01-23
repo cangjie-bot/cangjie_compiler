@@ -458,7 +458,7 @@ private:
     std::unordered_set<Ptr<const AST::Decl>> usedSrcImportedNonGenericDecls;
     /* Add fields for CJMP. */
     bool outputCHIR{false}; // Output type is CHIR
-    bool mergingSpecific{false}; // Merging specific part over already compiled chir
+    bool mergingPlatform{false}; // Merging specific part over already compiled chir
     std::unordered_set<Ptr<const AST::Decl>> deserializedDecls; // decls which don't need to be retranslated.
     // Deserialized node cache table, key is identifier.
     std::unordered_map<std::string, CustomTypeDef*> deserializedDefs;

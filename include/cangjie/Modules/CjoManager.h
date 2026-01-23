@@ -64,8 +64,7 @@ public:
      * This is required to correctly handle imports from common part.
      */
     void LoadFilesOfCommonPart(Ptr<AST::Package> pkg);
-    std::optional<std::vector<std::string>> PreReadCommonPartCjoFiles();
-    Ptr<ASTLoader> GetCommonPartCjo(std::string expectedName) const;
+    std::vector<OwnedPtr<ASTLoader>>& GetCommonPartCjos(std::string expectedName) const;
     Ptr<AST::Package> GetPackage(const std::string& fullPackageName) const;
     std::vector<Ptr<AST::PackageDecl>> GetAllPackageDecls(bool includeMacroPkg = false) const;
 
