@@ -58,6 +58,16 @@ llvm::Constant* EnumCtorTIOrTTGenerator::GenSourceGenericOfTypeInfo()
     }
 }
 
+CHIR::Type* EnumCtorTIOrTTGenerator::UnwrapBoxAndRef(CHIR::Type* type)
+{
+    const CHIR::Type* derefedType = DeRef(*type);
+    if (derefedType->IsBox()) {
+        auto innerType = StaticCast<const CHIR::BoxType*>(derefedType)->GetBaseType();
+        return const_cast<CHIR::Type*>(innerType);
+    }
+    return const_cast<CHIR::Type*>(derefedType);
+}
+
 EnumCtorLayout EnumCtorTIOrTTGenerator::ComputeLLVMLayout(
     const std::vector<CHIR::Type*>& fields, const std::string& tiName, const std::string& className)
 {
@@ -84,7 +94,7 @@ EnumCtorLayout EnumCtorTIOrTTGenerator::GenLayoutForReferenceType(const std::str
         const auto& ctors = chirEnumType.GetConstructorInfos(cgMod.GetCGContext().GetCHIRBuilder());
         CHIR::Type* associatedValueType = cgEnumType->IsAntiOptionLike() ? ctors[1].funcType->GetParamTypes()[0]
                                                                          : ctors[0].funcType->GetParamTypes()[0];
-        layout.fieldTypes.emplace_back(associatedValueType);
+        layout.fieldTypes.emplace_back(UnwrapBoxAndRef(associatedValueType));
     }
     auto layoutType = GetLLVMStructType(cgMod, layout.fieldTypes, GetClassObjLayoutName(className));
     layout.offsets = CGCustomType::GenOffsetsArray(cgMod, tiName + ".offsets", layoutType);
@@ -129,14 +139,17 @@ EnumCtorLayout EnumCtorTIOrTTGenerator::GenLayoutForStructure(const CGEnumType* 
     std::vector<CHIR::Type*> fields;
     if (cgEnumType->IsOptionLikeNonRef()) {
         fields.emplace_back(cgMod.GetCGContext().GetCHIRBuilder().GetBoolTy());
-        fields.emplace_back(cgEnumType->GetAssociatedValueTypeOfOptionLike());
+        auto associatedType = cgEnumType->GetAssociatedValueTypeOfOptionLike();
+        fields.emplace_back(UnwrapBoxAndRef(associatedType));
     } else {
         if (cgEnumType->IsOptionLike()) {
             fields.emplace_back(cgMod.GetCGContext().GetCHIRBuilder().GetBoolTy());
         } else {
             fields.emplace_back(cgMod.GetCGContext().GetCHIRBuilder().GetInt32Ty());
         }
-        fields.insert(fields.end(), paramTypes.cbegin(), paramTypes.cend());
+        for (auto paramType : paramTypes) {
+            fields.emplace_back(UnwrapBoxAndRef(paramType));
+        }
     }
     if (!cgEnumType->IsAllAssociatedValuesAreNonRef()) {
         return ComputeLLVMLayout(fields, tiName, className);

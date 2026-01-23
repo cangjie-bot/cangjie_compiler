@@ -50,6 +50,7 @@ private:
     llvm::Constant* GenSuperFnOfTypeTemplate(const std::string& funcName);
 
 private:
+    CHIR::Type* UnwrapBoxAndRef(CHIR::Type* type);
     EnumCtorLayout ComputeLLVMLayout(
         const std::vector<CHIR::Type*>& fields, const std::string& tiName, const std::string& className);
     EnumCtorLayout GenLayoutForReferenceType(const std::string& tiName, const std::string& className);
