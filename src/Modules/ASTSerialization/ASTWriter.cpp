@@ -417,6 +417,8 @@ template <typename T> TVectorOffset<FormattedIndex> ASTWriter::ASTWriterImpl::Ge
 {
     // Body.
     std::vector<FormattedIndex> body;
+    // Track platform implementations that have been added to avoid duplicates
+    std::unordered_set<Decl*> addedPlatformImpls;
     // Incr compilation need load ty by cached cjo, so not only cache visible signature
     bool onlyVisibleSig = !config.exportForIncr && !config.exportContent;
     // For LSP usage, when decl is not external, ignore all members, only keep the typeDecl it self.
@@ -425,6 +427,10 @@ template <typename T> TVectorOffset<FormattedIndex> ASTWriter::ASTWriterImpl::Ge
     }
     for (auto& it : decl.GetMemberDeclPtrs()) {
         CJC_NULLPTR_CHECK(it);
+        // Skip if this decl is already added as a platform implementation
+        if (it->TestAttr(AST::Attribute::PLATFORM) && addedPlatformImpls.count(it.get()) > 0) {
+            continue;
+        }
         // Because member variables determine the memory layout of a type, all of its member variables should be
         // stored in cjo as long as the type is externally visible.
         const bool isInstMemberVar = it->astKind == ASTKind::VAR_DECL && !it->TestAttr(Attribute::STATIC);
@@ -432,6 +438,10 @@ template <typename T> TVectorOffset<FormattedIndex> ASTWriter::ASTWriterImpl::Ge
         if (it->doNotExport || it->astKind == AST::ASTKind::VAR_WITH_PATTERN_DECL ||
             // For LSP usage, we can ignore invisible members.
             (onlyVisibleSig && !it->IsExportedDecl())) {
+            if (it->platformImplementation) {
+                addedPlatformImpls.insert(it->platformImplementation.get());
+                body.push_back(GetDeclIndex(it->platformImplementation));
+            }
             continue;
         }
         if (decl.astKind == AST::ASTKind::EXTEND_DECL && serializingCommon) {
