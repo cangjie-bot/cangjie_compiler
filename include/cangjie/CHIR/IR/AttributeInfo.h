@@ -66,6 +66,7 @@ enum class Attribute {
     OBJ_C_MIRROR,     ///< Mark whether it's @ObjCMirror declaration (binding for an Objective-C type).
     HAS_INITED_FIELD, ///< Mark whether a node is a special flag, which marks the class instance as initialized.
     JAVA_HAS_DEFAULT, ///< Mark whether JAVA_MIRROR interface has default method.
+    PREVIOUSLY_DESERIALIZED, /// TODO: update usage for Var, probably remove
 
     ATTR_END
 };
