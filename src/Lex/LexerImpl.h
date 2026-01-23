@@ -128,7 +128,6 @@ public:
 
 private:
     friend class Lexer;
-    std::vector<int> resetLineOffsets{0};
     std::map<Token, std::vector<StringPart>> stringPartsMap;
     bool IsCurrentCharLineTerminator() const;
     bool ScanInterpolationString(const char* pStart, bool allowNewLine);
