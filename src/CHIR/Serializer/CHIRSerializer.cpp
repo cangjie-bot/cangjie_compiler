@@ -534,8 +534,13 @@ template <> flatbuffers::Offset<PackageFormat::Value> CHIRSerializer::CHIRSerial
     auto kind = PackageFormat::ValueKind(obj.GetValueKind());
     auto attributes = obj.GetAttributeInfo().GetRawAttrs().to_ulong();
     auto annoInfo = Serialize<PackageFormat::AnnoInfo>(obj.GetAnnoInfo());
+    std::vector<flatbuffers::Offset<flatbuffers::String>> features;
+    for (const auto& name : obj.GetFeatures()) {
+        features.push_back(builder.CreateSharedString(name));
+    }
+
     return PackageFormat::CreateValueDirect(
-        builder, base, type, identifier.data(), kind, valueId, attributes, annoInfo);
+        builder, base, type, identifier.data(), kind, valueId, attributes, annoInfo, &features);
 }
 
 template <>

@@ -72,6 +72,8 @@ private:
     void PropagateCJMPDeclAnnotations(const AST::Decl& common, AST::Decl& specific) const;
 
     bool TrySetSpecificImpl(AST::Decl& specificDecl, AST::Decl& commonDecl, const std::string& kind);
+    /// Returns `true` if there is not platform declaration,
+    /// in other cases check that common can me matched with platform(e.g. modifiers conform)
     bool MatchCommonNominalDeclWithSpecific(const AST::InheritableDecl& commonDecl);
     void CheckCommonSpecificGenericMatch(const AST::Decl& specificDecl, const AST::Decl& commonDecl);
 
@@ -86,16 +88,17 @@ public:
      *
      * @param inheritedTypes The list of inherited types to process
      * @param hasSpecificImpl Whether the current declaration has a specific implementation
-     * @param compileSpecific Whether we are currently compiling specific code
+     * @param compilePlatform Whether we are currently compiling specific code
      */
     static void GetInheritedTypesWithSpecificImpl(
-        std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasSpecificImpl, bool compileSpecific);
+        std::vector<OwnedPtr<AST::Type>>& inheritedTypes, bool hasSpecificImpl, bool compilePlatform);
 
 private:
     TypeManager& typeManager;
     DiagnosticEngine& diag;
     bool compileCommon{false};   // true if compiling common part
-    bool compileSpecific{false}; // true if compiling specific part
+    bool compilePlatform{false}; // true if compiling platform part
+    bool severalParents{false};  // true if there is more then one incomparable parent source sets
 #endif
 };
 } // namespace Cangjie
