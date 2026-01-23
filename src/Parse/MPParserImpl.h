@@ -45,7 +45,7 @@ private:
 private:
     const ParserImpl* ref;
     bool compileCommon{false}; // true if compiling common part
-    bool compileSpecific{false}; // true if compiling specific part
+    bool compilePlatform{false}; // true if compiling specific part
 };
 
 } // namespace Cangjie

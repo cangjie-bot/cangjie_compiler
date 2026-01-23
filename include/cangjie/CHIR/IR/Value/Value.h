@@ -118,6 +118,16 @@ public:
 
     Type* GetType() const;
 
+    const std::set<std::string>& GetFeatures() const
+    {
+        return features;
+    }
+
+    void SetFeatures(std::set<std::string> newFeatures)
+    {
+        features = newFeatures;
+    }
+
     virtual std::string GetSrcCodeIdentifier() const;
     const std::string& GetIdentifier() const;
     std::string GetIdentifierWithoutPrefix() const;
@@ -148,7 +158,7 @@ public:
     void SetAnnoInfo(AnnoInfo&& info);
     
 protected:
-    explicit Value(Type* ty, std::string identifier, ValueKind kind);
+    explicit Value(Type* ty, std::string identifier, ValueKind kind, std::set<std::string> features = {});
     virtual ~Value() = default;
 
     Value(const Value&) = delete;
@@ -173,6 +183,7 @@ private:
     ValueKind GetValueKind() const;
 
     ValueKind kind;                 // value kind
+    std::set<std::string> features;
 };
 
 class Parameter : public Value {
@@ -862,7 +873,7 @@ private:
 private:
     explicit Func(Type* ty, const std::string& identifier, const std::string& srcCodeIdentifier,
         const std::string& rawMangledName, const std::string& packageName,
-        const std::vector<GenericType*>& genericTypeParams = {});
+        const std::vector<GenericType*>& genericTypeParams = {}, std::set<std::string> features = {});
 
     ~Func() override = default;
 

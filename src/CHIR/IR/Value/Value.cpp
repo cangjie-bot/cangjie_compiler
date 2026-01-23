@@ -5,12 +5,12 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
 #include "cangjie/CHIR/IR/Value/Value.h"
-#include "cangjie/CHIR/Utils/CHIRCasting.h"
 #include "cangjie/CHIR/IR/Expression/Terminator.h"
-#include "cangjie/CHIR/Utils/ToStringUtils.h"
 #include "cangjie/CHIR/IR/Type/ClassDef.h"
 #include "cangjie/CHIR/IR/Type/CustomTypeDef.h"
 #include "cangjie/CHIR/IR/Type/Type.h"
+#include "cangjie/CHIR/Utils/CHIRCasting.h"
+#include "cangjie/CHIR/Utils/ToStringUtils.h"
 #include "cangjie/CHIR/Utils/Utils.h"
 #include "cangjie/Utils/CheckUtils.h"
 #include "cangjie/Utils/ICEUtil.h"
@@ -21,8 +21,8 @@
 using namespace Cangjie::CHIR;
 
 /// Value
-Value::Value(Type* ty, std::string identifier, ValueKind kind)
-    : ty(ty), identifier(std::move(identifier)), kind(kind)
+Value::Value(Type* ty, std::string identifier, ValueKind kind, std::set<std::string> features)
+    : ty(ty), identifier(std::move(identifier)), kind(kind), features(features)
 {
 }
 
@@ -139,8 +139,8 @@ bool Value::IsCompileTimeValue() const
 
 bool Value::IsGlobal() const
 {
-    return kind == ValueKind::KIND_GLOBALVAR || kind == ValueKind::KIND_FUNC ||
-        kind == ValueKind::KIND_IMP_VAR || kind == ValueKind::KIND_IMP_FUNC;
+    return kind == ValueKind::KIND_GLOBALVAR || kind == ValueKind::KIND_FUNC || kind == ValueKind::KIND_IMP_VAR ||
+        kind == ValueKind::KIND_IMP_FUNC;
 }
 
 void Value::AddUserOnly(Expression* expr)
@@ -225,7 +225,7 @@ void Value::ClearUsersOnly()
 Parameter::Parameter(Type* ty, const std::string& indexStr, Func* ownerFunc)
     : Value(ty, indexStr, ValueKind::KIND_PARAMETER), ownerFunc(ownerFunc)
 {
-    if (ownerFunc) {
+    if (ownerFunc && !ownerFunc->TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
         ownerFunc->AddParam(*this);
     }
 }
@@ -371,7 +371,7 @@ std::string LocalVar::ToString() const
 GlobalVar::GlobalVar(Type* ty, std::string identifier, std::string srcCodeIdentifier, std::string rawMangledName,
     std::string packageName)
     : Value{ty, std::move(identifier), ValueKind::KIND_GLOBALVAR},
-    GlobalVarBase{std::move(srcCodeIdentifier), std::move(rawMangledName), std::move(packageName)}
+      GlobalVarBase{std::move(srcCodeIdentifier), std::move(rawMangledName), std::move(packageName)}
 {
 }
 
@@ -411,8 +411,8 @@ std::string GlobalVar::ToString() const
 
 GlobalVarBase::GlobalVarBase(std::string srcCodeIdentifier, std::string rawMangledName, std::string packageName)
     : packageName(std::move(packageName)),
-    srcCodeIdentifier(std::move(srcCodeIdentifier)),
-    rawMangledName(std::move(rawMangledName))
+      srcCodeIdentifier(std::move(srcCodeIdentifier)),
+      rawMangledName(std::move(rawMangledName))
 {
 }
 
@@ -984,9 +984,9 @@ void FuncBody::AddParam(Parameter& param)
 FuncBase::FuncBase(const std::string& srcCodeIdentifier, const std::string& rawMangledName,
     const std::string& packageName, const std::vector<GenericType*>& genericTypeParams)
     : srcCodeIdentifier(srcCodeIdentifier),
-    rawMangledName(rawMangledName),
-    packageName(packageName),
-    genericTypeParams(genericTypeParams)
+      rawMangledName(rawMangledName),
+      packageName(packageName),
+      genericTypeParams(genericTypeParams)
 {
 }
 
@@ -1111,7 +1111,7 @@ void FuncBase::SetRawMangledName(const std::string& name)
 bool FuncBase::IsConstructor() const
 {
     return (funcKind == FuncKind::CLASS_CONSTRUCTOR || funcKind == FuncKind::STRUCT_CONSTRUCTOR ||
-        funcKind == FuncKind::PRIMAL_CLASS_CONSTRUCTOR || funcKind == FuncKind::PRIMAL_STRUCT_CONSTRUCTOR) &&
+               funcKind == FuncKind::PRIMAL_CLASS_CONSTRUCTOR || funcKind == FuncKind::PRIMAL_STRUCT_CONSTRUCTOR) &&
         !TestAttr(Attribute::STATIC);
 }
 
@@ -1265,8 +1265,8 @@ std::vector<GenericType*> FuncBase::GetOriginalGenericTypeParams() const
 
 Func::Func(Type* ty, const std::string& identifier, const std::string& srcCodeIdentifier,
     const std::string& rawMangledName, const std::string& packageName,
-    const std::vector<GenericType*>& genericTypeParams)
-    : Value(ty, identifier, ValueKind::KIND_FUNC),
+    const std::vector<GenericType*>& genericTypeParams, std::set<std::string> features)
+    : Value(ty, identifier, ValueKind::KIND_FUNC, features),
       FuncBase{srcCodeIdentifier, rawMangledName, packageName, genericTypeParams}
 {
 }
@@ -1322,13 +1322,13 @@ void Func::ReplaceReturnValue(LocalVar* newRet, CHIRBuilder& builder)
 {
     // Update the function type's return type
     FuncBase::ReplaceReturnValue(newRet, builder);
-    
+
     // Clear the old return value's ret flag if it exists
     auto oldRet = body.GetReturnValue();
     if (oldRet != nullptr) {
         oldRet->SetRetValue(false);
     }
-    
+
     // Update the function body's return value
     if (newRet == nullptr) {
         // Clear return value (function returns Void)
@@ -1356,7 +1356,6 @@ void Func::RemoveParams()
 
 void Func::InitBody(BlockGroup& newBody)
 {
-    CJC_ASSERT(body.body == nullptr);
     body.body = &newBody;
     if (newBody.GetOwnerFunc() != this) {
         newBody.SetOwnerFunc(this);
@@ -1453,12 +1452,12 @@ void Func::DestroySelf()
     FuncBase::DestroySelf();
 }
 
-ImportedFunc::ImportedFunc(
-    Type* ty, const std::string& identifier, const std::string& srcCodeIdentifier, const std::string& rawMangledName,
-    const std::string& packageName, const std::vector<GenericType*>& genericTypeParams)
+ImportedFunc::ImportedFunc(Type* ty, const std::string& identifier, const std::string& srcCodeIdentifier,
+    const std::string& rawMangledName, const std::string& packageName,
+    const std::vector<GenericType*>& genericTypeParams)
     : Value{ty, identifier, KIND_IMP_FUNC},
-    ImportedValue{},
-    FuncBase{srcCodeIdentifier, rawMangledName, packageName, genericTypeParams}
+      ImportedValue{},
+      FuncBase{srcCodeIdentifier, rawMangledName, packageName, genericTypeParams}
 {
 }
 
@@ -1479,8 +1478,9 @@ const std::string& ImportedFunc::GetSourcePackageName() const
 
 ImportedVar::ImportedVar(Type* ty, std::string identifier, std::string srcCodeIdentifier, std::string rawMangledName,
     std::string packageName)
-    : Value{ty, std::move(identifier), ValueKind::KIND_IMP_VAR}, ImportedValue{},
-    GlobalVarBase{std::move(srcCodeIdentifier), std::move(rawMangledName), std::move(packageName)}
+    : Value{ty, std::move(identifier), ValueKind::KIND_IMP_VAR},
+      ImportedValue{},
+      GlobalVarBase{std::move(srcCodeIdentifier), std::move(rawMangledName), std::move(packageName)}
 {
 }
 

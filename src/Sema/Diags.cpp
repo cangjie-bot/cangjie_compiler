@@ -19,6 +19,7 @@
 
 #include "TypeCheckUtil.h"
 
+#include "cangjie/AST/AttributePack.h"
 #include "cangjie/AST/Match.h"
 #include "cangjie/AST/Utils.h"
 #include "cangjie/Basic/DiagnosticEngine.h"
@@ -139,6 +140,50 @@ Range MakeRangeForDeclIdentifier(const Decl& decl)
     }
 }
 
+inline bool IsSamePosition(const Position& pos1, const Position& pos2)
+{
+    return pos1 == pos2 && pos1.fileID == pos2.fileID;
+}
+
+/// When compiling CJMP package, there can be several parent CJO each having the same function.
+/// Both function are deserialized, so it's not duplicate, it's actulayy the same function.
+inline bool IsSameDeserializedFunction(const Decl& left, const Decl& right)
+{
+    return IsSamePosition(left.begin, right.begin) &&
+        (left.TestAttr(Attribute::ALREADY_LOADED) || right.TestAttr(Attribute::ALREADY_LOADED));
+}
+
+bool IsFeatureSupersetRelation(const Decl& left, const Decl& right)
+{
+    std::set<std::string> leftFeatures = left.curFile->GetFeatures();
+    std::set<std::string> rightFeatures = right.curFile->GetFeatures();
+
+    return std::includes(leftFeatures.begin(), leftFeatures.end(), rightFeatures.begin(), rightFeatures.end()) ||
+        std::includes(rightFeatures.begin(), rightFeatures.end(), leftFeatures.begin(), leftFeatures.end());
+}
+
+bool IgnoreCJMPFalsePositiveRedefinition(const Decl& left, const Decl& right)
+{
+    if (!left.TestAttr(Attribute::FROM_COMMON_PART) || !right.TestAttr(Attribute::FROM_COMMON_PART)) {
+        return false;
+    }
+
+    // 1) In case of several parents CJO, deserialized declaration can be duplicated
+    if (IsSameDeserializedFunction(left, right)) {
+        return true;
+    }
+
+    // 2) If feature set of one declaration is superset of feature set of another,
+    // then we have scenario with 2 different declaration came from 2 different parent CJO,
+    // and these two declarations are in common-specific relation, and because
+    // of superset relation between their feature sets we know that they are mathed!
+    if (IsFeatureSupersetRelation(left, right)) {
+        return true;
+    }
+
+    return false;
+}
+
 void DiagRedefinitionWithFoundNode(DiagnosticEngine& diag, const Decl& current, const Decl& previous)
 {
     if (current.TestAttr(Attribute::IS_BROKEN)) {
@@ -150,8 +195,8 @@ void DiagRedefinitionWithFoundNode(DiagnosticEngine& diag, const Decl& current, 
     auto rangeUp = MakeRangeForDeclIdentifier(previous);
     auto rangeDown = MakeRangeForDeclIdentifier(current);
     // NOTE: when one is private global, we need report private decl conflict against non-private version.
-    if (rangeUp.begin > rangeDown.begin || (previous.TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
-        current.curFile != previous.curFile)) {
+    if (rangeUp.begin > rangeDown.begin ||
+        (previous.TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) && current.curFile != previous.curFile)) {
         const Decl* tmpDecl = declUp;
         declUp = declDown;
         declDown = tmpDecl;
@@ -159,8 +204,11 @@ void DiagRedefinitionWithFoundNode(DiagnosticEngine& diag, const Decl& current, 
         rangeUp = rangeDown;
         rangeDown = tmpRange;
     }
-    auto builder = diag.DiagnoseRefactor(
-        DiagKindRefactor::sema_redefinition, *declDown, rangeDown, declDown->identifier);
+    if (IgnoreCJMPFalsePositiveRedefinition(current, previous)) {
+        return;
+    }
+    auto builder =
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_redefinition, *declDown, rangeDown, declDown->identifier);
     builder.AddNote(*declUp, rangeUp, "'" + declDown->identifier + "' is previously declared here");
 }
 
@@ -170,8 +218,9 @@ void DiagOverloadConflict(DiagnosticEngine& diag, const std::vector<Ptr<FuncDecl
     // and the error for imported declaration will be generated later.
     CJC_ASSERT(sameSigFuncs.size() >= 1);
     auto baseFd = sameSigFuncs.front();
-    auto getIdentifier =
-        [](auto fd) { return fd->identifierForLsp.empty() ? fd->identifier.Val() : fd->identifierForLsp; };
+    auto getIdentifier = [](auto fd) {
+        return fd->identifierForLsp.empty() ? fd->identifier.Val() : fd->identifierForLsp;
+    };
     auto identifier = getIdentifier(baseFd);
     std::string kind = "function";
     if (baseFd->TestAttr(Attribute::MACRO_FUNC)) {
@@ -352,7 +401,7 @@ void DiagImmutableAccessMutableFunc(DiagnosticEngine& diag, const MemberAccess& 
             builder.AddNote(*vd, MakeRange(vd->identifier),
                 "'" + vd->identifier + "' is a variable declared with '" + letOrConst + "'");
         } else if (auto pd = DynamicCast<const PropDecl*>(vd);
-                   pd && pd->getters.size() == 1 && pd->getters.front() && !pd->getters.front()->begin.IsZero()) {
+            pd && pd->getters.size() == 1 && pd->getters.front() && !pd->getters.front()->begin.IsZero()) {
             auto& get = *pd->getters.front();
             builder.AddNote(get, MakeRangeForDeclIdentifier(get), "property getter returns immutable value");
         }
@@ -377,11 +426,12 @@ void DiagCJMPCannotAssignToImmutableCommonInCtor(DiagnosticEngine& diag, const E
 {
     auto target = perpetrator.GetTarget();
     if (target != nullptr && !target->identifier.ZeroPos()) {
-    auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_common_assign_to_common_immutable_in_ctor, ae, target->identifier);
+        auto builder = diag.DiagnoseRefactor(
+            DiagKindRefactor::sema_common_assign_to_common_immutable_in_ctor, ae, target->identifier);
         auto mod = std::find_if(target->modifiers.begin(), target->modifiers.end(),
-            [&](const auto& m) { return m.modifier == TokenKind::COMMON; } );
+            [&](const auto& m) { return m.modifier == TokenKind::COMMON; });
         builder.AddNote(*target, MakeRange((*mod).begin, (*mod).end),
-           "'common' let field '" + target->identifier + "' cannot be assigned in constructor");
+            "'common' let field '" + target->identifier + "' cannot be assigned in constructor");
     } else {
         CJC_ABORT();
     }
@@ -433,8 +483,8 @@ void DiagCannotInheritSealed(DiagnosticEngine& diag, const Decl& child, const Ty
     const std::string inheritOrImplement = isImplement ? "implement" : "inherit";
     const std::string importedOrCommon = isCommon ? "common-defined" : "imported";
     const std::string classOrInterface = target->astKind == ASTKind::CLASS_DECL ? "class" : "interface";
-    auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_cannot_inherit_sealed,
-        range, inheritOrImplement, importedOrCommon, classOrInterface, target->identifier);
+    auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_cannot_inherit_sealed, range, inheritOrImplement,
+        importedOrCommon, classOrInterface, target->identifier);
     const std::string declaredPos = isCommon ? "common package part" : ("package '" + target->fullPackageName + "'");
     builder.AddHint(sealed, "sealed " + classOrInterface + " declared in " + declaredPos);
 }
@@ -445,17 +495,14 @@ void DiagPackageMemberNotFound(
     auto range = ma.field.ZeroPos() ? MakeRange(ma.begin, ma.end) : MakeRange(ma.field);
     auto decls = importManager.GetPackageMembersByName(*pd.srcPackage, ma.field);
     if (decls.empty()) {
-        diag.DiagnoseRefactor(
-            DiagKindRefactor::sema_not_member_of, ma, range, ma.field, "package", pd.identifier);
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_not_member_of, ma, range, ma.field, "package", pd.identifier);
     } else {
-        diag.DiagnoseRefactor(
-            DiagKindRefactor::sema_member_not_imported, ma, range, pd.identifier + "." + ma.field);
+        diag.DiagnoseRefactor(DiagKindRefactor::sema_member_not_imported, ma, range, pd.identifier + "." + ma.field);
     }
 }
 
-void DiagAmbiguousUse(
-    DiagnosticEngine& diag, const Node& node, const std::string& name, std::vector<Ptr<Decl>>& targets,
-    const ImportManager& importManager)
+void DiagAmbiguousUse(DiagnosticEngine& diag, const Node& node, const std::string& name,
+    std::vector<Ptr<Decl>>& targets, const ImportManager& importManager)
 {
     auto builder = diag.DiagnoseRefactor(DiagKindRefactor::sema_ambiguous_use, node, name);
     std::sort(targets.begin(), targets.end(), CompNodeByPos);
@@ -558,8 +605,7 @@ void DiagLowerAccessLevelTypesUse(DiagnosticEngine& diag, const Decl& outDecl,
                 node, typeRange, "type '" + Ty::ToString(node.ty) + "' contains " + usedVisibility + " type");
         }
         auto inDeclRange = MakeRangeForDeclIdentifier(decl);
-        builder.AddNote(
-            decl, inDeclRange, "the " + usedVisibility + " type is '" + Ty::ToString(decl.ty) + "'");
+        builder.AddNote(decl, inDeclRange, "the " + usedVisibility + " type is '" + Ty::ToString(decl.ty) + "'");
     }
 }
 
@@ -580,8 +626,7 @@ void DiagPatternInternalTypesUse(DiagnosticEngine& diag, const std::vector<std::
     }
 }
 
-void DiagAmbiguousUpperBoundTargets(DiagnosticEngine& diag, const MemberAccess& ma,
-    const OrderedDeclSet& targets)
+void DiagAmbiguousUpperBoundTargets(DiagnosticEngine& diag, const MemberAccess& ma, const OrderedDeclSet& targets)
 {
     auto diagBuilder = diag.DiagnoseRefactor(DiagKindRefactor::sema_ambiguous_use, ma, ma.field);
     for (auto it : targets) {
