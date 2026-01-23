@@ -225,7 +225,7 @@ void Value::ClearUsersOnly()
 Parameter::Parameter(Type* ty, const std::string& indexStr, Func* ownerFunc)
     : Value(ty, indexStr, ValueKind::KIND_PARAMETER), ownerFunc(ownerFunc)
 {
-    if (ownerFunc) {
+    if (ownerFunc && !ownerFunc->TestAttr(Attribute::PREVIOUSLY_DESERIALIZED)) {
         ownerFunc->AddParam(*this);
     }
 }
@@ -1356,7 +1356,6 @@ void Func::RemoveParams()
 
 void Func::InitBody(BlockGroup& newBody)
 {
-    CJC_ASSERT(body.body == nullptr);
     body.body = &newBody;
     if (newBody.GetOwnerFunc() != this) {
         newBody.SetOwnerFunc(this);

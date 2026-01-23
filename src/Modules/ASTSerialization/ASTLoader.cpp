@@ -146,6 +146,11 @@ void SetOuterDeclForMemberDecl(Decl& member, Decl& parentDecl)
         SetOuterDeclForParamDecl(*func, parentDecl);
     }
 }
+
+inline bool DeclaredInDifferentFiles(const Decl& d1, const Decl& d2)
+{
+    return d1.curFile && d2.curFile && d1.curFile->fileHash != d2.curFile->fileHash;
+}
 } // namespace
 
 ASTLoader::ASTLoader(std::vector<uint8_t>&& data, const std::string& fullPackageName, TypeManager& typeManager,
@@ -167,23 +172,6 @@ std::string ASTLoader::GetImportedPackageName() const
 {
     CJC_NULLPTR_CHECK(pImpl);
     return pImpl->importedPackageName;
-}
-
-std::string ASTLoader::PreReadAndSetPackageName()
-{
-    return pImpl->PreReadAndSetPackageName();
-}
-
-std::string ASTLoader::ASTLoaderImpl::PreReadAndSetPackageName()
-{
-    if (!package) {
-        package = PackageFormat::GetPackage(data.data());
-    }
-    CJC_NULLPTR_CHECK(package);
-    CJC_NULLPTR_CHECK(package->fullPkgName());
-    importedPackageName = package->fullPkgName()->str();
-
-    return importedPackageName;
 }
 
 std::vector<std::string> ASTLoader::ReadFileNames() const
@@ -295,6 +283,27 @@ std::vector<OwnedPtr<ImportSpec>> ASTLoader::ASTLoaderImpl::LoadImportSpecs(cons
     return importSpecsVec;
 }
 
+namespace {
+OwnedPtr<AST::FeaturesDirective> LoadFeaturesDirective(const PackageFormat::FeaturesDirective* raw)
+{
+    auto ftrDirective = MakeOwned<AST::FeaturesDirective>();
+    ftrDirective->featuresSet = MakeOwned<FeaturesSet>();
+
+    for (uoffset_t i = 0; i < raw->featuresSet()->features()->size(); i++) {
+        auto rawFeature = raw->featuresSet()->features()->Get(i);
+        auto feature = FeatureId();
+        for (uoffset_t j = 0; j < rawFeature->identifiers()->size(); j++) {
+            auto identifier = rawFeature->identifiers()->Get(j);
+            feature.identifiers.push_back(SrcIdentifier(identifier->str()));
+        }
+
+        ftrDirective->featuresSet->content.push_back(feature);
+    }
+
+    return ftrDirective;
+}
+} // namespace
+
 void ASTLoader::ASTLoaderImpl::PreloadCommonPartOfPackage(AST::Package& pkg)
 {
     if (!VerifyForData("ast")) {
@@ -307,7 +316,7 @@ void ASTLoader::ASTLoaderImpl::PreloadCommonPartOfPackage(AST::Package& pkg)
     curPackage = &pkg; // Deserialize common part AST into current specific package AST
 
     // Remove existing isCommon files from pkg before loading new common part for lsp incremental compilation.
-    Utils::EraseIf(pkg.files, [](const auto& file) { return file->isCommon; });
+    // Utils::EraseIf(pkg.files, [](const auto& file) { return file->isCommon; });
 
     allTypes.resize(package->allTypes()->size(), nullptr);
     auto fileSize = package->allFiles()->size();
@@ -318,8 +327,15 @@ void ASTLoader::ASTLoaderImpl::PreloadCommonPartOfPackage(AST::Package& pkg)
         CJC_NULLPTR_CHECK(package->allFileInfo());
         // Load file info for CJMP
         auto fileInfo = package->allFileInfo()->Get(i);
-        allFileIds[i] = fileInfo->fileID();
+        auto tmpFilePath = package->allFiles()->Get(i)->str();
+        const bool isCJMPFile = true;
+        auto tmpFileId = sourceManager.AddSource(tmpFilePath, "", package->fullPkgName()->str(), isCJMPFile);
+        CJC_ASSERT(tmpFileId == fileInfo->fileID()); // make sure it get same file id as in first compilation stage
+        allFileIds[i] = tmpFileId;
         auto file = CreateFileNode(*curPackage, fileInfo->fileID(), std::move(importInfos));
+        if (fileInfo->feature()) {
+            file->feature = LoadFeaturesDirective(fileInfo->feature());
+        }
         file->EnableAttr(Attribute::FROM_COMMON_PART);
         file->EnableAttr(Attribute::COMMON);
         file->isCommon = true;
@@ -356,8 +372,9 @@ void ASTLoader::ASTLoaderImpl::LoadPackageDecls()
             }
             // NOTE: FormattedIndex is vector offset plus 1.
             auto tmpDecl = LoadDecl(i + 1);
-            if (!tmpDecl) {
-                continue;
+            if (!tmpDecl || tmpDecl->TestAttr(Attribute::ALREADY_LOADED)) {
+                tmpDecl->doNotExport = true;
+                // continue;
             }
             auto fileID = tmpDecl->begin.fileID;
             if (auto found = idToFileMap.find(fileID); found != idToFileMap.end()) {
@@ -516,19 +533,43 @@ void ASTLoader::ASTLoaderImpl::AddDeclToImportedPackage(Decl& decl)
     CJC_NULLPTR_CHECK(exportIdDeclMap);
     if (exportId.empty()) {
         exportIdDeclMap->emplace(decl.identifier, &decl);
-    } else {
-        auto it1 = exportIdDeclMap->find(exportId);
-        if (it1 == exportIdDeclMap->end()) {
-            exportIdDeclMap->emplace(exportId, &decl);
-        } else {
-            // NOTE: when 'importSrcCode' is disabled, the imported ast cannot to be used for code generation,
-            //       this kind of situation is for LSP usage now, so the duplication error can be ignored.
-            bool reportError = (it1->second != &decl) && importSrcCode;
-            reportError = reportError && !isChirNow;
-            if (reportError) {
-                InternalError("Found same exportID when import a package.");
+        return;
+    }
+    auto it1 = exportIdDeclMap->find(exportId);
+    // will be added if declaration appears first time
+    bool needAdd = it1 == exportIdDeclMap->end();
+    if (!needAdd) {
+        // NOTE: when 'importSrcCode' is disabled, the imported ast cannot to be used for code generation,
+        //       this kind of situation is for LSP usage now, so the duplication error can be ignored.
+        bool reportError = (it1->second != &decl) && importSrcCode;
+        reportError = reportError && !isChirNow;
+        if (decl.TestAttr(Attribute::FROM_COMMON_PART)) {
+            reportError = false;
+            //       A
+            //     /  \
+            //    B    C
+            //    \   /
+            //      D
+            // Declaration defined in A source set was added in B.cjo and C.cjo,
+            // so when compiling child source set D it can be duplicated, it's not an error.
+
+            if (DeclaredInDifferentFiles(decl, *it1->second)) {
+                // If declaration `foo` was added in B and in C source sets,
+                // then it can be not an error at all if `foo` is common/specific,
+                // Or an error if it's non-CJMP declaration, but it's not an export error,
+                // It need to be checked later when semantic checking.
+                needAdd = true;
+            } else {
+                decl.EnableAttr(Attribute::ALREADY_LOADED);
             }
         }
+        if (reportError) {
+            InternalError("Found same exportID when import a package.");
+        }
+    }
+
+    if (needAdd) {
+        exportIdDeclMap->emplace(exportId, &decl);
     }
 }
 

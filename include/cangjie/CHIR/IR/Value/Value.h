@@ -118,6 +118,16 @@ public:
 
     Type* GetType() const;
 
+    const std::set<std::string>& GetFeatures() const
+    {
+        return features;
+    }
+
+    void SetFeatures(std::set<std::string> newFeatures)
+    {
+        features = newFeatures;
+    }
+
     virtual std::string GetSrcCodeIdentifier() const;
     const std::string& GetIdentifier() const;
     std::string GetIdentifierWithoutPrefix() const;
@@ -173,6 +183,7 @@ private:
     ValueKind GetValueKind() const;
 
     ValueKind kind;                 // value kind
+    std::set<std::string> features;
 };
 
 class Parameter : public Value {

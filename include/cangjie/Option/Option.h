@@ -472,7 +472,7 @@ public:
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     std::vector<std::string> pluginPaths; /**< meta-transform plugins */
 #endif
-    std::optional<std::string> commonPartCjo = std::nullopt; /**< .cjo path for common part of package */
+    std::vector<std::string> commonPartCjos; /**< .cjo path for parent source sets (common to currently compiled) */
 
     // enable incremental compilation
     bool enIncrementalCompilation = false;
@@ -1159,9 +1159,14 @@ public:
         return emitCHIRPhase != CandidateEmitCHIRPhase::NA;
     }
 
-    bool IsCompilingCJMP() const
+    bool IsCompilingCJMPPlatform() const
     {
         return inputChirFiles.size() > 0;
+    }
+
+    bool IsCompilingCJMP() const
+    {
+        return IsCompilingCJMPPlatform() || outputMode == GlobalOptions::OutputMode::CHIR;
     }
 
 protected:

@@ -246,10 +246,12 @@ void TypeChecker::TypeCheckerImpl::CollectDeclMapAndCheckRedefinitionForOneSymbo
         bool privateGlobalInDifferentFile = sym.node->TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
             found.front()->TestAttr(Attribute::GLOBAL, Attribute::PRIVATE) &&
             sym.node->curFile != found.front()->curFile;
-        bool multiPlat =
+        bool oneIsFromCommonPart =
+            sym.node->TestAttr(Attribute::FROM_COMMON_PART) != found.front()->TestAttr(Attribute::FROM_COMMON_PART);
+        bool multiPlat = oneIsFromCommonPart &&
             sym.node->TestAttr(Cangjie::AST::Attribute::COMMON) && found.front()->TestAttr(Attribute::SPECIFIC);
-        multiPlat =
-            multiPlat || (sym.node->TestAttr(Attribute::SPECIFIC) && found.front()->TestAttr(Attribute::COMMON));
+        multiPlat = multiPlat || (oneIsFromCommonPart &&
+          sym.node->TestAttr(Attribute::SPECIFIC) && found.front()->TestAttr(Attribute::COMMON));
         if (!privateGlobalInDifferentFile && !multiPlat) {
             DiagRedefinitionWithFoundNode(diag, StaticCast<Decl>(*sym.node), *found.front());
         }
@@ -1559,6 +1561,21 @@ void TypeChecker::TypeCheckerImpl::PreCheckFuncStaticConflict(const std::vector<
     }
 }
 
+namespace {
+inline bool IsSamePosition(const Position& pos1, const Position& pos2)
+{
+    return pos1 == pos2 && pos1.fileID == pos2.fileID;
+}
+
+/// When compiling CJMP package, there can be several parent CJO each having the same function.
+/// Both function are deserialized, so it's not duplicate, it's actulayy the same function.
+inline bool IsSameDeserializedFunction(Ptr<FuncDecl> f1, Ptr<FuncDecl> f2)
+{
+    return IsSamePosition(f1->begin, f2->begin) &&
+        (f1->TestAttr(Attribute::ALREADY_LOADED) || f2->TestAttr(Attribute::ALREADY_LOADED));
+}
+}
+
 bool TypeChecker::TypeCheckerImpl::PreCheckFuncRedefinitionWithSameSignature(
     std::vector<Ptr<FuncDecl>> funcs, bool needReportErr)
 {
@@ -1585,10 +1602,11 @@ bool TypeChecker::TypeCheckerImpl::PreCheckFuncRedefinitionWithSameSignature(
                     visibilityMatch = false;
                 }
             }
-            return typeManager.IsFuncParameterTypesIdentical(paramTys1, paramTys2, substituteMap) &&
+            return visibilityMatch && typeManager.IsFuncParameterTypesIdentical(paramTys1, paramTys2, substituteMap) &&
                 fd->TestAttr(Attribute::STATIC) == (*it)->TestAttr(Attribute::STATIC) &&
                 fd->TestAttr(Attribute::CONSTRUCTOR) == (*it)->TestAttr(Attribute::CONSTRUCTOR) &&
-                fd->TestAttr(Attribute::MAIN_ENTRY) == (*it)->TestAttr(Attribute::MAIN_ENTRY) && visibilityMatch;
+                fd->TestAttr(Attribute::MAIN_ENTRY) == (*it)->TestAttr(Attribute::MAIN_ENTRY) &&
+                !IsSameDeserializedFunction(fd, *it);
         });
         std::vector<Ptr<FuncDecl>> sameSigFuncs;
         std::copy(funcs.begin(), it1, std::back_inserter(sameSigFuncs));

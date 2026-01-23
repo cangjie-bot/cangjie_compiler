@@ -514,6 +514,8 @@ Ptr<Func> GlobalVarInitializer::TranslateFileInitializer(
     std::vector<Ptr<Value>> varInitFuncs;
     for (auto decl : decls) {
         if (auto initFunc = TranslateVarInit(*decl)) {
+            auto features = decl->curFile->GetFeatures();
+            initFunc->SetFeatures(features);
             if (decl->IsConst()) {
                 initFuncsForConstVar.emplace_back(initFunc);
                 // In incremental compilation scenarios, only changes need to be re-evaluated.
@@ -768,7 +770,6 @@ static Ptr<Apply> FindApplyIn(const Block& block, FuncBase& applyCallee)
         }
     }
 
-    CJC_ABORT();
     return nullptr;
 }
 
@@ -781,10 +782,18 @@ void GlobalVarInitializer::InsertInitializerIntoPackageInitializer(FuncBase& ini
         // It was inserted at previous compilation phase ==>
 
         auto initCallExpr = FindApplyIn(*blockWithInitializers, init);
-        auto lastExpr = blockWithInitializers->GetExpressions().back();
-        if (initCallExpr != lastExpr) {
-            // ==> need to push to the end
-            initCallExpr->MoveAfter(lastExpr);
+        if (initCallExpr) {
+            auto lastExpr = blockWithInitializers->GetExpressions().back();
+            if (initCallExpr != lastExpr) {
+                // ==> need to push to the end
+                initCallExpr->MoveAfter(lastExpr);
+            }
+        } else {
+            // But it can be inserted in different initializer, in this case `APPLY` need to be created.
+    trans.SetCurrentBlock(*blockWithInitializers);
+
+    trans.GenerateFuncCall(init, StaticCast<FuncType*>(init.GetType()), std::vector<Type*>{}, nullptr,
+        std::vector<Value*>{}, INVALID_LOCATION);
         }
         return;
     }

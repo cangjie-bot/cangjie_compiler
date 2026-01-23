@@ -2932,6 +2932,22 @@ struct File : Node {
     {
         return !(*this == r);
     }
+    std::set<std::string> GetFeatures()
+    {
+        std::set<std::string> features = {};
+        if (feature) {
+            auto rawFeatures = feature->featuresSet->content;
+            for (auto rawFeature: rawFeatures) {
+                std::string featureStr = "";
+                for (size_t i = 0; i < rawFeature.identifiers.size(); i++) {
+                    featureStr += rawFeature.identifiers[i].Val();
+                }
+                features.insert(featureStr);
+            }
+        }
+
+        return features;
+    }
 };
 
 enum class AccessLevel {

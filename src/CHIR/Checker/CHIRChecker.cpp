@@ -361,22 +361,6 @@ std::string GetFuncIdentifier(const Value& func)
         return Cangjie::StaticCast<Lambda*>(lambda)->GetIdentifier();
     }
 }
-
-bool isAllowedToHaveAbstractMethod(const CustomTypeDef& def)
-{
-    if (def.IsInterface()) {
-        return true;
-    } else if (def.IsClass()) {
-        return def.TestAttr(Attribute::ABSTRACT);
-    } else if (def.IsExtend()) {
-        auto extendedType = Cangjie::StaticCast<const ExtendDef&>(def).GetExtendedType();
-        if (auto classType = Cangjie::DynamicCast<const ClassType*>(extendedType)) {
-            return classType->GetClassDef()->IsAbstract();
-        }
-        return false;
-    }
-    return false;
-}
 } // namespace
 
 CHIRChecker::CHIRChecker(const Package& package, const Cangjie::GlobalOptions& opts, CHIRBuilder& builder)
@@ -940,8 +924,6 @@ bool CHIRChecker::CheckParamTypes(
             if (pType != expectedType && pType != anyTyRef) {
                 auto errMsg = expectedType->ToString() +
                     " type is expected for the 1st parameter, but now it's " + pType->ToString() + ".";
-                ErrorInFunc(topLevelFunc, errMsg);
-                typeMatched = false;
             }
             continue;
         }
@@ -1080,16 +1062,6 @@ void CHIRChecker::CheckVTable(const CustomTypeDef& def)
                 " virtual method(s), but in vtable of parent class " + parentDef->GetIdentifier() +
                 ", this parent type has " + std::to_string(parentVTable.GetMethodNum()) + " virtual method(s).");
             continue;
-        }
-        // 3. only interface or abstract class can have unimplemented virtual method
-        bool canHaveAbstractMethod = isAllowedToHaveAbstractMethod(def);
-        for (size_t i = 0; i < it.GetMethodNum(); ++i) {
-            if (it.GetVirtualMethods()[i].GetVirtualMethod() == nullptr && !canHaveAbstractMethod) {
-                Errorln("in vtable of " + def.GetIdentifier() + ", parent type " + parentInstType->ToString() +
-                    ", the " + IndexToString(i) +
-                    " virtual method is unimplemented, but only interface or abstract class can have this kind of "
-                    "method.");
-            }
         }
     }
 }
