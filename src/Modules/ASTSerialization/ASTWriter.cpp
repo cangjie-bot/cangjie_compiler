@@ -778,6 +778,27 @@ flatbuffers::Offset<PackageFormat::Imports> ASTWriter::ASTWriterImpl::SaveFileIm
     return importsBuilder.Finish();
 }
 
+TFeatureIdOffset ASTWriter::ASTWriterImpl::CreateFeatureId(const FeatureId& featureId)
+{
+    std::vector<std::string> identifiers;
+    for (auto identifier: featureId.identifiers) {
+        identifiers.push_back(identifier);
+    }
+
+    return PackageFormat::CreateFeatureId(builder, builder.CreateVectorOfStrings(identifiers));
+}
+
+TFeaturesDirectiveOffset ASTWriter::ASTWriterImpl::SaveFeaturesDirective(Ptr<FeaturesDirective> fd)
+{
+    auto features = std::vector<TFeatureIdOffset>();
+    for (auto& featureId: fd->featuresSet->content) {
+        features.push_back(CreateFeatureId(featureId));
+    }
+
+    auto featuresSet = PackageFormat::CreateFeaturesSet(builder, builder.CreateVector<TFeatureIdOffset>(features));
+    return PackageFormat::CreateFeaturesDirective(builder, featuresSet);
+}
+
 // Save fileNames, and add to savedFileMap and return its index.
 void ASTWriter::ASTWriterImpl::SaveFileInfo(const File& file)
 {
@@ -797,7 +818,12 @@ void ASTWriter::ASTWriterImpl::SaveFileInfo(const File& file)
         auto fileID = file.begin.fileID;
         auto begin = TPosition(fileIndex, 0, file.begin.line, file.begin.column, false);
         auto end = TPosition(fileIndex, 0, file.end.line, file.end.column, false);
-        allFileInfo.push_back(PackageFormat::CreateFileInfo(builder, fileID, &begin, &end));
+        if (file.feature) {
+            auto feature = SaveFeaturesDirective(file.feature);
+            allFileInfo.push_back(PackageFormat::CreateFileInfo(builder, fileID, &begin, &end, feature));
+        } else {
+            allFileInfo.push_back(PackageFormat::CreateFileInfo(builder, fileID, &begin, &end));
+        }
     }
 }
 
@@ -1519,12 +1545,16 @@ FormattedIndex ASTWriter::ASTWriterImpl::SaveDecl(const Decl& decl, bool isTopLe
     if (decl.TestAttr(Attribute::GENERIC_INSTANTIATED, Attribute::GENERIC)) {
         attrs.SetAttr(Attribute::UNREACHABLE, true); // Set 'UNREACHABLE' for export.
     }
-
+    if (decl.TestAttr(Attribute::SPECIFIC)) {
+        // CJMP compilation mid phase. This common declaration will be relative common in next compilation phases.
+        attrs.SetAttr(Attribute::SPECIFIC, false);
+        attrs.SetAttr(Attribute::COMMON, true);
+        // platform provide an implementation, so it's common with default for further compilation phases
+        attrs.SetAttr(Attribute::COMMON_WITH_DEFAULT, true);
+    }
     if (auto varDecl = DynamicCast<VarDecl>(&decl)) {
         if (varDecl->TestAttr(Attribute::FROM_COMMON_PART) && varDecl->outerDecl &&
             varDecl->outerDecl->TestAttr(Attribute::SPECIFIC)) {
-            attrs.SetAttr(Attribute::COMMON, false);
-            attrs.SetAttr(Attribute::FROM_COMMON_PART, false);
         }
         if (varDecl->outerDecl && varDecl->outerDecl->TestAttr(Attribute::COMMON)) {
             bool hasInitializer = varDecl->initializer;

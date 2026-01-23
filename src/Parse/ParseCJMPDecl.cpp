@@ -99,22 +99,17 @@ std::string GetDiagKind(const AST::Node& node)
 }
 }  // namespace
 
-void MPParserImpl::SetCompileOptions(const GlobalOptions& opts)
+void MPParserImpl::SetCompileOptions(const GlobalOptions& globalOpts)
 {
-    this->compileCommon = (opts.outputMode == GlobalOptions::OutputMode::CHIR);
-    this->compileSpecific = (opts.commonPartCjo != std::nullopt);
+    this->opts = &globalOpts;
 }
 
 bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) const
 {
     auto currentFile = ref->currentFile;
     if (ref->HasModifier(modifiers, TokenKind::SPECIFIC)) {
-        if (!compileSpecific) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_specific_in_non_specific_file, *currentFile);
-            return false;
-        }
-        if (currentFile->isCommon) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_specific_in_the_same_file, *currentFile);
+        if (!CompilePlatform() && !CompileCommon()) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_unexpected_cjmp_decl, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
@@ -123,12 +118,8 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
         currentFile->isSpecific = true;
     }
     if (ref->HasModifier(modifiers, TokenKind::COMMON)) {
-        if (!compileCommon) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_in_non_common_file, *currentFile);
-            return false;
-        }
-        if (currentFile->isSpecific) {
-            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_common_and_specific_in_the_same_file, *currentFile);
+        if (!CompilePlatform() && !CompileCommon()) {
+            ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_unexpected_cjmp_decl, *currentFile);
             return false;
         }
         if (currentFile->package != nullptr) {
@@ -141,7 +132,7 @@ bool MPParserImpl::CheckCJMPModifiers(const std::set<AST::Modifier>& modifiers) 
 
 void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 {
-    if (!compileCommon && !compileSpecific) {
+    if (!CompileCommon() && !CompilePlatform()) {
         return;
     }
     if (!CheckCJMPModifiersOf(decl)) {
@@ -183,7 +174,7 @@ void MPParserImpl::CheckCJMPDecl(AST::Decl& decl) const
 
 bool MPParserImpl::HasCJMPModifiers(const AST::Modifier& modifier) const
 {
-    if (!compileCommon && !compileSpecific) {
+    if (!CompileCommon() && !CompilePlatform()) {
         return false;
     }
     return (modifier.modifier == TokenKind::COMMON || modifier.modifier == TokenKind::SPECIFIC);
@@ -273,7 +264,7 @@ bool MPParserImpl::CheckCJMPModifiersOf(const AST::Decl& decl) const
 bool MPParserImpl::CheckCJMPModifiersBetween(const AST::Decl& inner, const AST::Decl& outer) const
 {
     auto p0 = GetDiagKind(inner) + " " + inner.identifier.Val();
-    if (inner.TestAttr(Attribute::COMMON) && !outer.TestAttr(Attribute::COMMON)) {
+    if (inner.TestAttr(Attribute::COMMON) && !outer.TestAnyAttr(Attribute::COMMON, Attribute::SPECIFIC)) {
         DiagOuterDeclMissMatch(inner, p0, "common", GetDiagKind(outer), "common");
         return false;
     }
@@ -302,4 +293,22 @@ void MPParserImpl::DiagOuterDeclMissMatch(const AST::Node& node,
     const std::string& p0, const std::string& p1, const std::string& p2, const std::string& p3) const
 {
     ref->diag.DiagnoseRefactor(DiagKindRefactor::parse_cjmp_outdecl_miss_match, node, p0, p1, p2, p3);
+}
+
+bool MPParserImpl::CompileCommon() const
+{
+    if (opts) {
+        return opts->outputMode == GlobalOptions::OutputMode::CHIR;
+    }
+
+    return false;
+}
+
+bool MPParserImpl::CompilePlatform() const
+{
+    if (opts) {
+        return opts->commonPartCjos.size() > 0;
+    }
+
+    return false;
 }

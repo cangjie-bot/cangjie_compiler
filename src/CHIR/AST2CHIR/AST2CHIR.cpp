@@ -30,7 +30,8 @@ bool AST2CHIR::HasFailed() const
 void AST2CHIR::RegisterAllSources()
 {
     auto& sources = sourceManager.GetSources();
-    for (auto& source : sources) {
+    for (auto idToSource : sources) {
+        auto& source = idToSource.second;
         auto filePath = source.path;
         auto absPath = FileUtil::GetAbsPath(source.path);
         if (absPath.has_value()) {
@@ -170,7 +171,7 @@ std::pair<InitOrder, bool> AST2CHIR::SortGlobalVarDecl(const AST::Package& pkg)
     }
 
     auto analysis = GlobalDeclAnalysis(
-        diag, gim, kind, funcsAndVars, localConstVars, staticInitFuncInfoMap, outputCHIR, mergingSpecific);
+        diag, gim, kind, funcsAndVars, localConstVars, staticInitFuncInfoMap, outputCHIR, mergingPlatform);
     auto initOrder = analysis.Run(nodesWithDeps, fileAndVarMap, cachedInfo);
 
     // Speically, now we want to flattern the local const VarWithPattern decl which will be useful in translation later.
@@ -481,14 +482,12 @@ bool AST2CHIR::TryToDeserializeCHIR()
     auto& chirFiles = opts.inputChirFiles;
     CJC_ASSERT(chirFiles.size() != 0);
     ToCHIR::Phase phase;
-    if (chirFiles.size() == 1) {
-        bool success = CHIRDeserializer::Deserialize(chirFiles.at(0), builder, phase, true);
-        mergingSpecific = true;
-        return success;
+    bool success = true;
+    for (auto chirFile : chirFiles) {
+        success &= CHIRDeserializer::Deserialize(chirFile, builder, phase, true);
+        mergingPlatform = true;
     }
-    // synthetic limitation, however need to distinguish different chir sources
-    diag.DiagnoseRefactor(DiagKindRefactor::frontend_can_not_handle_to_many_chir, DEFAULT_POSITION);
-    return false;
+    return success;
 }
 
 static Package::AccessLevel BuildPackageAccessLevel(const AST::AccessLevel& level)
@@ -518,7 +517,7 @@ bool AST2CHIR::ToCHIRPackage(AST::Package& node)
         return false;
     }
     // Translating common alongside with merging specific is not supported
-    CJC_ASSERT(!(outputCHIR && mergingSpecific));
+    CJC_ASSERT(!(outputCHIR && mergingPlatform));
     package->SetPackageAccessLevel(BuildPackageAccessLevel(node.accessible));
     RegisterAllSources();
     CJC_NULLPTR_CHECK(package);
