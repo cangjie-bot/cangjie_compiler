@@ -658,7 +658,7 @@ void ToCHIR::RunOptimizationPass()
 
 bool ToCHIR::RunConstantEvaluation()
 {
-    if (!opts.IsConstEvalEnabled() || opts.enIncrementalCompilation || opts.commonPartCjo.has_value()) {
+    if (!opts.IsConstEvalEnabled() || opts.enIncrementalCompilation || opts.commonPartCjos.size() > 0) {
         return true;
     }
     Utils::ProfileRecorder recorder("CHIR", "Constant Evaluation");
@@ -712,7 +712,7 @@ bool ToCHIR::RunIRChecker(const Phase& phase)
         rules.emplace(CHIRChecker::Rule::RETURN_TYPE_NEED_BE_VOID);
     }
     // there may be something wrong, we will check this rule after CJMP's scheme done
-    if (!opts.commonPartCjo.has_value()) {
+    if (opts.commonPartCjos.size() <= 0) {
         rules.emplace(CHIRChecker::Rule::CHECK_FUNC_BODY);
     }
     auto ok = checker.CheckPackage(rules);
