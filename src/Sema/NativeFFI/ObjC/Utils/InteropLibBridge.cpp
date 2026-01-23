@@ -545,3 +545,13 @@ Ptr<FuncDecl> InteropLibBridge::GetObjectGetClassDecl()
     static auto decl = GetInteropLibDecl<ASTKind::FUNC_DECL>(INTEROPLIB_OBJ_C_OBJECT_GET_CLASS);
     return decl;
 }
+
+bool InteropLibBridge::IsInteropLibAccessible(ImportManager& importManager)
+{
+    return importManager.GetPackageDecl(INTEROPLIB_PACKAGE_NAME);
+}
+
+bool InteropLibBridge::IsInteropLibAccessible() const
+{
+    return IsInteropLibAccessible(importManager);
+}

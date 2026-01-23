@@ -161,7 +161,6 @@ inline const std::string OBJ_C_ID_IDENT = "ObjCId";
 inline const std::string OBJ_C_POINTER_IDENT = "ObjCPointer";
 inline const std::string OBJ_C_FUNC_IDENT = "ObjCFunc";
 inline const std::string OBJ_C_BLOCK_IDENT = "ObjCBlock";
-inline const std::string INTEROPLIB_OBJ_C_PACKAGE_IDENT = "interoplib.objc";
 inline const std::string OBJ_C_LANG_PACKAGE_IDENT = "objc.lang";
 inline const std::string NATIVE_HANDLE_IDENT = "$obj";
 inline const std::string REGISTRY_ID_IDENT = "$registryId";

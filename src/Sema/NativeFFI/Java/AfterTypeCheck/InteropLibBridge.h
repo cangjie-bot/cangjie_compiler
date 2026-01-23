@@ -299,13 +299,12 @@ public:
     Ptr<FuncDecl> GetMethodIdConstrStatic();
     Ptr<FuncDecl> GetFieldIdConstr();
     Ptr<FuncDecl> GetFieldIdConstrStatic();
-    
- 
+
      /**
      * JavaObjectController init() decl
      */
     Ptr<FuncDecl> GetJavaObjectControllerInitDecl();
-    
+
     /**
      * JavaObjectController attachCJObject() decl
      */
@@ -415,7 +414,7 @@ public:
         const std::string& classTypeSignature,
         const std::string& constructorSignature,
         std::vector<OwnedPtr<Expr>> args);
-    
+
     /**
      * JavaObjectController<T>(javaEntity, className)
      */
@@ -640,7 +639,9 @@ public:
     OwnedPtr<CallExpr> CreateGetJavaLambdaEntityCall(OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile);
     OwnedPtr<CallExpr> CreateGetJavaLambdaCall(Ptr<FuncDecl> fd, OwnedPtr<RefExpr> refExpr, std::string classSign, Ptr<File> curFile);
 
+    bool IsInteropLibAccessible() const;
     void CheckInteropLibVersion();
+    static bool IsInteropLibAccessible(ImportManager& importManager);
 
 private:
     static constexpr auto INTEROPLIB_VERSION = 9;

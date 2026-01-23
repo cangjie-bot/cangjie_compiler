@@ -15,6 +15,10 @@
 
 void Cangjie::Interop::ObjC::Desugar(InteropContext&& ctx)
 {
+    if (!ctx.bridge.IsInteropLibAccessible()) {
+        return;
+    }
+
     HandlerFactory<InteropContext>::Start<FindCJMappingInterface>()
         .Use<InsertFwdClasses>()
         .Use<GenerateGlueCode>(InteropType::CJ_Mapping_Interface)
