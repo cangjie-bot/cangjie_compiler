@@ -319,6 +319,8 @@ bool DefaultCIImpl::PerformCodeGen()
 bool DefaultCIImpl::PerformCjoSaving()
 {
     Utils::ProfileRecorder recorder("Main Stage", "Save cjo");
+    // Skip saving cjo when output mode is CHIR. The cjo will be saved in PerformResultsSaving instead.
+    // Reason: cjmp updates the dependencies result of declarations in the common part during the chir stage.
     if (ci.invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
         return true;
     }
