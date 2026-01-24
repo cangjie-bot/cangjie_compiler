@@ -430,7 +430,7 @@ void UpdateIncrRemovedDeclsForVirtualFuncDep(CachedMangleMap& cacheMangles, std:
         }
     }
     for (auto& [delRaw, del] : delVirtFuncWrapForIncr) {
-            logger.LogLn("[delVirDep][change] raw: " + delRaw + " mg: " + del);
+        logger.LogLn("[delVirDep][change] raw: " + delRaw + " mg: " + del);
         cacheMangles.incrRemovedDecls.emplace(del);
     }
 }
@@ -492,6 +492,32 @@ bool IncrementalCompilerInstance::PerformCodeGen()
         ret = ret && CodegenOnePackage(*srcPkg, kind == IncreKind::INCR);
     }
     return ret;
+}
+
+bool IncrementalCompilerInstance::PerformCjoSaving()
+{
+    if (auto& logger = IncrementalCompilationLogger::GetInstance(); logger.IsEnable()) {
+        std::string message;
+        if (kind == IncreKind::NO_CHANGE) {
+            message = "no change, skip cjo saving";
+        } else if (kind == IncreKind::EMPTY_PKG) {
+            message = "empty pkg, skip cjo saving";
+        } else if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+            message = " chir output mode, skip cjo saving";
+        } else {
+            message = "incremental cjo saving";
+        }
+        logger.LogLn(message);
+    }
+    if (kind == IncreKind::NO_CHANGE || kind == IncreKind::EMPTY_PKG) {
+        return true;
+    }
+
+    if (invocation.globalOptions.outputMode == GlobalOptions::OutputMode::CHIR) {
+        return true;
+    }
+
+    return DefaultCompilerInstance::PerformCjoSaving();
 }
 
 bool IncrementalCompilerInstance::PerformResultsSaving()
