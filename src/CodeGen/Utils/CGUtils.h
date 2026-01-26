@@ -311,9 +311,7 @@ inline bool IsFPType(llvm::Type* type)
 
 inline bool IsObject(const CHIR::ClassDef& classDef)
 {
-#ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
     return IsCoreObject(classDef);
-#endif
 }
 
 inline bool IsNonPublicCFunc(const CHIR::FuncType& funcTy, const CHIR::Value& func)

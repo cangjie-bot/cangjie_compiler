@@ -106,7 +106,7 @@ void GenerateExtensionDefs(CGModule& cgMod)
     }
 }
 
-std::vector<llvm::Constant*> TopologicalSortStaticGIs(CGContext& cgCtx, std::vector<llvm::Constant*> content)
+std::vector<llvm::Constant*> TopologicalSortStaticGIs(const CGContext& cgCtx, std::vector<llvm::Constant*> content)
 {
     auto indegree = cgCtx.GetIndegreeOfTypes();
     auto& partialOrder = cgCtx.GetDependentPartialOrderOfTypes();
@@ -122,10 +122,12 @@ std::vector<llvm::Constant*> TopologicalSortStaticGIs(CGContext& cgCtx, std::vec
         q.pop();
         res.emplace_back(u);
         for (auto c : content) {
-            if (auto it = partialOrder.find(CGContext::PartialOrderPair{u, c}); it != partialOrder.end()) {
-                if (auto& i = indegree.at(c); --i == 0) {
-                    q.push(c);
-                }
+            auto it = partialOrder.find(CGContext::PartialOrderPair{u, c});
+            if (it == partialOrder.end()) {
+                continue;
+            }
+            if (auto& i = indegree.at(c); --i == 0) {
+                q.push(c);
             }
         }
     }
@@ -539,14 +541,14 @@ llvm::Value* GenerateMainRetVal(IRBuilder2& irBuilder, llvm::Value* userMainRetV
 
 llvm::Function* CreateMainFunc(const CGModule& cgMod)
 {
-    auto& context = cgMod.GetCGContext().GetLLVMContext();
-    auto i32Ty = llvm::Type::getInt32Ty(context);
-    auto i8PtrPtrTy = llvm::Type::getInt8PtrTy(context)->getPointerTo();
     // Create @main func.
     auto module = cgMod.GetLLVMModule();
     auto mainFunc = module->getFunction("main");
     CJC_ASSERT(!mainFunc && "The main function is generated repeatedly.");
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
+    auto& context = cgMod.GetCGContext().GetLLVMContext();
+    auto i32Ty = llvm::Type::getInt32Ty(context);
+    auto i8PtrPtrTy = llvm::Type::getInt8PtrTy(context)->getPointerTo();
     auto voidType = llvm::Type::getVoidTy(context);
     auto mainFuncType = llvm::FunctionType::get(voidType, {i32Ty, i8PtrPtrTy}, false);
     mainFunc = llvm::cast<llvm::Function>(module->getOrInsertFunction("main", mainFuncType).getCallee());

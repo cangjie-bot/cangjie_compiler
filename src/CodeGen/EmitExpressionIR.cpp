@@ -37,7 +37,7 @@ private:
 
 template <> class IRGenerator<ExpressionGeneratorImpl> : public IRGenerator<> {
 public:
-    IRGenerator(CGModule& cgMod, std::vector<CHIR::Expression*> chirExprs)
+    IRGenerator(CGModule& cgMod, const std::vector<CHIR::Expression*>& chirExprs)
         : IRGenerator<>(std::make_unique<ExpressionGeneratorImpl>(cgMod, chirExprs))
     {
     }

@@ -28,7 +28,7 @@
 #include "cangjie/CHIR/CHIRCasting.h"
 
 namespace llvm::Intrinsic {
-typedef unsigned ID;
+using ID = unsigned;
 }
 
 namespace Cangjie {
@@ -248,7 +248,7 @@ public:
         return reflectGeneratedStaticGINames;
     }
 
-    static std::vector<std::string> GetTINameArrayForUpperBounds(std::vector<CHIR::Type*>& upperBounds)
+    static std::vector<std::string> GetTINameArrayForUpperBounds(const std::vector<CHIR::Type*>& upperBounds)
     {
         std::vector<std::string> res;
         for (auto upperBound : upperBounds) {
@@ -257,7 +257,7 @@ public:
         return res;
     }
 
-    std::string GetGenericTypeUniqueName(std::string& genericTypeName, std::vector<CHIR::Type*>& upperBounds)
+    std::string GetGenericTypeUniqueName(std::string& genericTypeName, const std::vector<CHIR::Type*>& upperBounds)
     {
         if (genericTypeWithUpperBoundsMap.find(genericTypeName) != genericTypeWithUpperBoundsMap.end()) {
             auto upperBoundsVec = genericTypeWithUpperBoundsMap[genericTypeName];

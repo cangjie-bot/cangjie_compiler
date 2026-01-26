@@ -305,8 +305,6 @@ CGFunction* CGModule::GetOrInsertCGFunction(const CHIR::Value* func, bool forWra
     auto chirFunc = VirtualCast<const CHIR::FuncBase*>(func);
     auto chirLinkage = chirFunc->Get<CHIR::LinkTypeInfo>();
     if (func->IsFuncWithBody()) {
-        auto chirFunc = VirtualCast<const CHIR::Func*>(func);
-        auto chirLinkage = chirFunc->Get<CHIR::LinkTypeInfo>();
         bool markByMD = cgCtx->IsCGParallelEnabled() && !IsCHIRWrapper(func->GetIdentifierWithoutPrefix());
         AddLinkageTypeMetadata(*function, CHIRLinkage2LLVMLinkage(chirLinkage), markByMD);
     } else if (chirLinkage == Linkage::EXTERNAL_WEAK) {
