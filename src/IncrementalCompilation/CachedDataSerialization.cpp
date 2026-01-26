@@ -139,7 +139,7 @@ void LoadCHIROptInfo(const CachedASTFormat::HashedPackage& package, const RawMan
             std::string decl = declDep->decl()->str();
             std::vector<std::string> dependency;
             if (!declDep->dependency()) {
-                return;
+                continue;
             }
             for (uoffset_t j = 0; j < declDep->dependency()->size(); j++) {
                 (void)dependency.emplace_back(declDep->dependency()->Get(j)->str());
@@ -154,7 +154,7 @@ void LoadCHIROptInfo(const CachedASTFormat::HashedPackage& package, const RawMan
         for (uoffset_t i = 0; i < package.chirOptInfo()->size(); i++) {
             auto effectMap = package.chirOptInfo()->Get(i);
             if (!effectMap->effectedDecls()) {
-                return;
+                continue;
             }
             auto& effectItem = cached.chirOptInfo[effectMap->srcDecl()->str()];
             for (uoffset_t j = 0; j < effectMap->effectedDecls()->size(); j++) {
@@ -351,6 +351,7 @@ std::pair<bool, CompilationCache> HashedASTLoader::DeserializeData(const RawMang
     }
     const auto package = CachedASTFormat::GetHashedPackage(serializedData.data());
     CJC_NULLPTR_CHECK(package);
+    CJC_NULLPTR_CHECK(package->version());
     if (package->version()->str() != CANGJIE_VERSION) {
         // Incremental compilation do not use cached data created with different version.
         return {false, {}};
@@ -399,6 +400,8 @@ MemberDeclCache HashedASTLoader::Load(const MemberDecl& decl)
     res.srcUse = decl.srcUse();
     res.bodyHash = decl.body();
     res.astKind = decl.type();
+    CJC_NULLPTR_CHECK(decl.gvid());
+    CJC_NULLPTR_CHECK(decl.gvid()->file());
     res.gvid = {decl.gvid()->file()->str(), decl.gvid()->id()};
     res.isGV = decl.isGV();
     if (decl.members()) {
@@ -439,6 +442,8 @@ TopLevelDeclCache HashedASTLoader::Load(const TopDecl& decl, bool srcPkg)
     res.virtHash = decl.virt();
     res.astKind = decl.type();
     if (srcPkg) {
+        CJC_NULLPTR_CHECK(decl.gvid());
+        CJC_NULLPTR_CHECK(decl.gvid()->file());
         res.gvid = {decl.gvid()->file()->str(), decl.gvid()->id()};
         res.isGV = decl.isGV();
     }
@@ -485,6 +490,8 @@ ASTCache HashedASTLoader::LoadCachedAST(const HashedPackage& p)
     if (p.topDecls()) {
         std::optional<std::string> last{};
         for (const auto& t : *p.topDecls()) {
+            CJC_NULLPTR_CHECK(t->gvid());
+            CJC_NULLPTR_CHECK(t->gvid()->file());
             auto r = Load(*t, true);
             if (IsOOEAffectedDecl(r) && !(r.astKind == static_cast<uint8_t>(ASTKind::VAR_DECL) && !r.isGV)) {
                 fileMap[t->gvid()->file()->str()].emplace_back(t->mangle()->str(), t->gvid()->id());

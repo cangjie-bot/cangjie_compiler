@@ -96,59 +96,67 @@ private:
         return IsGlobalOrStaticVar(decl) || decl.astKind == ASTKind::VAR_WITH_PATTERN_DECL;
     }
 
-    std::set<const Decl*> CompareOrders(const CachedFileMap::mapped_type& old,
-        const FileMap::mapped_type& cur)
+    static std::unordered_map<RawMangledName, int> BuildGvidMap(const FileMap::mapped_type& cur)
     {
-        using I = FileMap::mapped_type::size_type;
-        // gvid in the second compilation
         std::unordered_map<RawMangledName, int> h{};
-        for (I i{0}; i < cur.size(); ++i) {
+        for (FileMap::mapped_type::size_type i{0}; i < cur.size(); ++i) {
             h[cur[i]->rawMangleName] = cur[i]->hash.gvid;
         }
+        return h;
+    }
+
+    static std::vector<int> BuildMaxids(const CachedFileMap::mapped_type& old,
+        const std::unordered_map<RawMangledName, int>& gvidMap, const RawMangled2DeclMap& md)
+    {
         // maxids[i+1] denotes max of
         //      maxids[j], where j < i && old[j] is gv
         //      id[old[i]], the order at which the decl old[i] appears in cur
         // maxids[0] = 0 is a dummy
         std::vector<int> maxids{0};
         int last{0};
-        for (auto& b: old) {
+        for (auto& b : old) {
             // not found in cur, this decl is removed from this file, skipped
-            if (auto it = h.find(b); it == h.cend()) {
+            if (auto it = gvidMap.find(b); it == gvidMap.cend()) {
                 continue;
             } else {
                 int maxid = std::max(it->second, last);
                 maxids.push_back(maxid);
+                CJC_ASSERT(md.count(b) == 1);
                 auto decl = md.at(b);
-                if (IsGV(*decl)) { // only gv has impact on other decls and therefore changes maxid of following decls
+                // only gv has impact on other decls and therefore changes maxid of following decls
+                if (IsGV(*decl)) {
                     last = maxid;
                 }
             }
         }
+        return maxids;
+    }
 
-        // result part I: if any decl preceding the decl in the cache has larger gvid than it in incremental, the decl
-        // needs recompile
-        std::set<const Decl*> res;
-        I rid{0};
-        for (I i{0}; i < old.size(); ++i) {
-            if (auto it = h.find(old[i]); it == h.cend()) {
+    static void FindRecompileDeclsFromOrder(const CachedFileMap::mapped_type& old,
+        const std::unordered_map<RawMangledName, int>& gvidMap, const std::vector<int>& maxids,
+        const RawMangled2DeclMap& md, std::set<const Decl*>& result)
+    {
+        FileMap::mapped_type::size_type rid{0};
+        for (FileMap::mapped_type::size_type i{0}; i < old.size(); ++i) {
+            if (auto it = gvidMap.find(old[i]); it == gvidMap.cend()) {
                 continue;
             } else {
                 if (it->second < maxids[++rid]) {
-                    res.insert(md.at(old[i]));
+                    result.insert(md.at(old[i]));
                 }
             }
         }
+    }
 
-        // store the names in the old file, used to check that a decl is moved to this file
-        std::unordered_set<RawMangledName> oldNames{old.cbegin(), old.cend()};
-
-        // result part II: for a decl that is moved to this file, recompiles it; if there is any decl preceding it in
-        // incremental, they need recompile
-        I i = cur.size();
+    static void FindRecompileDeclsFromFileMove(const FileMap::mapped_type& cur,
+        const std::unordered_set<RawMangledName>& oldNames,
+        const std::unordered_set<RawMangledName>& exclude, std::set<const Decl*>& result)
+    {
+        FileMap::mapped_type::size_type i = cur.size();
         while (i > 0) {
             i--;
             // added decls are excluded
-            if (exc.count(cur[i]->rawMangleName) == 1) {
+            if (exclude.count(cur[i]->rawMangleName) == 1) {
                 continue;
             }
             // name exists in old file, skip
@@ -163,20 +171,37 @@ private:
                in new compile:
                     file 1: d, a
                     file 2: b, c
-                since the decls moved are b and d, and there are no decls before them respectively, no decl is to be
-                recompiled. This is however incorrect, because in the new compilation a circular depdency on the two
-                files emerge. By recompiling all decls that have file change, this error is fixed.
+                since the decls moved are b and d, and there are no decls before them respectively, no decl is to
+                be recompiled. This is however incorrect, because in the new compilation a circular depdency on
+                the two files emerge. By recompiling all decls that have file change, this error is fixed.
             */
-            res.insert(cur[i]);
+            result.insert(cur[i]);
             // file changed gv, add all decls preceding it into recompile
             if (IsGV(*cur[i])) {
                 // this new gv, however, need not recompile
-                for (I j{0}; j < i; ++j) {
-                    res.insert(cur[j]);
+                for (FileMap::mapped_type::size_type j{0}; j < i; ++j) {
+                    result.insert(cur[j]);
                 }
                 break;
             }
         }
+    }
+
+    std::set<const Decl*> CompareOrders(const CachedFileMap::mapped_type& old,
+        const FileMap::mapped_type& cur)
+    {
+        // gvid in the second compilation
+        auto gvidMap = BuildGvidMap(cur);
+        auto maxids = BuildMaxids(old, gvidMap, md);
+        std::set<const Decl*> res;
+        // result part I: if any decl preceding the decl in the cache has larger gvid than it in incremental, the decl
+        // needs recompile
+        FindRecompileDeclsFromOrder(old, gvidMap, maxids, md, res);
+        // result part II: for a decl that is moved to this file, recompiles it; if there is any decl preceding it in
+        // incremental, they need recompile
+        // store the names in the old file, used to check that a decl is moved to this file
+        std::unordered_set<RawMangledName> oldNames{old.cbegin(), old.cend()};
+        FindRecompileDeclsFromFileMove(cur, oldNames, exc, res);
         return res;
     }
 
@@ -222,6 +247,8 @@ private:
         }
         for (auto& [mangled, _] : cur) {
             if (auto cachedIt = cached.find(mangled); cachedIt == cached.end()) {
+                CJC_ASSERT(mangled2Decl.count(mangled) == 1);
+                CJC_NULLPTR_CHECK(mangled2Decl.at(mangled));
                 CollectAddedTopLevelDecl(*mangled2Decl.at(mangled));
             }
         }

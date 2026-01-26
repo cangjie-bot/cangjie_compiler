@@ -157,9 +157,10 @@ std::string StringConvertor::GetUnicodeAndToUTF8(
         {'F', 15}, {'a', 10}, {'b', 11}, {'c', 12}, {'d', 13}, {'e', 14}, {'f', 15}};
     auto temp = it;
     uint32_t unicodePoint = 0;
+    uint32_t base = 16; // hexadecimal base
     while (temp != strEnd && isxdigit(*temp)) {
-        // hexadecimal to decimal need multiplying 16
-        unicodePoint = (unicodePoint * 16) + hexadecimalMap[*temp];
+        CJC_ASSERT(hexadecimalMap.find(*temp) != hexadecimalMap.end());
+        unicodePoint = (unicodePoint * base) + hexadecimalMap[*temp];
         ++temp;
     }
     it = temp;
@@ -177,15 +178,15 @@ std::string StringConvertor::Normalize(const std::string& str, bool isRawString)
     std::string str1{};
     str1.reserve(str.size());
     for (auto it = str.begin(); it != str.cend(); ++it) {
-        if (*it == '\\' && !isRawString) {
+        if (*it == '\\' && (it + 1) != str.cend() && !isRawString) {
             // it + 1 mast 'u' and  it + 2 mast '{'
-            if ((it + 1) != str.cend() && (it + 2) != str.cend() && *(it + 1) == 'u' && *(it + 2) == '{') {
+            if ((it + 2) != str.cend() && *(it + 1) == 'u' && *(it + 2) == '{') {
                 // "\u{" need add 3
                 it += 3;
                 str1 += GetUnicodeAndToUTF8(it, str.cend());
-            } else if (escapeList.find(*(it + 1)) != escapeList.end()) {
+            } else if (auto escapedChar = escapeList.find(*(it + 1)); escapedChar != escapeList.end()) {
                 ++it;
-                str1 += escapeList.find(*(it))->second;
+                str1 += escapedChar->second;
             }
             if (it == str.cend()) {
                 break;
