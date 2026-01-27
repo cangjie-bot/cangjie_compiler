@@ -417,33 +417,53 @@ template <typename T> TVectorOffset<FormattedIndex> ASTWriter::ASTWriterImpl::Ge
 {
     // Body.
     std::vector<FormattedIndex> body;
+    // Track platform implementations that have been added to avoid duplicates
+    std::unordered_set<Decl*> addedPlatformImpls;
     // Incr compilation need load ty by cached cjo, so not only cache visible signature
     bool onlyVisibleSig = !config.exportForIncr && !config.exportContent;
     // For LSP usage, when decl is not external, ignore all members, only keep the typeDecl it self.
     if (onlyVisibleSig && decl.TestAttr(AST::Attribute::PRIVATE)) {
         return builder.CreateVector<FormattedIndex>(body);
     }
-    for (auto& it : decl.GetMemberDeclPtrs()) {
-        CJC_NULLPTR_CHECK(it);
+
+    // Check if a decl should be exported
+    auto shouldExportDecl = [&decl, onlyVisibleSig, this](const Decl* d) -> bool {
         // Because member variables determine the memory layout of a type, all of its member variables should be
         // stored in cjo as long as the type is externally visible.
-        const bool isInstMemberVar = it->astKind == ASTKind::VAR_DECL && !it->TestAttr(Attribute::STATIC);
+        const bool isInstMemberVar = d->astKind == ASTKind::VAR_DECL && !d->TestAttr(Attribute::STATIC);
         // For LSP usage, the invalid vpd will exists, we can ignore it.
-        if (it->doNotExport || it->astKind == AST::ASTKind::VAR_WITH_PATTERN_DECL ||
+        if (d->doNotExport || d->astKind == AST::ASTKind::VAR_WITH_PATTERN_DECL ||
             // For LSP usage, we can ignore invisible members.
-            (onlyVisibleSig && !it->IsExportedDecl())) {
-            continue;
+            (onlyVisibleSig && !d->IsExportedDecl())) {
+            return false;
         }
         if (decl.astKind == AST::ASTKind::EXTEND_DECL && serializingCommon) {
-            body.push_back(GetDeclIndex(it));
-            continue;
+            return true;
         }
         // Incr compilation need load ty by cached cjo, so still cache internal or inst member var decls
         if (!config.exportForIncr && !decl.TestAttr(Attribute::COMMON) && !isInstMemberVar &&
-            it->linkage == Linkage::INTERNAL) {
+            d->linkage == Linkage::INTERNAL) {
+            return false;
+        }
+        return true;
+    };
+
+    for (auto& it : decl.GetMemberDeclPtrs()) {
+        CJC_NULLPTR_CHECK(it);
+        // Skip if this decl is already added as a platform implementation
+        if (it->TestAttr(AST::Attribute::SPECIFIC) && addedPlatformImpls.count(it.get()) > 0) {
             continue;
         }
-        body.push_back(GetDeclIndex(it));
+        // Process platform implementation first, applying same filter logic
+        if (it->specificImplementation) {
+            addedPlatformImpls.insert(it->specificImplementation.get());
+            if (shouldExportDecl(it->specificImplementation.get())) {
+                body.push_back(GetDeclIndex(it->specificImplementation));
+            }
+        }
+        if (shouldExportDecl(it.get())) {
+            body.push_back(GetDeclIndex(it));
+        }
     }
     return builder.CreateVector<FormattedIndex>(body);
 }
