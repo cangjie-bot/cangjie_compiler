@@ -96,8 +96,6 @@ llvm::Constant* GenFieldsFnsOfTypeTemplate(CGModule& cgMod,
         llvm::FunctionType::get(llvm::Type::getInt8PtrTy(cgMod.GetLLVMContext()), argTypes, false);
 
     // Step2 create a global array named "type_mangled_name + $GetFieldFns", which size is fieldNum, element is
-    // FunctionType* fieldFn
-    std::vector<llvm::Type*> fieldFnTypes(fieldNum, fieldFn->getPointerTo());
     // fill the elements inside the array
     std::vector<llvm::Constant*> initializers;
 

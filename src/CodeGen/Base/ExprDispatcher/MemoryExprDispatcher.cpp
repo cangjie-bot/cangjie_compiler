@@ -144,7 +144,7 @@ llvm::Value* HandleGetElementRef(IRBuilder2& irBuilder, const CHIR::GetElementRe
             retValue = irBuilder.CreateEntryAlloca(irBuilder.getInt32Ty());
             irBuilder.CreateStore(llvm::ConstantInt::get(irBuilder.getInt32Ty(), 0U), retValue);
         } else {
-            CJC_ASSERT(false);
+            CJC_ABORT();
         }
     }
     if (!retValue) {
@@ -238,8 +238,8 @@ llvm::Value* HandleMemoryExpression(IRBuilder2& irBuilder, const CHIR::Expressio
             return nullptr;
         }
         default: {
-            printf("Unexpected expr kind: %" PRIu64 "\n", static_cast<uint64_t>(chirExpr.GetExprKind()));
-            CJC_ASSERT(false);
+            auto exprKindStr = std::to_string(static_cast<uint64_t>(chirExpr.GetExprKind()));
+            CJC_ASSERT_WITH_MSG(false, std::string("Unexpected CHIRExprKind: " + exprKindStr + "\n").c_str());
             return nullptr;
         }
     }

@@ -37,7 +37,7 @@ private:
 
 template <> class IRGenerator<ExpressionGeneratorImpl> : public IRGenerator<> {
 public:
-    IRGenerator(CGModule& cgMod, std::vector<CHIR::Expression*> chirExprs)
+    IRGenerator(CGModule& cgMod, const std::vector<CHIR::Expression*>& chirExprs)
         : IRGenerator<>(std::make_unique<ExpressionGeneratorImpl>(cgMod, chirExprs))
     {
     }
@@ -105,7 +105,7 @@ void ExpressionGeneratorImpl::EmitIR()
             if (!rst->GetType()->IsRef() && !rst->GetType()->IsGeneric() && rawRet->getType()->isPointerTy() &&
                 !cgType->IsReference() && !cgType->IsOptionLikeRef()) {
                 cgType = CGType::GetOrCreate(cgMod, CGType::GetRefTypeOf(cgCtx.GetCHIRBuilder(), *rst->GetType()),
-                    rawRet->getType()->getPointerAddressSpace());
+                    CGType::TypeExtraInfo(rawRet->getType()->getPointerAddressSpace()));
             }
 #endif
             CJC_NULLPTR_CHECK(chirExpr->GetTopLevelFunc());

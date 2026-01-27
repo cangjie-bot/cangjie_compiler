@@ -88,12 +88,12 @@ public:
     }
     bool IsAntiOptionLike() const
     {
-        CJC_ASSERT(optionLikeInfo != nullptr && "cgEnumType is not OptionLike");
+        CJC_ASSERT_WITH_MSG(optionLikeInfo != nullptr, "cgEnumType is not OptionLike");
         return optionLikeInfo->isAntiOptionLike;
     }
     CHIR::Type* GetAssociatedValueTypeOfOptionLike() const
     {
-        CJC_ASSERT(optionLikeInfo != nullptr && "cgEnumType is not OptionLike");
+        CJC_ASSERT_WITH_MSG(optionLikeInfo != nullptr, "cgEnumType is not OptionLike");
         return optionLikeInfo->associatedValueType;
     }
     bool PassByReference() const
@@ -113,7 +113,8 @@ public:
 
     std::size_t GetsizeOfConstructorUnion() const
     {
-        CJC_ASSERT(sizeOfConstructorUnion.has_value() && "This enum does not belong to EXHAUSTIVE_ASSOCIATED_NONREF.");
+        CJC_ASSERT_WITH_MSG(
+            sizeOfConstructorUnion.has_value(), "This enum does not belong to EXHAUSTIVE_ASSOCIATED_NONREF.");
         return sizeOfConstructorUnion.value() * 8U; // 8U: bits
     }
 

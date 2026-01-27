@@ -158,7 +158,7 @@ llvm::Function* GetIndirectCFuncCallWrapper(IRBuilder2& builder, const CHIR::Fun
     bool sret =
         IsCommonStruct(*chirRetTy) && !IsZeroSizedTypeInC(cgMod, *chirRetTy) && funcType->getReturnType()->isVoidTy();
     if (sret) {
-        CJC_ASSERT(!funcType->params().empty() && "CFunc with sret has at least one parameter.");
+        CJC_ASSERT_WITH_MSG(!funcType->params().empty(), "CFunc with sret has at least one parameter.");
         paramTys.emplace_back(*funcType->param_begin());
         beginIt++;
     }

@@ -160,7 +160,7 @@ public:
         callBasesToInline.emplace_back(callBase, retInst);
     }
 
-    const std::vector<std::pair<llvm::CallBase*, llvm::ReturnInst*>>& GetCallBasesToInline()
+    const std::vector<std::pair<llvm::CallBase*, llvm::ReturnInst*>>& GetCallBasesToInline() const
     {
         return callBasesToInline;
     }
@@ -171,7 +171,7 @@ public:
         callBasesToReplace.emplace_back(tmp);
     }
 
-    const std::vector<CallBaseToReplaceInfo>& GetCallBasesToReplace()
+    const std::vector<CallBaseToReplaceInfo>& GetCallBasesToReplace() const
     {
         return callBasesToReplace;
     }
@@ -213,7 +213,7 @@ public:
         }
     }
 
-    std::unordered_map<std::string, std::unordered_set<std::string>> GetCodeGenAddedFuncsOrVars()
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& GetCodeGenAddedFuncsOrVars() const
     {
         return codegenAddedFuncsOrVars;
     }
@@ -248,7 +248,7 @@ public:
         return reflectGeneratedStaticGINames;
     }
 
-    static std::vector<std::string> GetTINameArrayForUpperBounds(std::vector<CHIR::Type*>& upperBounds)
+    static std::vector<std::string> GetTINameArrayForUpperBounds(const std::vector<CHIR::Type*>& upperBounds)
     {
         std::vector<std::string> res;
         for (auto upperBound : upperBounds) {
@@ -257,7 +257,7 @@ public:
         return res;
     }
 
-    std::string GetGenericTypeUniqueName(std::string& genericTypeName, std::vector<CHIR::Type*>& upperBounds)
+    std::string GetGenericTypeUniqueName(std::string& genericTypeName, const std::vector<CHIR::Type*>& upperBounds)
     {
         if (genericTypeWithUpperBoundsMap.find(genericTypeName) != genericTypeWithUpperBoundsMap.end()) {
             auto upperBoundsVec = genericTypeWithUpperBoundsMap[genericTypeName];

@@ -329,7 +329,7 @@ public:
     explicit CGFunction(
         llvm::Function* function, const CGFunctionType* cgType, const CHIR::Value* chirFunc, CGModule& cgMod);
 
-    bool operator==(CGFunction* that)
+    bool operator==(CGFunction* that) const
     {
         return GetRawValue()->getName() == that->GetRawValue()->getName();
     }
