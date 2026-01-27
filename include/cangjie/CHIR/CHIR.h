@@ -175,7 +175,6 @@ private:
     bool RunAnnotationChecks();
     void EraseDebugExpr();
     void CFFIFuncWrapper();
-    void RemoveUnusedImports(bool removeSrcCodeImported);
     void ReplaceSrcCodeImportedValueWithSymbol();
     void CreateBoxTypeForRecursionValueType();
     void CreateVTableAndUpdateFuncCall();
