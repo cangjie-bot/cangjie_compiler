@@ -44,8 +44,10 @@ public:
     /**
      * @brief get instantiation map from apply call, using for function instantiation.
      * @param apply input apply expression to get instantiation map
+     * @param newBodyOuterFunction func that encloses new body to decide this type conversion,
+     *  use apply's top level function if nullptr
      */
-    void GetInstMapFromApply(const Apply& apply);
+    void GetInstMapFromApply(const Apply& apply, const FuncBase* newBodyOuterFunction = nullptr);
 
     /**
      * @brief replace value with extra value map, such as parameter value map from old block group.

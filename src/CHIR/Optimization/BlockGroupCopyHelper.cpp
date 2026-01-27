@@ -133,7 +133,7 @@ void BlockGroupCopyHelper::ReplaceExprOperands(
     }
 }
 
-void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply)
+void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply, const FuncBase* newBodyOuterFunction)
 {
     if (apply.GetCallee()->IsLocalVar()) {
         auto lambda = DynamicCast<Lambda*>(StaticCast<LocalVar*>(apply.GetCallee())->GetExpr());
@@ -172,7 +172,8 @@ void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply)
             ++index;
         }
         // 4. set this type if needed
-        auto outerDef = apply.GetTopLevelFunc()->GetParentCustomTypeDef();
+        auto outerDef = newBodyOuterFunction ? newBodyOuterFunction->GetParentCustomTypeDef()
+            : apply.GetTopLevelFunc()->GetParentCustomTypeDef();
         if (customDef && outerDef && outerDef == customDef) {
             // keep this type if same custom type between callee and caller
             thisType = builder.GetType<ThisType>();
