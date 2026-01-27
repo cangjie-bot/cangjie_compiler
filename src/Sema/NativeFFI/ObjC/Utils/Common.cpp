@@ -32,34 +32,9 @@ Ptr<ClassDecl> GetMirrorSuperClass(const ClassLikeDecl& target)
     return nullptr;
 }
 
-Ptr<Decl> FindMirrorMember(const std::string_view& mirrorMemberIdent,
-    const InheritableDecl& target)
-{
-    for (auto& memberDecl : target.GetMemberDeclPtrs()) {
-        if (memberDecl->identifier == mirrorMemberIdent) {
-            return memberDecl;
-        }
-    }
-
-    return Ptr<Decl>(nullptr);
-}
-
 } // namespace
 
 bool Cangjie::Interop::ObjC::HasMirrorSuperClass(const ClassLikeDecl& target)
 {
     return GetMirrorSuperClass(target) != nullptr;
 }
-
-Ptr<VarDecl> Cangjie::Interop::ObjC::FindNativeVarHandle(const AST::ClassLikeDecl& target)
-{
-    CJC_ASSERT(TypeMapper::IsValidObjCMirror(*target.ty) || TypeMapper::IsObjCImpl(*target.ty));
-
-    auto mirrorSuperClass = GetMirrorSuperClass(target);
-    if (mirrorSuperClass != nullptr) {
-        return FindNativeVarHandle(*mirrorSuperClass);
-    }
-
-    return As<ASTKind::VAR_DECL>(FindMirrorMember(ASTFactory::NATIVE_HANDLE_IDENT, target));
-}
-

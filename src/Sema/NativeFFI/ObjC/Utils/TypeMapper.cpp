@@ -156,6 +156,7 @@ bool TypeMapper::IsObjCCompatible(const Ty& ty)
             if (IsValidObjCMirror(ty) || IsObjCImpl(ty)) {
                 return true;
             }
+            return false;
         case TypeKind::TYPE_ENUM:
             if (!ty.IsCoreOptionType()) {
                 return false;

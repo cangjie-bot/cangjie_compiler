@@ -23,7 +23,6 @@ namespace Cangjie::Interop::ObjC {
  *  Returns native handle field declaration for `target` mirror/impl declaration
  *
  */
-Ptr<AST::VarDecl> FindNativeVarHandle(const AST::ClassLikeDecl& target);
 bool HasMirrorSuperClass(const AST::ClassLikeDecl& target);
 
 } // namespace Cangjie::Interop::ObjC
