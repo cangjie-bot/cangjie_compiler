@@ -585,7 +585,9 @@ static void AppendGenericPropMap(
         std::unordered_set<Ptr<AST::Decl>> insGetterDecls;
         auto genericGetter = propDecl.getters[i].get();
         for (auto insProp : insPropDecls) {
-            insGetterDecls.emplace(StaticCast<AST::PropDecl*>(insProp)->getters[i].get());
+            auto instPopDecl = StaticCast<AST::PropDecl*>(insProp);
+            CJC_ASSERT(propDecl.getters.size() == instPopDecl->getters.size());
+            insGetterDecls.emplace(instPopDecl->getters[i].get());
         }
         AppendGenericFuncMap(*genericGetter, insGetterDecls, result);
     }
@@ -593,7 +595,9 @@ static void AppendGenericPropMap(
         std::unordered_set<Ptr<AST::Decl>> insSetterDecls;
         auto genericSetter = propDecl.setters[i].get();
         for (auto insProp : insPropDecls) {
-            insSetterDecls.emplace(StaticCast<AST::PropDecl*>(insProp)->setters[i].get());
+            auto instPopDecl = StaticCast<AST::PropDecl*>(insProp);
+            CJC_ASSERT(propDecl.setters.size() == instPopDecl->setters.size());
+            insSetterDecls.emplace(instPopDecl->setters[i].get());
         }
         AppendGenericFuncMap(*genericSetter, insSetterDecls, result);
     }

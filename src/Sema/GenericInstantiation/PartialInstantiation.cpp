@@ -1706,6 +1706,7 @@ OwnedPtr<Node> PartialInstantiation::InstantiateWithRearrange(Ptr<Node> node, co
                 auto& maTarget = static_cast<MemberAccess&>(target);
                 TargetAddrMapInsert(maFrom.target, maTarget.target);
                 TargetAddrMapInsert(maFrom.callOrPattern, maTarget.callOrPattern);
+                CJC_ASSERT(maFrom.targets.size() == maTarget.targets.size());
                 for (size_t i = 0; i < maFrom.targets.size(); i++) {
                     TargetAddrMapInsert(maFrom.targets[i], maTarget.targets[i]);
                 }

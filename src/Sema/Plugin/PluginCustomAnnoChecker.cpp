@@ -225,11 +225,14 @@ std::string FormatSyscapsString(const std::string& scopeSyscap, const SysCapSet&
 }
 } // namespace
 
-void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noexcept
+bool PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noexcept
 {
     size_t startPos = static_cast<size_t>(std::find(in.begin(), in.end(), '{') - in.begin());
     auto root = ParseJsonObject(startPos, in);
     auto deviceSysCapObj = GetJsonObject(root, "deviceSysCap", 0);
+    if (!deviceSysCapObj) {
+        return false;
+    }
     std::map<std::string, SysCapSet> dev2SyscapsMap;
     for (auto& subObj : deviceSysCapObj->pairs) {
         SysCapSet syscapsOneDev;
@@ -240,7 +243,7 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
             if (!failedReason.empty()) {
                 diag.DiagnoseRefactor(
                     DiagKindRefactor::module_read_file_to_buffer_failed, DEFAULT_POSITION, path, failedReason);
-                return;
+                return false;
             }
             startPos = static_cast<size_t>(std::find(buffer.begin(), buffer.end(), '{') - buffer.begin());
             auto rootOneDevice = ParseJsonObject(startPos, buffer);
@@ -269,6 +272,7 @@ void PluginCustomAnnoChecker::ParseJsonFile(const std::vector<uint8_t>& in) noex
     if (lastSyscap) {
         intersectionSet = std::move(*lastSyscap);
     }
+    return true;
 }
 
 void PluginCustomAnnoChecker::ParseOption() noexcept
@@ -290,8 +294,7 @@ void PluginCustomAnnoChecker::ParseOption() noexcept
                 DiagKindRefactor::module_read_file_to_buffer_failed, DEFAULT_POSITION, syscapsCfgPath, failedReason);
             return;
         }
-        ParseJsonFile(jsonContent);
-        optionWithSyscap = true;
+        optionWithSyscap = ParseJsonFile(jsonContent);
     }
 }
 

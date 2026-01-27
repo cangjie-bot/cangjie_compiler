@@ -130,6 +130,7 @@ void RecoverToBinaryExpr(BinaryExpr& be)
     if (auto nre = DynamicCast<NameReferenceExpr*>(be.leftExpr.get())) {
         UnsetCallExprOfNode(*nre);
     }
+    CJC_NULLPTR_CHECK(be.curFile);
     be.curFile->trashBin.emplace_back(std::move(be.desugarExpr));
     be.desugarExpr = OwnedPtr<Expr>();
 }
@@ -211,6 +212,7 @@ void RecoverToCallExpr(CallExpr& ce)
             if (ma->field == "()") {
                 ce.baseFunc = std::move(ma->baseExpr);
                 ce.args = std::move(callExpr->args);
+                CJC_NULLPTR_CHECK(ce.curFile);
                 ce.curFile->trashBin.emplace_back(std::move(ce.desugarExpr));
             }
         }

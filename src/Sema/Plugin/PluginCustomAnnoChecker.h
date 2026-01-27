@@ -98,7 +98,7 @@ public:
 
 private:
     void ParseOption() noexcept;
-    void ParseJsonFile(const std::vector<uint8_t>& in) noexcept;
+    bool ParseJsonFile(const std::vector<uint8_t>& in) noexcept;
     struct DiagConfig {
         bool reportDiag{true};
         Ptr<AST::Node> node{nullptr};

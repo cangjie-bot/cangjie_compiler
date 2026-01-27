@@ -226,6 +226,9 @@ std::string EnumPattern::GetIdentifier() const
 
 std::string CallExpr::ToString() const
 {
+    if (baseFunc == nullptr) {
+        return "";
+    }
     std::stringstream ss;
     Position curSpanBegin = baseFunc->begin;
     ss << NextSpan(baseFunc->ToString(), curSpanBegin, baseFunc->end);
@@ -248,6 +251,9 @@ void CallExpr::Clear() noexcept
 {
     RecoverToCallExpr(*this);
     Expr::Clear();
+    if (baseFunc == nullptr) {
+        return;
+    }
     baseFunc->Clear();
     callKind = CallKind::CALL_INVALID;
     resolvedFunction = nullptr;
@@ -255,6 +261,9 @@ void CallExpr::Clear() noexcept
 
 std::string FuncArg::ToString() const
 {
+    if (expr == nullptr) {
+        return "";
+    }
     std::stringstream ss;
     Position curSpanBegin = begin;
     if (!name.Empty()) {
@@ -275,6 +284,9 @@ std::string FuncArg::ToString() const
 
 std::string MemberAccess::ToString() const
 {
+    if (baseExpr == nullptr) {
+        return "";
+    }
     std::stringstream ss;
     Position curSpanBegin = baseExpr->begin;
     ss << NextSpan(baseExpr->ToString(), curSpanBegin, baseExpr->end);
@@ -499,7 +511,9 @@ bool Node::IsSamePackage(const Node& other) const
 void SubscriptExpr::Clear() noexcept
 {
     RecoverToSubscriptExpr(*this);
-    baseExpr->Clear();
+    if (baseExpr) {
+        baseExpr->Clear();
+    }
     for (auto& indexExpr : indexExprs) {
         indexExpr->Clear();
     }
@@ -517,13 +531,18 @@ void UnaryExpr::Clear() noexcept
 {
     RecoverToUnaryExpr(*this);
     Expr::Clear();
-    expr->Clear();
+    if (expr) {
+        expr->Clear();
+    }
 }
 
 void BinaryExpr::Clear() noexcept
 {
     RecoverToBinaryExpr(*this);
     Expr::Clear();
+    if (leftExpr == nullptr || rightExpr == nullptr) {
+        return;
+    }
     leftExpr->Clear();
     rightExpr->Clear();
 }
@@ -531,7 +550,9 @@ void BinaryExpr::Clear() noexcept
 void ParenExpr::Clear() noexcept
 {
     Expr::Clear();
-    expr->Clear();
+    if (expr) {
+        expr->Clear();
+    }
 }
 
 bool RefType::IsGenericThisType() const
@@ -600,14 +621,17 @@ std::vector<Ptr<Decl>> Decl::GetMemberDeclPtrs() const
 {
     std::vector<Ptr<Decl>> results;
     if (auto cd = DynamicCast<const ClassDecl*>(this); cd) {
+        CJC_NULLPTR_CHECK(cd->body);
         for (auto& decl : cd->body->decls) {
             results.push_back(decl.get());
         }
     } else if (auto id = DynamicCast<const InterfaceDecl*>(this); id) {
+        CJC_NULLPTR_CHECK(id->body);
         for (auto& decl : id->body->decls) {
             results.push_back(decl.get());
         }
     } else if (auto sd = DynamicCast<const StructDecl*>(this); sd) {
+        CJC_NULLPTR_CHECK(sd->body);
         for (auto& decl : sd->body->decls) {
             results.push_back(decl.get());
         }
