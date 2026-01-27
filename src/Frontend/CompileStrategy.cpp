@@ -28,6 +28,7 @@
 #include "cangjie/Utils/Signal.h"
 #endif
 #include "cangjie/Utils/ProfileRecorder.h"
+#include "cangjie/Utils/TaskQueue.h"
 
 using namespace Cangjie;
 using namespace Utils;
@@ -88,6 +89,11 @@ void CompileStrategy::PerformDesugar() const
 
 namespace Cangjie {
 class FullCompileStrategyImpl final {
+private:
+    using ParseResult = std::tuple<OwnedPtr<File>, TokenVecMap, size_t>;
+    using ParseTaskResult = TaskResult<ParseResult>;
+    using ParseTaskResults = std::vector<ParseTaskResult>;
+
 public:
     explicit FullCompileStrategyImpl(FullCompileStrategy& strategy) : s{strategy}
     {
@@ -193,49 +199,52 @@ public:
     }
 
     /**
-     * Add parsed files from future queue to an existing package.
+     * Initialize package information from the first file's package specification.
+     * @param package The package to initialize
+     */
+    void InitializePackageInfoFromFirstFile(Package& package) const
+    {
+        if (package.files.empty()) {
+            return;
+        }
+        if (auto packageSpec = package.files[0]->package.get()) {
+            package.fullPackageName = packageSpec->GetPackageName();
+            package.accessible = !packageSpec->modifier                  ? AccessLevel::PUBLIC
+                : packageSpec->modifier->modifier == TokenKind::PROTECTED ? AccessLevel::PROTECTED
+                : packageSpec->modifier->modifier == TokenKind::INTERNAL  ? AccessLevel::INTERNAL
+                                                                            : AccessLevel::PUBLIC;
+        }
+    }
+
+    /**
+     * Add parsed files from task results to an existing package.
      * @param package The package to add files to
-     * @param futureQueue Queue of futures containing parsed files
+     * @param taskResults Vector of task results containing parsed files
      * @return Total line count of added files
      */
-    size_t AddFilesToPackage(Package& package,
-        std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>>& futureQueue) const
+    size_t AddFilesToPackage(Package& package, ParseTaskResults& taskResults) const
     {
-        size_t lineNumInOnePackage = 0;
+        size_t lineCountOfAddedFiles = 0;
         const size_t filePtrIdx = 0;
         const size_t commentIdx = 1;
         const size_t lineNumIdx = 2;
-        const size_t initialFileCount = package.files.size();
-        while (!futureQueue.empty()) {
-            auto curFuture = futureQueue.front().get();
-            std::get<filePtrIdx>(curFuture)->curPackage = &package;
-            std::get<filePtrIdx>(curFuture)->indexOfPackage = package.files.size();
-            package.files.push_back(std::move(std::get<filePtrIdx>(curFuture)));
-            s.ci->GetSourceManager().AddComments(std::get<commentIdx>(curFuture));
-            lineNumInOnePackage += std::get<lineNumIdx>(curFuture);
-            futureQueue.pop();
+        for (auto& taskResult : taskResults) {
+            auto curResult = taskResult.get();
+            std::get<filePtrIdx>(curResult)->curPackage = &package;
+            std::get<filePtrIdx>(curResult)->indexOfPackage = package.files.size();
+            package.files.push_back(std::move(std::get<filePtrIdx>(curResult)));
+            s.ci->GetSourceManager().AddComments(std::get<commentIdx>(curResult));
+            lineCountOfAddedFiles += std::get<lineNumIdx>(curResult);
         }
-        if (!package.files.empty()) {
-            size_t fileIndexToCheck = (initialFileCount == 0) ? 0 : initialFileCount;
-            if (fileIndexToCheck < package.files.size()) {
-                if (auto packageSpec = package.files[fileIndexToCheck]->package.get()) {
-                    package.fullPackageName = packageSpec->GetPackageName();
-                    package.accessible = !packageSpec->modifier                  ? AccessLevel::PUBLIC
-                        : packageSpec->modifier->modifier == TokenKind::PROTECTED ? AccessLevel::PROTECTED
-                        : packageSpec->modifier->modifier == TokenKind::INTERNAL  ? AccessLevel::INTERNAL
-                                                                                  : AccessLevel::PUBLIC;
-                }
-            }
-        }
-        return lineNumInOnePackage;
+        InitializePackageInfoFromFirstFile(package);
+        return lineCountOfAddedFiles;
     }
 
     OwnedPtr<AST::Package> GetMultiThreadParseOnePackage(
-        std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>>& futureQueue,
-        const std::string& defaultPackageName) const
+        ParseTaskResults& taskResults, const std::string& defaultPackageName) const
     {
         auto package = MakeOwned<Package>(defaultPackageName);
-        size_t lineNumInOnePackage = AddFilesToPackage(*package, futureQueue);
+        size_t lineNumInOnePackage = AddFilesToPackage(*package, taskResults);
         Utils::ProfileRecorder::RecordCodeInfo("package line num", static_cast<int64_t>(lineNumInOnePackage));
         // Checking package consistency: The macro definition package cannot contain the declaration of a common
         // package.
@@ -258,18 +267,22 @@ public:
     }
 
     /**
-     * Create a queue of futures for parsing files asynchronously.
+     * Parse files using TaskQueue and collect results.
      * @param fileInfoQueue Queue of file information (content, fileID) to parse
-     * @return Queue of futures containing parsed files
+     * @return Vector of futures containing parsed files
      */
-    std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>> CreateParseFutureQueue(
+    ParseTaskResults ParseFilesWithTaskQueue(
         std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue) const
     {
-        std::queue<std::future<std::tuple<OwnedPtr<File>, TokenVecMap, size_t>>> futureQueue;
+        size_t threadsNum = s.ci->invocation.globalOptions.GetJobs();
+        Utils::TaskQueue taskQueue(threadsNum);
+        ParseTaskResults taskResults;
+
+        // Add all parsing tasks to the queue
         while (!fileInfoQueue.empty()) {
             auto curFile = fileInfoQueue.front();
-            futureQueue.push(
-                std::async(std::launch::async, [this, curFile]() -> std::tuple<OwnedPtr<File>, TokenVecMap, size_t> {
+            auto taskResult = taskQueue.AddTask<ParseResult>(
+                [this, curFile]() -> ParseResult {
 #if (defined RELEASE)
 #if (defined __unix__)
                     // Since alternate signal stack is per thread, we have to create an alternate signal stack for each
@@ -291,17 +304,19 @@ public:
                         Cangjie::SignalTest::TriggerPointer::PARSER_POINTER);
 #endif
                     return {std::move(file), parser->GetCommentsMap(), parser->GetLineNum()};
-                }));
+                });
+            taskResults.push_back(std::move(taskResult));
             fileInfoQueue.pop();
         }
-        return futureQueue;
+        taskQueue.RunAndWaitForAllTasksCompleted();
+        return taskResults;
     }
 
     OwnedPtr<Package> MultiThreadParseOnePackage(
         std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue, const std::string& defaultPackageName) const
     {
-        auto futureQueue = CreateParseFutureQueue(fileInfoQueue);
-        auto package = GetMultiThreadParseOnePackage(futureQueue, defaultPackageName);
+        auto taskResults = ParseFilesWithTaskQueue(fileInfoQueue);
+        auto package = GetMultiThreadParseOnePackage(taskResults, defaultPackageName);
         return package;
     }
 
@@ -313,13 +328,13 @@ public:
     void MultiThreadParseOnePackage(Package& package,
         std::queue<std::tuple<std::string, unsigned>>& fileInfoQueue) const
     {
-        auto futureQueue = CreateParseFutureQueue(fileInfoQueue);
-        size_t lineNumInOnePackage = AddFilesToPackage(package, futureQueue);
+        auto taskResults = ParseFilesWithTaskQueue(fileInfoQueue);
+        size_t lineCountOfAddedFiles = AddFilesToPackage(package, taskResults);
         // Check curPackage for each file in the package to ensure it is not changed in lsp or some other reason.
         for (auto& file : package.files) {
             CJC_ASSERT_WITH_MSG(file->curPackage == &package, "curPackage should be set to package");
         }
-        Utils::ProfileRecorder::RecordCodeInfo("package line num", static_cast<int64_t>(lineNumInOnePackage));
+        Utils::ProfileRecorder::RecordCodeInfo("added line num", static_cast<int64_t>(lineCountOfAddedFiles));
         // Checking package consistency: The macro definition package cannot contain the declaration of a common
         // package.
         CheckPackageConsistency(package);
