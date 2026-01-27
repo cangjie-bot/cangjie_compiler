@@ -133,7 +133,7 @@ void BlockGroupCopyHelper::ReplaceExprOperands(
     }
 }
 
-void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply)
+void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply, const FuncBase* newBodyOuterFunction)
 {
     if (apply.GetCallee()->IsLocalVar()) {
         auto lambda = DynamicCast<Lambda*>(StaticCast<LocalVar*>(apply.GetCallee())->GetExpr());
@@ -147,7 +147,8 @@ void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply)
         thisType = builder.GetType<ThisType>();
     } else {
         auto func = VirtualCast<FuncBase*>(apply.GetCallee());
-        if (auto customDef = func->GetParentCustomTypeDef(); customDef && customDef->IsGenericDef()) {
+        auto customDef = func->GetParentCustomTypeDef();
+        if (customDef && customDef->IsGenericDef()) {
             // 1. get customType where function in.
             auto instParentCustomType = apply.GetInstParentCustomTyOfCallee(builder);
             if (instParentCustomType == nullptr) {
@@ -170,7 +171,15 @@ void BlockGroupCopyHelper::GetInstMapFromApply(const Apply& apply)
             instMap.emplace(genericType, apply.GetInstantiatedTypeArgs()[index]);
             ++index;
         }
-        thisType = apply.GetThisType();
+        // 4. set this type if needed
+        auto outerDef = newBodyOuterFunction ? newBodyOuterFunction->GetParentCustomTypeDef()
+            : apply.GetTopLevelFunc()->GetParentCustomTypeDef();
+        if (customDef && outerDef && outerDef == customDef) {
+            // keep this type if same custom type between callee and caller
+            thisType = builder.GetType<ThisType>();
+        } else {
+            thisType = apply.GetThisType();
+        }
     }
 }
 

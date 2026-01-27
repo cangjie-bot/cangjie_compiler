@@ -322,7 +322,7 @@ void Devirtualization::InstantiateFuncIfPossible(CHIRBuilder& builder, std::vect
 
             auto oriBlockGroup = callee->GetBody();
             BlockGroupCopyHelper helper(builder);
-            helper.GetInstMapFromApply(*apply);
+            helper.GetInstMapFromApply(*apply, newFunc);
             auto [newGroup, newBlockGroupRetValue] = helper.CloneBlockGroup(*oriBlockGroup, *newFunc);
             newFunc->InitBody(*newGroup);
             newFunc->SetReturnValue(*newBlockGroupRetValue);
