@@ -563,6 +563,10 @@ void MacroEvaluation::ProcessTokensInQuoteExpr(
             CreateChildMacroCall(input, startIndex, curIndex, macCall, reEval);
             inQuoteInterpolation = false;
         }
+        // Check if the current token is '$' and the next token is '('.
+        // If so, enable strInterpolation mode (like $(expression)).
+        // When curIndex == input.size() - 1 and input[curIndex].kind == TokenKind::DOLLAR,
+        // an error will be reported during Lexer, so no bounds check for the array index.
         if (input[curIndex].kind == TokenKind::DOLLAR && input[curIndex + 1].kind == TokenKind::LPAREN) {
             inQuoteInterpolation = true;
         }
@@ -767,6 +771,10 @@ void MacroEvaluation::CreateMacroCallTree(MacroCall& macCall, bool reEval)
             (curIndex == tokenSize - 1 || !IsIdentifierOrContextualKeyword(inputTokens[curIndex + 1].kind))) {
             (void)ci->diag.Diagnose(posTmp, DiagKind::macro_expand_invalid_input_tokens);
         }
+        // Check if the current token is 'quote' and the next token is '('.
+        // If so, process Tokens in QuoteExpr (like quote()).
+        // When curIndex == inputTokens.size() - 1 and inputTokens[curIndex].kind == TokenKind::QUOTE,
+        // an error will be reported during Lexer, so no bounds check for the array index.
         if (inputTokens[curIndex].kind == TokenKind::QUOTE && inputTokens[curIndex + 1].kind == TokenKind::LPAREN) {
             curIndex++;
             ProcessTokensInQuoteExpr(inputTokens, startIndex, curIndex, macCall, reEval);
