@@ -98,32 +98,6 @@ endif()
 set(CANGJIE_FRONTEND_IMPLIB ${CMAKE_BINARY_DIR}/lib/libcangjie-frontend.dll.a)
 set(CANGJIE_LSP_IMPLIB ${CMAKE_BINARY_DIR}/lib/libcangjie-lsp.dll.a)
 
-if (NOT OHOS)
-    if (CANGJIE_BUILD_CJDB_DISABLE_PYTHON)
-        list(APPEND LLDB_CMAKE_ARGS
-            -DLLDB_ENABLE_PYTHON=OFF
-            -DLLDB_RELOCATABLE_PYTHON=OFF
-            -DLLDB_EMBED_PYTHON_HOME=OFF
-            -DLLDB_INCLUDE_TESTS=OFF
-        )
-    else()
-        list(APPEND LLDB_CMAKE_ARGS
-            -DLLDB_ENABLE_PYTHON=ON
-            -DLLDB_RELOCATABLE_PYTHON=ON
-            -DLLDB_EMBED_PYTHON_HOME=OFF
-        )
-    endif()
-endif()
-
-list(APPEND LLDB_CMAKE_ARGS
-    -DLLDB_ENABLE_LZMA=false
-    -DLLDB_ENABLE_LIBXML2=true
-    -DCANGJIE_ROOT=${CMAKE_SOURCE_DIR}
-    -DCANGJIE_FRONTEND_LIB=${CANGJIE_FRONTEND_LIB}
-    -DCANGJIE_FRONTEND_IMPLIB=${CANGJIE_FRONTEND_IMPLIB}
-    -DCANGJIE_LSP_LIB=${CANGJIE_LSP_LIB}
-    -DCANGJIE_LSP_IMPLIB=${CANGJIE_LSP_IMPLIB})
-
 if (DARWIN)
     execute_process(
         COMMAND ${TARGET_PYTHON_PATH}/bin/python3 -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"
@@ -138,13 +112,39 @@ else()
     endif()
 endif()
 
+if (NOT OHOS)
+    if (CANGJIE_BUILD_CJDB_DISABLE_PYTHON)
+        list(APPEND LLDB_CMAKE_ARGS
+            -DLLDB_ENABLE_PYTHON=OFF
+            -DLLDB_RELOCATABLE_PYTHON=OFF
+            -DLLDB_EMBED_PYTHON_HOME=OFF
+            -DLLDB_INCLUDE_TESTS=OFF
+        )
+    else()
+        list(APPEND LLDB_CMAKE_ARGS
+            -DLLDB_ENABLE_PYTHON=ON
+            -DLLDB_RELOCATABLE_PYTHON=ON
+            -DLLDB_EMBED_PYTHON_HOME=OFF
+            -DLLDB_PYTHON_RELATIVE_PATH=lib/python${TARGET_PATHON_VERSION}/site-packages
+        )
+    endif()
+endif()
+
+list(APPEND LLDB_CMAKE_ARGS
+    -DLLDB_ENABLE_LZMA=false
+    -DLLDB_ENABLE_LIBXML2=true
+    -DCANGJIE_ROOT=${CMAKE_SOURCE_DIR}
+    -DCANGJIE_FRONTEND_LIB=${CANGJIE_FRONTEND_LIB}
+    -DCANGJIE_FRONTEND_IMPLIB=${CANGJIE_FRONTEND_IMPLIB}
+    -DCANGJIE_LSP_LIB=${CANGJIE_LSP_LIB}
+    -DCANGJIE_LSP_IMPLIB=${CANGJIE_LSP_IMPLIB})
+
 if(CMAKE_CROSSCOMPILING AND WIN32)
     set(MINGW_STRIP "x86_64-w64-mingw32-strip -D")
     if (NOT CANGJIE_BUILD_CJDB_DISABLE_PYTHON)
         set(TARGET_PYTHON_PATH $ENV{TARGET_PYTHON_PATH})
         list(APPEND LLDB_CMAKE_ARGS
             -DPython3_EXECUTABLE=${Python3_EXECUTABLE}
-            -DLLDB_PYTHON_RELATIVE_PATH=./lib/python${TARGET_PATHON_VERSION}/site-packages
             -DLLDB_PYTHON_EXE_RELATIVE_PATH=python.exe
             -DLLDB_PYTHON_EXT_SUFFIX=.pyd
             -DPython3_INCLUDE_DIRS=${TARGET_PYTHON_PATH}/include/python${MAJOR_VERSION}.${MINOR_VERSION}
@@ -199,6 +199,11 @@ if(NOT CANGJIE_BUILD_CJDB_DISABLE_PYTHON)
             DESTINATION third_party/llvm/lib
             USE_SOURCE_PERMISSIONS
         )
+        if(CANGJIE_INSTALL_CJDB_SCRIPT)
+            install(
+                FILES ${SOURCE_DIR}/lldb/source/Plugins/Platform/MacOSX/cangjie_cjdb.py
+                DESTINATION tools/script/)
+        endif()
     endif()
 endif()
 
