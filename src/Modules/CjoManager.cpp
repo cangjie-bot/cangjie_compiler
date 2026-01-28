@@ -373,9 +373,7 @@ void CjoManager::LoadPackageDeclsOnDemand(const std::vector<Ptr<Package>>& packa
 
     // Node's ty may reference TypeAliasTy from imported package, need to substitute them to real type.
     // It must be done after all type references are loaded.
-    for (auto pkg : packages) {
-        impl->SubstituteImportedTypeAliasTy(pkg->fullPackageName);
-    }
+    impl->SubstituteImportedTypeAliasTy(packages);
 }
 
 void CjoManager::LoadAllDeclsAndRefs() const
@@ -395,7 +393,7 @@ void CjoManager::LoadAllDeclsAndRefs() const
     }
 }
 
-void CjoManagerImpl::SubstituteImportedTypeAliasTy(const std::string& srcPackageName)
+void CjoManagerImpl::SubstituteImportedTypeAliasTy(const std::vector<Ptr<Package>>& srcPackages)
 {
     auto replaceAliasUseTy = [this](Ptr<Node> node) {
         if (node->astKind == ASTKind::TYPE_ALIAS_DECL) {
@@ -408,13 +406,17 @@ void CjoManagerImpl::SubstituteImportedTypeAliasTy(const std::string& srcPackage
         }
         return VisitAction::WALK_CHILDREN;
     };
-    for (auto& [pkgName, pkgInfo] : GetPackageNameMap()) {
-        if (pkgName == srcPackageName && globalOptions.commonPartCjos.size() == 0) {
+    for (auto& pkgName2PkgInfo : GetPackageNameMap()) {
+        // For cjlint tool could have more than one src-package.
+        bool isSrcPackage = Utils::In(srcPackages,
+            [&pkgName2PkgInfo](Ptr<Package> pkg) { return pkg->fullPackageName == pkgName2PkgInfo.first; });
+        if (isSrcPackage && globalOptions.commonPartCjos.size() == 0) {
             continue;
         }
+        auto& pkgInfo = pkgName2PkgInfo.second;
         for (auto& file : pkgInfo->pkg->files) {
             // For compile platform part, need only substitute type alias in common part files.
-            if (pkgName == srcPackageName && !file->TestAttr(Attribute::FROM_COMMON_PART)) {
+            if (isSrcPackage && !file->TestAttr(Attribute::FROM_COMMON_PART)) {
                 continue;
             }
             Walker(file.get(), replaceAliasUseTy).Walk();
