@@ -78,6 +78,7 @@ unsigned int SourceManager::GetFileId(
     if (existed != filePathToFileIDMap.end()) {
         auto newBuffer = buffer;
         auto fileID = static_cast<unsigned int>(existed->second);
+        CJC_ASSERT(static_cast<std::size_t>(fileID) < sources.size());
         if (updateBuffer) {
             newBuffer = sources.at(fileID).buffer + buffer;
         }
@@ -163,7 +164,8 @@ std::string SourceManager::GetContentBetween(
     }
 
     CJC_ASSERT(INVALID_POSITION < begin && begin <= end);
-
+    CJC_ASSERT(!sources.empty());
+    CJC_ASSERT(static_cast<size_t>(fileID) < sources.size());
     auto& sourceWithFileID = fileID >= sources.size() ? sources.at(0) : sources.at(fileID);
 
     // Use OwnedPtr for temporary Source to avoid mixed return types in ternary operator (? tempObj : ref).
