@@ -3402,3 +3402,14 @@ TEST(ParserTest2, QuoteTokens6_MultilineRawStringAndHash)
     EXPECT_EQ(tokens[0].Value(), "\nhello\n");
     EXPECT_EQ(tokens[1].kind, TokenKind::HASH);
 }
+
+TEST(ParserTest2, UnicodeOver255Test)
+{
+    std::string code = "2qqq񱱱qqqq";
+    DiagnosticEngine diag{};
+    SourceManager sm;
+    diag.SetSourceManager(&sm);
+    Parser parser(code, diag, sm, Position{0, 1, 1}, true, true);
+    auto file = parser.ParseTopLevel();
+    ASSERT_GT(diag.GetErrorCount(), 0); // assert no core dumped here
+}

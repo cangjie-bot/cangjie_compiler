@@ -132,6 +132,21 @@ bool IsCJXIDStart(UTF32 c);
 bool IsXIDContinue(UTF32 c);
 
 /**
+ * \returns true if character \p v is an alphanumeric character.
+ */
+ bool IsAlnum(int v);
+
+/**
+ * \returns true if character \p v is a digit (0-9).
+ */
+bool IsDigit(int v);
+
+/**
+ * \returns true if character \p v is a hexadecimal digit (0-9, a-f, A-F).
+ */
+bool IsXDigit(int v);
+
+/**
  * Result enum for normalisation form C quick check
  */
 enum class NfcQcResult {

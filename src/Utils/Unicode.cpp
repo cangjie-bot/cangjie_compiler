@@ -35,6 +35,24 @@ bool IsASCII(UTF32 v)
     return v <= a && TRAILING_BYTES_FOR_UTF8[static_cast<int>(v)] == 0;
 }
 
+bool IsAlnum(int v)
+{
+    constexpr unsigned a = 0xFF;
+    return static_cast<unsigned>(v) <= a && std::isalnum(v);
+}
+
+bool IsDigit(int v)
+{
+    constexpr unsigned a = 0xFF;
+    return static_cast<unsigned>(v) <= a && std::isdigit(v);
+}
+
+bool IsXDigit(int v)
+{
+    constexpr unsigned a = 0xFF;
+    return static_cast<unsigned>(v) <= a && std::isxdigit(v);
+}
+
 bool IsASCIIIdStart(UTF32 c)
 {
     auto c1 = static_cast<char>(static_cast<unsigned char>(c));
@@ -43,7 +61,7 @@ bool IsASCIIIdStart(UTF32 c)
 
 bool IsASCIIIdContinue(UTF32 c)
 {
-    return isdigit(static_cast<int>(c)) || IsASCIIIdStart(c);
+    return IsDigit(c) || IsASCIIIdStart(c);
 }
 
 ConversionResult ConvertUTF8toUTF32(
