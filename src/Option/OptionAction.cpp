@@ -849,7 +849,7 @@ std::unordered_map<Options::ID, std::function<bool(GlobalOptions&, OptionArgInst
             opts.enableHotReload = false;
         }
         opts.enableOutputType = true;
-            return true;
+        return true;
     }},
     { Options::ID::COMPILE_TARGET, [](GlobalOptions& opts, const OptionArgInstance& arg) {
         CJC_ASSERT(COMPILE_TARGET_MAP.count(arg.value) != 0);
