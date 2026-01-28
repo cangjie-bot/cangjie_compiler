@@ -595,6 +595,7 @@ std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO
     auto isStd = [](const std::string& fullPackageName) { return STANDARD_LIBS.count(fullPackageName) > 0; };
     std::map<std::string, DependencyInfoItem> dependencies;
     std::set<std::string> refSet;
+    bool isProduct{true};
     for (auto& file : pkg.files) {
         for (auto& import : file->imports) {
             if (import->IsImportMulti() || import->TestAttr(Attribute::IMPLICIT_ADD)) {
@@ -622,9 +623,14 @@ std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO
             }
             dependencies.at(longName).imports.emplace(import.get());
         }
-        if (file->feature != nullptr) {
-            for (auto& feature : file->feature->content) {
+        if (file->feature) {
+            for (auto& feature : file->feature->featuresSet->content) {
                 refSet.insert(feature.ToString());
+            }
+            for (auto& anno : file->feature->annotations) {
+                if (anno->kind == AnnotationKind::NON_PRODUCT) {
+                    isProduct = false;
+                }
             }
         }
     }
@@ -634,7 +640,8 @@ std::string ImportManager::GeneratePkgDepInfo(const Package& pkg, bool exportCJO
         << "\"isMacro\":" << Jsonfy(pkg.isMacroPackage) << ","
         << "\"accessLevel\":\"" << Jsonfy(pkg.accessible) << "\","
         << "\"dependencies\":" << Jsonfy(dependencies, exportCJO) << ","
-        << "\"features\":" << Jsonfy(refSet) << "}";
+        << "\"features\":" << Jsonfy(refSet) << ","
+        << "\"product\":" << Jsonfy(isProduct) << "}";
     return out.str();
 }
 
@@ -675,15 +682,18 @@ std::set<std::string> ImportManager::CollectDirectDepPkg(const Package& package)
     }
     return depPkgs;
 }
-static void ValidateFileFeatureSpec(
-    DiagnosticEngine& diag, const Package& pkg, std::unordered_map<std::string, bool>& refMap, Ptr<File>& refFile)
+
+namespace {
+
+void ValidateFileFeatureSpec(DiagnosticEngine &diag, const Package& pkg,
+    std::unordered_map<std::string, bool>& refMap, Ptr<File>& refFile, bool& anno)
 {
     size_t refSize = 0;
     std::unordered_map<std::string, Range> rangeMap;
     for (auto& file : pkg.files) {
         CJC_NULLPTR_CHECK(file);
         if (file->feature != nullptr) {
-            for (auto& feature : file->feature->content) {
+            for (auto& feature : file->feature->featuresSet->content) {
                 std::string ftrStr = feature.ToString();
                 auto prevPos = rangeMap.find(ftrStr);
                 bool contains = prevPos != rangeMap.end();
@@ -694,28 +704,31 @@ static void ValidateFileFeatureSpec(
                     rangeMap.emplace(ftrStr, current);
                 }
             }
-            if (refSize < rangeMap.size()) {
+            if (!file->feature->annotations.empty()) {
+                anno = true;
+            }
+            if (!refFile || refSize < rangeMap.size()) {
                 refSize = rangeMap.size();
                 refFile = file;
             }
             rangeMap.clear();
         }
     }
-    for (auto& ftr : refFile->feature->content) {
+    for (auto& ftr : refFile->feature->featuresSet->content) {
         refMap.emplace(ftr.ToString(), false);
     }
 }
-
-static void CollectInvalidFeatureFiles(
-    const Package& pkg, std::vector<Ptr<File>>& invalidFeatures, std::unordered_map<std::string, bool>& refMap)
+ 
+void CollectInvalidFeatureFiles(const Package& pkg, std::vector<Ptr<File>>& invalidFeatures,
+    std::unordered_map<std::string, bool>& refMap, bool hasAnno)
 {
     for (auto& file : pkg.files) {
-        if (file->feature == nullptr) {
+        if (!file->feature || (hasAnno && file->feature->annotations.empty())) {
             invalidFeatures.emplace_back(file);
             continue;
         }
         bool hasInvalidName{false};
-        for (auto& feature : file->feature->content) {
+        for (auto& feature : file->feature->featuresSet->content) {
             std::string ftrStr = feature.ToString();
             auto pair = refMap.find(ftrStr);
             if (pair != refMap.end()) {
@@ -743,9 +756,10 @@ static void CheckPackageFeatureSpec(DiagnosticEngine& diag, const Package& pkg)
     std::unordered_map<std::string, bool> refMap;
     std::vector<Ptr<File>> invalidFeatures;
     Ptr<File> refFile;
+    bool hasAnno{false};
 
-    ValidateFileFeatureSpec(diag, pkg, refMap, refFile);
-    CollectInvalidFeatureFiles(pkg, invalidFeatures, refMap);
+    ValidateFileFeatureSpec(diag, pkg, refMap, refFile, hasAnno);
+    CollectInvalidFeatureFiles(pkg, invalidFeatures, refMap, hasAnno);
 
     if (!invalidFeatures.empty()) {
         uint8_t counter = 0;
@@ -753,11 +767,11 @@ static void CheckPackageFeatureSpec(DiagnosticEngine& diag, const Package& pkg)
             if (counter > 1) {
                 return;
             }
-            if (file->feature == nullptr) {
+            if (!file->feature) {
                 DiagForNullPackageFeature(diag, MakeRange(file->begin, file->end), refFile->feature);
             } else {
                 auto& feature = file->feature;
-                DiagForDifferentPackageFeatureConsistency(diag, feature, refFile->feature);
+                DiagForDifferentPackageFeatureConsistency(diag, feature, refFile->feature, hasAnno);
             }
             counter++;
         }
@@ -801,6 +815,8 @@ static void CheckPackageSpecsIdentical(DiagnosticEngine& diag, const Package& pk
         DiagForDifferentPackageNames(diag, packageNamePosMap);
     }
 }
+} // namespace
+
 
 bool ImportManager::BuildIndex(
     const std::string& cangjieModules, const GlobalOptions& globalOptions, std::vector<Ptr<Package>>& packages)
@@ -809,7 +825,7 @@ bool ImportManager::BuildIndex(
     cjoManager->UpdateSearchPath(cangjieModules);
 
     for (auto pkg : packages) {
-        if (pkg->HasFeature()) {
+        if (pkg->HasFtrDirective()) {
             CheckPackageFeatureSpec(diag, *pkg);
         }
         CheckPackageSpecsIdentical(diag, *pkg);

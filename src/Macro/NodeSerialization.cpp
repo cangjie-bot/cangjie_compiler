@@ -41,33 +41,49 @@ flatbuffers::Offset<flatbuffers::Vector<const NodeFormat::Position*>> NodeWriter
 }
 
 flatbuffers::Offset<NodeFormat::FeaturesDirective> NodeWriter::SerializeFeaturesDirective(
-    AstFeaturesDirective featuresDirective)
+    AstFeaturesDirective ftrDirective)
 {
-    if (featuresDirective == nullptr) {
+    if (ftrDirective == nullptr) {
         return flatbuffers::Offset<NodeFormat::FeaturesDirective>();
     }
-    auto ftrNodeBase = SerializeNodeBase(featuresDirective);
-    auto commas = CreatePositionVector(featuresDirective->commaPoses);
+    auto ftrNodeBase = SerializeNodeBase(ftrDirective);
+    auto featuresPos = NodeFormat::Position(ftrDirective->featuresPos.fileID,
+                                            ftrDirective->featuresPos.line, ftrDirective->featuresPos.column);
+    std::vector<flatbuffers::Offset<NodeFormat::Annotation>> annosVec;
+    for (const auto &item : ftrDirective->annotations) {
+        annosVec.emplace_back(SerializeAnnotation(item));
+    }
+    auto annos = builder.CreateVector(annosVec);
+    auto featuresSet = SerializeFeaturesSet(*ftrDirective->featuresSet.get());
+    return NodeFormat::CreateFeaturesDirective(builder, ftrNodeBase, annos, featuresSet, &featuresPos);
+}
+
+flatbuffers::Offset<NodeFormat::FeaturesSet> NodeWriter::SerializeFeaturesSet(const AST::FeaturesSet &fSet)
+{
+    auto ftrSetBase = SerializeNodeBase(&fSet);
+    auto lCurlPos = NodeFormat::Position(fSet.lCurlPos.fileID, fSet.lCurlPos.line, fSet.lCurlPos.column);
     std::vector<flatbuffers::Offset<NodeFormat::FeatureId>> itemsVec;
-    for (const auto& item : featuresDirective->content) {
+    for (const auto &item : fSet.content) {
         itemsVec.emplace_back(SerializeFeatureId(item));
     }
     auto items = builder.CreateVector(itemsVec);
-    return NodeFormat::CreateFeaturesDirective(builder, ftrNodeBase, items, commas);
+    auto rCurlPos = NodeFormat::Position(fSet.rCurlPos.fileID, fSet.rCurlPos.line, fSet.rCurlPos.column);
+    auto commas = CreatePositionVector(fSet.commaPoses);
+    return NodeFormat::CreateFeaturesSet(builder, ftrSetBase, &lCurlPos, items, commas, &rCurlPos);
 }
 
-flatbuffers::Offset<NodeFormat::FeatureId> NodeWriter::SerializeFeatureId(const AST::FeatureId& content)
+flatbuffers::Offset<NodeFormat::FeatureId> NodeWriter::SerializeFeatureId(const AST::FeatureId &ftrId)
 {
-    auto nodeBase = SerializeNodeBase(&content);
+    auto nodeBase = SerializeNodeBase(&ftrId);
     std::vector<std::string> idents;
     std::vector<Position> poses;
-    for (auto& ident : content.identifiers) {
+    for (auto &ident : ftrId.identifiers) {
         idents.emplace_back(ident.Val());
         poses.emplace_back(ident.Begin());
     }
     auto identifiers = builder.CreateVectorOfStrings(idents);
     auto identPoses = CreatePositionVector(poses);
-    auto dotPoses = CreatePositionVector(content.dotPoses);
+    auto dotPoses = CreatePositionVector(ftrId.dotPoses);
     return NodeFormat::CreateFeatureId(builder, nodeBase, identifiers, identPoses, dotPoses);
 }
 
