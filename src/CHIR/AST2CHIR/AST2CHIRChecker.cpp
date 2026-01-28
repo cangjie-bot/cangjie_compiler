@@ -293,6 +293,11 @@ bool CheckInheritDeclGlobalMember(
     }
     // member func
     if (decl.astKind == Cangjie::AST::ASTKind::FUNC_DECL) {
+        if (decl.TestAttr(Cangjie::AST::Attribute::PLATFORM) && chirNode.TestAttr(Attribute::DESERIALIZED)) {
+            // `platform` function type can be subtype of `common` function type.
+            // We keep origin type in CHIR, however AST type is updated. Thus it's not an error.
+            return true;
+        }
         if (!decl.TestAttr(Cangjie::AST::Attribute::STATIC) && !CheckMethodType(*decl.ty, *chirCache->GetType())) {
             Errorln(chirCache->GetIdentifier() + " is expected to be promoted " + Cangjie::AST::Ty::ToString(decl.ty) +
                 ".");
