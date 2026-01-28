@@ -443,6 +443,7 @@ std::string BaseMangler::MangleVarWithPatternDecl(
     }
 
     std::optional<size_t> index = GetIndexOfWildcard(vwpDecl, prefix);
+    CJC_ASSERT_WITH_MSG(index.has_value(), "Index of wildcard should not be empty");
     mangleStr += MANGLE_CANGJIE_PREFIX + MANGLE_NESTED_PREFIX;
     std::vector<std::string> genericsTypeStack;
     mangleStr += ManglePrefix(vwpDecl, prefix, genericsTypeStack, true);
@@ -813,6 +814,7 @@ std::string BaseMangler::ManglePrefix(const Node& node, const std::vector<Ptr<No
                 }
 
                 std::optional<size_t> index = GetIndexOfWildcard(vwpDecl, prefix);
+                CJC_ASSERT_WITH_MSG(index.has_value(), "Index of wildcard should not be empty");
                 mangleStr += MANGLE_ANONYMOUS_VARIABLE_PREFIX;
                 mangleStr += MangleUtils::DecimalToManglingNumber(std::to_string(index.value()));
                 mangled += mangleStr;

@@ -20,8 +20,9 @@ namespace Cangjie::Compression {
 std::string DecimalToManglingNumber(const std::string& decimal)
 {
     CJC_ASSERT(!decimal.empty() && "the string of decimal is empty.");
-    const size_t n = 62;
-    const std::string base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    constexpr const char base62Chars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const std::string base62CharsStr = std::string(base62Chars);
+    constexpr const size_t n = sizeof(base62Chars) / sizeof(base62Chars[0]) - 1;
     for (size_t i = 0; i < decimal.length(); i++) {
         if (!std::isdigit(decimal[i])) {
             return "";
@@ -34,7 +35,7 @@ std::string DecimalToManglingNumber(const std::string& decimal)
     }
     std::string base62 = num > 0 ? "" : "0";
     while (num > 0) {
-        base62 = base62Chars[num % n] + base62;
+        base62 = base62CharsStr[num % n] + base62;
         num /= n;
     }
     return base62 + MANGLE_WILDCARD_PREFIX;
@@ -146,12 +147,15 @@ inline bool IsGlobalEncode(std::string& mangled)
  */
 bool IsVarDeclEncode(std::string& mangled)
 {
-    bool isCompressed = false;
     const size_t n = mangled.size();
+    if (n == 0) {
+        return false;
+    }
     size_t idx = 0;
     if (mangled[0] == MANGLE_SUFFIX[0]) {
         return true;
     } else if (isdigit(mangled[0])) {
+        bool isCompressed = false;
         idx = ForwardName(mangled, isCompressed);
         if (idx < n && mangled[idx] == MANGLE_COUNT_PREFIX[0]) {
             idx = ForwardNumber(mangled, idx + MANGLE_CHAR_LEN);
@@ -330,7 +334,7 @@ inline size_t ForwardGenericTypes(std::string& mangled, std::vector<std::unique_
     if (isCompressed) {
         return idx;
     }
-    if (curIdx != idx && mangled[curIdx] == MANGLE_SUFFIX[0]) {
+    if (curIdx < mangled.size() && mangled[curIdx] == MANGLE_SUFFIX[0]) {
         return curIdx + MANGLE_CHAR_LEN;
     }
     return idx;
@@ -427,7 +431,7 @@ inline size_t ForwardFunctionType(std::string& mangled, std::vector<std::unique_
     if (isCompressed) {
         return idx;
     }
-    if (curIdx != idx && mangled[curIdx] == MANGLE_SUFFIX[0]) {
+    if (curIdx < mangled.size() && mangled[curIdx] == MANGLE_SUFFIX[0]) {
         mangledName = mangled.substr(idx, curIdx + MANGLE_CHAR_LEN - idx);
         tys.push_back(std::make_unique<FunctionType>(FunctionType(mangledName, BaseType::FUNCTION_TYPE,
             std::move(retTy[0]), paramTys)));
@@ -479,10 +483,7 @@ inline size_t ForwardCPointer(std::string& mangled, size_t idx, bool& isCompress
     if (isCompressed) {
         return idx;
     }
-    if (curIdx != idx) {
-        return curIdx;
-    }
-    return idx;
+    return curIdx;
 }
 
 /**
@@ -516,6 +517,9 @@ inline size_t ForwardArrayType(std::string& mangled, size_t idx, bool& isCompres
 // Forward type, if type is invalid, return idx is initial value.
 size_t ForwardType(std::string& mangled, std::vector<std::unique_ptr<CJType>>& tys, bool& isCompressed, size_t idx)
 {
+    if (idx >= mangled.size()) {
+        return idx;
+    }
     char ch = mangled[idx];
     BaseType bt;
     size_t nextIdx = idx;

@@ -38,7 +38,7 @@ inline const std::string MANGLE_BOX_STR = "Box";
  */
 inline std::string StripCangjiePrefix(std::string identifier)
 {
-    if (!identifier.empty()) {
+    if (identifier.size() >= MANGLE_PREFIX_LEN) {
         return identifier.substr(MANGLE_PREFIX_LEN);
     }
     return identifier;
