@@ -49,7 +49,7 @@ std::string GetSystemErrorMessage(int error)
 {
     constexpr size_t buffSize = 512;
     char buf[buffSize] = {0};
-#if defined(__APPLE__)
+#if defined(__ohos__) || defined(__APPLE__)
     if (strerror_r(error, buf, buffSize) != 0) {
         return "";
     }

@@ -862,7 +862,7 @@ public:
      */
     bool CompileExecutable() const
     {
-        return (outputMode == GlobalOptions::OutputMode::EXECUTABLE || CompileObjectForExe());
+        return (outputMode == GlobalOptions::OutputMode::EXECUTABLE) || CompileObjectForExe();
     }
 
     bool CompileObjectForLibrary() const
