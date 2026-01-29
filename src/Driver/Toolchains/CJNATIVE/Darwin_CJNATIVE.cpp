@@ -70,7 +70,7 @@ TempFileInfo Darwin_CJNATIVE::GenerateLinkingTool(const std::vector<TempFileInfo
 
 void Darwin_CJNATIVE::GenerateLinkOptions(Tool& tool)
 {
-    for (auto& option : LINUX_CJNATIVE_LINK_OPTIONS) {
+    for (auto& option : DARWIN_CJNATIVE_LINK_OPTIONS) {
         tool.AppendArg(option);
     }
     auto cangjieLibPath =

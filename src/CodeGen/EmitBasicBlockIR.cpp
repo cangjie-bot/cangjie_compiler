@@ -105,8 +105,8 @@ void BasicBlockGeneratorImpl::CreateLandingPad(const CHIR::Block& chirBB) const
 
     IRBuilder2 irBuilder(cgMod);
     CodeGenBlockScope codeGenBlockScope(irBuilder, chirBB);
-    auto landingPad = irBuilder.CreateLandingPad(CGType::GetLandingPadType(cgMod.GetLLVMContext()), 0);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
+    auto landingPad = irBuilder.CreateLandingPad(CGType::GetLandingPadType(cgMod.GetLLVMContext()), 0);
     if (chirBB.GetExceptions().empty()) {
         landingPad->addClause(llvm::Constant::getNullValue(irBuilder.getInt8PtrTy()));
     } else {

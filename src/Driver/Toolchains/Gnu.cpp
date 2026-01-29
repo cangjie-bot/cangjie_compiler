@@ -455,7 +455,7 @@ bool Gnu::PerformPartialLinkAndContinue(std::vector<TempFileInfo>& objFiles)
     auto outputDir = FileUtil::GetAbsPath(FileUtil::GetDirPath(outputFile));
     CJC_ASSERT(outputDir.has_value());
     auto name = FileUtil::JoinPath(outputDir.value(), FileUtil::GetFileNameWithoutExtension(fileName) + ".__symbols");
-    std::ofstream file(name);
+    std::ofstream file(FileUtil::NormalizePath(name));
     CJC_ASSERT(file.is_open());
     for (const auto& str : driverOptions.symbolsNeedLocalized) {
         file << str << "\n";

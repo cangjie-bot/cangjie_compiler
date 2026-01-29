@@ -28,7 +28,7 @@ public:
     ~IOS_CJNATIVE() override {};
 
 protected:
-    const std::vector<std::string> LINUX_CJNATIVE_LINK_OPTIONS = {
+    const std::vector<std::string> IOS_CJNATIVE_LINK_OPTIONS = {
 #define CJNATIVE_STD_OPTIONS(OPTION) (OPTION),
 #include "Toolchains/BackendOptions.inc"
 #undef CJNATIVE_STD_OPTIONS

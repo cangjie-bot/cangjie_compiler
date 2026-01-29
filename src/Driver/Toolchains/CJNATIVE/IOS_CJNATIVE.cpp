@@ -71,7 +71,7 @@ TempFileInfo IOS_CJNATIVE::GenerateLinkingTool(
 
 void IOS_CJNATIVE::GenerateLinkOptions(Tool& tool)
 {
-    for (auto& option : LINUX_CJNATIVE_LINK_OPTIONS) {
+    for (auto& option : IOS_CJNATIVE_LINK_OPTIONS) {
         tool.AppendArg(option);
     }
     auto cangjieLibPath =

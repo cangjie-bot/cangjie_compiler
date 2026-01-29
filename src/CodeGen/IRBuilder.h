@@ -318,6 +318,7 @@ public:
     void CallExceptionIntrinsicThrow(llvm::Value* exceptionValue);
     void CallExceptionIntrinsicThrow(CGValue* exceptionValue)
     {
+        CJC_ASSERT(exceptionValue);
         CallExceptionIntrinsicThrow(exceptionValue->GetRawValue());
     }
     llvm::Value* CallExceptionIntrinsicGetExceptionValue();

@@ -47,8 +47,8 @@ inline void AddSRetAttribute(llvm::CallBase* call)
 {
     auto retType = call->arg_begin()->get()->getType();
     CJC_ASSERT(retType->isPointerTy());
-    auto type = GetPointerElementType(retType);
 #ifdef CANGJIE_CODEGEN_CJNATIVE_BACKEND
+    auto type = GetPointerElementType(retType);
     auto sRetAttr = llvm::Attribute::getWithStructRetType(call->getContext(), type);
     AddParamAttr(call, 0, sRetAttr);
 #endif
