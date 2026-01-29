@@ -85,6 +85,8 @@ void DesugarMirrors::DesugarCtor(InteropContext& ctx, ClassLikeDecl& mirror, Fun
     auto& params = ctor.funcBody->paramLists[0]->params;
     auto& generatedCtor = *ctx.factory.GetGeneratedMirrorCtor(mirror);
     auto thisCall = CreateThisCall(mirror, generatedCtor, generatedCtor.ty, curFile);
+    CJC_ASSERT_WITH_MSG(mirror.astKind == ASTKind::CLASS_DECL,
+        "Expected ASTKind::CLASS_DECL instead of " + ASTKIND_TO_STR.at(mirror.astKind));
     auto allocCall = ctx.factory.CreateAllocCall(*StaticAs<ASTKind::CLASS_DECL>(&mirror), curFile);
 
     std::vector<OwnedPtr<Expr>> initArgs;

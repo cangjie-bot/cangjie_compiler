@@ -34,6 +34,7 @@ void InsertMirrorCtorBody::HandleImpl(InteropContext& ctx)
         CJC_NULLPTR_CHECK(ctor);
         auto curFile = ctor->curFile;
 
+        CJC_ASSERT_WITH_MSG(!ctor->funcBody->paramLists[0]->params.empty(), "Ctor param list is empty");
         auto handleParam = WithinFile(CreateRefExpr(*ctor->funcBody->paramLists[0]->params[0]), curFile);
 
         if (HasMirrorSuperClass(*mirrorClass)) {
