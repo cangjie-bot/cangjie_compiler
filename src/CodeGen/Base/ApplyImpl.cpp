@@ -205,17 +205,16 @@ inline bool HasAddrSpace(const CGValue* cgVal, unsigned int addrSpace)
     return llvmType->isPointerTy() && llvmType->getPointerAddressSpace() == addrSpace;
 }
 #ifdef __APPLE__
-inline void AddAttrForIntTypeArgOnMacMx(llvm::CallBase& callRet, const llvm::Use& arg)
+inline void AddAttrForIntTypeArgOnMacMx(llvm::CallBase& callRet, llvm::Function& callee, unsigned argIdx)
 {
-    auto intType = llvm::dyn_cast<llvm::IntegerType>(arg->getType());
-    if (!intType) {
+    CJC_ASSERT(callRet.arg_size() == callee.arg_size());
+    if (argIdx >= callRet.arg_size()) {
         return;
     }
-    AddParamAttr(&callRet, arg.getOperandNo(), llvm::Attribute::NoUndef);
-    if (intType->isIntegerTy(1u)) { // 1u means bool type.
-        AddParamAttr(&callRet, arg.getOperandNo(), llvm::Attribute::ZExt);
-    } else if (intType->getBitWidth() < 32) { // 32 means int32_t type.
-        AddParamAttr(&callRet, arg.getOperandNo(), llvm::Attribute::SExt);
+    for (auto attr : {llvm::Attribute::NoUndef, llvm::Attribute::SExt, llvm::Attribute::ZExt}) {
+        if (callee.hasParamAttribute(argIdx, attr)) {
+            callRet.addParamAttr(argIdx, attr);
+        }
     }
 }
 #endif
@@ -255,15 +254,15 @@ llvm::Value* CreateCFuncCallOrInvoke(IRBuilder2& irBuilder, llvm::Function& call
         }
     }
 #ifdef __APPLE__
-    const bool macOnMx = !nonAarch64 && (target.os == Triple::OSType::DARWIN || target.os == Triple::OSType::IOS);
-    if (macOnMx) {
+    const bool onMacMx = !nonAarch64 && (target.os == Triple::OSType::DARWIN || target.os == Triple::OSType::IOS);
+    if (onMacMx) {
         for (auto ext : {llvm::Attribute::SExt, llvm::Attribute::ZExt}) {
             if (callee.hasRetAttribute(ext)) {
                 callRet->addRetAttr(ext);
             }
         }
-        for (auto& arg : callRet->args()) {
-            AddAttrForIntTypeArgOnMacMx(*callRet, arg);
+        for (unsigned i = 0; i < callee.arg_size(); ++i) {
+            AddAttrForIntTypeArgOnMacMx(*callRet, callee, i);
         }
     }
 #endif
