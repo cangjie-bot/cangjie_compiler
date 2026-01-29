@@ -62,11 +62,6 @@ public:
         return llvmType == that.llvmType;
     }
 
-    CGContext& GetCGContext() const
-    {
-        return cgCtx;
-    }
-
     llvm::Type* GetLLVMType() const
     {
         CJC_NULLPTR_CHECK(llvmType);

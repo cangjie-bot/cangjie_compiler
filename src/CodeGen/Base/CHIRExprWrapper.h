@@ -163,10 +163,6 @@ public:
         }
     }
 
-    CHIRApplyWrapper(const CHIRApplyWrapper& chirExprW) : CHIRCallExpr(chirExprW.chirExpr)
-    {
-    }
-
     ~CHIRApplyWrapper() override = default;
 
     CHIR::Value* GetCallee() const
