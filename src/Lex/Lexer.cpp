@@ -327,9 +327,10 @@ void LexerImpl::Back()
     pNext = pCurrent;
 }
 
+using namespace Unicode;
 std::string LexerImpl::GetSuffix(const char* pSuffixStart)
 {
-    while (std::isalnum(currentChar)) {
+    while (IsAlnum(currentChar)) {
         ReadUTF8Char();
     }
     std::string suffix;
@@ -387,7 +388,7 @@ bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reaso
     bool hasTypeSuffix = false;
     int max = base + static_cast<int>('0');
     for (int i{0}; ; ++i) {
-        if (i == 0 && isFloat && isdigit(currentChar)) {
+        if (i == 0 && isFloat && IsDigit(currentChar)) {
             *isFloat = true;
             tokenKind = TokenKind::FLOAT_LITERAL;
         }
@@ -396,13 +397,13 @@ bool LexerImpl::ProcessDigits(const int& base, bool& hasDigit, const char* reaso
                 DiagExpectedDigit(*reasonPoint);
                 success = false;
             }
-        } else if (isdigit(currentChar) && base <= DEC_BASE) { // Process base <= 10.
+        } else if (IsDigit(currentChar) && base <= DEC_BASE) { // Process base <= 10.
             hasDigit = true;
             if (currentChar >= max && success) {
                 DiagUnexpectedDigit(base, reasonPoint);
                 success = false;
             }
-        } else if (isxdigit(currentChar)) { // Process hexadecimal.
+        } else if (IsXDigit(currentChar)) { // Process hexadecimal.
             if (!ProcessXdigit(base, hasDigit, reasonPoint)) {
                 break;
             }
@@ -547,7 +548,6 @@ void LexerImpl::ProcessNumberExponentPart(char prefix, const char* reasonPoint, 
 
 void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat, bool hasDot)
 {
-    using namespace Unicode;
     auto nonDigitStart = pCurrent; // pos to first non-digit char (non-xidigit if prefix is 'x')
     auto hasSuffix{false};
     if (currentChar == 'f') {
@@ -555,7 +555,7 @@ void LexerImpl::ProcessNumberFloatSuffix(const char& prefix, bool isFloat, bool 
         hasSuffix = true;
     }
     auto suffixBegin = pCurrent;
-    while (std::isalnum(currentChar) || currentChar == '.' || currentChar == '_') {
+    while (IsAlnum(currentChar) || currentChar == '.' || currentChar == '_') {
         // The range .. is legal.
         if (currentChar == '.' && GetNextChar(0) == '.' && GetNextChar(1) != '.') {
             Back();
@@ -728,7 +728,6 @@ Token LexerImpl::ScanDotPrefixSymbol()
     }
 }
 
-using namespace Unicode;
 bool LexerImpl::TryConsumeIdentifierUTF8Char()
 {
     CJC_ASSERT(pNext != pCurrent);
@@ -942,7 +941,7 @@ void LexerImpl::ProcessUnicodeEscape()
             Back();
             break;
         }
-        if (isxdigit(currentChar)) {
+        if (IsXDigit(currentChar)) {
             hexNum++;
             UTF32 n{0};
             constexpr UTF32 base{4}; // count to shift when converting hexademical to decimal
@@ -965,7 +964,7 @@ void LexerImpl::ProcessUnicodeEscape()
         DiagExpectedDigit('x');
         success = false;
     }
-    if (hexNum == UNICODE_MAX_NUM && isxdigit(currentChar) && success) { // 1 to 8 hex digits allowed
+    if (hexNum == UNICODE_MAX_NUM && IsXDigit(currentChar) && success) { // 1 to 8 hex digits allowed
         DiagExpectedRightBracket(uniStart - 1);
         Back();
         success = false;
@@ -1905,7 +1904,7 @@ Token LexerImpl::ScanBase()
     if (currentChar == '`') {
         return ScanBackquotedIdentifier(pStart);
     }
-    if (isdigit(currentChar) || currentChar == '.') { // number
+    if (IsDigit(currentChar) || currentChar == '.') { // number
         return ScanNumberOrDotPrefixSymbol(pStart);
     }
     if (currentChar == '/') {
