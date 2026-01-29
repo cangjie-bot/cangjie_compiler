@@ -13,6 +13,9 @@
 #include <vector>
 #include "Base/CString.h"
 #endif
+#ifdef BUILD_LIB_CANGJIE_DEMANGLE
+#include <string>
+#endif
 #include <functional>
 #include <cassert>
 #include <cstdint>

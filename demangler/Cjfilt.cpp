@@ -11,6 +11,12 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#if (defined(__linux__) || defined(__APPLE__))
+#include <stdlib.h>
+#endif
 
 #include "CangjieDemangle.h"
 #include "Demangler.h"
@@ -23,22 +29,48 @@ std::map<std::string, std::string> obfNames;
 
 static void Println(const std::string& msg) { std::cout << msg << std::endl; }
 
+std::string CanonicalizeFileName(const std::string& name)
+{
+    bool success = true;
+#ifdef _WIN32
+    char realpathRes[MAX_PATH]{};
+    int retval = GetFullPathNameA(name.c_str(), MAX_PATH, realpathRes, nullptr);
+    if (retval == 0) {
+        success = false;
+    }
+#elif (defined(__linux__) || defined(__APPLE__))
+    auto realpathRes = realpath(name.c_str(), nullptr);
+    if (!realpathRes) {
+        success = false;
+    }
+#else
+    auto realpathRes = name;
+#endif
+    if (!success) {
+        return "";
+    }
+    return realpathRes;
+}
+
 void ReadMapFile(const std::string& name)
 {
-    std::string line;
-    std::ifstream file(name);
-    const int elemNum = 2;
-
+    std::string canonicalizedFileName = CanonicalizeFileName(name);
+    if (canonicalizedFileName == "") {
+        Println("Cannot open file " + name);
+        return;
+    }
+    std::ifstream file(canonicalizedFileName);
     if (!file.is_open()) {
         Println("Cannot open file " + name);
         return;
     }
 
+    std::string line;
     while (getline(file, line)) {
         std::istringstream iss(line);
         std::string obfName;
         std::string tmp;
-
+        const int elemNum = 2;
         for (int i = 0; i < elemNum; i++) {
             if (!getline(iss, tmp, ' ')) {
                 break;

@@ -4,7 +4,9 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
-
+#include "Demangler.h"
+#include <limits>
+#include <stdexcept>
 #ifdef BUILD_LIB_CANGJIE_DEMANGLE // to reuse the code to compile CangjieDemangle.cpp
 #include <cstring>
 #include <string>
@@ -15,7 +17,6 @@
 #endif
 #include "DeCompression.h"
 #include "Utils.h"
-#include "Demangler.h"
 
 namespace {
 constexpr char MANGLE_TUPLE_PREFIX = 'T';
@@ -179,9 +180,9 @@ T ReplaceString(T str, const char* pattern, const char* replacement)
     auto pos = str.Find(pattern);
     auto n = str.Length();
     auto pLen = strlen(pattern);
-    while (pos > -1 && n - pos - pLen > 0) {
+    while (pos > -1 && n - static_cast<size_t>(pos) - pLen > 0) {
         n = str.Length();
-        str = str.SubStr(0, pos) + replacement + str.SubStr(pos + pLen, n - pos - pLen);
+        str = str.SubStr(0, pos) + replacement + str.SubStr(pos + pLen, n - static_cast<size_t>(pos) - pLen);
         pos = str.Find(pattern);
     }
     return str;
@@ -272,7 +273,17 @@ uint32_t Demangler<T>::DemangleLength()
         ++currentIndex;
         isValid = true;
     }
-    return atoi(numStr.Str());
+    try {
+        std::string numString = numStr.Str();
+        long long num = std::stoll(numString);
+        if (num > std::numeric_limits<uint32_t>::max() || num < 0) {
+            return 0;
+        }
+        return static_cast<uint32_t>(num);
+    } catch (const std::exception& ex) {
+        // Failed to convert to int
+        return 0;
+    }
 }
 
 template<typename T>
@@ -699,8 +710,8 @@ DemangleInfo<T> Demangler<T>::DemanglePackageName()
     if (pkg.IsEmpty()) {
         pkg = DemangleStringName();
         auto pos = pkg.Find(':');
-        if (pos > -1 && pkg.Length() - pos > 0) {
-            pkg = pkg.SubStr(0, pos) + T{':'} + pkg.SubStr(pos, pkg.Length() - pos);
+        if (pos > -1 && pkg.Length() - static_cast<size_t>(pos) > 0) {
+            pkg = pkg.SubStr(0, pos) + T{':'} + pkg.SubStr(pos, pkg.Length() - static_cast<size_t>(pos));
         }
     }
     if (IsFileName()) {

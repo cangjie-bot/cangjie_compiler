@@ -6,6 +6,7 @@
 
 
 #include "DeCompression.h"
+#include <limits>
 #ifdef BUILD_LIB_CANGJIE_DEMANGLE // To reuse the code to compile CangjieDemangle.cpp
 #include <cstring>
 #include <string>
@@ -31,7 +32,7 @@ const std::unordered_map<char, size_t> base62Chars = {{'0', 0}, {'1', 1}, {'2', 
     {'u', 56}, {'v', 57}, {'w', 58}, {'x', 59}, {'y', 60}, {'z', 61}};
 
 const char PRIMITIVE_PREFIX_SET[] = "nucbfdasilqhtjmrDv";
-constexpr size_t PRIMITIVE_LEN = 18;
+constexpr size_t PRIMITIVE_LEN = (sizeof(PRIMITIVE_PREFIX_SET) / sizeof(PRIMITIVE_PREFIX_SET[0])) - 1;
 } // namespace
 
 namespace Cangjie {
@@ -66,8 +67,8 @@ inline size_t GetNumber(T base62)
         return 0;
     }
     T newBase62 = base62.SubStr(0, base62.Length() - 1);
-    long long decimal = 0;
-    long long power = 1;
+    size_t decimal = 0;
+    size_t power = 1;
     for (size_t i = newBase62.Length() - 1; i != NPOS; i--) {
         decimal += base62Chars.at(newBase62[i]) * power;
         power *= n;
@@ -91,7 +92,7 @@ template<typename T>
 bool DeCompression<T>::IsSamePrefix(T& first, T second, size_t idx)
 {
     for (size_t i = idx; i < idx + PREFIX_LEN; i++) {
-        if (first[i] != second[i]) {
+        if (i < first.Length() && i < second.Length() && first[i] != second[i]) {
             return false;
         }
     }
@@ -159,6 +160,9 @@ bool DeCompression<T>::IsVarDeclEncode(T& mangled)
 {
     this->isRecord = false;
     const size_t n = mangled.Length();
+    if (n == 0) {
+        return false;
+    }
     size_t idx = 0;
     if (mangled[0] == END) {
         return true;
@@ -254,6 +258,9 @@ bool DeCompression<T>::HasDuplicates(T& mangled, size_t mid)
 {
     // The subscript indexes of the treeIdMap are as follows:
     // { 0: index, 1: pos }
+    if (mid >= this->treeIdMap.size()) {
+        return false;
+    }
     T curStr = mangled.SubStr(std::get<0>(treeIdMap[mid]), std::get<1>(treeIdMap[mid]));
     size_t tid = 0;
     for (auto it = treeIdMap.begin(); it != treeIdMap.end(); ++it, ++tid) {
@@ -291,7 +298,7 @@ inline size_t ForwardFileNameNumber(T& mangled, size_t idx)
         curIdx++;
     }
     if (isValid) {
-        for (int i = idx; i <= static_cast<int>(curIdx); i++) {
+        for (size_t i = idx; i <= curIdx; i++) {
             if (!isalnum(mangled[i])) {
                 return idx;
             }
@@ -333,7 +340,7 @@ size_t DeCompression<T>::ForwardGenericTypes(T& mangled, size_t& cnt, size_t idx
 {
     size_t curCnt = cnt;
     size_t curIdx = ForwardTypes(mangled, cnt, idx + MANGLE_CHAR_LEN);
-    if (curIdx != idx && mangled[curIdx] == END) {
+    if (curIdx < mangled.Length() && mangled[curIdx] == END) {
         return curIdx + MANGLE_CHAR_LEN;
     }
     if (this->isRecord) {
@@ -393,7 +400,7 @@ size_t DeCompression<T>::ForwardFunctionType(T& mangled, size_t& cnt, size_t idx
     size_t curCnt = cnt;
     size_t curIdx = ForwardType(mangled, cnt, idx + PREFIX_LEN);
     curIdx = ForwardTypes(mangled, cnt, curIdx);
-    if (curIdx != idx && mangled[curIdx] == END) {
+    if (curIdx < mangled.Length() && mangled[curIdx] == END) {
         return curIdx + MANGLE_CHAR_LEN;
     }
     if (this->isRecord) {
@@ -434,15 +441,8 @@ size_t DeCompression<T>::ForwardTupleType(T& mangled, size_t& cnt, size_t idx)
 template<typename T>
 size_t DeCompression<T>::ForwardCPointer(T& mangled, size_t& cnt, size_t idx)
 {
-    size_t curCnt = cnt;
     size_t curIdx = ForwardType(mangled, cnt, idx + MANGLE_CHAR_LEN);
-    if (curIdx != idx) {
-        return curIdx;
-    }
-    if (this->isRecord) {
-        TreeIdMapPop(cnt, curCnt);
-    }
-    return idx;
+    return curIdx;
 }
 
 /**
@@ -517,7 +517,21 @@ size_t DeCompression<T>::ForwardName(T& mangled, size_t idx)
     while (idx < mangled.Length() && isdigit(mangled[idx + numberLen])) {
         numberLen++;
     }
-    size_t number = atoi(mangled.SubStr(idx, numberLen).Str());
+    uint32_t number{};
+    try {
+        std::string numberStr = mangled.SubStr(idx, numberLen);
+        long long num = std::stoll(numberStr);
+        if (num > std::numeric_limits<uint32_t>::max() || num < 0) {
+            return idx;
+        }
+        number = static_cast<uint32_t>(num);
+    } catch (const std::exception& ex) {
+        // Failed to convert to int
+        return idx;
+    }
+    if (idx + numberLen + number > mangled.Length()) {
+        return idx;
+    }
     return idx + numberLen + number;
 }
 
@@ -560,6 +574,9 @@ void DeCompression<T>::TreeIdMapAssign(T& mangled, T& mangledCopy, size_t mapId,
     // { 0: idx, 1: nextIdx }
     size_t idx = std::get<0>(eleInfo);
     size_t nextIdx = std::get<1>(eleInfo);
+    if (mapId >= this->treeIdMap.size()) {
+        return;
+    }
     std::get<1>(treeIdMap[mapId]) = nextIdx - idx;
     if (HasDuplicates(mangled, mapId)) {
         TreeIdMapErase(mangledCopy, cnt, mapId, idx);
@@ -570,6 +587,9 @@ void DeCompression<T>::TreeIdMapAssign(T& mangled, T& mangledCopy, size_t mapId,
 template<typename T>
 size_t DeCompression<T>::ForwardType(T& mangled, size_t& cnt, size_t idx)
 {
+    if (idx >= mangled.Length()) {
+        return idx;
+    }
     char ch = mangled[idx];
     size_t nextIdx = idx;
     size_t curCnt = cnt;
@@ -653,9 +673,6 @@ size_t DeCompression<T>::ForwardType(T& mangled, size_t& cnt, size_t idx)
 template<typename T>
 size_t DeCompression<T>::ForwardTypes(T& mangled, size_t& cnt, size_t startId)
 {
-    if (mangled.Length() - startId <= 0) {
-        return startId;
-    }
     size_t idx = startId;
     while (idx < mangled.Length() && mangled[idx] != END) {
         size_t curIdx = ForwardType(mangled, cnt, idx);
@@ -674,7 +691,7 @@ bool DeCompression<T>::IsCompressed(T& mangled)
         return false;
     }
     size_t pos = 0;
-    while ((pos = mangled.Find(MANGLE_COMPRESS_PREFIX, pos)) != NPOS) {
+    while ((pos = static_cast<size_t>(mangled.Find(MANGLE_COMPRESS_PREFIX, pos))) != NPOS) {
         size_t nextIdx = ForwardNumber(mangled, pos + MANGLE_CHAR_LEN);
         if (nextIdx != pos + MANGLE_CHAR_LEN) {
             return true;
@@ -838,6 +855,9 @@ size_t DeCompression<T>::UpdateCompressedName(T& compressed, size_t sid, size_t 
 {
     size_t idx = sid;
     while (idx < eid) {
+        if (idx >= compressed.Length()) {
+            break;
+        }
         if (compressed[idx] == MANGLE_COMPRESS_PREFIX && !this->treeIdMap.empty() &&
             idx + MANGLE_CHAR_LEN < compressed.Length()) {
             size_t curIdx = ForwardNumber(compressed, idx + MANGLE_CHAR_LEN);

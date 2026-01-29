@@ -133,5 +133,15 @@ DemangleData DemangleType(const std::string& mangled);
  * @return DemangleData The demangled information.
  */
 DemangleData DemangleType(const std::string& mangled, const std::string& scopeRes);
+
+#ifdef __OHOS__
+/**
+ * @brief Demangle the function name.
+ *
+ * @param functionName The function name to be demangled.
+ * @return char* The demangled string.
+ */
+extern "C" MRT_EXPORT char* CJ_MRT_Demangle(const char* functionName);
+#endif
 } // namespace Cangjie
 #endif // LIB_CANGJIE_DEMANGLE
