@@ -159,6 +159,10 @@ inline bool IsExternalNorminalDecl(const Decl& decl)
 
 inline bool ShouldAlwaysExport(const Decl& decl, bool serializingCommon)
 {
+    if (decl.IsCommonMatchedWithPlatform()) {
+        return false;
+    }
+
     // When 'exportAddition' is enabled, we have following rules:
     // 1. For BCHIR(include const evaluation) type usage, type decl must be exported.
     // Otherwise, only export external decls.
