@@ -714,6 +714,7 @@ void ValidateFileFeatureSpec(DiagnosticEngine &diag, const Package& pkg,
             rangeMap.clear();
         }
     }
+    CJC_NULLPTR_CHECK(refFile.get());
     for (auto& ftr : refFile->feature->featuresSet->content) {
         refMap.emplace(ftr.ToString(), false);
     }

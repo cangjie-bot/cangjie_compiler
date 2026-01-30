@@ -2729,8 +2729,8 @@ struct InvalidExpr : Expr {
  *     ;
  */
 struct FeatureId : Node {
-    std::vector<Identifier> identifiers;
-    std::vector<Position> dotPoses;
+    std::vector<Identifier> identifiers; /**< FeatureId identifier. */
+    std::vector<Position> dotPoses; /**< Positions of each '.'. */
     FeatureId() : Node(ASTKind::FEATURE_ID)
     {
     }
@@ -2745,10 +2745,10 @@ struct FeatureId : Node {
  *     ;
  */
 struct FeaturesSet: Node {
-    Position lCurlPos;
+    Position lCurlPos; /**< Position of '{'. */
     std::vector<FeatureId> content;
-    std::vector<Position> commaPoses;
-    Position rCurlPos;
+    std::vector<Position> commaPoses;  /**< Positions of each ','. */
+    Position rCurlPos; /**< Position of '}'. */
     FeaturesSet() : Node(ASTKind::FEATURES_SET)
     {
     }
@@ -2762,9 +2762,9 @@ struct FeaturesSet: Node {
  *     ;
  */
 struct FeaturesDirective : Node {
-    std::vector<OwnedPtr<Annotation>> annotations;
-    OwnedPtr<FeaturesSet> featuresSet;
-    Position featuresPos;
+    std::vector<OwnedPtr<Annotation>> annotations; /**< Annotation set of the FeaturesDirective. */
+    OwnedPtr<FeaturesSet> featuresSet; /**<  Set of the features*/
+    Position featuresPos; /**< Position of the `features` keyword */
     FeaturesDirective() : Node(ASTKind::FEATURES_DIRECTIVE)
     {
     }
