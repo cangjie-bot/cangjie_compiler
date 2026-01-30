@@ -1,6 +1,6 @@
 /.gitcode/ @xuanjz
 /cmake/ @neilliuistaken
-/demangler/ @Yessy
+/demangler/ @neilliuistaken
 /doc/ @luojianing
 /figures/ @luojianing
 
@@ -10,7 +10,7 @@
 /include/cangjie/CHIR/ @Mr_Kang_Yi
 /include/cangjie/CHIR/Interpreter @claudio_
 /include/cangjie/CHIR/Serializer @Cangjie-hljyaozhen
-/include/cangjie/CodeGen/ @Yessy
+/include/cangjie/CodeGen/ @duo-duo
 /include/cangjie/ConditionalCompilation/ @mini-tang
 /include/cangjie/Driver/ @neilliuistaken
 /include/cangjie/Frontend/ @wyq1213
@@ -19,7 +19,7 @@
 /include/cangjie/Lex/ @kkkkkkkbbbbbbb
 /include/cangjie/Lex/Tokens.inc @mini-tang
 /include/cangjie/Macro/ @mini-tang
-/include/cangjie/Mangle/ @Yessy
+/include/cangjie/Mangle/ @neilliuistaken
 /include/cangjie/MetaTransformation/ @Timi3
 /include/cangjie/Modules/ @Augus_Jan
 /include/cangjie/Option/ @neilliuistaken
@@ -34,7 +34,9 @@
 /src/AST/ @Augus_Jan
 /src/Basic/ @Cangjie-hljyaozhen
 /src/CHIR/ @Mr_Kang_Yi
-/src/CodeGen/ @Yessy
+/src/CodeGen/ @duo-duo
+/src/CodeGen/CJNative/CJNativeCGCFFI.cpp @gaoxiang999
+/src/CodeGen/CJNative/CJNativeCGCFFI.h @gaoxiang999
 /src/ConditionalCompilation/ @mini-tang
 /src/Driver/ @neilliuistaken
 /src/Frontend/ @wyq1213
@@ -42,7 +44,7 @@
 /src/IncrementalCompilation/ @Cangjie-hljyaozhen
 /src/Lex/ @kkkkkkkbbbbbbb
 /src/Macro/ @mini-tang
-/src/Mangle/ @Yessy
+/src/Mangle/ @neilliuistaken
 /src/MetaTransformation/ @Timi3
 /src/Modules/ @Augus_Jan
 /src/Option/ @neilliuistaken
@@ -63,7 +65,7 @@
 /unittests/AST/ @Augus_Jan
 /unittests/Basic/ @Cangjie-hljyaozhen
 /unittests/CHIR/ @Mr_Kang_Yi
-/unittests/CodeGen/ @Yessy
+/unittests/CodeGen/ @duo-duo
 /unittests/ConditionalCompilation/ @mini-tang
 /unittests/Driver/ @neilliuistaken
 /unittests/Frontend/ @wyq1213
