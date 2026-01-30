@@ -142,6 +142,7 @@ void MacroExpansion::ReplaceEachFileNode(const File& file)
     auto newBuffer = ci->GetSourceManager().GetSource(static_cast<unsigned int>(debugFileID)).buffer;
     Parser newParser(static_cast<unsigned int>(debugFileID), newBuffer, ci->diag, ci->diag.GetSourceManager(),
         ci->invocation.globalOptions.enableAddCommentToAst);
+    newParser.SetCompileOptions(ci->invocation.globalOptions);
     auto names = Utils::SplitQualifiedName(file.curPackage->fullPackageName);
     std::string moduleName = names.size() > 1 ? names[0] : ""; // Only used for 'std' package case.
     (void)newParser.SetModuleName(moduleName).EnableCustomAnno();
